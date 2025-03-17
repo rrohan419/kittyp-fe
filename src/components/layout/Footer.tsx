@@ -20,7 +20,7 @@ export function Footer() {
             </p>
             <div className="flex space-x-4">
               <a 
-                href="https://instagram.com" 
+                href="https://instagram.com/rrohan419" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 aria-label="Instagram"
@@ -29,7 +29,7 @@ export function Footer() {
                 <Instagram size={20} />
               </a>
               <a 
-                href="https://twitter.com" 
+                href="https://twitter.com/rrohan419" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 aria-label="Twitter"
@@ -38,7 +38,7 @@ export function Footer() {
                 <Twitter size={20} />
               </a>
               <a 
-                href="https://facebook.com" 
+                href="https://facebook.com/rrohan419" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 aria-label="Facebook"
@@ -47,7 +47,7 @@ export function Footer() {
                 <Facebook size={20} />
               </a>
               <a 
-                href="https://linkedin.com" 
+                href="https://linkedin.com/in/rrohan419" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 aria-label="LinkedIn"
@@ -57,8 +57,8 @@ export function Footer() {
               </a>
             </div>
           </div>
-          
-          <div className="md:col-span-2 space-y-4">
+          {/* will be required later */}
+          {/* <div className="md:col-span-2 space-y-4">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-100">
               Shop
             </h3>
@@ -84,7 +84,7 @@ export function Footer() {
                 </Link>
               </li>
             </ul>
-          </div>
+          </div> */}
           
           <div className="md:col-span-2 space-y-4">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-100">

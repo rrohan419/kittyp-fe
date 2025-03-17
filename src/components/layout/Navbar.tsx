@@ -58,12 +58,15 @@ export function Navbar() {
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
         <Link 
           to="/" 
-          className="flex items-center space-x-2 text-xl font-bold text-kitty-700"
+          className="flex items-center space-x-2 text-xl font-bold"
           aria-label="kittyp home"
         >
-          <span className="text-2xl font-extrabold tracking-tight">
+          {/* <span className="text-2xl font-extrabold tracking-tight">
             kitty<span className="text-kitty-600">p</span>
-          </span>
+          </span> */}
+          <span className="text-2xl font-extrabold tracking-tight">
+                kitty<span className="text-kitty-600">p</span>
+              </span>
         </Link>
 
         {/* Desktop Menu */}
