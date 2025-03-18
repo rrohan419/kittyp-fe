@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, ShoppingCart } from 'lucide-react';
@@ -7,39 +6,12 @@ import { cn } from '@/lib/utils';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const { itemCount } = useCart();
   const location = useLocation();
   
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
-  
-  // useEffect(() => {
-  //   const handleScroll = () => {
-  //     if (window.scrollY > 20) {
-  //       setScrolled(true);
-  //     } else {
-  //       setScrolled(false);
-  //     }
-  //   };
-    
-  //   window.addEventListener('scroll', handleScroll);
-  //   return () => window.removeEventListener('scroll', handleScroll);
-  // }, []);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.pageYOffset > 20);
-    };
-  
-    // Ensure correct state on initial load
-    handleScroll();
-  
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-  
-  
   // Close mobile menu when route changes
   useEffect(() => {
     closeMenu();
@@ -47,7 +19,6 @@ export function Navbar() {
   
   const navLinks = [
     { name: 'Home', path: '/' },
-    // { name: 'Products', path: '/products' },
     { name: 'How to Use', path: '/how-to-use' },
     { name: 'Blog', path: '/blogs' },
     { name: 'Contact', path: '/contact' }
@@ -62,10 +33,7 @@ export function Navbar() {
   return (
     <header 
       className={cn(
-        "fixed top-0 left-0 w-full z-50 transition-all duration-300",
-        scrolled ? 
-          "bg-white/80 backdrop-blur-md shadow-sm dark:bg-black/80" : 
-          "bg-transparent"
+        "fixed top-0 left-0 w-full z-50 transition-all duration-300 bg-white dark:bg-black shadow-sm"
       )}
     >
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
@@ -76,7 +44,7 @@ export function Navbar() {
         >
           <span className="text-2xl font-extrabold tracking-tight">
                 kitty<span className="text-kitty-600">p</span>
-              </span>
+          </span>
         </Link>
 
         {/* Desktop Menu */}
@@ -140,10 +108,19 @@ export function Navbar() {
       </nav>
 
       {/* Mobile Menu */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-white dark:bg-gray-900 opacity-100 z-40"
+          onClick={closeMenu} // Close when clicking outside the menu
+        />
+      )}
+
       <div 
         className={cn(
-          "fixed inset-y-0 right-0 w-full md:hidden bg-white dark:bg-gray-900 transform transition-transform duration-300 ease-out-expo shadow-xl z-50",
-          isOpen ? "translate-x-0" : "translate-x-full"
+          "fixed inset-y-0 right-0 w-full md:hidden bg-white dark:bg-gray-900 shadow-xl z-50",
+          isOpen 
+            ? "translate-x-0 opacity-100 visible" 
+            : "translate-x-full opacity-0 invisible"
         )}
       >
         <div className="flex items-center justify-end p-4">
