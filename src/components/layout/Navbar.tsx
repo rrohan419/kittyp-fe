@@ -14,18 +14,31 @@ export function Navbar() {
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
   
+  // useEffect(() => {
+  //   const handleScroll = () => {
+  //     if (window.scrollY > 20) {
+  //       setScrolled(true);
+  //     } else {
+  //       setScrolled(false);
+  //     }
+  //   };
+    
+  //   window.addEventListener('scroll', handleScroll);
+  //   return () => window.removeEventListener('scroll', handleScroll);
+  // }, []);
+
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 20) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
-      }
+      setScrolled(window.pageYOffset > 20);
     };
-    
+  
+    // Ensure correct state on initial load
+    handleScroll();
+  
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+  
   
   // Close mobile menu when route changes
   useEffect(() => {
@@ -61,9 +74,6 @@ export function Navbar() {
           className="flex items-center space-x-2 text-xl font-bold"
           aria-label="kittyp home"
         >
-          {/* <span className="text-2xl font-extrabold tracking-tight">
-            kitty<span className="text-kitty-600">p</span>
-          </span> */}
           <span className="text-2xl font-extrabold tracking-tight">
                 kitty<span className="text-kitty-600">p</span>
               </span>

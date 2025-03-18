@@ -74,7 +74,7 @@ const Index = () => {
     <div className="min-h-screen bg-white dark:bg-gray-950">
       <Navbar />
       
-      <main className="pt-16">
+      <main className="pt-8">
         <Hero />
         
         {/* Featured Products (will require later)*/}

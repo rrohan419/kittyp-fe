@@ -192,7 +192,7 @@ const Blogs = () => {
       <Navbar />
       
       <main className="pt-24">
-        <section className="py-16 md:py-24 bg-gray-50 dark:bg-gray-900">
+        <section className="pb-16 pt-8 md:pb-24 bg-gray-50 dark:bg-gray-900">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             {/* Page Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12">
