@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import Products from "./pages/Products";
 import HowToUse from "./pages/HowToUse";
 import Blogs from "./pages/Blogs";
+import WhyEcoLitter from "./pages/WhyEcoLitter";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/products" element={<Products />} />
             <Route path="/how-to-use" element={<HowToUse />} />
             <Route path="/blogs" element={<Blogs />} />
+            <Route path="/why-eco-litter" element={<WhyEcoLitter />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

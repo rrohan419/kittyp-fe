@@ -31,7 +31,7 @@ export function Hero() {
                 <ArrowRight size={16} className="ml-2" />
               </Link> */}
               <Link
-                to="/products"
+                to="/why-eco-litter"
                 className="inline-flex items-center px-6 py-3 bg-kitty-600 text-white rounded-md hover:bg-kitty-700 focus:outline-none focus:ring-2 focus:ring-kitty-500 focus:ring-offset-2 transition-colors"
               >
                 Why Eco-Litter?
