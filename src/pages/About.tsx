@@ -125,7 +125,7 @@ const About = () => {
                   bio: "Pet industry veteran focused on creating innovative, eco-friendly solutions."
                 },
                 {
-                  name: "Sophia Rodriguez",
+                  name: "Prerna Lal",
                   role: "Lead Researcher",
                   image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
                   bio: "Biologist specializing in plant-based materials and biodegradability."
