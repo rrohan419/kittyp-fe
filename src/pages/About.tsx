@@ -113,13 +113,13 @@ const About = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {[
                 {
-                  name: "Emma Chen",
+                  name: "Rohan Srivastava",
                   role: "Founder & CEO",
                   image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
                   bio: "Environmental scientist with a passion for sustainable pet products."
                 },
                 {
-                  name: "Marcus Wilson",
+                  name: "Monis Hassan",
                   role: "Head of Product",
                   image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
                   bio: "Pet industry veteran focused on creating innovative, eco-friendly solutions."
