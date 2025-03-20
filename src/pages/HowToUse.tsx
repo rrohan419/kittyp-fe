@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
 import { Footer } from '@/components/layout/Footer';
 import { Navbar } from '@/components/layout/Navbar';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, ArrowLeft, Check, Info, HelpCircle, PawPrintIcon } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent } from '@/components/ui/card';
+import { CheckCircle, ArrowRight, ArrowLeft, Check, Cat, Recycle } from 'lucide-react';
+import React, { useState } from 'react';
 
 const HowToUse = () => {
   const [newCatStep, setNewCatStep] = useState(0);
   const [transitionStep, setTransitionStep] = useState(0);
 
-  // New cat introduction steps
   const newCatSteps = [
     {
       title: "Choose the Right Location",
@@ -50,7 +49,6 @@ const HowToUse = () => {
     },
   ];
 
-  // Transition steps
   const transitionSteps = [
     {
       title: "Set Up a Second Box",
@@ -73,7 +71,7 @@ const HowToUse = () => {
     {
       title: "Maintain Both Boxes Initially",
       content: "Keep both litter boxes available, but make the Kittyp box more appealing by keeping it exceptionally clean and in a preferred location.",
-      image: "https://images.unsplash.com/photo-1535268647677-300dbf3d78d1?w=800&auto=format&fit=crop&q=80",
+      image: "https://images.unsplash.com/photo-1582562124811-c09040d0a901?w=800&auto=format&fit=crop&q=80",
       tip: "Clean the Kittyp box more frequently during transition to increase appeal."
     },
     {
@@ -85,12 +83,11 @@ const HowToUse = () => {
     {
       title: "Complete the Transition",
       content: "When your cat is consistently using the Kittyp litter box, you can remove the old box. Continue to maintain regular cleaning routines.",
-      image: "https://images.unsplash.com/photo-1535268647677-300dbf3d78d1?w=800&auto=format&fit=crop&q=80",
+      image: "https://images.unsplash.com/photo-1582562124811-c09040d0a901?w=800&auto=format&fit=crop&q=80",
       tip: "The entire transition typically takes 1-2 weeks for most cats."
     },
   ];
 
-  // Navigation functions
   const nextNewCatStep = () => {
     if (newCatStep < newCatSteps.length - 1) {
       setNewCatStep(newCatStep + 1);
@@ -115,7 +112,6 @@ const HowToUse = () => {
     }
   };
 
-  // Progress indicator
   const Progress = ({ current, total, onClick }) => (
     <div className="flex items-center justify-center gap-2 my-4">
       {Array.from({ length: total }).map((_, i) => (
@@ -153,7 +149,7 @@ const HowToUse = () => {
           <Tabs defaultValue="new-cat" className="w-full max-w-4xl mx-auto">
             <TabsList className="grid w-full grid-cols-2 mb-8">
               <TabsTrigger value="new-cat" className="text-base py-3">
-                <PawPrintIcon className="mr-2 h-4 w-4" />
+                <Cat className="mr-2 h-4 w-4" />
                 For New Cats
               </TabsTrigger>
               <TabsTrigger value="transition" className="text-base py-3">
@@ -186,7 +182,7 @@ const HowToUse = () => {
                         </p>
                         
                         <div className="bg-kitty-50 dark:bg-kitty-900/30 p-4 rounded-md flex items-start mb-6">
-                          <Info className="w-5 h-5 text-kitty-600 dark:text-kitty-400 mr-2 flex-shrink-0 mt-0.5" />
+                          <CheckCircle className="w-5 h-5 text-kitty-600 dark:text-kitty-400 mr-2 flex-shrink-0 mt-0.5" />
                           <p className="text-sm text-gray-600 dark:text-gray-400">
                             <span className="font-semibold">Pro Tip:</span> {newCatSteps[newCatStep].tip}
                           </p>
@@ -261,7 +257,7 @@ const HowToUse = () => {
                         </p>
                         
                         <div className="bg-kitty-50 dark:bg-kitty-900/30 p-4 rounded-md flex items-start mb-6">
-                          <HelpCircle className="w-5 h-5 text-kitty-600 dark:text-kitty-400 mr-2 flex-shrink-0 mt-0.5" />
+                          <Recycle className="w-5 h-5 text-kitty-600 dark:text-kitty-400 mr-2 flex-shrink-0 mt-0.5" />
                           <p className="text-sm text-gray-600 dark:text-gray-400">
                             <span className="font-semibold">Helpful Hint:</span> {transitionSteps[transitionStep].tip}
                           </p>
@@ -330,6 +326,3 @@ const HowToUse = () => {
 };
 
 export default HowToUse;
-
-
-
