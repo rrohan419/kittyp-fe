@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ShoppingCart } from 'lucide-react';
+import { Menu, X, ShoppingCart, LogIn, UserPlus } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { cn } from '@/lib/utils';
 
@@ -67,7 +67,7 @@ export function Navbar() {
             ))}
           </ul>
           
-          <Link 
+          {/* <Link 
             to="/cart" 
             className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             aria-label="Shopping Cart"
@@ -78,11 +78,61 @@ export function Navbar() {
                 {itemCount}
               </span>
             )}
-          </Link>
+          </Link> */}
+
+        <div className="flex items-center space-x-4">
+            {/* <Link
+              to="/login"
+              className="flex items-center space-x-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-kitty-600 transition-colors"
+              aria-label="Login"
+            >
+              <LogIn size={18} />
+              <span>Login</span>
+            </Link> */}
+
+<div className="flex items-center space-x-3">
+              <Link
+                to="/login"
+                className="flex items-center space-x-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-kitty-600 transition-colors"
+                aria-label="Login"
+              >
+                <LogIn size={18} />
+                <span>Login</span>
+              </Link>
+              <Link
+                to="/signup"
+                className="flex items-center space-x-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-kitty-600 transition-colors"
+                aria-label="Sign Up"
+              >
+                <UserPlus size={18} />
+                <span>Sign Up</span>
+              </Link>
+            </div>
+            
+            <Link 
+              to="/cart" 
+              className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Shopping Cart"
+            >
+              <ShoppingCart size={20} />
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-kitty-600 text-white w-5 h-5 flex items-center justify-center rounded-full text-xs">
+                  {itemCount}
+                </span>
+              )}
+            </Link>
+          </div>
         </div>
 
         {/* Mobile Menu Button */}
         <div className="flex md:hidden items-center space-x-4">
+        <Link 
+            to="/login"
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Login"
+          >
+            <LogIn size={20} />
+          </Link>
           <Link 
             to="/cart" 
             className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -149,6 +199,22 @@ export function Navbar() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link
+                to="/login"
+                className="block text-lg font-medium hover:text-kitty-600 transition-colors"
+              >
+                Login
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/signup"
+                className="block text-lg font-medium hover:text-kitty-600 transition-colors"
+              >
+                Sign Up
+              </Link>
+            </li>
           </ul>
         </nav>
       </div>
