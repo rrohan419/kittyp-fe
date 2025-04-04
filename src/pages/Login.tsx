@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
@@ -26,36 +26,56 @@ import { authConfig } from '@/config/auth';
 import { useGoogleLogin } from '@react-oauth/google';
 import { login } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
+import { LoginResponse } from './Interface/PagesInterface';
 
 const Login = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  // const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+
+   
 
     try {
       const response = await login({email, password});
-
+      const data : LoginResponse = await response.json();
+      // console.log("error login ", errorData);
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Signup failed");
+        // const errorData = await response.body;
+        console.log("error login ", data);
+        throw new Error(data.token || "Signup failed");
       }
-      console.log("Signup successful:", response);
-      setShowSuccessDialog(true);
+      // const data: LoginResponse = await response.json(); // Parse JSON response
+      console.log("Signup successful:", data);
+      // setShowSuccessDialog(true);
+
+      const accessToken = data.token; // Access token from the response
+    console.log("Access Token:", accessToken);
+
+    localStorage.setItem("access_token", accessToken);
+    localStorage.setItem("user", JSON.stringify(data));
+
+    navigate("/");
 
     } catch (error) {
-       console.error("Signin Error:", error.message);
-    setErrorMessage(error.message);
+       console.error("Signin Error:", error);
+    setErrorMessage(error);
+    setShowErrorDialog(true);
+    } finally {
+      setLoading(false);
     }
 
     // Since login is not required, just show success message
     console.log('Login attempted with:', { email });
-    setShowSuccessDialog(true);
+    // setShowSuccessDialog(true);
   };
 
   const handleGoogleLogin = useGoogleLogin({
@@ -79,7 +99,7 @@ const Login = () => {
 
         const data = await response.json();
         console.log("Backend Response:", data);
-        setShowSuccessDialog(true);
+        // setShowSuccessDialog(true);
 
         // Access the tokens if returned by your backend
         const { access_token, id_token } = data;
@@ -173,6 +193,7 @@ const Login = () => {
                   
                   <Button 
                     type="submit" 
+                    disabled={loading}
                     className="w-full bg-kitty-600 hover:bg-kitty-700 flex items-center justify-center gap-2"
                   >
                     <LogIn className="h-4 w-4" />
@@ -218,7 +239,7 @@ const Login = () => {
         </div>
       </main>
 
-      {/* Success Dialog */}
+      {/* Success Dialog
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
         <DialogContent>
           <DialogHeader>
@@ -233,7 +254,7 @@ const Login = () => {
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
 
   <ErrorDialog showErrorDialog={showErrorDialog} setShowErrorDialog={setShowErrorDialog} errorMessage={errorMessage} />
 

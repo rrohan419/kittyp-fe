@@ -1,3 +1,4 @@
+import { LoginResponse } from "@/pages/Interface/PagesInterface";
 import { API_BASE_URL } from "../config/env";
 
 interface SignupData {
@@ -37,11 +38,11 @@ export const login = async (data: AuthData) => {
       });
   
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Login failed. Please try again.');
+        const errorData : LoginResponse = await response.json();
+        throw new Error(errorData.token || 'Login failed. Please try again.');
       }
       console.log("---------------------------->>>>>>>>>>>>>>>>>>>>>>>>",response)
-      return response.json(); // Assuming response contains { token, user info }
+      return response;
     } catch (error: any) {
       throw error.message || 'Login failed. Please try again.';
     }
