@@ -25,14 +25,15 @@ import { LogIn, Mail, Lock } from 'lucide-react';
 import { authConfig } from '@/config/auth';
 import { useGoogleLogin } from '@react-oauth/google';
 import { login } from '@/services/authService';
+import ErrorDialog from '@/components/ui/error-dialog';
 
 const Login = () => {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,20 +43,19 @@ const Login = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Login failed");
+        throw new Error(errorData.message || "Signup failed");
       }
-
-      console.log('Login attempted with:', { email });
-    setShowSuccessDialog(true);
+      console.log("Signup successful:", response);
+      setShowSuccessDialog(true);
 
     } catch (error) {
-      console.error("Signup Error:", error.message);
-    setErrorMessage(error.message); // Store the error message
-    setShowErrorDialog(true);
+       console.error("Signin Error:", error.message);
+    setErrorMessage(error.message);
     }
 
     // Since login is not required, just show success message
-    
+    console.log('Login attempted with:', { email });
+    setShowSuccessDialog(true);
   };
 
   const handleGoogleLogin = useGoogleLogin({
@@ -234,6 +234,9 @@ const Login = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+  <ErrorDialog showErrorDialog={showErrorDialog} setShowErrorDialog={setShowErrorDialog} errorMessage={errorMessage} />
+
 
       <Footer />
     </div>
