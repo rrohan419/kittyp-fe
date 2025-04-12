@@ -42,41 +42,25 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-   
-
     try {
-      const response = await login({email, password});
-      const data : LoginResponse = await response.json();
-      // console.log("error login ", errorData);
-      if (!response.ok) {
-        // const errorData = await response.body;
-        console.log("error login ", data);
-        throw new Error(data.token || "Signup failed");
-      }
-      // const data: LoginResponse = await response.json(); // Parse JSON response
-      console.log("Signup successful:", data);
-      // setShowSuccessDialog(true);
-
-      const accessToken = data.token; // Access token from the response
-    console.log("Access Token:", accessToken);
-
-    localStorage.setItem("access_token", accessToken);
-    localStorage.setItem("user", JSON.stringify(data));
-
-    navigate("/");
-
-    } catch (error) {
-       console.error("Signin Error:", error);
-    setErrorMessage(error);
-    setShowErrorDialog(true);
+      const user = await login({ email, password }); // `login` now returns UserProfile
+      console.log("Login successful. User:", user);
+  
+      // Save user and navigate (token already saved in login())
+      localStorage.setItem("user", JSON.stringify(user));
+      navigate("/");
+  
+    } catch (error: any) {
+      console.error("Signin Error:", error);
+      setErrorMessage(error.message || 'Login failed');
+      setShowErrorDialog(true);
     } finally {
       setLoading(false);
     }
-
-    // Since login is not required, just show success message
+  
     console.log('Login attempted with:', { email });
-    // setShowSuccessDialog(true);
   };
+  
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
