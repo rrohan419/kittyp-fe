@@ -237,6 +237,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Button } from '../ui/button';
+import { CartSidebar } from './CartSidebar';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -263,13 +264,16 @@ export function Navbar() {
     localStorage.removeItem('user');
     setIsAuthenticated(false);
     setShowSuccessDialog(true);
-    navigate('/');
+    setTimeout(() => {
+      navigate('/');
+    }, 1500);
   };
 
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'How to Use', path: '/how-to-use' },
-    { name: 'Blog', path: '/blogs' },
+    // { name: 'Blog', path: '/blogs' },
+    { name: 'Articles', path: '/articles' },
     { name: 'Contact', path: '/contact' }
   ];
 
@@ -336,7 +340,7 @@ export function Navbar() {
               </div>
             )}
 
-            <Link
+            {/* <Link
               to="/cart"
               className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               aria-label="Shopping Cart"
@@ -347,7 +351,8 @@ export function Navbar() {
                   {itemCount}
                 </span>
               )}
-            </Link>
+            </Link> */}
+            <CartSidebar />
           </div>
         </div>
 
@@ -370,7 +375,7 @@ export function Navbar() {
               <LogIn size={20} />
             </Link>
           )}
-          <Link
+          {/* <Link
             to="/cart"
             className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             aria-label="Shopping Cart"
@@ -381,8 +386,8 @@ export function Navbar() {
                 {itemCount}
               </span>
             )}
-          </Link>
-
+          </Link> */}
+          <CartSidebar />
           <button
             onClick={toggleMenu}
             className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -462,35 +467,48 @@ export function Navbar() {
                 </>
               )}
             </li>
+            <li>
+              <Link
+                to="/cart"
+                className="block text-lg font-medium hover:text-kitty-600 transition-colors"
+              >
+                Cart
+              </Link>
+            </li>
           </ul>
         </nav>
       </div>
 
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent className="p-6 max-w-md">
-          <motion.div
+        <DialogContent className="sm:max-w-md">
+        <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
             className="flex flex-col items-center"
           >
-            <CheckCircleIcon className="w-12 h-12 text-green-500" />
-            <DialogHeader className="text-center">
-              <DialogTitle className="text-xl font-bold">Account Logout!</DialogTitle>
-              <DialogDescription className="text-gray-500">
-                Your account has been successfully logged out.
-              </DialogDescription>
-            </DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <CheckCircleIcon size={20} />
+              Logged Out Successfully
+            </DialogTitle>
+            <DialogDescription>
+              You’ve been logged out. See you soon!
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
             <Button
               onClick={() => setShowSuccessDialog(false)}
-              className="mt-4 w-full bg-green-500 hover:bg-green-600"
+              variant="outline"
             >
-              Got it!
+              Close
             </Button>
+          </div>
           </motion.div>
         </DialogContent>
       </Dialog>
+
     </header>
 
 

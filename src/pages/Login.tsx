@@ -5,15 +5,15 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -45,11 +45,11 @@ const Login = () => {
     try {
       const user = await login({ email, password }); // `login` now returns UserProfile
       console.log("Login successful. User:", user);
-  
+
       // Save user and navigate (token already saved in login())
       localStorage.setItem("user", JSON.stringify(user));
       navigate("/");
-  
+
     } catch (error: any) {
       console.error("Signin Error:", error);
       setErrorMessage(error.message || 'Login failed');
@@ -57,10 +57,10 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
-  
+
     console.log('Login attempted with:', { email });
   };
-  
+
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
@@ -142,18 +142,18 @@ const Login = () => {
                     <Label htmlFor="email">Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        placeholder="name@example.com" 
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="name@example.com"
                         className="pl-10"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        required 
+                        required
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <Label htmlFor="password">Password</Label>
@@ -163,26 +163,39 @@ const Login = () => {
                     </div>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input 
-                        id="password" 
-                        type="password" 
-                        placeholder="••••••••" 
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="••••••••"
                         className="pl-10"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        required 
+                        required
                       />
                     </div>
                   </div>
-                  
-                  <Button 
+
+                  {/* <Button 
                     type="submit" 
                     disabled={loading}
                     className="w-full bg-kitty-600 hover:bg-kitty-700 flex items-center justify-center gap-2"
                   >
                     <LogIn className="h-4 w-4" />
                     Sign In
+                  </Button> */}
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-kitty-600 hover:bg-kitty-700 flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <div className="h-4 w-4 animate-spin border-2 border-white border-t-transparent rounded-full" />
+                    ) : (
+                      <LogIn className="h-4 w-4" />
+                    )}
+                    Sign In
                   </Button>
+
                 </form>
 
                 <div className="relative my-6">
@@ -196,7 +209,7 @@ const Login = () => {
                   </div>
                 </div>
 
-                <Button 
+                <Button
                   variant="outline"
                   className="w-full flex items-center justify-center gap-2"
                   onClick={handleGoogleLogin}
@@ -240,7 +253,7 @@ const Login = () => {
         </DialogContent>
       </Dialog> */}
 
-  <ErrorDialog showErrorDialog={showErrorDialog} setShowErrorDialog={setShowErrorDialog} errorMessage={errorMessage} />
+      <ErrorDialog showErrorDialog={showErrorDialog} setShowErrorDialog={setShowErrorDialog} errorMessage={errorMessage} />
 
 
       <Footer />
