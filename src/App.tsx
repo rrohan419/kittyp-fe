@@ -23,6 +23,7 @@ import Articles from "./pages/Articles";
 import ArticleDetail from "./pages/ArticleDetail";
 import Cart from "./pages/Cart";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminArticleEditor from "./pages/AdminArticleEditor";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,8 @@ const App = () => (
             <Route path="/cart" element={<Cart />} />
             <Route path="/article/:slug" element={<ArticleDetail />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/articles/new" element={<AdminArticleEditor />} />
+            <Route path="/admin/articles/edit/:id" element={<AdminArticleEditor />} />
             {/* <Route path="/articles" element={<ArticlesLayout />}>
     <Route index element={<Articles />} />
     <Route path=":slug" element={<ArticleDetail />} />
