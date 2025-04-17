@@ -22,6 +22,7 @@ import Signup from "./pages/Signup";
 import Articles from "./pages/Articles";
 import ArticleDetail from "./pages/ArticleDetail";
 import Cart from "./pages/Cart";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -47,8 +48,15 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/articles" element={<Articles />} />
-            <Route path="/articles/:id" element={<ArticleDetail />} />
+            {/* <Route path="/articles/:id" element={<ArticleDetail />} /> */}
             <Route path="/cart" element={<Cart />} />
+            <Route path="/article/:slug" element={<ArticleDetail />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            {/* <Route path="/articles" element={<ArticlesLayout />}>
+    <Route index element={<Articles />} />
+    <Route path=":slug" element={<ArticleDetail />} />
+  </Route> */}
+            
             // {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

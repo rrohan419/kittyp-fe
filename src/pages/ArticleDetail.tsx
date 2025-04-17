@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { Avatar } from '@/components/ui/avatar';
@@ -11,90 +11,102 @@ import { Comment as CommentType } from '@/pages/Interface/articles';
 import { formatDistance } from 'date-fns';
 import { ArrowLeft, Calendar, Clock, Heart, MessageSquare, Share2, Tag, ThumbsUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { fetchArticleBySlug } from '@/services/articleService';
+import { LoadingState } from '@/components/ui/LoadingState';
 
-const ArticleDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+const ArticlePage = () => {
+  const { slug } = useParams<{ slug?: string }>();
+  console.log("slug:", slug);
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [newComment, setNewComment] = useState('');
-  const [comments, setComments] = useState<CommentType[]>([]);
-  
-  // Find the article with the given ID
-  const article = id ? getArticleById(id) : null;
-  
-  // If article not found, redirect to articles page
-  if (!article) {
-    React.useEffect(() => {
-      navigate('/articles');
-      toast({
-        title: "Article not found",
-        description: "The article you're looking for doesn't exist.",
-        variant: "destructive"
-      });
-    }, [navigate, toast]);
-    return null;
-  }
-  
-  // Combine initial comments with any new ones
-  const allComments = [...article.comments, ...comments];
-  
-  const handleSubmitComment = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!newComment.trim()) {
-      toast({
-        description: "Please write something before submitting your comment.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Create a new comment
-    const comment: CommentType = {
-      id: `new-${Date.now()}`,
-      content: newComment,
-      author: {
-        id: "current-user",
-        name: "You",
-        avatar: "https://randomuser.me/api/portraits/lego/1.jpg",
-        role: "Reader"
-      },
-      createdAt: new Date().toISOString(),
-      likes: 0
+
+  // State to store the article and comments
+  const [article, setArticle] = useState<any | null>(null); // Adjust the type as per your response structure
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState<string>('');
+  const [allComments, setAllComments] = useState<any[]>([]); // Adjust the type as per your response structure
+  const [showToast, setShowToast] = useState(false);
+  const [animatingOut, setAnimatingOut] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetchArticleBySlug({ slug });
+        setArticle(response.data);
+        setAllComments(response.data.comments || []); // Adjust if the response structure differs
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to fetch article');
+        setLoading(false);
+      }
     };
-    
-    // Add the comment
-    setComments(prev => [comment, ...prev]);
-    setNewComment('');
-    
-    toast({
-      title: "Comment posted",
-      description: "Your comment has been added successfully!",
-    });
+
+    if (slug) {
+      fetchData();
+    }
+  }, [slug]);
+
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // Handle submitting new comment here
   };
-  
+
   const handleLike = (commentId: string) => {
-    // Update local comments if the liked comment is new
-    setComments(prev => 
-      prev.map(comment => 
-        comment.id === commentId 
-          ? { ...comment, likes: comment.likes + 1, liked: true } 
-          : comment
-      )
+    // Handle liking a comment here
+  };
+
+  const triggerToast = () => {
+    setShowToast(true);
+    setAnimatingOut(false);
+    setTimeout(() => {
+      setAnimatingOut(true);
+      setTimeout(() => setShowToast(false), 400); // Match exit animation
+    }, 3000);
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: article.title,
+          text: article.description || article.title,
+          url: window.location.href,
+        });
+      } catch (error) {
+        console.error('Error sharing:', error);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+      } catch (error) {
+        console.error('Clipboard error:', error);
+      }
+    }
+  };
+
+
+
+  // Show a loading spinner or error message if the data is loading or fails to load
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+        <div className="container max-w-6xl mx-auto px-4 pt-24 pb-16">
+          <LoadingState message="Loading the article..." />
+        </div>
+      </>
     );
-    
-    toast({
-      description: "Comment liked!",
-    });
-  };
-  
-  const handleShare = () => {
-    // In a real app, this would copy the URL or open a share dialog
-    navigator.clipboard.writeText(window.location.href);
-    toast({
-      description: "Link copied to clipboard!",
-    });
-  };
+  }
+
+  if (error) {
+    return <div>{error}</div>;
+  }
+
+  if (!article) {
+    return <div>Article not found.</div>;
+  }
 
   return (
     <>
@@ -102,16 +114,16 @@ const ArticleDetail: React.FC = () => {
       <article className="pt-24 pb-16">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="mb-6 flex items-center"
               onClick={() => navigate('/articles')}
             >
               <ArrowLeft size={16} className="mr-2" />
               Back to Articles
             </Button>
-            
+
             {/* Article Header */}
             <header className="mb-8">
               <div className="flex items-center space-x-3 mb-5">
@@ -123,9 +135,9 @@ const ArticleDetail: React.FC = () => {
                   {article.readTime} min read
                 </span>
               </div>
-              
+
               <h1 className="text-4xl font-bold tracking-tight mb-6 text-balance">{article.title}</h1>
-              
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <Avatar className="h-12 w-12">
@@ -136,11 +148,11 @@ const ArticleDetail: React.FC = () => {
                     <p className="text-muted-foreground text-sm">{article.author.role}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Calendar size={16} className="mr-1" />
                   <time dateTime={article.publishedAt}>
-                    {new Date(article.publishedAt).toLocaleDateString('en-US', {
+                    {new Date(article.createdAt).toLocaleDateString('en-US', {
                       day: 'numeric',
                       month: 'long',
                       year: 'numeric'
@@ -149,28 +161,28 @@ const ArticleDetail: React.FC = () => {
                 </div>
               </div>
             </header>
-            
+
             {/* Article Cover Image */}
             <div className="mb-8 rounded-xl overflow-hidden">
-              <img 
-                src={article.coverImage} 
+              <img
+                src={article.coverImage}
                 alt={article.title}
                 className="w-full h-auto object-cover"
               />
             </div>
-            
+
             {/* Article Content */}
-            <div 
+            <div
               className="prose prose-lg max-w-none mb-12"
-              dangerouslySetInnerHTML={{ __html: article.content }} 
+              dangerouslySetInnerHTML={{ __html: article.content }}
             />
-            
+
             {/* Article Footer */}
             <footer className="mb-12">
               <div className="flex flex-wrap gap-2 mb-6">
                 {article.tags.map(tag => (
-                  <Link 
-                    key={tag} 
+                  <Link
+                    key={tag}
                     to={`/articles?tag=${tag}`}
                     className="flex items-center bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-sm hover:bg-secondary/80 transition-colors"
                   >
@@ -179,7 +191,7 @@ const ArticleDetail: React.FC = () => {
                   </Link>
                 ))}
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <Button variant="ghost" size="sm" className="flex items-center">
@@ -191,20 +203,20 @@ const ArticleDetail: React.FC = () => {
                     Share
                   </Button>
                 </div>
-                
+
                 <Link to="#comments" className="flex items-center text-primary">
                   <MessageSquare size={18} className="mr-2" />
                   {allComments.length} {allComments.length === 1 ? 'Comment' : 'Comments'}
                 </Link>
               </div>
             </footer>
-            
+
             <Separator />
-            
+
             {/* Comments Section */}
             <section id="comments" className="mt-12">
               <h2 className="text-2xl font-bold mb-6">Comments ({allComments.length})</h2>
-              
+
               {/* Comment Form */}
               <Card className="mb-8">
                 <CardContent className="pt-6">
@@ -221,7 +233,7 @@ const ArticleDetail: React.FC = () => {
                   </form>
                 </CardContent>
               </Card>
-              
+
               {/* Comments List */}
               <div className="space-y-6">
                 {allComments.map(comment => (
@@ -240,13 +252,13 @@ const ArticleDetail: React.FC = () => {
                         {formatDistance(new Date(comment.createdAt), new Date(), { addSuffix: true })}
                       </time>
                     </div>
-                    
+
                     <p className="text-sm mb-4">{comment.content}</p>
-                    
+
                     <div className="flex items-center justify-end">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="text-muted-foreground hover:text-primary"
                         onClick={() => handleLike(comment.id)}
                         disabled={comment.liked}
@@ -257,7 +269,7 @@ const ArticleDetail: React.FC = () => {
                     </div>
                   </div>
                 ))}
-                
+
                 {allComments.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     <MessageSquare className="mx-auto mb-3 h-12 w-12 opacity-20" />
@@ -269,8 +281,17 @@ const ArticleDetail: React.FC = () => {
           </div>
         </div>
       </article>
+      {showToast && (
+        <div className="fixed bottom-6 right-6 transform animate-slide-in bg-gray-500 text-white px-4 py-2 rounded-xl shadow-lg z-50">
+          Link copied to clipboard!
+        </div>
+      )}
+
+
+
+
     </>
   );
 };
 
-export default ArticleDetail;
+export default ArticlePage;
