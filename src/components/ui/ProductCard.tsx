@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useCart, Product } from '@/context/CartContext';
+import { useCart } from '@/context/CartContext';
+import { Product } from '@/services/productService';
 
 interface ProductCardProps {
   product: Product;
@@ -34,13 +35,13 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
         animationDelay: `${index * 100}ms`
       }}
     >
-      <Link to={`/products/${product.id}`} className="block h-full">
+      <Link to={`/product/${product.uuid}`} className="block h-full">
         <div className="aspect-[4/5] relative overflow-hidden">
           {!isImageLoaded && (
             <div className="absolute inset-0 bg-gray-100 dark:bg-gray-800 animate-pulse" />
           )}
           <img
-            src={product.image}
+            src={product.productImageUrls[0] ?? ""}
             alt={product.name}
             className={cn(
               "object-cover w-full h-full transform transition-transform duration-500",
@@ -66,7 +67,7 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
         
         <div className="p-4">
           <h3 className="font-medium text-gray-900 dark:text-white">{product.name}</h3>
-          <p className="mt-1 text-gray-700 dark:text-gray-300">${product.price.toFixed(2)}</p>
+          <p className="mt-1 text-gray-700 dark:text-gray-300">${product.price?.toFixed(2) ?? "0.00"}</p>
         </div>
       </Link>
       

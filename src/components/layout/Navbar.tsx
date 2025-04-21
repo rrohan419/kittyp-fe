@@ -599,11 +599,11 @@ export function Navbar() {
     // const isAdmin = Array.isArray(roles) && roles.includes('ADMIN_USER');
     // setUserRole(isAdmin ? 'ADMIN_USER' : 'ADMIN_USER');
     
-    console.log('tttt', localStorage.getItem('roles'));
+    // console.log('tttt', localStorage.getItem('roles'));
     const roles = JSON.parse(localStorage.getItem('roles') || null);
     const isAdmin = Array.isArray(roles) && roles.includes('ROLE_ADMIN');
-    console.log("isAdmin", isAdmin);
-    console.log("roles", roles);
+    // console.log("isAdmin", isAdmin);
+    // console.log("roles", roles);
     setUserRole(isAdmin ? 'ROLE_ADMIN' : null);
     
     // Check authentication status

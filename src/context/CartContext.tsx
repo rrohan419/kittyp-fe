@@ -1,15 +1,8 @@
 
+import { Product } from '@/services/productService';
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { toast } from "sonner";
 
-export interface Product {
-  id: string;
-  name: string;
-  price: number;
-  description: string;
-  image: string;
-  category: string;
-}
 
 interface CartItem extends Product {
   quantity: number;
@@ -50,7 +43,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const addItem = (product: Product) => {
     setItems(currentItems => {
       // Check if item already exists in cart
-      const existingItemIndex = currentItems.findIndex(item => item.id === product.id);
+      const existingItemIndex = currentItems.findIndex(item => item.uuid === product.uuid);
       
       if (existingItemIndex > -1) {
         // Increase quantity of existing item
@@ -68,11 +61,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   
   const removeItem = (productId: string) => {
     setItems(currentItems => {
-      const item = currentItems.find(item => item.id === productId);
+      const item = currentItems.find(item => item.uuid === productId);
       if (item) {
         toast.info(`Removed ${item.name} from your cart`);
       }
-      return currentItems.filter(item => item.id !== productId);
+      return currentItems.filter(item => item.uuid !== productId);
     });
   };
   
@@ -84,7 +77,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     
     setItems(currentItems => 
       currentItems.map(item => 
-        item.id === productId ? { ...item, quantity } : item
+        item.uuid === productId ? { ...item, quantity } : item
       )
     );
   };

@@ -24,6 +24,7 @@ import ArticleDetail from "./pages/ArticleDetail";
 import Cart from "./pages/Cart";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminArticleEditor from "./pages/AdminArticleEditor";
+import ProductDetail from "./pages/ProductDetail";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/products" element={<Products />} />
+            <Route path="/product/:uuid" element={<ProductDetail />} />
             <Route path="/how-to-use" element={<HowToUse />} />
             <Route path="/blogs" element={<Blogs />} />
             <Route path="/why-eco-litter" element={<WhyEcoLitter />} />
