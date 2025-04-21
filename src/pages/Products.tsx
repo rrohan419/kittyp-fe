@@ -326,6 +326,10 @@ useEffect(() => {
                     />
                   ))}
                 </div>
+              ) : isLoading ? (
+                <div className="text-center py-10 text-muted-foreground">Loading more articles...</div>
+              ) : hasMore ? (
+                <div ref={loaderRef} className="text-center py-10 text-muted-foreground">&nbsp;</div>
               ) : (
                 <div className="text-center py-12">
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No products found</h3>
@@ -340,15 +344,6 @@ useEffect(() => {
                   </button>
                 </div>
               )}
-              {isLoading ? (
-              <div className="text-center py-10 text-muted-foreground">Loading more articles...</div>
-            ) : hasMore ? (
-              <div ref={loaderRef} className="text-center py-10 text-muted-foreground">&nbsp;</div>
-            ) : (
-              <div className="text-center py-10 text-muted-foreground">
-                🎉 You've reached the end!
-              </div>
-            )}
             </div>
           </div>
         </section>
