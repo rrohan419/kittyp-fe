@@ -60,7 +60,7 @@ export const signup = async (data: SignupData) => {
   }
 };
 
-export const login = async (data: AuthData): Promise<UserProfile> => {
+export const login = async (data: AuthData): Promise<{ token, roles }> => {
   try {
     // Step 1: Login to get token
     const loginResponse = await axiosInstance.post<WrappedJwtResponse>('/auth/signin', data);
@@ -74,10 +74,16 @@ export const login = async (data: AuthData): Promise<UserProfile> => {
     localStorage.setItem('roles', JSON.stringify(roles));
 
     console.log("user -> -> -> ->", loginResponse);
-    console.log("user -> -> -> ->", token);
+    console.log("user -> -> -> ->", { token, roles });
 
-    // Step 3: Fetch user profile from `/user/me`
-    const userResponse = await axiosInstance.get<WrappedUserResponse>('/user/me');
+    return { token, roles };
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.message || 'Login or user fetch failed.');
+  }
+};
+
+export const fetchUserDetail = async (): Promise<UserProfile> => {
+  const userResponse = await axiosInstance.get<WrappedUserResponse>('/user/me');
     const user = userResponse.data.data;
 
     // Step 4: Store user data if needed
@@ -85,7 +91,4 @@ export const login = async (data: AuthData): Promise<UserProfile> => {
 
     console.log("user -> -> -> -> -> -> -> -> -> -> -> -> -> -> -> ->", userResponse);
     return user;
-  } catch (error: any) {
-    throw new Error(error?.response?.data?.message || 'Login or user fetch failed.');
-  }
 };
