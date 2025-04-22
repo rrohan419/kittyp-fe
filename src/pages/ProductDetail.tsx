@@ -6,7 +6,6 @@ import { Footer } from '@/components/layout/Footer';
 import { ShoppingCart, Heart, ArrowLeft } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { useFavorites } from '@/context/FavoritesContext';
 import { cn } from '@/lib/utils';
 
@@ -18,7 +17,6 @@ const ProductDetail = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const { addItem } = useCart();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { addFavorite, removeFavorite, isFavorite } = useFavorites();
 
   useEffect(() => {
@@ -44,11 +42,6 @@ const ProductDetail = () => {
   const handleAddToCart = () => {
     if (product) {
       addItem(product);
-
-      toast({
-        title: "Added to cart",
-        description: `${product.name} has been added to your cart`,
-      });
     }
   };
 
