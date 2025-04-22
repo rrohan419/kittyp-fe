@@ -27,6 +27,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { login } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
 import { LoginResponse } from './Interface/PagesInterface';
+import { useCart } from '@/context/CartContext';
 
 const Login = () => {
   const { toast } = useToast();
@@ -37,6 +38,7 @@ const Login = () => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const { initializeUserAndCart } = useCart();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,9 +49,9 @@ const Login = () => {
       console.log("Login successful. User:", user);
 
       // Save user and navigate (token already saved in login())
-      localStorage.setItem("user", JSON.stringify(user));
+      // localStorage.setItem("login_response", JSON.stringify(user));
       navigate("/");
-
+      await initializeUserAndCart();
     } catch (error: any) {
       console.error("Signin Error:", error);
       setErrorMessage(error.message || 'Login failed');

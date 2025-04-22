@@ -1,5 +1,4 @@
 import axiosInstance from "@/config/axionInstance";
-import { API_BASE_URL } from "@/config/env";
 import { ArticleApiResponse } from "@/pages/Interface/PagesInterface";
 
 // Define types for response

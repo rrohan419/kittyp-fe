@@ -37,15 +37,16 @@ interface AuthData {
     status: number;
   }
   
-  interface UserProfile {
+  export interface UserProfile {
     id: number;
     email: string;
     roles: string[];
     enabled: boolean;
+    uuid: string;
   }
-  
 
 export const signup = async (data: SignupData) => {
+  
   try {
     const response = await fetch(`${API_BASE_URL}/auth/signup`, {
         method: "POST",
@@ -64,10 +65,8 @@ export const login = async (data: AuthData): Promise<{ token, roles }> => {
   try {
     // Step 1: Login to get token
     const loginResponse = await axiosInstance.post<WrappedJwtResponse>('/auth/signin', data);
-    // const token = loginResponse.data.data.token;
 
     const { token, roles } = loginResponse.data.data; // <-- This is JwtResponseModel
-
 
     // Step 2: Store token and roles
     localStorage.setItem('access_token', token);
@@ -82,10 +81,13 @@ export const login = async (data: AuthData): Promise<{ token, roles }> => {
   }
 };
 
+
+
 export const fetchUserDetail = async (): Promise<UserProfile> => {
   const userResponse = await axiosInstance.get<WrappedUserResponse>('/user/me');
     const user = userResponse.data.data;
 
+    console.log("99999999999999999999999999999999999999999",user)
     // Step 4: Store user data if needed
     localStorage.setItem('user', JSON.stringify(user));
 

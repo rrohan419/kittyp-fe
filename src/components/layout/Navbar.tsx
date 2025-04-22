@@ -581,6 +581,9 @@ export function Navbar() {
   const { itemCount } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
+  const { resetCart } = useCart();
+
+  
   
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
@@ -626,6 +629,7 @@ export function Navbar() {
     setIsAuthenticated(false);
     setUserRole(null);
     setShowSuccessDialog(true);
+    resetCart();
     setTimeout(() => {
       navigate('/');
     }, 1500);
