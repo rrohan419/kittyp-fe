@@ -51,45 +51,47 @@ const Products: React.FC = () => {
   }, [page, hasMore, isLoading, productDto]);
 
   const categories = [
-  'All',
-  'Cat Litter',
-  'toys',
-  'food',
-  'Accessories'
-];
+    'All',
+    'Cat Litter',
+    'toys',
+    'food',
+    'Accessories'
+  ];
 
   const clearFilters = () => {
     setSelectedCategory('All');
     setSelectedPriceRange(null);
     setSearchQuery('');
   };
+
   const toggleMobileFilter = () => {
     setIsMobileFilterOpen(!isMobileFilterOpen);
   };
-const priceRanges = [
-  { label: 'Under $25', min: 0, max: 25 },
-  { label: '$25 - $50', min: 25, max: 50 },
-  { label: '$50 - $100', min: 50, max: 100 },
-  { label: 'Over $100', min: 100, max: Infinity }
-];
 
-const displayedProducts = useMemo(() => {
-  let filtered = [...products];
+  const priceRanges = [
+    { label: 'Under $25', min: 0, max: 25 },
+    { label: '$25 - $50', min: 25, max: 50 },
+    { label: '$50 - $100', min: 50, max: 100 },
+    { label: 'Over $100', min: 100, max: Infinity }
+  ];
 
-  if (searchQuery) {
-    filtered = filtered.filter(product =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }
+  const displayedProducts = useMemo(() => {
+    let filtered = [...products];
 
-  return filtered;
-}, [products, searchQuery]);
+    if (searchQuery) {
+      filtered = filtered.filter(product =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
 
-useEffect(() => {
-  setProducts([]);  // Reset products when filters change
-  setPage(1);       // Reset pagination
-  setHasMore(true); // Reset flag
-}, [productDto]);
+    return filtered;
+  }, [products, searchQuery]);
+
+  useEffect(() => {
+    setProducts([]);  // Reset products when filters change
+    setPage(1);       // Reset pagination
+    setHasMore(true); // Reset flag
+  }, [productDto]);
 
 
 
@@ -99,23 +101,23 @@ useEffect(() => {
 
   useEffect(() => {
     if (observer.current) observer.current.disconnect();
-  
+
     observer.current = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting && hasMore) {
         setPage(prev => prev + 1);
       }
     });
-  
+
     if (loaderRef.current) observer.current.observe(loaderRef.current);
-  
+
     return () => {
       if (observer.current) observer.current.disconnect();
     };
   }, [hasMore]);
-  
 
 
-    return (
+
+  return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
       <Navbar />
 
@@ -139,11 +141,10 @@ useEffect(() => {
                       <button
                         key={category}
                         onClick={() => setSelectedCategory(category)}
-                        className={`block w-full text-left px-3 py-2 rounded-md transition-colors ${
-                          selectedCategory === category
+                        className={`block w-full text-left px-3 py-2 rounded-md transition-colors ${selectedCategory === category
                             ? 'bg-kitty-50 text-kitty-600 dark:bg-kitty-900/50 dark:text-kitty-400'
                             : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                        }`}                        
+                          }`}
                       >
                         {category}
                       </button>
@@ -158,11 +159,10 @@ useEffect(() => {
                       <button
                         key={index}
                         onClick={() => setSelectedPriceRange({ min: range.min, max: range.max })}
-                        className={`block w-full text-left px-3 py-2 rounded-md transition-colors ${
-                          selectedPriceRange?.min === range.min && selectedPriceRange?.max === range.max
+                        className={`block w-full text-left px-3 py-2 rounded-md transition-colors ${selectedPriceRange?.min === range.min && selectedPriceRange?.max === range.max
                             ? 'bg-kitty-50 text-kitty-600 dark:bg-kitty-900/50 dark:text-kitty-400'
                             : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                        }`}
+                          }`}
                       >
                         {range.label}
                       </button>
@@ -237,11 +237,10 @@ useEffect(() => {
                               setSelectedCategory(category);
                               toggleMobileFilter();
                             }}
-                            className={`block w-full text-left px-3 py-2 rounded-md transition-colors ${
-                              selectedCategory === category
+                            className={`block w-full text-left px-3 py-2 rounded-md transition-colors ${selectedCategory === category
                                 ? 'bg-kitty-50 text-kitty-600 dark:bg-kitty-900/50 dark:text-kitty-400'
                                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                            }`}
+                              }`}
                           >
                             {category}
                           </button>
@@ -259,11 +258,10 @@ useEffect(() => {
                               setSelectedPriceRange({ min: range.min, max: range.max });
                               toggleMobileFilter();
                             }}
-                            className={`block w-full text-left px-3 py-2 rounded-md transition-colors ${
-                              selectedPriceRange?.min === range.min && selectedPriceRange?.max === range.max
+                            className={`block w-full text-left px-3 py-2 rounded-md transition-colors ${selectedPriceRange?.min === range.min && selectedPriceRange?.max === range.max
                                 ? 'bg-kitty-50 text-kitty-600 dark:bg-kitty-900/50 dark:text-kitty-400'
                                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                            }`}
+                              }`}
                           >
                             {range.label}
                           </button>
@@ -318,11 +316,11 @@ useEffect(() => {
               {products.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {products.map((product, index) => (
-                    <ProductCard 
-                      key={product.uuid} 
-                      product={product} 
+                    <ProductCard
+                      key={product.uuid}
+                      product={product}
                       index={index}
-                      className="animate-fade-up" 
+                      className="animate-fade-up"
                     />
                   ))}
                 </div>

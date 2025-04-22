@@ -25,12 +25,14 @@ import Cart from "./pages/Cart";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminArticleEditor from "./pages/AdminArticleEditor";
 import ProductDetail from "./pages/ProductDetail";
+import { FavoritesProvider } from "./context/FavoritesContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+    <FavoritesProvider>
       <CartProvider>
         <Toaster />
         <Sonner />
@@ -67,6 +69,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </CartProvider>
+      </FavoritesProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -6,7 +6,7 @@ import { useCart } from '@/context/CartContext';
 import { cn } from '@/lib/utils';
 
 interface CartItemProps {
-  id: string;
+  uuid: string;
   name: string;
   price: number;
   image: string;
@@ -14,24 +14,24 @@ interface CartItemProps {
   className?: string;
 }
 
-export function CartItem({ id, name, price, image, quantity, className }: CartItemProps) {
+export function CartItem({ uuid, name, price, image, quantity, className }: CartItemProps) {
   const { updateQuantity, removeItem } = useCart();
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   
   const handleIncrement = () => {
-    updateQuantity(id, quantity + 1);
+    updateQuantity(uuid, quantity + 1);
   };
   
   const handleDecrement = () => {
     if (quantity > 1) {
-      updateQuantity(id, quantity - 1);
+      updateQuantity(uuid, quantity - 1);
     } else {
-      removeItem(id);
+      removeItem(uuid);
     }
   };
   
   const handleRemove = () => {
-    removeItem(id);
+    removeItem(uuid);
   };
   
   return (
@@ -40,7 +40,7 @@ export function CartItem({ id, name, price, image, quantity, className }: CartIt
         {!isImageLoaded && (
           <div className="absolute inset-0 bg-gray-100 dark:bg-gray-800 animate-pulse" />
         )}
-        <Link to={`/products/${id}`}>
+        <Link to={`/products/${uuid}`}>
           <img
             src={image}
             alt={name}
@@ -54,7 +54,7 @@ export function CartItem({ id, name, price, image, quantity, className }: CartIt
       </div>
       
       <div className="flex-1 min-w-0">
-        <Link to={`/products/${id}`} className="hover:text-kitty-600 transition-colors">
+        <Link to={`/products/${uuid}`} className="hover:text-kitty-600 transition-colors">
           <h3 className="text-base font-medium text-gray-900 dark:text-white">{name}</h3>
         </Link>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">

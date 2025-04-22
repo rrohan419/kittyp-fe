@@ -45,12 +45,12 @@ export default function Cart() {
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                 {items.map((item) => (
                   <CartItem 
-                    key={item.id}
-                    id={item.id} 
+                    key={item.uuid}
+                    uuid={item.uuid} 
                     name={item.name} 
                     price={item.price} 
                     quantity={item.quantity} 
-                    image={item.image}
+                    image={item.productImageUrls[0]}
                   />
                 ))}
               </div>

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { ShoppingCart, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
+import { useFavorites } from '@/context/FavoritesContext';
 import { Product } from '@/services/productService';
 
 interface ProductCardProps {
@@ -16,11 +17,37 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
   const [isHovered, setIsHovered] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const { addItem } = useCart();
+  const { addFavorite, removeFavorite, isFavorite } = useFavorites();
   
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    addItem(product);
+
+    const cartProduct = {
+      id: product.uuid,
+      name: product.name,
+      price: product.price,
+      image: product.productImageUrls && product.productImageUrls[0] ? product.productImageUrls[0] : "",
+    };
+
+      addItem(cartProduct as any);
+  };
+
+  const handleToggleFavorite = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const favoriteProduct = {
+      id: product.uuid,
+      name: product.name,
+      price: product.price,
+      image: product.productImageUrls && product.productImageUrls[0] ? product.productImageUrls[0] : "",
+    };
+    if (isFavorite(product.uuid)) {
+      removeFavorite(product.uuid);
+    } else {
+      addFavorite(favoriteProduct);
+    }
   };
   
   return (
@@ -85,10 +112,24 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
           <ShoppingCart size={18} className="text-gray-900 dark:text-white" />
         </button>
         <button
-          className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-md hover:bg-kitty-50 dark:hover:bg-gray-700 transition-colors"
-          aria-label="Add to wishlist"
+          onClick={handleToggleFavorite}
+          className={cn(
+            "p-2 bg-white dark:bg-gray-800 rounded-full shadow-md transition-colors",
+            isFavorite(product.uuid) 
+              ? "bg-pink-50 hover:bg-pink-100 dark:bg-pink-900 dark:hover:bg-pink-800" 
+              : "hover:bg-kitty-50 dark:hover:bg-gray-700"
+          )}
+          aria-label="Toggle favorite"
         >
-          <Heart size={18} className="text-gray-900 dark:text-white" />
+          <Heart 
+            size={18} 
+            className={cn(
+              "transition-colors",
+              isFavorite(product.uuid)
+                ? "text-pink-500 dark:text-pink-400 fill-current"
+                : "text-gray-900 dark:text-white"
+            )} 
+          />
         </button>
       </div>
     </div>

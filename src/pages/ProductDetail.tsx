@@ -7,6 +7,8 @@ import { ShoppingCart, Heart, ArrowLeft } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useFavorites } from '@/context/FavoritesContext';
+import { cn } from '@/lib/utils';
 
 const ProductDetail = () => {
   const { uuid } = useParams<{ uuid: string }>();
@@ -17,11 +19,12 @@ const ProductDetail = () => {
   const { addItem } = useCart();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { addFavorite, removeFavorite, isFavorite } = useFavorites();
 
   useEffect(() => {
     const loadProduct = async () => {
       if (!uuid) return;
-      
+
       setIsLoading(true);
       try {
         const response = await fetchProductByUuid(uuid);
@@ -34,7 +37,7 @@ const ProductDetail = () => {
         setIsLoading(false);
       }
     };
-    
+
     loadProduct();
   }, [uuid]);
 
@@ -48,13 +51,30 @@ const ProductDetail = () => {
         image: product.productImageUrls && product.productImageUrls[0] ? product.productImageUrls[0] : "",
         // Add any other required fields from the CartContext Product type
       };
-      
+
       addItem(cartProduct as any);
-      
+
       toast({
         title: "Added to cart",
         description: `${product.name} has been added to your cart`,
       });
+    }
+  };
+
+  const handleToggleFavorite = () => {
+    if (!product) return;
+
+    const favoriteProduct = {
+      id: product.uuid,
+      name: product.name,
+      price: product.price,
+      image: product.productImageUrls && product.productImageUrls[0] ? product.productImageUrls[0] : "",
+    };
+
+    if (isFavorite(product.uuid)) {
+      removeFavorite(product.uuid);
+    } else {
+      addFavorite(favoriteProduct);
     }
   };
 
@@ -99,39 +119,38 @@ const ProductDetail = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
       <Navbar />
-      
+
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
-        <button 
+        <button
           onClick={handleGoBack}
           className="flex items-center text-gray-600 dark:text-gray-400 hover:text-kitty-600 dark:hover:text-kitty-400 mb-6"
         >
           <ArrowLeft size={16} className="mr-2" />
           Back to Products
         </button>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* Product Images */}
           <div className="space-y-4">
             <div className="aspect-square overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
-              <img 
-                src={selectedImage || product.productImageUrls[0] || ''} 
+              <img
+                src={selectedImage || product.productImageUrls[0] || ''}
                 alt={product.name}
                 className="object-cover w-full h-full"
               />
             </div>
-            
+
             {product.productImageUrls.length > 1 && (
               <div className="grid grid-cols-4 gap-2">
                 {product.productImageUrls.map((imageUrl, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(imageUrl)}
-                    className={`aspect-square rounded-md overflow-hidden border-2 ${
-                      selectedImage === imageUrl ? 'border-kitty-500' : 'border-transparent'
-                    }`}
+                    className={`aspect-square rounded-md overflow-hidden border-2 ${selectedImage === imageUrl ? 'border-kitty-500' : 'border-transparent'
+                      }`}
                   >
-                    <img 
-                      src={imageUrl} 
+                    <img
+                      src={imageUrl}
                       alt={`${product.name} - view ${index + 1}`}
                       className="object-cover w-full h-full"
                     />
@@ -140,7 +159,7 @@ const ProductDetail = () => {
               </div>
             )}
           </div>
-          
+
           {/* Product Info */}
           <div className="space-y-6">
             <div>
@@ -154,11 +173,11 @@ const ProductDetail = () => {
                 </span>
               </div>
             </div>
-            
+
             <div className="prose dark:prose-invert max-w-none">
               <p>{product.description}</p>
             </div>
-            
+
             {product.attribute && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">Specifications</h3>
@@ -184,28 +203,37 @@ const ProductDetail = () => {
                 </div>
               </div>
             )}
-            
+
             <div className="pt-6 space-y-4">
-              <Button 
-                onClick={handleAddToCart} 
+              <Button
+                onClick={handleAddToCart}
                 className="w-full h-12 text-base flex items-center justify-center gap-2"
               >
                 <ShoppingCart size={20} />
                 Add to Cart
               </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full h-12 text-base flex items-center justify-center gap-2"
+
+              <Button
+                variant="outline"
+                onClick={handleToggleFavorite}
+                className={cn(
+                  "w-full h-12 text-base flex items-center justify-center gap-2",
+                  isFavorite(product?.uuid || '') && "bg-pink-50 border-pink-200 hover:bg-pink-100 dark:bg-pink-900/20 dark:border-pink-800"
+                )}
               >
-                <Heart size={20} />
-                Add to Wishlist
+                <Heart
+                  size={20}
+                  className={cn(
+                    isFavorite(product?.uuid || '') && "text-pink-500 fill-current"
+                  )}
+                />
+                {isFavorite(product?.uuid || '') ? 'Remove from Wishlist' : 'Add to Wishlist'}
               </Button>
             </div>
           </div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );
