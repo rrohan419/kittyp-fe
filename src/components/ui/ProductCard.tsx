@@ -23,14 +23,8 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
     e.preventDefault();
     e.stopPropagation();
 
-    const cartProduct = {
-      id: product.uuid,
-      name: product.name,
-      price: product.price,
-      image: product.productImageUrls && product.productImageUrls[0] ? product.productImageUrls[0] : "",
-    };
 
-      addItem(cartProduct as any);
+      addItem(product);
   };
 
   const handleToggleFavorite = (e: React.MouseEvent) => {

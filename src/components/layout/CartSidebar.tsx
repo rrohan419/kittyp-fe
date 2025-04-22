@@ -51,12 +51,12 @@ export function CartSidebar() {
             <div className="flex-1 overflow-y-auto space-y-4 -mx-6 px-6">
               {items.map((item) => (
                 <CartItem 
-                  key={item.id}
-                  id={item.id}
+                  key={item.uuid}
+                  uuid={item.uuid}
                   name={item.name}
                   price={item.price}
                   quantity={item.quantity}
-                  image={item.image}
+                  image={item.productImageUrls[0]}
                   className="py-4"
                 />
               ))}
