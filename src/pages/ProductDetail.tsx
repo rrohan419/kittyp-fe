@@ -43,16 +43,7 @@ const ProductDetail = () => {
 
   const handleAddToCart = () => {
     if (product) {
-      // Convert Product to Cart-compatible Product
-      const cartProduct = {
-        id: product.uuid,
-        name: product.name,
-        price: product.price,
-        image: product.productImageUrls && product.productImageUrls[0] ? product.productImageUrls[0] : "",
-        // Add any other required fields from the CartContext Product type
-      };
-
-      addItem(cartProduct as any);
+      addItem(product);
 
       toast({
         title: "Added to cart",
