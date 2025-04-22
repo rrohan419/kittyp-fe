@@ -34,8 +34,15 @@ const App = () => (
     <TooltipProvider>
     <FavoritesProvider>
       <CartProvider>
-        <Toaster />
-        <Sonner />
+        <Toaster  />
+        <Sonner position="bottom-left"
+                toastOptions={{
+                  style: {
+                    background: '#9D57FF',
+                    color: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                  },
+                }}/>
         <BrowserRouter>
         <ScrollToTop />
           <Routes>
