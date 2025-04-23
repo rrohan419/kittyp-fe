@@ -14,27 +14,31 @@ import { toast } from "sonner";
 export function CartSidebar() {
   const { items, subtotal, itemCount, currency, orderId, user, resetCart } = useCart();
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLocalCheckout = async () => {
-      try {
-        let userToPass: UserProfile | null = null; // Declare userToPass 
-        if (!user) {
-          userToPass = await fetchUserDetail(); // Fetch user details
-          if (!userToPass) {
-            console.error("User is undefined. Cannot proceed with checkout.");
-            toast.error("Please login to continue with checkout.");
-            return;
-          }
-        } else {
-          userToPass = user;
+    setIsLoading(true);
+    try {
+      let userToPass: UserProfile | null = null; // Declare userToPass 
+      if (!user) {
+        userToPass = await fetchUserDetail(); // Fetch user details
+        if (!userToPass) {
+          console.error("User is undefined. Cannot proceed with checkout.");
+          toast.error("Please login to continue with checkout.");
+          return;
         }
-        await handleCheckout(subtotal, currency, orderId, userToPass);
-        resetCart();
-      } catch (error) {
-        console.error("Checkout process failed:", error);
-        toast.error("Something went wrong");
+      } else {
+        userToPass = user;
       }
-    };
+      await handleCheckout(subtotal, currency, orderId, userToPass);
+      resetCart();
+    } catch (error) {
+      console.error("Checkout process failed:", error);
+      toast.error("Something went wrong");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -109,10 +113,11 @@ export function CartSidebar() {
               </div>
 
               <div className="space-y-3 mt-6">
-                <Button className="w-full" onClick={() => handleLocalCheckout()}>Checkout</Button>
+                <Button className="w-full" onClick={() => handleLocalCheckout()} disabled={isLoading}>Checkout</Button>
 
                 <Button
                   variant="outline"
+                  disabled={isLoading}
                   className="w-full flex items-center justify-center gap-2"
                   asChild
                   onClick={() => setIsOpen(false)}

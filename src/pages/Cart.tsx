@@ -9,11 +9,14 @@ import { formatCurrency } from "@/services/cartService";
 import { handleCheckout } from "@/services/PaymentService";
 import { toast } from "sonner";
 import { fetchUserDetail, UserProfile } from "@/services/authService";
+import { useState } from "react";
 
 export default function Cart() {
   const { items, subtotal, clearCart, currency, orderId, user, resetCart } = useCart();
+  const [isLoading, setIsLoading] = useState(false);
  
   const handleLocalCheckout = async () => {
+    setIsLoading(true);
     try {
       let userToPass: UserProfile | null = null; // Declare userToPass 
       if (!user) {
@@ -31,6 +34,8 @@ export default function Cart() {
     } catch (error) {
       console.error("Checkout process failed:", error);
       toast.error("Something went wrong");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -109,11 +114,12 @@ export default function Cart() {
                 </div>
 
                 {/* <Button className="w-full" onClick={() => handleCheckout(subtotal, currency, orderId, user)}>Proceed to Checkout</Button> */}
-                <Button className="w-full" onClick={() => handleLocalCheckout()}>Proceed to Checkout</Button>
+                <Button className="w-full" onClick={() => handleLocalCheckout()} disabled={isLoading}>Proceed to Checkout</Button>
 
                 <div className="mt-6">
                   <Button
                     variant="outline"
+                    disabled={isLoading}
                     className="w-full flex items-center justify-center gap-2"
                     asChild
                   >
