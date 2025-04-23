@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
 import { ArrowRight, ShoppingCart } from "lucide-react";
 import { useState } from "react";
+import { formatCurrency } from "@/services/cartService";
 
 export function CartSidebar() {
   const { items, itemCount, subtotal } = useCart();
@@ -55,6 +56,7 @@ export function CartSidebar() {
                   uuid={item.uuid}
                   name={item.name}
                   price={item.price}
+                  currency={item.currency}
                   quantity={item.quantity}
                   image={item.productImageUrls[0]}
                   className="py-4"
@@ -66,7 +68,7 @@ export function CartSidebar() {
               <div className="space-y-3 mb-4">
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
-                  <span className="font-medium">${subtotal.toFixed(2)}</span>
+                  <span className="font-medium">{formatCurrency(subtotal.toFixed(2), items[0].currency)}</span>
                 </div>
                 
                 <div className="flex justify-between">
@@ -78,7 +80,7 @@ export function CartSidebar() {
                 
                 <div className="flex justify-between font-semibold">
                   <span>Total</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>{formatCurrency(subtotal.toFixed(2), items[0].currency)}</span>
                 </div>
               </div>
               

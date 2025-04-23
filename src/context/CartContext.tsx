@@ -1,10 +1,10 @@
 import {
   cartByUserUuid,
   createCart,
-  updateCartItems,
   OrderPayload,
   OrderItem,
-  Address
+  Address,
+  CurrencyType
 } from '@/services/cartService';
 import { fetchUserDetail, UserProfile } from '@/services/authService';
 import { Product } from '@/services/productService';
@@ -90,6 +90,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     try {
       const response = await cartByUserUuid(userUuid);
       const orderItems = response.data[0].orderItems;
+      const currency = response.data[0].currency;
       console.log("orderItems", response.data);
       if (!Array.isArray(orderItems)) {
         console.warn("orderItems is not an array:", orderItems);
@@ -98,7 +99,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
       const backendCartItems: CartItem[] = orderItems.map(item => ({
         ...item.product,
-        quantity: item.quantity
+        quantity: item.quantity,
+        currency: currency,
       }));
 
       setItems(backendCartItems);

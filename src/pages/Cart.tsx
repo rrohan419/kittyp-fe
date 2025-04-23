@@ -5,10 +5,10 @@ import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
+import { formatCurrency } from "@/services/cartService";
 
 export default function Cart() {
   const { items, subtotal, clearCart } = useCart();
-
   return (
     <>
       <Navbar />
@@ -50,6 +50,7 @@ export default function Cart() {
                     uuid={item.uuid}
                     name={item.name}
                     price={item.price}
+                    currency={item.currency}
                     quantity={item.quantity}
                     image={item.productImageUrls?.[0] || '/placeholder.jpg'}
                   />
@@ -64,7 +65,8 @@ export default function Cart() {
                 <div className="space-y-3 mb-4">
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                    {/* <span>${subtotal.toFixed(2)}</span> */}
+                    <span>{formatCurrency(subtotal.toFixed(2), items[0]?.currency)}</span>
                   </div>
 
                   <div className="flex justify-between">
@@ -76,7 +78,8 @@ export default function Cart() {
 
                   <div className="flex justify-between font-semibold">
                     <span>Total</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                    {/* <span>${subtotal.toFixed(2)}</span> */}
+                    <span>{formatCurrency(subtotal.toFixed(2), items[0].currency)}</span>
                   </div>
                 </div>
 

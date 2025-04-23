@@ -1,4 +1,5 @@
 import axiosInstance from "@/config/axionInstance";
+import { CurrencyType } from "./cartService";
 
 
 export interface Product {
@@ -9,7 +10,8 @@ export interface Product {
     price: number;
     productImageUrls: string[];
     category: string;
-    attribute: Attributes
+    attribute: Attributes;
+    currency: CurrencyType
 
 }
 export interface Attributes {

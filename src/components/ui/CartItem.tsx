@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '@/context/CartContext';
 import { cn } from '@/lib/utils';
+import { CurrencyType, formatCurrency } from '@/services/cartService';
 
 interface CartItemProps {
   uuid: string;
@@ -12,9 +13,10 @@ interface CartItemProps {
   image: string;
   quantity: number;
   className?: string;
+  currency: CurrencyType;
 }
 
-export function CartItem({ uuid, name, price, image, quantity, className }: CartItemProps) {
+export function CartItem({ uuid, name, price, image, quantity, className, currency }: CartItemProps) {
   const { updateQuantity, removeItem } = useCart();
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   
@@ -58,7 +60,7 @@ export function CartItem({ uuid, name, price, image, quantity, className }: Cart
           <h3 className="text-base font-medium text-gray-900 dark:text-white">{name}</h3>
         </Link>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          ${price.toFixed(2)}
+          {formatCurrency(price.toFixed(2), currency)}
         </p>
         
         <div className="mt-4 flex items-center space-x-4">
@@ -92,7 +94,8 @@ export function CartItem({ uuid, name, price, image, quantity, className }: Cart
       
       <div className="text-right">
         <p className="text-base font-medium text-gray-900 dark:text-white">
-          ${(price * quantity).toFixed(2)}
+          {/* ${(price * quantity).toFixed(2)} */}
+          {formatCurrency((price * quantity).toFixed(2), currency)}
         </p>
       </div>
     </div>
