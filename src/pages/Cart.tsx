@@ -12,7 +12,6 @@ import { fetchUserDetail, UserProfile } from "@/services/authService";
 
 export default function Cart() {
   const { items, subtotal, clearCart, currency, orderId, user, resetCart } = useCart();
-  const navigate = useNavigate();
  
   const handleLocalCheckout = async () => {
     try {

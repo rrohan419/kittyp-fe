@@ -109,7 +109,7 @@ export function CartSidebar() {
               </div>
 
               <div className="space-y-3 mt-6">
-                <Button className="w-full" onClick={() => handleLocalCheckout}>Checkout</Button>
+                <Button className="w-full" onClick={() => handleLocalCheckout()}>Checkout</Button>
 
                 <Button
                   variant="outline"
