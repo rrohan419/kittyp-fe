@@ -7,15 +7,39 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { formatCurrency } from "@/services/cartService";
+import { handleCheckout } from "@/services/PaymentService";
+import { fetchUserDetail, UserProfile } from "@/services/authService";
+import { toast } from "sonner";
 
 export function CartSidebar() {
-  const { items, itemCount, subtotal } = useCart();
+  const { items, subtotal, itemCount, currency, orderId, user, resetCart } = useCart();
   const [isOpen, setIsOpen] = useState(false);
-  
+
+  const handleLocalCheckout = async () => {
+      try {
+        let userToPass: UserProfile | null = null; // Declare userToPass 
+        if (!user) {
+          userToPass = await fetchUserDetail(); // Fetch user details
+          if (!userToPass) {
+            console.error("User is undefined. Cannot proceed with checkout.");
+            toast.error("Please login to continue with checkout.");
+            return;
+          }
+        } else {
+          userToPass = user;
+        }
+        await handleCheckout(subtotal, currency, orderId, userToPass);
+        resetCart();
+      } catch (error) {
+        console.error("Checkout process failed:", error);
+        toast.error("Something went wrong");
+      }
+    };
+
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <button 
+        <button
           className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           aria-label="Shopping Cart"
         >
@@ -31,15 +55,15 @@ export function CartSidebar() {
         <SheetHeader className="mb-5">
           <SheetTitle>Your Cart ({itemCount} items)</SheetTitle>
         </SheetHeader>
-        
+
         {items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center py-8 space-y-4">
             <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
               <ShoppingCart size={24} className="text-gray-400" />
             </div>
             <p className="text-gray-500">Your cart is empty</p>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="mt-2"
               onClick={() => setIsOpen(false)}
               asChild
@@ -51,7 +75,7 @@ export function CartSidebar() {
           <>
             <div className="flex-1 overflow-y-auto space-y-4 -mx-6 px-6">
               {items.map((item) => (
-                <CartItem 
+                <CartItem
                   key={item.uuid}
                   uuid={item.uuid}
                   name={item.name}
@@ -63,33 +87,33 @@ export function CartSidebar() {
                 />
               ))}
             </div>
-            
+
             <div className="pt-6 border-t mt-auto">
               <div className="space-y-3 mb-4">
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
                   <span className="font-medium">{formatCurrency(subtotal.toFixed(2), items[0].currency)}</span>
                 </div>
-                
+
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Shipping</span>
                   <span>Calculated at checkout</span>
                 </div>
-                
+
                 <Separator />
-                
+
                 <div className="flex justify-between font-semibold">
                   <span>Total</span>
                   <span>{formatCurrency(subtotal.toFixed(2), items[0].currency)}</span>
                 </div>
               </div>
-              
+
               <div className="space-y-3 mt-6">
-                <Button className="w-full">Checkout</Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full flex items-center justify-center gap-2" 
+                <Button className="w-full" onClick={() => handleLocalCheckout}>Checkout</Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2"
                   asChild
                   onClick={() => setIsOpen(false)}
                 >

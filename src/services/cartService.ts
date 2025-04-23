@@ -76,6 +76,49 @@ export type UpdateOrderStatusPayload = {
   status: Status
 };
 
+export type RazorpayOrderRequestPayload = {
+  amount: number;
+  currency: CurrencyType;
+  recipt: string;
+  notes: string[];
+}
+
+export type RazorpayVerifyRequestPayLoad = {
+  orderId: string;
+  paymentId: string;
+  signature: string;
+}
+
+export type CreateOrderModel = {
+  id: string;
+  entity: string;
+  amount: number;
+  amount_paid: number;
+  amount_due: number;
+  currency: string;
+  receipt: string;
+  offer_id: string;
+  status: string;
+  attempts: number;
+  notes: string;
+  created_at: number; // long in Java maps to number in TypeScript
+};
+export type CreateOrderApiResponse = {
+  success: boolean;
+  message: string;
+  data: CreateOrderModel;
+  timestamp: string;
+  status: number;
+};
+
+export type PaymentVerifyApiResponse = {
+  success: boolean;
+  message: string;
+  data: any;
+  timestamp: string;
+  status: number;
+};
+
 export const formatCurrency = (
   amount: number | string,
   currency: CurrencyType = CurrencyType.INR // fallback
@@ -105,7 +148,12 @@ export const cartByOrderNumber = async (orderNumber: string): Promise<OrderApiRe
   return response.data;
 };
 
-export const cartByUserUuid = async (userUuid: string): Promise<OrderApiResponse> => {
+export const latestCartByUserUuid = async (userUuid: string): Promise<OrderApiResponse> => {
+  const response = await axiosInstance.get(`/order/created/${userUuid}`);
+  return response.data;
+};
+
+export const allOrdersByUserUuid = async (userUuid: string): Promise<OrderApiResponse> => {
   const response = await axiosInstance.get(`/order/${userUuid}`);
   return response.data;
 };
@@ -114,3 +162,15 @@ export const updateOrderStatus = async (updateOrderStatusPayload: UpdateOrderSta
   const response = await axiosInstance.post(`/order/update/status`, updateOrderStatusPayload);
   return response.data;
 };
+
+export const callRazorpayCreateOrder = async (razorPayOrderRequestPayload : RazorpayOrderRequestPayload) : Promise<CreateOrderApiResponse> => {
+  const response = await axiosInstance.post(`/razorpay`, razorPayOrderRequestPayload);
+  return response.data;
+}
+
+export const callRazorpayVerifyPayment = async (razorPayVerifyRequestPayload : RazorpayVerifyRequestPayLoad) : Promise<PaymentVerifyApiResponse> => {
+  const response = await axiosInstance.post(`/razorpay/verify`, razorPayVerifyRequestPayload);
+  console.log("verify res", response);
+  return response.data;
+}
+

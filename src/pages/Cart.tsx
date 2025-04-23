@@ -2,13 +2,39 @@ import { Button } from "@/components/ui/button";
 import { CartItem } from "@/components/ui/CartItem";
 import { useCart } from "@/context/CartContext";
 import { Separator } from "@/components/ui/separator";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { formatCurrency } from "@/services/cartService";
+import { handleCheckout } from "@/services/PaymentService";
+import { toast } from "sonner";
+import { fetchUserDetail, UserProfile } from "@/services/authService";
 
 export default function Cart() {
-  const { items, subtotal, clearCart } = useCart();
+  const { items, subtotal, clearCart, currency, orderId, user, resetCart } = useCart();
+  const navigate = useNavigate();
+ 
+  const handleLocalCheckout = async () => {
+    try {
+      let userToPass: UserProfile | null = null; // Declare userToPass 
+      if (!user) {
+        userToPass = await fetchUserDetail(); // Fetch user details
+        if (!userToPass) {
+          console.error("User is undefined. Cannot proceed with checkout.");
+          toast.error("Please login to continue with checkout.");
+          return;
+        }
+      } else {
+        userToPass = user;
+      }
+      await handleCheckout(subtotal, currency, orderId, userToPass);
+      resetCart();
+    } catch (error) {
+      console.error("Checkout process failed:", error);
+      toast.error("Something went wrong");
+    }
+  };
+
   return (
     <>
       <Navbar />
@@ -83,7 +109,8 @@ export default function Cart() {
                   </div>
                 </div>
 
-                <Button className="w-full">Proceed to Checkout</Button>
+                {/* <Button className="w-full" onClick={() => handleCheckout(subtotal, currency, orderId, user)}>Proceed to Checkout</Button> */}
+                <Button className="w-full" onClick={() => handleLocalCheckout()}>Proceed to Checkout</Button>
 
                 <div className="mt-6">
                   <Button

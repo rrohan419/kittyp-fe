@@ -45,13 +45,12 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const user = await login({ email, password }); // `login` now returns UserProfile
-      console.log("Login successful. User:", user);
-
+      const loginResponse = await login({ email, password }); // `login` now returns UserProfile
+      console.log("Login successful. loginResponse:", loginResponse);
       // Save user and navigate (token already saved in login())
       // localStorage.setItem("login_response", JSON.stringify(user));
       navigate("/");
-      await initializeUserAndCart();
+      initializeUserAndCart();
     } catch (error: any) {
       console.error("Signin Error:", error);
       setErrorMessage(error.message || 'Login failed');

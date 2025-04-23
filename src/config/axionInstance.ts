@@ -41,6 +41,9 @@ axiosInstance.interceptors.response.use(
       // Optional: Handle token refresh or redirect to login
       console.log('Token expired or invalid, redirecting to login...');
       // Redirect or trigger token refresh (depending on your architecture)
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'; // Simplest redirection
+      }
     }
     return Promise.reject(error);
   }

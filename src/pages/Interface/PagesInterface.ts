@@ -1,3 +1,5 @@
+import { OrderResponseData } from "@/services/cartService";
+
 export interface LoginResponse {
     token: string;
     type: string;
@@ -35,6 +37,20 @@ export interface LoginResponse {
       isFirst: boolean;
       isLast: boolean;
       models: ArticleList[];
+    };
+    timestamp: string;
+    status: number;
+  }
+
+  export interface OrderApiResponse {
+    success: boolean;
+    message: string;
+    data: {
+      totalPages: number;
+      totalElements: number;
+      isFirst: boolean;
+      isLast: boolean;
+      models: OrderResponseData[];
     };
     timestamp: string;
     status: number;
