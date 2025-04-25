@@ -21,7 +21,7 @@ import { handleCheckout } from "@/services/paymentService";
 import { useOrder } from "@/context/OrderContext";
 
 export default function Checkout() {
-    const { items, subtotal, currency, orderId, user } = useCart();
+    const { items, subtotal, currency, orderId, user, clearCart } = useCart();
     const { taxes, totalValue } = useOrder();
     const navigate = useNavigate();
 
@@ -164,7 +164,7 @@ export default function Checkout() {
                 console.log("Values", currency, orderId, user);
                 await handleCheckout(taxes, totalValue, currency, orderId, user);
                 toast.success("Order placed successfully!");
-                // clearCart();
+                clearCart();
                 navigate("/orders");
             } catch (error) {
                 console.error("Failed to process order:", error);
