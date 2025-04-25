@@ -18,31 +18,6 @@ export default function Cart() {
   const [isLoading, setIsLoading] = useState(false);
   const formattedTotal = formatCurrency(subtotal.toFixed(2), items[0]?.currency);
 
- 
-  const handleLocalCheckout = async () => {
-    setIsLoading(true);
-    try {
-      let userToPass: UserProfile | null = null; // Declare userToPass 
-      if (!user) {
-        userToPass = await fetchUserDetail(); // Fetch user details
-        if (!userToPass) {
-          console.error("User is undefined. Cannot proceed with checkout.");
-          toast.error("Please login to continue with checkout.");
-          return;
-        }
-      } else {
-        userToPass = user;
-      }
-      await handleCheckout(taxes, totalValue, currency, orderId, userToPass);
-      resetCart();
-    } catch (error) {
-      console.error("Checkout process failed:", error);
-      toast.error("Something went wrong");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <>
       <Navbar />
@@ -117,9 +92,10 @@ export default function Cart() {
                   </div>
                 </div>
 
-                {/* <Button className="w-full" onClick={() => handleCheckout(subtotal, currency, orderId, user)}>Proceed to Checkout</Button> */}
-                <Button className="w-full" onClick={() => handleLocalCheckout()} disabled={isLoading}>Proceed to Checkout</Button>
-
+                {/* <Button className="w-full" onClick={() => handleLocalCheckout()} disabled={isLoading}>Proceed to Checkout</Button> */}
+                <Button className="w-full" asChild>
+                                <Link to="/checkout">Proceed to Checkout</Link>
+                              </Button>
                 <div className="mt-6">
                   <Button
                     variant="outline"
