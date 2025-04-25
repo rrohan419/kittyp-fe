@@ -20,6 +20,9 @@ import {
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { format } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+import { fetchOrderByOrderNumber } from "@/services/orderService";
+import { LoadingState } from "@/components/ui/LoadingState";
 
 const STATUS_COLORS: Record<string, string> = {
     CREATED: "bg-yellow-100 text-yellow-800",
@@ -30,49 +33,28 @@ const STATUS_COLORS: Record<string, string> = {
     DEFAULT: "bg-gray-100 text-gray-600",
 };
 
-// Replace this with a real fetch in future, e.g. useQuery with orderId
-const orders = [
-    {
-        orderNumber: "IND-KP000001",
-        totalAmount: 1200,
-        createdAt: "2025-04-22T17:31:34.719304",
-        status: "PROCESSING",
-        shippingAddress: {
-            street: "test street 1",
-            city: "test city",
-            state: "test state",
-            postalCode: "1234",
-            country: "India",
-        },
-        billingAddress: {
-            street: "test street 2",
-            city: "test city 2",
-            state: "test state 2",
-            postalCode: "1234",
-            country: "India 2",
-        },
-        orderItems: [
-            {
-                product: {
-                    uuid: "36e3fce8-4279-4d5d-8de9-8f3aec75ca8d",
-                    name: "Test product",
-                    description: "Test product description",
-                    price: 199,
-                    productImageUrls: [
-                        "https://images.unsplash.com/photo-1529778873920-4da4926a72c2?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y3V0ZSUyMGNhdHxlbnwwfHwwfHx8MA%3D%3D",
-                    ],
-                },
-                quantity: 1,
-                price: 122,
-                itemDetails: { size: "11x12", color: "red" },
-            },
-        ],
-    },
-];
 
 export default function OrderDetail() {
     const { orderId } = useParams<{ orderId: string }>();
-    const order = orders.find((o) => o.orderNumber === orderId);
+    console.group("order id ", orderId);
+
+    const {
+        data: order,
+        isLoading,
+        isError,
+    } = useQuery({
+        queryKey: ['order', orderId],
+        queryFn: () => fetchOrderByOrderNumber(orderId!),
+        enabled: !!orderId, // only run if orderNumber exists
+    });
+
+    if (isLoading) {
+        return <LoadingState message="Loading order details..." />;
+    }
+
+    if (isError || !order) {
+        return <div className="text-red-500 text-center my-4">Error loading order details.</div>;
+    }
 
     if (!order) {
         return (
@@ -101,7 +83,7 @@ export default function OrderDetail() {
                     </Link>
                     <span className="text-2xl font-extrabold text-kitty-600">/</span>
                     <span className="text-xl font-bold text-gray-800">
-                        Order <span className="text-kitty-600">#{order.orderNumber}</span>
+                        Order <span className="text-kitty-600">#{order.data.orderNumber}</span>
                     </span>
                 </div>
                 <Card className="glass-effect mb-8 bg-gradient-to-br from-white/90 via-kitty-100/60 to-kitty-50/90 border-0 shadow-[0_12px_40px_0_rgba(155,85,255,.08)] animate-fade-in">
@@ -123,10 +105,10 @@ export default function OrderDetail() {
                                 <span className="text-gray-500 text-xs flex items-center">
                                     <CalendarDays className="inline-block h-4 w-4 mr-1" />
                                     {/* Placeholder for order date */}
-                                    {order.createdAt ? (
+                                    {order.data.createdAt ? (
                                         <>
                                             Placed on{" "}
-                                            {format(new Date(order.createdAt), "do MMMM yyyy")}
+                                            {format(new Date(order.data.createdAt), "do MMMM yyyy")}
                                             {/* For example: 21st March 2024 */}
                                         </>
                                     ) : (
@@ -137,10 +119,10 @@ export default function OrderDetail() {
                         </div>
                         <div className="sm:text-right text-left">
                             <span className="block text-2xl font-extrabold text-kitty-700">
-                                ₹{order.totalAmount}
+                                ₹{order.data.totalAmount}
                             </span>
                             <span className="text-xs text-gray-500">
-                                {order.orderItems.length} item{order.orderItems.length > 1 ? "s" : ""}
+                                {order.data.orderItems.length} item{order.data.orderItems.length > 1 ? "s" : ""}
                             </span>
                         </div>
                     </CardHeader>
@@ -161,7 +143,7 @@ export default function OrderDetail() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {order.orderItems.map((item, i) => (
+                                    {order.data.orderItems.map((item, i) => (
                                         <TableRow key={i} className="hover:bg-kitty-50/40 transition">
                                             <TableCell className="flex items-center gap-3 py-4">
                                                 <img
@@ -203,16 +185,27 @@ export default function OrderDetail() {
                                     <FileText className="h-4 w-4 mr-1" /> Shipping Address
                                 </span>
                                 <div className="text-gray-700 text-sm mt-1 space-y-0.5">
-                                    <div>
-                                        {order.shippingAddress.street}
+                                    {/* <div>
+                                        {order.data.shippingAddress.street}
                                     </div>
                                     <div>
-                                        {order.shippingAddress.city},{" "}
-                                        {order.shippingAddress.state} {order.shippingAddress.postalCode}
+                                        {order.data.shippingAddress.city},{" "}
+                                        {order.data.shippingAddress.state} {order.data.shippingAddress.postalCode}
                                     </div>
                                     <div>
-                                        {order.shippingAddress.country}
-                                    </div>
+                                        {order.data.shippingAddress.country}
+                                    </div> */}
+                                    {order.data.shippingAddress ? (
+                                        <div className="text-gray-700 text-sm mt-1 space-y-0.5">
+                                            <div>{order.data.shippingAddress.street}</div>
+                                            <div>{order.data.shippingAddress.city}</div>
+                                            <div>{order.data.shippingAddress.state}</div>
+                                            <div>{order.data.shippingAddress.postalCode}</div>
+                                            <div>{order.data.shippingAddress.country}</div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-red-500 mt-1">Shipping address not available</div>
+                                    )}
                                 </div>
                             </div>
                             {/* Billing Address */}
@@ -221,23 +214,34 @@ export default function OrderDetail() {
                                     <FileText className="h-4 w-4 mr-1" /> Billing Address
                                 </span>
                                 <div className="text-gray-700 text-sm mt-1 space-y-0.5">
-                                    <div>
-                                        {order.billingAddress.street}
+                                    {/* <div>
+                                        {order.data.billingAddress.street}
                                     </div>
                                     <div>
-                                        {order.billingAddress.city},{" "}
-                                        {order.billingAddress.state} {order.billingAddress.postalCode}
+                                        {order.data.billingAddress.city},{" "}
+                                        {order.data.billingAddress.state} {order.data.billingAddress.postalCode}
                                     </div>
                                     <div>
-                                        {order.billingAddress.country}
-                                    </div>
+                                        {order.data.billingAddress.country}
+                                    </div> */}
+                                    {order.data.billingAddress ? (
+                                        <div className="text-gray-700 text-sm mt-1 space-y-0.5">
+                                            <div>{order.data.billingAddress.street}</div>
+                                            <div>{order.data.billingAddress.city}</div>
+                                            <div>{order.data.billingAddress.state}</div>
+                                            <div>{order.data.billingAddress.postalCode}</div>
+                                            <div>{order.data.billingAddress.country}</div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-red-500 mt-1">Billing address not available</div>
+                                    )}
                                 </div>
                             </div>
                         </div>
                         {/* Total */}
                         <div className="mt-8 flex justify-end">
                             <div className="rounded-full px-6 py-3 bg-gradient-to-r from-kitty-200 to-kitty-100 text-kitty-800 font-extrabold text-lg shadow">
-                                Total Paid: ₹{order.totalAmount}
+                                Total Paid: ₹{order.data.totalAmount}
                             </div>
                         </div>
                     </CardContent>

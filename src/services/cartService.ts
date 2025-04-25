@@ -9,6 +9,12 @@ export type Address = {
   country: string;
 };
 
+export type Taxes = {
+  serviceCharge: number;
+  shippingCharges: number;
+  otherTax:number;
+};
+
 export enum Status {
   CREATED,
   PROCESSING,
@@ -34,7 +40,10 @@ export type OrderItem = {
 };
 
 export type OrderPayload = {
-  totalAmount: string;
+  totalAmount: number;
+  subTotal: number;
+  taxes: Taxes;
+  currency: CurrencyType;
   shippingAddress: Address;
   billingAddress: Address;
   orderItems: OrderItem[];
@@ -56,6 +65,8 @@ export type OrderItemResponse = {
 export type OrderResponseData = {
   orderNumber: string;
   totalAmount: number;
+  subTotal: number;
+  taxes: Taxes;
   currency: CurrencyType;
   status: Status;
   shippingAddress: Address;
@@ -79,8 +90,9 @@ export type UpdateOrderStatusPayload = {
 export type RazorpayOrderRequestPayload = {
   amount: number;
   currency: CurrencyType;
-  recipt: string;
+  receipt: string;
   notes: string[];
+  taxes: Taxes;
 }
 
 export type RazorpayVerifyRequestPayLoad = {

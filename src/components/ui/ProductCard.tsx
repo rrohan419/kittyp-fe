@@ -24,7 +24,7 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
     e.stopPropagation();
 
 
-      addItem(product);
+      addItem(0, null, product);
   };
 
   const handleToggleFavorite = (e: React.MouseEvent) => {
@@ -103,7 +103,7 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
           className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-md hover:bg-kitty-50 dark:hover:bg-gray-700 transition-colors"
           aria-label="Add to cart"
         >
-          <ShoppingCart size={18} className="text-gray-900 dark:text-white" />
+          <ShoppingCart size={18}  className="text-gray-900 dark:text-white" />
         </button>
         <button
           onClick={handleToggleFavorite}

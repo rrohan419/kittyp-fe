@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
@@ -60,12 +60,12 @@ const AdminArticleEditor = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  useState(() => {
+  useEffect(() => {
     const roles = JSON.parse(localStorage.getItem('roles') || '[]');
     const isAdmin = Array.isArray(roles) && roles.includes('ROLE_ADMIN');
     setUserRole(isAdmin ? 'ROLE_ADMIN' : null);
     setLoading(false);
-  });
+  }, []);
 
   // Redirect non-admin users
   if (!loading && userRole !== 'ROLE_ADMIN') {

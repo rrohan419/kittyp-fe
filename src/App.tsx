@@ -69,6 +69,7 @@
 //               <Route path="/admin/articles/edit/:id" element={<AdminArticleEditor />} />
 //               <Route path="/orders" element={<MyOrders />} />
 //               <Route path="/orders/:orderId" element={<OrderDetail />} />
+//               <Route path="/checkout" element={<Checkout />} />
 
 //             // {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
 //               <Route path="*" element={<NotFound />} />
@@ -94,12 +95,21 @@ import NotFound from "./pages/NotFound";
 import { ScrollToTop } from "./utils/ScrollToTop";
 import { FavoritesProvider } from "@/context/FavoritesContext";
 import Loading from "@/components/ui/loading";
+import Checkout from './pages/Checkout';
+import Products from './pages/Products';
+import { OrderProvider } from './context/OrderContext';
 
-const queryClient = new QueryClient();
-
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30000,
+    }
+  }
+});
 // Lazy-load your page components
 const Index = lazy(() => import('./pages/Index'));
-const Products = lazy(() => import('./pages/Products'));
+// const Products = lazy(() => import('./pages/Products'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const HowToUse = lazy(() => import('./pages/HowToUse'));
 const Blogs = lazy(() => import('./pages/Blogs'));
@@ -124,6 +134,7 @@ const App = () => (
     <TooltipProvider>
       <FavoritesProvider>
         <CartProvider>
+          <OrderProvider>
           <Toaster />
           <Sonner position="bottom-left"
             toastOptions={{
@@ -158,11 +169,13 @@ const App = () => (
                 <Route path="/admin/articles/edit/:id" element={<AdminArticleEditor />} />
                 <Route path="/orders" element={<MyOrders />} />
                 <Route path="/orders/:orderId" element={<OrderDetail />} />
+                <Route path="/checkout" element={<Checkout />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
           </BrowserRouter>
+          </OrderProvider>
         </CartProvider>
       </FavoritesProvider>
     </TooltipProvider>

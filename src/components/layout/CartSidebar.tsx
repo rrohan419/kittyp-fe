@@ -7,12 +7,14 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { formatCurrency } from "@/services/cartService";
-import { handleCheckout } from "@/services/PaymentService";
+import { handleCheckout } from "@/services/paymentService";
 import { fetchUserDetail, UserProfile } from "@/services/authService";
 import { toast } from "sonner";
+import { useOrder } from "@/context/OrderContext";
 
 export function CartSidebar() {
   const { items, subtotal, itemCount, currency, orderId, user, resetCart } = useCart();
+  const {taxes, totalValue} = useOrder();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -30,7 +32,8 @@ export function CartSidebar() {
       } else {
         userToPass = user;
       }
-      await handleCheckout(subtotal, currency, orderId, userToPass);
+      // await handleCheckout(subtotal, currency, orderId, userToPass);
+      await handleCheckout(taxes, totalValue, currency, orderId, userToPass);
       resetCart();
     } catch (error) {
       console.error("Checkout process failed:", error);
@@ -80,7 +83,8 @@ export function CartSidebar() {
             <div className="flex-1 overflow-y-auto space-y-4 -mx-6 px-6">
               {items.map((item) => (
                 <CartItem
-                  key={item.uuid}
+                  // key={item.uuid} 
+                  key={`cart-sidebar-${item.uuid}`}
                   uuid={item.uuid}
                   name={item.name}
                   price={item.price}
@@ -112,9 +116,12 @@ export function CartSidebar() {
                 </div>
               </div>
 
-              <div className="space-y-3 mt-6">
-                <Button className="w-full" onClick={() => handleLocalCheckout()} disabled={isLoading}>Checkout</Button>
 
+              <Button className="w-full" asChild>
+                                <Link to="/checkout">Proceed to Checkout</Link>
+                              </Button>
+              <div className="space-y-3 mt-6">
+                {/* <Button className="w-full" onClick={() => handleLocalCheckout()} disabled={isLoading}>Checkout</Button> */}
                 <Button
                   variant="outline"
                   disabled={isLoading}

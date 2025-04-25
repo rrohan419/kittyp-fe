@@ -18,7 +18,7 @@
 //     color: string;
 //   };
 //   currency: CurrencyType;
-  
+
 // }
 
 // interface CartContextType {
@@ -87,7 +87,7 @@
 //   //     }
 //   //     setIsCartLoading(false);
 //   //   }
-   
+
 
 //   //   if (userData) {
 //   //     setUser(userData);
@@ -103,7 +103,7 @@
 
 //   const userDetail = localStorage.getItem('user');
 //   const accessToken = localStorage.getItem('access_token');
-  
+
 //   if (accessToken) {
 //     if (userDetail) {
 //       userData = JSON.parse(userDetail);
@@ -283,12 +283,14 @@ import {
   OrderItem,
   Address,
   CurrencyType,
-  latestCartByUserUuid
+  latestCartByUserUuid,
+  Taxes
 } from '@/services/cartService';
 import { fetchUserDetail, UserProfile } from '@/services/authService';
 import { Product } from '@/services/productService';
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
+import { useOrder } from './OrderContext';
 
 interface CartItem extends Product {
   quantity: number;
@@ -297,11 +299,15 @@ interface CartItem extends Product {
     color: string;
   };
   currency: CurrencyType;
+  // subTotal: number;
+  // totalAmount: number;
+  // taxes: Taxes;
+
 }
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (product: Product, itemDetails?: CartItem["itemDetails"]) => void;
+  addItem: (finalAmount: number, taxes: Taxes, product: Product, itemDetails?: CartItem["itemDetails"]) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -311,7 +317,9 @@ interface CartContextType {
   initializeUserAndCart: () => Promise<void>;
   currency: CurrencyType;
   orderId: string;
-  user: UserProfile;
+  user: UserProfile | undefined;
+  isCartLoading: boolean;
+  
 }
 
 export const CartContext = createContext<CartContextType>({
@@ -326,15 +334,8 @@ export const CartContext = createContext<CartContextType>({
   initializeUserAndCart: async () => { },
   currency: CurrencyType.INR,
   orderId: '',
-  user: {
-    email: '',
-    enabled: true,
-    id: 0,
-    firstName: '',
-    lastName: '',
-    roles: [],
-    uuid: ''
-  }
+  isCartLoading: true,
+  user: undefined,
 });
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
@@ -343,33 +344,46 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [currency, setCurrency] = useState<CurrencyType>(CurrencyType.INR);
   const [orderId, setOrderId] = useState<string>('');
   const [isCartLoading, setIsCartLoading] = useState(true);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const {taxes, totalValue} = useOrder();
 
 
   const initializeUserAndCart = async () => {
     setIsCartLoading(true);
     let userData: UserProfile | undefined;
-
-    const userDetail = localStorage.getItem('user');
     const accessToken = localStorage.getItem('access_token');
 
     if (accessToken) {
+      const userDetail = localStorage.getItem('user');
       if (userDetail) {
-        userData = JSON.parse(userDetail);
+        try {
+          userData = JSON.parse(userDetail);
+          setUser(userData);
+        } catch (error) {
+          console.error("Failed to parse user details from localStorage:", error);
+          toast.error("Failed to load stored user data.");
+          setIsCartLoading(false);
+          return;
+        }
       } else {
         try {
           userData = await fetchUserDetail();
           localStorage.setItem('user', JSON.stringify(userData));
+          setUser(userData);
         } catch (error) {
           console.error("Failed to fetch user details:", error);
+          toast.error("Failed to load user data.");
+          setIsCartLoading(false);
+          return;
         }
       }
-      setIsCartLoading(false);
-    }
-
-    if (userData) {
-      setUser(userData);
-      console.log("user ====", userData);
-      await syncCartWithBackend(userData.uuid); // proceed to cart sync
+      if (userData?.uuid) {
+        await syncCartWithBackend(userData.uuid);
+      } else {
+        setIsCartLoading(false); // If no user UUID, loading is done
+      }
+    } else {
+      setIsCartLoading(false); // If no access token, no user to fetch
     }
   };
 
@@ -380,7 +394,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const resetCart = () => {
     setItems([]);
-    setUser(undefined);
+    persistCart([], 0 ,null);
+    // setUser(undefined);
     localStorage.removeItem('kittyp-cart');
     localStorage.removeItem('user');
   };
@@ -390,7 +405,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       const response = await latestCartByUserUuid(userUuid);
       const orderItems = response.data.orderItems;
       const currency = response.data.currency;
-      const orderId = response.data.orderNumber;
+      // const orderId = response.data.orderNumber;
 
       console.log("orderItems", response.data);
       if (!Array.isArray(orderItems)) {
@@ -401,12 +416,14 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       const backendCartItems: CartItem[] = orderItems.map(item => ({
         ...item.product,
         quantity: item.quantity,
+        totalAmount: response.data.totalAmount,
         currency: currency,
+        itemDetails: item.itemDetails
       }));
 
       setItems(backendCartItems);
       setCurrency(currency);
-      setOrderId(orderId);
+      setOrderId(response.data.orderNumber);
       toast.success("Cart synced with server.");
     } catch (error) {
       console.error("Failed to sync cart with backend:", error);
@@ -415,7 +432,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
 
-  const persistCart = async (updatedItems: CartItem[]) => {
+  const persistCart = async (updatedItems: CartItem[], totalAmount: number, taxes: Taxes) => {
     if (!user) return;
 
     const orderItems: OrderItem[] = updatedItems.map((item) => ({
@@ -426,7 +443,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }));
 
     const payload: OrderPayload = {
-      totalAmount: updatedItems.reduce((total, item) => total + item.price * item.quantity, 0).toString(),
+      subTotal: updatedItems.reduce((total, item) => total + item.price * item.quantity, 0),
+      totalAmount: totalAmount,
+
+      taxes: taxes,
+      currency: currency,
       shippingAddress: getDefaultAddress(),
       billingAddress: getDefaultAddress(),
       orderItems,
@@ -439,6 +460,16 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+
+  // useEffect(() => {
+  //   if (debounceRef.current) clearTimeout(debounceRef.current);
+
+  //   debounceRef.current = setTimeout(() => {
+  //     persistCart(items);
+  //   }, 500); // 500ms debounce
+  // }, [items]);
+
+
   const getDefaultAddress = (): Address => ({
     street: 'default street',
     city: 'default city',
@@ -447,9 +478,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     country: 'India',
   });
 
-  const addItem = (product: Product, itemDetails?: CartItem["itemDetails"]) => {
+  const addItem = (finalAmount: number, taxes: Taxes, product: Product, itemDetails?: CartItem["itemDetails"]) => {
+    if (!product || !product.name) {
+      console.error("Product is undefined or missing name:", product);
+      return;
+    }
+    
     setItems((currentItems) => {
-      const existingItemIndex = currentItems.findIndex(item => item.uuid === product.uuid);
+      // const existingItemIndex = currentItems.findIndex(item => item.uuid === product.uuid);
+      const existingItemIndex = currentItems.findIndex(item =>
+        item.uuid === product.uuid &&
+        item.itemDetails?.size === itemDetails?.size &&
+        item.itemDetails?.color === itemDetails?.color
+      );
 
       let updatedItems: CartItem[];
 
@@ -458,11 +499,17 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         updatedItems[existingItemIndex].quantity += 1;
         toast.success(`Added another ${product.name} to your cart`);
       } else {
-        updatedItems = [...currentItems, { ...product, quantity: 1, itemDetails }];
+        // updatedItems = [...currentItems, { ...product, quantity: 1, itemDetails, }];
+        updatedItems = [...currentItems, {
+          ...product,
+          quantity: 1,
+          itemDetails,
+          currency,
+        }];
         toast.success(`Added ${product.name} to your cart`);
       }
 
-      persistCart(updatedItems);
+      persistCart(updatedItems, finalAmount, taxes);
       return updatedItems;
     });
   };
@@ -472,7 +519,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       const updatedItems = currentItems.filter(item => item.uuid !== productId);
       const removedItem = currentItems.find(item => item.uuid === productId);
       if (removedItem) toast.info(`Removed ${removedItem.name} from your cart`);
-      persistCart(updatedItems);
+      persistCart(updatedItems, 0, null);
       return updatedItems;
     });
   };
@@ -487,7 +534,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       const updatedItems = currentItems.map(item =>
         item.uuid === productId ? { ...item, quantity } : item
       );
-      persistCart(updatedItems);
+      persistCart(updatedItems, totalValue, taxes);
       return updatedItems;
     });
   };
@@ -495,15 +542,20 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const clearCart = () => {
     setItems([]);
     toast.info('Your cart has been cleared');
-    persistCart([]); // Clear backend too
+    persistCart([],0, null); // Clear backend too
   };
 
   const itemCount = items.reduce((total, item) => total + item.quantity, 0);
-  const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0);
+  // setSubtotal(items.reduce((total, item) => total + item.price * item.quantity, 0));
+  const subtotal = useMemo(() =>
+    items.reduce((total, item) => total + item.price * item.quantity, 0),
+    [items]
+  );
+  
 
   return (
     <CartContext.Provider
-      value={{ user, items, addItem, removeItem, updateQuantity, clearCart, itemCount, subtotal, resetCart, initializeUserAndCart, currency, orderId }}
+      value={{ user, items, subtotal, isCartLoading, addItem, removeItem, updateQuantity, clearCart, itemCount, resetCart, initializeUserAndCart, currency, orderId}}
     >
       {children}
     </CartContext.Provider>
