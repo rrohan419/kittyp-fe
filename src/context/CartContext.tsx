@@ -307,7 +307,7 @@ interface CartItem extends Product {
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (finalAmount: number, taxes: Taxes, product: Product, itemDetails?: CartItem["itemDetails"]) => void;
+  addItem: (product: Product, itemDetails?: CartItem["itemDetails"]) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -478,7 +478,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     country: 'India',
   });
 
-  const addItem = (finalAmount: number, taxes: Taxes, product: Product, itemDetails?: CartItem["itemDetails"]) => {
+  const addItem = (product: Product, itemDetails?: CartItem["itemDetails"]) => {
     if (!product || !product.name) {
       console.error("Product is undefined or missing name:", product);
       return;
@@ -509,9 +509,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         toast.success(`Added ${product.name} to your cart`);
       }
 
-      persistCart(updatedItems, finalAmount, taxes);
+      persistCart(updatedItems, 0, null);
       return updatedItems;
     });
+
+    
   };
 
   const removeItem = (productId: string) => {

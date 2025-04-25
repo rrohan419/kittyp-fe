@@ -24,7 +24,7 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
     e.stopPropagation();
 
 
-      addItem(0, null, product);
+      addItem(product);
   };
 
   const handleToggleFavorite = (e: React.MouseEvent) => {

@@ -237,6 +237,45 @@ export default function OrderDetail() {
                                     )}
                                 </div>
                             </div>
+                            {/* Total Breakdown */}
+                            <div className="flex-1 bg-white/70 rounded-2xl shadow px-4 py-3 border">
+                                <span className="flex items-center gap-1 font-semibold text-kitty-800">
+                                    <FileText className="h-4 w-4 mr-1" /> Total Breakdown
+                                </span>
+                                <div className="text-gray-700 text-sm mt-1 space-y-0.5">
+                                    <div className="w-full max-w-md bg-white/80 rounded-xl p-4 shadow space-y-2 text-sm text-gray-700">
+                                        <div className="flex justify-between">
+                                            <span>Subtotal</span>
+                                            {/* <span>₹{order.data.subTotal}</span> */}
+                                            <span>₹{order.data?.subTotal ?? 0}</span>
+                                        </div>
+                                        {(order.data?.taxes?.otherTax ?? 0) +
+                                            (order.data?.taxes?.serviceCharge ?? 0) > 0 && (
+                                                <div className="flex justify-between">
+                                                    <span>Tax</span>
+                                                    <span>₹{(order.data?.taxes?.otherTax ?? 0) +
+                                                        (order.data?.taxes?.serviceCharge ?? 0)}</span>
+                                                </div>
+                                            )}
+                                        {order.data.taxes.shippingCharges > 0 && (
+                                            <div className="flex justify-between">
+                                                <span>Delivery Fee</span>
+                                                <span>₹{order.data?.taxes?.shippingCharges ?? 0}</span>
+                                            </div>
+                                        )}
+                                        {/* {order.data.discountAmount > 0 && (
+                                        <div className="flex justify-between text-green-700">
+                                            <span>Discount</span>
+                                            <span>-₹{order.data.discountAmount}</span>
+                                        </div>
+                                    )} */}
+                                        <div className="border-t pt-2 flex justify-between font-bold text-kitty-800">
+                                            <span>Total Paid</span>
+                                            <span>₹{order.data.totalAmount}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         {/* Total */}
                         <div className="mt-8 flex justify-end">
