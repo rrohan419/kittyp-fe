@@ -233,7 +233,7 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
         <div className="space-y-6">
             {ordersData.data.models.map((order) => (
                 <Card
-                    key={order.orderNumber}
+                    key={`order-list-ordert-uuid-${order.orderNumber}`}
                     className="glass-effect bg-gradient-to-br from-white/80 via-kitty-100/60 to-kitty-50/80 card-hover shadow-[0_8px_36px_0_rgba(155,85,255,.08)] border-0 cursor-pointer transition-transform hover:scale-[1.02]"
                     onClick={() => navigate(`/orders/${order.orderNumber}`)}
                 >
@@ -281,7 +281,8 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
                             <div className="flex -space-x-3">
                                 {order.orderItems.slice(0, 3).map((item) => (
                                     <img
-                                        key={item.product.uuid}
+                                        key={`order-list-product-uuid-${item.product.uuid}-${order.orderNumber}`}
+                                        // key={`order-item-${context}-${item.product.uuid}`}
                                         className="w-12 h-12 rounded-lg border-2 border-white shadow-md object-cover bg-muted ring-2 ring-kitty-100"
                                         src={
                                             item.product.productImageUrls?.[0] ||

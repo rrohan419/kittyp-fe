@@ -182,7 +182,7 @@ const ArticlePage = () => {
               <div className="flex flex-wrap gap-2 mb-6">
                 {article.tags.map(tag => (
                   <Link
-                    key={tag}
+                    key={`article.footer-tag-${tag}`}
                     to={`/articles?tag=${tag}`}
                     className="flex items-center bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-sm hover:bg-secondary/80 transition-colors"
                   >
@@ -237,7 +237,7 @@ const ArticlePage = () => {
               {/* Comments List */}
               <div className="space-y-6">
                 {allComments.map(comment => (
-                  <div key={comment.id} className="bg-card p-5 rounded-lg border">
+                  <div key={`article.comment-id-${comment.id}`} className="bg-card p-5 rounded-lg border">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center">
                         <Avatar className="h-10 w-10">

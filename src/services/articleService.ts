@@ -39,11 +39,12 @@ interface WrappedArticleResponse {
     status: number;
   }
 
-type ArticleSearchRequest = {
+  export type ArticleSearchRequest = {
     name: string | null;
+    isRandom: boolean | null;
   };
   
-  type FetchArticles = {
+   type FetchArticles = {
     page: number;
     size: number;
     body: ArticleSearchRequest;

@@ -213,7 +213,7 @@ const Blogs = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {blogPosts.map((post, index) => (
                 <article 
-                  key={post.id}
+                  key={`blog-post-id-${post.id}`}
                   className="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 animate-fade-in"
                 >
                   <Link to={`/blogs/${post.id}`} className="block">
@@ -256,7 +256,7 @@ const Blogs = () => {
             <div className="mt-12 flex justify-center gap-2">
               {[1, 2, 3].map((page) => (
                 <button
-                  key={page}
+                  key={`blog-post-page-number-${page}`}
                   className={`px-4 py-2 rounded-lg ${
                     page === 1 
                       ? 'bg-kitty-600 text-white'

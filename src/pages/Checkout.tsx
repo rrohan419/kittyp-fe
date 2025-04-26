@@ -233,7 +233,7 @@ export default function Checkout() {
                                                     <RadioGroup value={selectedShippingAddressId} className="space-y-3">
                                                         {addresses.map((address, index) => (
                                                             <AddressCard
-                                                                key={address.id || index}
+                                                                key={`selected-shipping-address-id-${address.id || index}`}
                                                                 address={address}
                                                                 id={`shipping-address-${index}`}
                                                                 isSelected={selectedShippingAddressId === address.id}
@@ -286,7 +286,7 @@ export default function Checkout() {
                                                 <RadioGroup value={selectedBillingAddressId} className="space-y-3">
                                                     {addresses.map((address, index) => (
                                                         <AddressCard
-                                                            key={address.id || index}
+                                                            key={`selected-billing-address-id-${address.id || index}`}
                                                             address={address}
                                                             id={`billing-address-${index}`}
                                                             isSelected={selectedBillingAddressId === address.id}
@@ -336,7 +336,7 @@ export default function Checkout() {
                                     {/* Item summary */}
                                     <div className="space-y-3">
                                         {items.map(item => (
-                                            <div key={item.uuid} className="flex justify-between">
+                                            <div key={`order-summary-item-uuid-${item.uuid}`} className="flex justify-between">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-12 h-12 rounded-md bg-gray-100 overflow-hidden">
                                                         <img

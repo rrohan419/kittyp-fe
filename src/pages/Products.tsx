@@ -25,6 +25,7 @@ const Products: React.FC = () => {
     minPrice: null,
     maxPrice: null,
     status: null,
+    isRandom : false,
   });
 
   const loadProducts = useCallback(async () => {
@@ -139,7 +140,7 @@ const Products: React.FC = () => {
                   <div className="space-y-2">
                     {categories.map(category => (
                       <button
-                        key={category}
+                        key={`desktop-filter-category-${category}`}
                         onClick={() => setSelectedCategory(category)}
                         className={`block w-full text-left px-3 py-2 rounded-md transition-colors ${selectedCategory === category
                             ? 'bg-kitty-50 text-kitty-600 dark:bg-kitty-900/50 dark:text-kitty-400'
@@ -157,7 +158,7 @@ const Products: React.FC = () => {
                   <div className="space-y-2">
                     {priceRanges.map((range, index) => (
                       <button
-                        key={index}
+                        key={`desktop-filter-range-${index}`}
                         onClick={() => setSelectedPriceRange({ min: range.min, max: range.max })}
                         className={`block w-full text-left px-3 py-2 rounded-md transition-colors ${selectedPriceRange?.min === range.min && selectedPriceRange?.max === range.max
                             ? 'bg-kitty-50 text-kitty-600 dark:bg-kitty-900/50 dark:text-kitty-400'
@@ -232,7 +233,7 @@ const Products: React.FC = () => {
                       <div className="space-y-2">
                         {categories.map(category => (
                           <button
-                            key={category}
+                            key={`mobile-filter-range-${category}`}
                             onClick={() => {
                               setSelectedCategory(category);
                               toggleMobileFilter();
@@ -253,7 +254,7 @@ const Products: React.FC = () => {
                       <div className="space-y-2">
                         {priceRanges.map((range, index) => (
                           <button
-                            key={index}
+                            key={`mobile-filter-range-${index}`}
                             onClick={() => {
                               setSelectedPriceRange({ min: range.min, max: range.max });
                               toggleMobileFilter();
@@ -317,7 +318,7 @@ const Products: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {products.map((product, index) => (
                     <ProductCard
-                      key={product.uuid}
+                      key={`product.grid.product-uuid-${product.uuid}`}
                       product={product}
                       index={index}
                       className="animate-fade-up"

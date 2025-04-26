@@ -174,7 +174,7 @@ const AdminDashboard = () => {
             {/* Dashboard Stats */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               {stats.map((stat, index) => (
-                <Card key={index} className="overflow-hidden">
+                <Card key={`admin-dash-stats-${index}`} className="overflow-hidden">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -218,7 +218,8 @@ const AdminDashboard = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {recentOrders.map((order) => (
-                      <div key={order.id} className="flex items-center justify-between">
+                      <div key={`admin-dash-order-id-${order.id}`} className="flex items-center justify-between">
+                        
                         <div className="space-y-1">
                           <p className="text-sm font-medium">{order.customer}</p>
                           <div className="flex items-center text-xs text-muted-foreground">
@@ -257,7 +258,7 @@ const AdminDashboard = () => {
                     {articles.length > 0 ? (
                       <div className="border rounded-md divide-y">
                         {articles.map((article) => (
-                          <div key={article.id} className="flex items-center justify-between p-4">
+                          <div key={`admin-dash-article-id-${article.id}`} className="flex items-center justify-between p-4">
                             <div className="space-y-1">
                               <div className="font-medium">{article.title}</div>
                               <div className="flex items-center text-xs text-muted-foreground">

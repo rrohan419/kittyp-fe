@@ -6,15 +6,11 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { formatCurrency } from "@/services/cartService";
-import { handleCheckout } from "@/services/paymentService";
-import { toast } from "sonner";
-import { fetchUserDetail, UserProfile } from "@/services/authService";
 import { useState } from "react";
 import { useOrder } from "@/context/OrderContext";
 
 export default function Cart() {
-  const { items, subtotal, clearCart, currency, orderId, user, resetCart } = useCart();
-  const {taxes, totalValue} = useOrder();
+  const { items, subtotal, clearCart} = useCart();
   const [isLoading, setIsLoading] = useState(false);
   const formattedTotal = formatCurrency(subtotal.toFixed(2), items[0]?.currency);
 
@@ -55,7 +51,7 @@ export default function Cart() {
 
                 {items.map((item) => (
                   <CartItem
-                    key={item.uuid}
+                    key={`cart-item-uuid-${item.uuid}`}
                     uuid={item.uuid}
                     name={item.name}
                     price={item.price}

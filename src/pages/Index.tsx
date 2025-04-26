@@ -7,78 +7,67 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { fadeUp, staggerContainer } from '@/utils/animations';
+import { useEffect, useState } from 'react';
+import { fetchFilteredProducts, Product, ProductFilterRequest } from '@/services/productService';
+import { ArticleSearchRequest, fetchArticles } from '@/services/articleService';
 
-// Mock featured products
-const featuredProducts = [
-  {
-    id: '1',
-    name: 'Original Eco Litter',
-    price: 24.99,
-    description: 'Our signature plant-based cat litter with superior odor control.',
-    image: 'https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?w=800&auto=format&fit=crop&q=80',
-    category: 'Cat Litter'
-  },
-  {
-    id: '2',
-    name: 'Clumping Pine Litter',
-    price: 29.99,
-    description: 'Fast-clumping pine formula for easy cleaning and natural pine scent.',
-    image: 'https://images.unsplash.com/photo-1592951629503-127b8067c21d?w=800&auto=format&fit=crop&q=80',
-    category: 'Cat Litter'
-  },
-  {
-    id: '3',
-    name: 'Lightweight Corn Litter',
-    price: 27.99,
-    description: 'Ultra-lightweight corn-based formula, easier to carry and pour.',
-    image: 'https://images.unsplash.com/photo-1605368616573-5e71c67d56c0?w=800&auto=format&fit=crop&q=80',
-    category: 'Cat Litter'
-  },
-  {
-    id: '4',
-    name: 'Biodegradable Litter Box',
-    price: 32.99,
-    description: 'Eco-friendly litter box made from sustainable materials.',
-    image: 'https://images.unsplash.com/photo-1607242430639-e01659245b58?w=800&auto=format&fit=crop&q=80',
-    category: 'Accessories'
-  }
-];
 
-// Mock blog posts
-const blogPosts = [
-  {
-    id: '1',
-    title: 'Why Natural Cat Litter Matters',
-    excerpt: "How switching to eco-friendly cat litter benefits your cat's health and the environment.",
-    image: 'https://images.unsplash.com/photo-1574158622682-e40e69881006?w=800&auto=format&fit=crop&q=80',
-    date: 'Oct 15, 2023'
-  },
-  {
-    id: '2',
-    title: 'Sustainable Pet Parenting',
-    excerpt: "Our guide to eco-friendly products that don't compromise on performance.",
-    image: 'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?w=800&auto=format&fit=crop&q=80',
-    date: 'Sep 28, 2023'
-  },
-  {
-    id: '3',
-    title: "Reducing Your Cat's Carbon Pawprint",
-    excerpt: 'Simple changes you can make today for a more sustainable pet care routine.',
-    image: 'https://images.unsplash.com/photo-1585373683920-671438c82bfa?w=800&auto=format&fit=crop&q=80',
-    date: 'Aug 12, 2023'
-  }
-];
+const productDto: ProductFilterRequest = { isRandom: true, category: null, maxPrice: null, minPrice: null, name: null, status: null };
+const articleDto: ArticleSearchRequest = {isRandom: true, name: null};
+
+
 
 const Index = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [featuredArticle, setFeaturedArticle] = useState([]);
+
+  useEffect(() => {
+    const loadFeaturedProducts = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetchFilteredProducts({
+          page: 1,
+          size: 4,
+          body: productDto
+        });
+        setFeaturedProducts(response.data.models);
+      } catch (error) {
+        console.error('Error loading products:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const blogPosts = async () =>{
+      setIsLoading(true);
+      try {
+        const response = await fetchArticles({
+          page: 1,
+          size: 3,
+          body: articleDto
+        });
+
+        setFeaturedArticle(response.data.models);
+      } catch (error) {
+        console.error('Error loading articles:', error);
+      } finally{
+        setIsLoading(false);
+      }
+    };
+
+    loadFeaturedProducts();
+    blogPosts();
+  }, []);
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
       <Navbar />
-      
+
       <main className="pt-8">
         <Hero />
-        
+
         {/* Featured Products (will require later)*/}
-        {/* <section className="py-16 md:py-24 container mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="py-16 md:py-24 container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12">
             <div className="max-w-lg">
               <span className="text-sm font-medium text-kitty-600 dark:text-kitty-400">
@@ -91,27 +80,27 @@ const Index = () => {
                 Discover our natural, sustainable cat litter made from renewable plant materials. Better for your cat, your home, and our planet.
               </p>
             </div>
-            <Link 
-              to="/products" 
+            <Link
+              to="/products"
               className="mt-6 md:mt-0 inline-flex items-center text-kitty-600 dark:text-kitty-400 hover:text-kitty-700 dark:hover:text-kitty-300 font-medium"
             >
               View all products
               <ArrowRight size={16} className="ml-2" />
             </Link>
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
             {featuredProducts.map((product, index) => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
+              <ProductCard
+                key={`home-product-card-product-uuid-${product.uuid}`}
+                product={product}
                 index={index}
-                className="animate-fade-up" 
+                className="animate-fade-up"
               />
             ))}
           </div>
-        </section> */}
-        
+        </section>
+
         {/* Product Categories (will require later) */}
         {/* <section className="py-16 bg-gray-50 dark:bg-gray-900">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -157,7 +146,7 @@ const Index = () => {
             </div>
           </div>
         </section> */}
-        
+
         {/* Features */}
         <section className="py-16 md:py-24 container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
@@ -171,7 +160,7 @@ const Index = () => {
               We believe in sustainability, performance, and happy cats — creating products that are better for everyone.
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
@@ -202,8 +191,8 @@ const Index = () => {
                 )
               }
             ].map((feature, index) => (
-              <div 
-                key={feature.title}
+              <div
+                key={`feature-title-${feature.title}`}
                 className="flex flex-col items-center text-center bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-sm"
                 style={{ animationDelay: `${index * 100 + 300}ms` }}
               >
@@ -216,7 +205,7 @@ const Index = () => {
             ))}
           </div>
         </section>
-        
+
         {/* Featured Blog Posts */}
         <section className="py-16 md:py-24 bg-gray-50 dark:bg-gray-900">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -232,26 +221,26 @@ const Index = () => {
                   Learn about eco-friendly cat care, health tips, and how to reduce your pet's environmental impact.
                 </p>
               </div>
-              <Link 
-                to="/blogs" 
+              <Link
+                to="/articles"
                 className="mt-6 md:mt-0 inline-flex items-center text-kitty-600 dark:text-kitty-400 hover:text-kitty-700 dark:hover:text-kitty-300 font-medium"
               >
                 View all articles
                 <ArrowRight size={16} className="ml-2" />
               </Link>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {blogPosts.map((post, index) => (
-                <Link 
-                  key={post.id}
+              {featuredArticle.map((post, index) => (
+                <Link
+                  key={`post.id-${post.id}`}
                   to={`/blogs/${post.id}`}
                   className="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300"
                   style={{ animationDelay: `${index * 100 + 200}ms` }}
                 >
                   <div className="aspect-[16/9] relative overflow-hidden">
                     <img
-                      src={post.image}
+                      src={post.coverImage}
                       alt={post.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
@@ -274,12 +263,12 @@ const Index = () => {
             </div>
           </div>
         </section>
-        
+
         {/* Newsletter */}
         <section className="py-16 md:py-24 container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative bg-kitty-50 dark:bg-kitty-900/20 rounded-3xl overflow-hidden">
             <div className="absolute top-0 right-0 w-1/3 h-full opacity-10 bg-noise" />
-            
+
             <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-12 p-8 md:p-12 lg:p-16 items-center">
               <div className="space-y-6">
                 <span className="text-sm font-medium text-kitty-600 dark:text-kitty-400">
@@ -291,7 +280,7 @@ const Index = () => {
                 <p className="text-gray-600 dark:text-gray-400 max-w-md">
                   Get the latest eco-friendly cat care tips, special offers, and updates on new products delivered to your inbox.
                 </p>
-                
+
                 <form className="flex flex-col sm:flex-row gap-3 max-w-md">
                   <input
                     type="email"
@@ -306,12 +295,12 @@ const Index = () => {
                     Subscribe
                   </button>
                 </form>
-                
+
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   By subscribing, you agree to our Privacy Policy and consent to receive updates.
                 </p>
               </div>
-              
+
               <div className="hidden lg:block relative h-full">
                 <img
                   src="https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=800&auto=format&fit=crop&q=80"
@@ -324,7 +313,7 @@ const Index = () => {
           </div>
         </section>
       </main>
-      
+
       <Footer />
     </div>
   );

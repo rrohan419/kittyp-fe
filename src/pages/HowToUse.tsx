@@ -116,7 +116,7 @@ const HowToUse = () => {
     <div className="flex items-center justify-center gap-2 my-4">
       {Array.from({ length: total }).map((_, i) => (
         <button
-          key={i}
+          key={`progress-id-${i}`}
           onClick={() => onClick(i)}
           className={`w-3 h-3 rounded-full transition-all duration-300 ${
             i === current

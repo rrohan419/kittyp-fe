@@ -27,6 +27,7 @@ export type ProductFilterRequest = {
     minPrice: number | null;
     maxPrice: number | null;
     status: string | null;
+    isRandom: boolean | null;
 }
 type FetchProducts = {
     page: number;

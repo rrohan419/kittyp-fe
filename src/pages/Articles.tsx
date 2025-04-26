@@ -27,6 +27,7 @@ const Articles: React.FC = () => {
         size: 6,
         body: {
           name: null,
+          isRandom: null,
         },
       });
   
@@ -99,7 +100,7 @@ const Articles: React.FC = () => {
                     <CardContent>
                       <div className="flex flex-wrap gap-2 mb-4">
                         {article.tags.map(tag => (
-                          <span key={tag} className="flex items-center text-xs text-muted-foreground">
+                          <span key={`article.tag-${tag}`} className="flex items-center text-xs text-muted-foreground">
                             <Tag size={12} className="mr-1" />
                             {tag}
                           </span>

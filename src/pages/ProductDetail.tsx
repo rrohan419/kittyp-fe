@@ -128,7 +128,7 @@ const ProductDetail = () => {
               <div className="grid grid-cols-4 gap-2">
                 {product.productImageUrls.map((imageUrl, index) => (
                   <button
-                    key={index}
+                    key={`product-image-index-number-${index}`}
                     onClick={() => setSelectedImage(imageUrl)}
                     className={`aspect-square rounded-md overflow-hidden border-2 ${selectedImage === imageUrl ? 'border-kitty-500' : 'border-transparent'
                       }`}

@@ -49,13 +49,13 @@ const Sitemap = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {sitemapSections.map((section, index) => (
-                <Card key={index} className="h-full">
+                <Card key={`site-map-section-index-${index}`} className="h-full">
                   <CardContent className="p-6">
                     <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">{section.title}</h2>
                     <Separator className="mb-4" />
                     <ul className="space-y-3">
                       {section.links.map((link, linkIndex) => (
-                        <li key={linkIndex}>
+                        <li key={`site-map-link-index-${linkIndex}`}>
                           <Link 
                             to={link.path}
                             className="text-kitty-600 dark:text-kitty-400 hover:text-kitty-800 dark:hover:text-kitty-300 transition-colors"

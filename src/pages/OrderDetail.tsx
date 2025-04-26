@@ -144,7 +144,7 @@ export default function OrderDetail() {
                                 </TableHeader>
                                 <TableBody>
                                     {order.data.orderItems.map((item, i) => (
-                                        <TableRow key={i} className="hover:bg-kitty-50/40 transition">
+                                        <TableRow key={`order-item-id-${i}`} className="hover:bg-kitty-50/40 transition">
                                             <TableCell className="flex items-center gap-3 py-4">
                                                 <img
                                                     src={item.product.productImageUrls?.[0] || "https://placehold.co/80x80"}

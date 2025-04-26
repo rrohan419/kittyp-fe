@@ -74,7 +74,7 @@ export default function MyOrders() {
                                         <SelectGroup>
                                             <SelectItem value="All">All Statuses</SelectItem>
                                             {ORDER_STATUSES.map((status) => (
-                                                <SelectItem key={status} value={status}>
+                                                <SelectItem key={`status-name-${status}`} value={status}>
                                                     {status}
                                                 </SelectItem>
                                             ))}
