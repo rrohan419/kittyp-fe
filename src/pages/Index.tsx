@@ -234,7 +234,7 @@ const Index = () => {
               {featuredArticle.map((post, index) => (
                 <Link
                   key={`post.id-${post.id}`}
-                  to={`/blogs/${post.id}`}
+                  to={`/article/${post.slug}`}
                   className="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300"
                   style={{ animationDelay: `${index * 100 + 200}ms` }}
                 >
