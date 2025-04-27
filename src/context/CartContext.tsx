@@ -443,7 +443,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }));
 
     const payload: OrderPayload = {
-      subTotal: updatedItems.reduce((total, item) => total + item.price * item.quantity, 0),
+      // subTotal: updatedItems.reduce((total, item) => total + item.price * item.quantity, 0),
+      subTotal: subtotal,
       totalAmount: totalAmount,
 
       taxes: taxes,

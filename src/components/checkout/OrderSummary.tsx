@@ -31,7 +31,6 @@ export function OrderSummary({ shippingCost }: OrderSummaryProps) {
 
     // Total
     const total = subtotal + shippingCost + tax + serviceFee;
-    console.log("tallllllllllllll", total);
     setTotalValue(total);
 
     console.log("taxes", taxes);
