@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import PhoneInput from 'react-phone-number-input/input'
 import { updateUserDetails } from '@/services/UserService';
 
 const formSchema = z.object({
