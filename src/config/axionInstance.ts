@@ -54,4 +54,9 @@ axiosInstance.interceptors.response.use(
   }
 );
 
+axiosInstance.interceptors.request.use(request => {
+  console.log("Calling URL:", request.baseURL + request.url);
+  return request;
+});
+
 export default axiosInstance;

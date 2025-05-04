@@ -8,9 +8,10 @@ import { ArrowRight, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { formatCurrency } from "@/services/cartService";
 import { handleCheckout } from "@/services/paymentService";
-import { fetchUserDetail, UserProfile } from "@/services/authService";
+import { UserProfile } from "@/services/authService";
 import { toast } from "sonner";
 import { useOrder } from "@/context/OrderContext";
+import { fetchUserDetail } from "@/services/UserService";
 
 export function CartSidebar() {
   const { items, subtotal, itemCount, currency, orderId, user, resetCart } = useCart();

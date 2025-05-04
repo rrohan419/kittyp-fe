@@ -98,6 +98,27 @@ import Loading from "@/components/ui/loading";
 import Checkout from './pages/Checkout';
 import Products from './pages/Products';
 import { OrderProvider } from './context/OrderContext';
+import UserProfile from './pages/UserProfile';
+import Profile from './pages/Profile';
+import Index from './pages/Index';
+import About from './pages/About';
+import AdminArticleEditor from './pages/AdminArticleEditor';
+import AdminDashboard from './pages/AdminDashboard';
+import ArticleDetail from './pages/ArticleDetail';
+import Articles from './pages/Articles';
+import Blogs from './pages/Blogs';
+import Cart from './pages/Cart';
+import HowToUse from './pages/HowToUse';
+import Login from './pages/Login';
+import MyOrders from './pages/MyOrders';
+import OrderDetail from './pages/OrderDetail';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import ProductDetail from './pages/ProductDetail';
+import Signup from './pages/Signup';
+import Sitemap from './pages/Sitemap';
+import TermsOfService from './pages/TermsOfService';
+import WhyEcoLitter from './pages/WhyEcoLitter';
+import Contact from './pages/Contact';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -108,26 +129,28 @@ const queryClient = new QueryClient({
   }
 });
 // Lazy-load your page components
-const Index = lazy(() => import('./pages/Index'));
+// const Index = lazy(() => import('./pages/Index'));
 // const Products = lazy(() => import('./pages/Products'));
-const ProductDetail = lazy(() => import('./pages/ProductDetail'));
-const HowToUse = lazy(() => import('./pages/HowToUse'));
-const Blogs = lazy(() => import('./pages/Blogs'));
-const WhyEcoLitter = lazy(() => import('./pages/WhyEcoLitter'));
-const About = lazy(() => import('./pages/About'));
-const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
-const TermsOfService = lazy(() => import('./pages/TermsOfService'));
-const Sitemap = lazy(() => import('./pages/Sitemap'));
-const Contact = lazy(() => import('./pages/Contact'));
-const Login = lazy(() => import('./pages/Login'));
-const Signup = lazy(() => import('./pages/Signup'));
-const Articles = lazy(() => import('./pages/Articles'));
-const ArticleDetail = lazy(() => import('./pages/ArticleDetail'));
-const Cart = lazy(() => import('./pages/Cart'));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
-const AdminArticleEditor = lazy(() => import('./pages/AdminArticleEditor'));
-const MyOrders = lazy(() => import('./pages/MyOrders'));
-const OrderDetail = lazy(() => import('./pages/OrderDetail'));
+
+
+// const ProductDetail = lazy(() => import('./pages/ProductDetail'));
+// const HowToUse = lazy(() => import('./pages/HowToUse'));
+// const Blogs = lazy(() => import('./pages/Blogs'));
+// const WhyEcoLitter = lazy(() => import('./pages/WhyEcoLitter'));
+// const About = lazy(() => import('./pages/About'));
+// const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+// const TermsOfService = lazy(() => import('./pages/TermsOfService'));
+// const Sitemap = lazy(() => import('./pages/Sitemap'));
+// const Contact = lazy(() => import('./pages/Contact'));
+// const Login = lazy(() => import('./pages/Login'));
+// const Signup = lazy(() => import('./pages/Signup'));
+// const Articles = lazy(() => import('./pages/Articles'));
+// const ArticleDetail = lazy(() => import('./pages/ArticleDetail'));
+// const Cart = lazy(() => import('./pages/Cart'));
+// const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+// const AdminArticleEditor = lazy(() => import('./pages/AdminArticleEditor'));
+// const MyOrders = lazy(() => import('./pages/MyOrders'));
+// const OrderDetail = lazy(() => import('./pages/OrderDetail'));
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -170,6 +193,8 @@ const App = () => (
                 <Route path="/orders" element={<MyOrders />} />
                 <Route path="/orders/:orderId" element={<OrderDetail />} />
                 <Route path="/checkout" element={<Checkout />} />
+                {/* <Route path="/profile" element={<UserProfile/>} /> */}
+                <Route path="/profile" element={<Profile />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

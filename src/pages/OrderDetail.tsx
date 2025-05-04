@@ -253,8 +253,8 @@ export default function OrderDetail() {
                                             (order.data?.taxes?.serviceCharge ?? 0) > 0 && (
                                                 <div className="flex justify-between">
                                                     <span>Tax</span>
-                                                    <span>₹{(order.data?.taxes?.otherTax ?? 0) +
-                                                        (order.data?.taxes?.serviceCharge ?? 0)}</span>
+                                                    <span>₹{((order.data?.taxes?.otherTax ?? 0) +
+                                                        (order.data?.taxes?.serviceCharge ?? 0)).toFixed(2)}</span>
                                                 </div>
                                             )}
                                         {order.data.taxes.shippingCharges > 0 && (

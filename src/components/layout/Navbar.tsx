@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, LogIn, UserPlus, LogOut, CheckCircle, LayoutDashboard, Package } from 'lucide-react';
+import { Menu, X, LogIn, UserPlus, LogOut, CheckCircle, LayoutDashboard, Package, User2Icon } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { cn } from '@/lib/utils';
 import {
@@ -84,6 +84,8 @@ export function Navbar() {
     { name: 'How to Use', path: '/how-to-use' },
     { name: 'Articles', path: '/articles' },
     { name: 'Contact', path: '/contact' },
+    // { name: 'Profile', path: '/profile' },
+
     // { name: 'My Orders', path: '/orders' }
   ];
 
@@ -138,22 +140,22 @@ export function Navbar() {
             ))}
 
             {/* My Orders Link - Visible when user is logged in */}
-            {isAuthenticated && (
-              // <li>
-                <button
-                  onClick={() => navigate('/orders')}
-                  className={cn(
-                    "block text-md font-small hover:text-kitty-600 transition-colors flex items-center",
-                    isActive('/orders')
-                      ? "text-kitty-600"
-                      : "text-gray-700 dark:text-gray-300"
-                  )}
-                >
-                  <Package size={16} className="mr-2" />
-                  My Orders
-                </button>
-              // </li>
-            )}
+            {/* {isAuthenticated && (
+              <button
+                onClick={() => navigate('/orders')}
+                className={cn(
+                  "block text-md font-small hover:text-kitty-600 transition-colors flex items-center",
+                  isActive('/orders')
+                    ? "text-kitty-600"
+                    : "text-gray-700 dark:text-gray-300"
+                )}
+              >
+                <Package size={16} className="mr-2" />
+                My Orders
+              </button>
+
+            )} */}
+            
 
 
             {/* Admin Dashboard Link - Only visible for ROLE_ADMIN */}
@@ -208,7 +210,25 @@ export function Navbar() {
 
             <CartSidebar />
           </div>
+          <div>
+          {isAuthenticated && (
+            <button
+              onClick={() => navigate('/profile')}
+              className={cn(
+                "block text-md font-small hover:text-kitty-600 transition-colors flex items-center",
+                isActive('/profile')
+                  ? "text-kitty-600"
+                  : "text-gray-700 dark:text-gray-300"
+              )}
+            >
+              {/* <Package size={16} className="mr-2" /> */}
+              <User2Icon size={16}  className="h-5 w-5" />
+              {/* Profile */}
+            </button>
+            )}
+            </div>
         </div>
+        
 
         {/* Mobile Menu Button */}
         <div className="flex md:hidden items-center space-x-4">
@@ -277,7 +297,7 @@ export function Navbar() {
               </li>
             ))}
 
-            {isAuthenticated && (
+            {/* {isAuthenticated && (
               <li>
                 <button
                   onClick={() => navigate('/orders')}
@@ -292,31 +312,54 @@ export function Navbar() {
                   My Orders
                 </button>
               </li>
-            )}
+            )} */}
 
             {/* Admin Dashboard Link - Only visible for ROLE_ADMIN */}
             {userRole === 'ROLE_ADMIN' && (
               <li>
                 <button
                   onClick={navigateToAdmin}
+                  // className={cn(
+                  //   "block text-md font-medium hover:text-kitty-600 transition-colors flex items-center",
+                  //   isActive('/admin')
+                  //     ? "text-kitty-600"
+                  //     : "text-gray-700 dark:text-gray-300"
+                  // )}
                   className={cn(
-                    "block text-md font-medium hover:text-kitty-600 transition-colors flex items-center",
+                    "block text-lg font-medium hover:text-kitty-600 transition-colors",
                     isActive('/admin')
                       ? "text-kitty-600"
                       : "text-gray-700 dark:text-gray-300"
                   )}
                 >
-                  <LayoutDashboard size={20} className="mr-2" />
+                  {/* <LayoutDashboard size={20} className="mr-2" /> */}
                   Admin Dashboard
                 </button>
               </li>
+            )}
+
+{isAuthenticated && (
+            <button
+              onClick={() => navigate('/profile')}
+              className={cn(
+                "block text-lg font-medium hover:text-kitty-600 transition-colors",
+                isActive('/profile')
+                  ? "text-kitty-600"
+                  : "text-gray-700 dark:text-gray-300"
+              )}
+            >
+              {/* <Package size={16} className="mr-2" /> */}
+              {/* <User2Icon size={16}  className="h-5 w-5" /> */}
+              Profile
+            </button>
             )}
 
             <li>
               {isAuthenticated ? (
                 <button
                   onClick={handleLogout}
-                  className="block text-lg font-medium hover:text-kitty-600 transition-colors"
+                  className="block text-lg font-medium hover:text-kitty-600 transition-colors text-gray-700 dark:text-gray-300"
+                  
                 >
                   Logout
                 </button>
@@ -324,13 +367,13 @@ export function Navbar() {
                 <>
                   <Link
                     to="/login"
-                    className="block text-lg font-medium hover:text-kitty-600 transition-colors"
+                    className="block text-lg font-medium hover:text-kitty-600 transition-colors text-gray-700 dark:text-gray-300"
                   >
                     Login
                   </Link>
                   <Link
                     to="/signup"
-                    className="block text-lg font-medium hover:text-kitty-600 transition-colors mt-4"
+                    className="mt-6 block text-lg font-medium hover:text-kitty-600 transition-colors text-gray-700 dark:text-gray-300"
                   >
                     Sign Up
                   </Link>
@@ -340,7 +383,7 @@ export function Navbar() {
             <li>
               <Link
                 to="/cart"
-                className="block text-lg font-medium hover:text-kitty-600 transition-colors"
+                className="block text-lg font-medium hover:text-kitty-600 transition-colors text-gray-700 dark:text-gray-300"
               >
                 Cart
               </Link>

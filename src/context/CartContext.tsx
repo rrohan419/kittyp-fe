@@ -286,11 +286,12 @@ import {
   latestCartByUserUuid,
   Taxes
 } from '@/services/cartService';
-import { fetchUserDetail, UserProfile } from '@/services/authService';
+import { UserProfile } from '@/services/authService';
 import { Product } from '@/services/productService';
 import { createContext, useContext, useState, useEffect, ReactNode, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
 import { useOrder } from './OrderContext';
+import { fetchUserDetail } from '@/services/UserService';
 
 interface CartItem extends Product {
   quantity: number;
@@ -311,6 +312,7 @@ interface CartContextType {
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
+  setUser: (user : UserProfile) => void;
   itemCount: number;
   subtotal: number;
   resetCart: () => void;
@@ -328,6 +330,7 @@ export const CartContext = createContext<CartContextType>({
   removeItem: () => { },
   updateQuantity: () => { },
   clearCart: () => { },
+  setUser:()=> {},
   itemCount: 0,
   subtotal: 0,
   resetCart: () => { },
@@ -354,18 +357,18 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const accessToken = localStorage.getItem('access_token');
 
     if (accessToken) {
-      const userDetail = localStorage.getItem('user');
-      if (userDetail) {
-        try {
-          userData = JSON.parse(userDetail);
-          setUser(userData);
-        } catch (error) {
-          console.error("Failed to parse user details from localStorage:", error);
-          toast.error("Failed to load stored user data.");
-          setIsCartLoading(false);
-          return;
-        }
-      } else {
+      // const userDetail = localStorage.getItem('user');
+      // if (userDetail) {
+      //   try {
+      //     userData = JSON.parse(userDetail);
+      //     setUser(userData);
+      //   } catch (error) {
+      //     console.error("Failed to parse user details from localStorage:", error);
+      //     toast.error("Failed to load stored user data.");
+      //     setIsCartLoading(false);
+      //     return;
+      //   }
+      // } else {
         try {
           userData = await fetchUserDetail();
           localStorage.setItem('user', JSON.stringify(userData));
@@ -376,7 +379,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           setIsCartLoading(false);
           return;
         }
-      }
+      // }
       if (userData?.uuid) {
         await syncCartWithBackend(userData.uuid);
       } else {
@@ -558,7 +561,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <CartContext.Provider
-      value={{ user, items, subtotal, isCartLoading, addItem, removeItem, updateQuantity, clearCart, itemCount, resetCart, initializeUserAndCart, currency, orderId}}
+      value={{ user, setUser, items, subtotal, isCartLoading, addItem, removeItem, updateQuantity, clearCart, itemCount, resetCart, initializeUserAndCart, currency, orderId}}
     >
       {children}
     </CartContext.Provider>
