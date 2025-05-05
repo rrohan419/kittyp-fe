@@ -143,7 +143,6 @@ const EditProfileForm = () => {
                         {option.label}
                       </SelectItem>
                     ))}
-                    <PhoneInput country="US" onChange={field.onChange}  />
                   </SelectContent>
                 </Select>
                 <FormMessage />
