@@ -77,6 +77,7 @@ const EditProfileForm = () => {
   }
 
   return (
+    <div className="max-h-[80vh] overflow-y-auto scrollbar-none">
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
@@ -200,6 +201,7 @@ const EditProfileForm = () => {
         <Button type="submit" className="w-full">Save Changes</Button>
       </form>
     </Form>
+    </div>
   );
 };
 
