@@ -155,7 +155,7 @@ export function Navbar() {
               </button>
 
             )} */}
-            
+
 
 
             {/* Admin Dashboard Link - Only visible for ROLE_ADMIN */}
@@ -211,24 +211,24 @@ export function Navbar() {
             <CartSidebar />
           </div>
           <div>
-          {isAuthenticated && (
-            <button
-              onClick={() => navigate('/profile')}
-              className={cn(
-                "block text-md font-small hover:text-kitty-600 transition-colors flex items-center",
-                isActive('/profile')
-                  ? "text-kitty-600"
-                  : "text-gray-700 dark:text-gray-300"
-              )}
-            >
-              {/* <Package size={16} className="mr-2" /> */}
-              <User2Icon size={16}  className="h-5 w-5" />
-              {/* Profile */}
-            </button>
+            {isAuthenticated && (
+              <button
+                onClick={() => navigate('/profile')}
+                className={cn(
+                  "block text-md font-small hover:text-kitty-600 transition-colors flex items-center",
+                  isActive('/profile')
+                    ? "text-kitty-600"
+                    : "text-gray-700 dark:text-gray-300"
+                )}
+              >
+                {/* <Package size={16} className="mr-2" /> */}
+                <User2Icon size={16} className="h-5 w-5" />
+                {/* Profile */}
+              </button>
             )}
-            </div>
+          </div>
         </div>
-        
+
 
         {/* Mobile Menu Button */}
         <div className="flex md:hidden items-center space-x-4">
@@ -338,20 +338,20 @@ export function Navbar() {
               </li>
             )}
 
-{isAuthenticated && (
-            <button
-              onClick={() => navigate('/profile')}
-              className={cn(
-                "block text-lg font-medium hover:text-kitty-600 transition-colors",
-                isActive('/profile')
-                  ? "text-kitty-600"
-                  : "text-gray-700 dark:text-gray-300"
-              )}
-            >
-              {/* <Package size={16} className="mr-2" /> */}
-              {/* <User2Icon size={16}  className="h-5 w-5" /> */}
-              Profile
-            </button>
+            {isAuthenticated && (
+              <button
+                onClick={() => navigate('/profile')}
+                className={cn(
+                  "block text-lg font-medium hover:text-kitty-600 transition-colors",
+                  isActive('/profile')
+                    ? "text-kitty-600"
+                    : "text-gray-700 dark:text-gray-300"
+                )}
+              >
+                {/* <Package size={16} className="mr-2" /> */}
+                {/* <User2Icon size={16}  className="h-5 w-5" /> */}
+                Profile
+              </button>
             )}
 
             <li>
@@ -359,7 +359,7 @@ export function Navbar() {
                 <button
                   onClick={handleLogout}
                   className="block text-lg font-medium hover:text-kitty-600 transition-colors text-gray-700 dark:text-gray-300"
-                  
+
                 >
                   Logout
                 </button>
