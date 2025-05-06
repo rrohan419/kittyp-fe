@@ -108,8 +108,12 @@ const EditProfileForm = () => {
 
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-y-auto px-4 pb-36">
+    // <div className="h-screen overflow-hidden flex flex-col">
+    //   <div className="flex-1 overflow-y-auto px-4 pb-36">
+  //   <div className="min-h-screen flex flex-col bg-background">
+  // <div className="flex-1 overflow-y-auto px-4 pb-36">
+  <div className="min-h-screen flex flex-col bg-background">
+  <div className="flex-1 overflow-y-auto container-padding py-8">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
