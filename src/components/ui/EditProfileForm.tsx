@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -23,6 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { updateUserDetails } from '@/services/UserService';
+import { useNavigate } from 'react-router-dom';
+import Loading from './loading';
 
 const formSchema = z.object({
   firstName: z.string().min(2, "Name must be at least 2 characters"),
@@ -61,146 +63,177 @@ const EditProfileForm = () => {
     },
   });
 
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  // async function onSubmit(values: z.infer<typeof formSchema>) {
+  //   console.log(values);
+
+  //   const userDetail = await updateUserDetails(user.uuid, {
+  //     email: values.email,
+  //     firstName: values.firstName,
+  //     lastName: values.lastName,
+  //     phoneCountryCode: 'ji',
+  //     phoneNumber: '7678',
+  //   });
+
+  //   setUser(userDetail);
+  //   localStorage.setItem("user", JSON.stringify(userDetail));
+
+
+  // }
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+    try {
+      setLoading(true);
+      const userDetail = await updateUserDetails(user.uuid, {
+        email: values.email,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        phoneCountryCode: values.phoneCountryCode,
+        phoneNumber: values.phoneNumber,
+      });
 
-  const userDetail = await updateUserDetails(user.uuid, {
-    email: values.email,
-    firstName: values.firstName,
-    lastName: values.lastName,
-    phoneCountryCode: 'ji',
-    phoneNumber: '7678',
-  });
-
-  setUser(userDetail);
-  localStorage.setItem("user", JSON.stringify(userDetail));
+      setUser(userDetail);
+      localStorage.setItem("user", JSON.stringify(userDetail));
+      navigate('/');
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+    } finally {
+      setLoading(false);
+    }
   }
 
+  if (loading) return <Loading />;
+
+
   return (
-    <div className="max-h-[80vh] overflow-y-auto scrollbar-none">
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="firstName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>First Name</FormLabel>
-              <FormControl>
-                <Input placeholder="John" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="lastName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Last Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Doe" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input placeholder="john@example.com" type="email" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid grid-cols-3 gap-3">
-          <FormField
-            control={form.control}
-            name="phoneCountryCode"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Country Code</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+    <div className="h-screen overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-y-auto px-4 pb-36">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>First Name</FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select code" />
-                    </SelectTrigger>
+                    <Input placeholder="John" {...field} />
                   </FormControl>
-                  <SelectContent>
-                    {countryCodeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="phoneNumber"
-            render={({ field }) => (
-              <FormItem className="col-span-2">
-                <FormLabel>Phone Number</FormLabel>
-                <FormControl>
-                  <Input placeholder="555-000-0000" type="tel" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+            <FormField
+              control={form.control}
+              name="lastName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Last Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="address"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Shipping Address</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Enter your full shipping address"
-                  className="min-h-[100px]"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="john@example.com" type="email" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="birthday"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Birthday (Optional)</FormLabel>
-              <FormControl>
-                <Input type="date" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <div className="grid grid-cols-3 gap-3">
+              <FormField
+                control={form.control}
+                name="phoneCountryCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Country Code</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select code" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {countryCodeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <Button type="submit" className="w-full">Save Changes</Button>
-      </form>
-    </Form>
+              <FormField
+                control={form.control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <FormItem className="col-span-2">
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input placeholder="555-000-0000" type="tel" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Shipping Address</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter your full shipping address"
+                      className="min-h-[100px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="birthday"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Birthday (Optional)</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button type="submit" className="w-full">Save Changes</Button>
+          </form>
+        </Form>
+      </div>
     </div>
   );
 };

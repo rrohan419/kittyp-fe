@@ -103,10 +103,11 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        "fixed top-0 left-0 w-full z-50 transition-all duration-300",
-        scrolled ?
-          "bg-white/80 backdrop-blur-md shadow-sm dark:bg-black/80" :
-          "bg-transparent"
+        "fixed top-0 left-0 w-full z-50",
+        isOpen ? "bg-white dark:bg-gray-900 shadow-sm transition-none" :
+          scrolled
+            ? "bg-white/80 backdrop-blur-md shadow-sm dark:bg-black/80 transition-all duration-300"
+            : "bg-transparent transition-all duration-300"
       )}
     >
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
