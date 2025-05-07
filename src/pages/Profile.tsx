@@ -20,8 +20,8 @@ const Profile: React.FC = () => {
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto max-w-7xl mt-8">
+        <div className="container mx-auto max-w-7xl mt-8 px-4">
+        <div className="space-y-8 py-6 md:py-12">
           <div className="space-y-8 py-8 md:py-12">
             <ProfileHeader
               firstName={user.firstName}
@@ -34,7 +34,7 @@ const Profile: React.FC = () => {
               ordersCount={12}
             />
 
-            <div className="space-y-8 container-padding">
+            <div className="space-y-8">
               {/* <ProfileStats 
               purchasesCount={12} 
               favoritesCount={5}
@@ -42,10 +42,10 @@ const Profile: React.FC = () => {
             /> */}
 
               <Tabs defaultValue="favorites" className="w-full animate-fade-in">
-                <TabsList className="mb-6 w-full md:w-auto bg-accent text-accent-foreground">
-                  <TabsTrigger value="favorites" className="flex-1 md:flex-none">Favorites</TabsTrigger>
-                  <TabsTrigger value="orders" className="flex-1 md:flex-none">Order History</TabsTrigger>
-                  <TabsTrigger value="details" className="flex-1 md:flex-none">Account Details</TabsTrigger>
+              <TabsList className="mb-6 w-full grid grid-cols-3 bg-accent text-accent-foreground">
+                  <TabsTrigger value="favorites">Favorites</TabsTrigger>
+                  <TabsTrigger value="orders">Orders</TabsTrigger>
+                  <TabsTrigger value="details">Account</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="favorites" className="animate-fade-in">
@@ -57,7 +57,7 @@ const Profile: React.FC = () => {
                 </TabsContent>
 
                 <TabsContent value="details" className="animate-fade-in">
-                  <div className="bg-card rounded-xl shadow-sm p-6">
+                  <div className="bg-card rounded-xl shadow-sm p-6 sm:p-6">
                     <h2 className="text-2xl font-bold mb-6">Account Details</h2>
                     <div className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -71,7 +71,9 @@ const Profile: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Phone</p>
-                          <p className="font-medium">+1 (555) 123-4567</p>
+                          <p className="font-medium">{user.phoneCountryCode && user.phoneNumber 
+                              ? `${user.phoneCountryCode} ${user.phoneNumber}` 
+                              : 'Not provided'}</p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Address</p>

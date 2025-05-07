@@ -310,18 +310,19 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ userUuid }) => {
   };
 
   return (
-    <div className="bg-card rounded-xl shadow-sm p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    <div className="bg-card rounded-xl shadow-sm p-4 sm:p-6">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+ 
         <h2 className="text-2xl font-bold">Order History</h2>
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="flex items-center gap-2">
+            <Button variant="outline" className="flex items-center gap-2 w-full sm:w-auto">
               {statusFilter || 'All Orders'}
               <ChevronDown className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-full sm:w-auto">
             <DropdownMenuItem onClick={() => handleStatusFilterChange(null)}>
               All Orders
             </DropdownMenuItem>

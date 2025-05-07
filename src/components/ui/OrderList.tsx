@@ -234,15 +234,15 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
             {ordersData.data.models.map((order) => (
                 <Card
                     key={`order-list-ordert-uuid-${order.orderNumber}`}
-                    className="glass-effect bg-gradient-to-br from-white/80 via-kitty-100/60 to-kitty-50/80 card-hover shadow-[0_8px_36px_0_rgba(155,85,255,.08)] border-0 cursor-pointer transition-transform hover:scale-[1.02]"
+                    className="glass-effect bg-gradient-to-br from-white/80 via-kitty-100/60 to-kitty-50/80 card-hover shadow-[0_8px_36px_0_rgba(155,85,255,.08)] border-0 cursor-pointer w-full"
                     onClick={() => navigate(`/orders/${order.orderNumber}`)}
                 >
-                    <CardHeader className="flex flex-row justify-between items-center pb-2">
+                    <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-2 gap-2">
                         <div>
                             <CardTitle className="text-lg font-bold">
                                 <span className="text-kitty-800">Order #{order.orderNumber}</span>
                             </CardTitle>
-                            <CardDescription className="flex items-center gap-2 mt-1">
+                            <CardDescription className="flex flex-wrap items-center gap-2 mt-1">
                                 <Badge
                                     className={
                                         "rounded px-2 py-1 font-bold " +
@@ -266,7 +266,9 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
                                 </span>
                             </CardDescription>
                         </div>
-                        <div className="flex flex-col items-end min-w-[112px]">
+                        {/* <div className="flex flex-col items-end min-w-[112px]"> */}
+                        <div className="flex flex-col items-end min-w-[112px] mt-2 sm:mt-0">
+
                             <span className="font-semibold text-kitty-700 text-xl">
                                 ₹{order.totalAmount}
                             </span>
@@ -276,18 +278,14 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
                             </span>
                         </div>
                     </CardHeader>
-                    <CardContent className="pt-1">
-                        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-8">
-                            <div className="flex -space-x-3">
+                    <CardContent className="pt-1 overflow-x-auto">
+                        <div className="flex gap-4">
+                            <div className="flex -space-x-3 flex-nowrap overflow-visible">
                                 {order.orderItems.slice(0, 3).map((item) => (
                                     <img
                                         key={`order-list-product-uuid-${item.product.uuid}-${order.orderNumber}`}
-                                        // key={`order-item-${context}-${item.product.uuid}`}
                                         className="w-12 h-12 rounded-lg border-2 border-white shadow-md object-cover bg-muted ring-2 ring-kitty-100"
-                                        src={
-                                            item.product.productImageUrls?.[0] ||
-                                            "https://placehold.co/100x100?text=Product"
-                                        }
+                                        src={item.product.productImageUrls?.[0] || "https://placehold.co/100x100?text=Product"}
                                         alt={item.product.name}
                                         loading="lazy"
                                     />
@@ -295,6 +293,7 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
                             </div>
                         </div>
                     </CardContent>
+
                 </Card>
             ))}
 

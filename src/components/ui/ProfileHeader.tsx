@@ -11,6 +11,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import EditProfileForm from './EditProfileForm';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ProfileHeaderProps {
   firstName: string;
@@ -27,6 +28,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
 }) => {
   const [avatar, setAvatar] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -108,7 +110,8 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                   Edit Profile
                 </Button>
               </SheetTrigger>
-              <SheetContent>
+              {/* <SheetContent> */}
+              <SheetContent side={isMobile ? "bottom" : "right"} className={isMobile ? "h-[85vh]" : ""}>
                 <SheetHeader>
                   <SheetTitle className="text-xl font-semibold">Edit Profile</SheetTitle>
                 </SheetHeader>

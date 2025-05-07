@@ -38,6 +38,8 @@ interface AuthData {
     lastName:string,
     roles: string[];
     enabled: boolean;
+    phoneCountryCode: string;
+    phoneNumber: string;
     uuid: string;
     createdAt: string;
   }

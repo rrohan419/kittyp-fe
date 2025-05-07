@@ -25,7 +25,7 @@ const FavoritesSection = () => {
   }
 
   return (
-    <div className="bg-card rounded-xl shadow-sm p-6">
+    <div className="bg-card rounded-xl shadow-sm p-4 sm:p-6">
       <h2 className="text-2xl font-bold mb-6">Favorite Products</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {favorites.map((product) => (
