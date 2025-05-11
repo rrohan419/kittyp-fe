@@ -156,56 +156,56 @@ const queryClient = new QueryClient({
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AdminProvider>
-      <FavoritesProvider>
-        <CartProvider>
-          <OrderProvider>
-          <Toaster />
-          <Sonner position="bottom-left"
-            toastOptions={{
-              style: {
-                background: '#9D57FF',
-                color: '#ffffff',
-                border: '1px solid #e5e7eb',
-              },
-            }} />
-          <BrowserRouter>
-            <ScrollToTop />
-            <Suspense fallback={<Loading />}> {/* Wrap your Routes with Suspense */}
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/products" element={<Products />} />
-                <Route path="/product/:uuid" element={<ProductDetail />} />
-                <Route path="/how-to-use" element={<HowToUse />} />
-                <Route path="/blogs" element={<Blogs />} />
-                <Route path="/why-eco-litter" element={<WhyEcoLitter />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/privacy" element={<PrivacyPolicy />} />
-                <Route path="/terms" element={<TermsOfService />} />
-                <Route path="/sitemap" element={<Sitemap />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/articles" element={<Articles />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/article/:slug" element={<ArticleDetail />} />
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/articles/new" element={<AdminArticleEditor />} />
-                <Route path="/admin/articles/edit/:id" element={<AdminArticleEditor />} />
-                <Route path="/orders" element={<MyOrders />} />
-                <Route path="/orders/:orderId" element={<OrderDetail />} />
-                <Route path="/checkout" element={<Checkout />} />
-                {/* <Route path="/profile" element={<UserProfile/>} /> */}
-                <Route path="/profile" element={<Profile />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-          </OrderProvider>
-        </CartProvider>
-      </FavoritesProvider>
-      </AdminProvider>
+      <OrderProvider>
+        <AdminProvider>
+          <FavoritesProvider>
+            <CartProvider>
+              <Toaster />
+              <Sonner position="bottom-left"
+                toastOptions={{
+                  style: {
+                    background: '#9D57FF',
+                    color: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                  },
+                }} />
+              <BrowserRouter>
+                <ScrollToTop />
+                <Suspense fallback={<Loading />}> {/* Wrap your Routes with Suspense */}
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/products" element={<Products />} />
+                    <Route path="/product/:uuid" element={<ProductDetail />} />
+                    <Route path="/how-to-use" element={<HowToUse />} />
+                    <Route path="/blogs" element={<Blogs />} />
+                    <Route path="/why-eco-litter" element={<WhyEcoLitter />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/privacy" element={<PrivacyPolicy />} />
+                    <Route path="/terms" element={<TermsOfService />} />
+                    <Route path="/sitemap" element={<Sitemap />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<Signup />} />
+                    <Route path="/articles" element={<Articles />} />
+                    <Route path="/cart" element={<Cart />} />
+                    <Route path="/article/:slug" element={<ArticleDetail />} />
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/admin/articles/new" element={<AdminArticleEditor />} />
+                    <Route path="/admin/articles/edit/:id" element={<AdminArticleEditor />} />
+                    <Route path="/orders" element={<MyOrders />} />
+                    <Route path="/orders/:orderId" element={<OrderDetail />} />
+                    <Route path="/checkout" element={<Checkout />} />
+                    {/* <Route path="/profile" element={<UserProfile/>} /> */}
+                    <Route path="/profile" element={<Profile />} />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </BrowserRouter>
+            </CartProvider>
+          </FavoritesProvider>
+        </AdminProvider>
+      </OrderProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

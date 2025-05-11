@@ -40,18 +40,24 @@ const AdminDashboard = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const { user } = useCart();
   const [loading, setLoading] = useState(true);
-  const { productCount }  = useAdmin();
+  const { productCount, initializeAdminDashboard }  = useAdmin();
   const navigate = useNavigate();
   const { totalOrderCount} = useOrder();
+
   useEffect(() => {
-    // Get roles from localStorage instead of user_role
-    // const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+  const init = async () => {
+    await initializeAdminDashboard();
+
     const roles = user.roles;
     const isAdmin = Array.isArray(roles) && roles.includes('ROLE_ADMIN');
     setUserRole(isAdmin ? 'ROLE_ADMIN' : null);
-    console.log("uuuuuu", totalOrderCount);
+
     setLoading(false);
-  }, []);
+  };
+
+  init();
+}, []);
+
 
   // Redirect non-admin users
   if (!loading && userRole !== 'ROLE_ADMIN') {

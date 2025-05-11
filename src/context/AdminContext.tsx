@@ -9,11 +9,13 @@ import { useOrder } from './OrderContext';
 interface AdminContextType {
     productCount: number;
     isDashboardLoading: boolean;
+    initializeAdminDashboard: () => Promise<void>;
 }
 
 export const AdminContext = createContext<AdminContextType>({
     productCount: 0,
     isDashboardLoading: true,
+    initializeAdminDashboard: async () => {},
 });
 
 export const AdminProvider = ({children}: {children: ReactNode}) => {
@@ -30,7 +32,6 @@ export const AdminProvider = ({children}: {children: ReactNode}) => {
             
             setProductCount(dashboardData.data);
             const orderTotalNumber = await fetchFilteredOrders(1, 5, {orderNumber : null, orderStatus : null, userUuid: null});
-            console.log("count" , orderTotalNumber.data.totalElements)
             setTotalOrderCount(orderTotalNumber.data.totalElements);
         } catch (error) {
             console.error('Failed to initialize admin dashboard:', error);
@@ -40,13 +41,13 @@ export const AdminProvider = ({children}: {children: ReactNode}) => {
 
     };
 
-     useEffect(() => {
-        initializeAdminDashboard();
-      }, []);
+    //  useEffect(() => {
+    //     initializeAdminDashboard();
+    //   }, []);
 
     return (
         <AdminContext.Provider
-          value={{ isDashboardLoading, productCount }}
+          value={{ isDashboardLoading, initializeAdminDashboard, productCount }}
         >
           {children}
         </AdminContext.Provider>
