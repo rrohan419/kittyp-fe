@@ -119,6 +119,7 @@ import Sitemap from './pages/Sitemap';
 import TermsOfService from './pages/TermsOfService';
 import WhyEcoLitter from './pages/WhyEcoLitter';
 import Contact from './pages/Contact';
+import { AdminProvider } from './context/AdminContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -155,6 +156,7 @@ const queryClient = new QueryClient({
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <AdminProvider>
       <FavoritesProvider>
         <CartProvider>
           <OrderProvider>
@@ -203,6 +205,7 @@ const App = () => (
           </OrderProvider>
         </CartProvider>
       </FavoritesProvider>
+      </AdminProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

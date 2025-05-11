@@ -17,7 +17,7 @@ const Products: React.FC = () => {
   const observer = useRef<IntersectionObserver | null>(null);
   const loaderRef = useRef<HTMLDivElement | null>(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
-
+  const [productCount, setProductCount] = useState(0);
   const [page, setPage] = useState(1);
   const [productDto, setProductDto] = useState<ProductFilterRequest>({
     name: null,
@@ -39,6 +39,7 @@ const Products: React.FC = () => {
       });
 
       const newProducts = response.data.models;
+      setProductCount(response.data.totalElements);
       console.log('Fetched Products:', response.data);
       console.log('newProducts Products:', newProducts);
 

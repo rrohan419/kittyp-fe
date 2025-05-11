@@ -32,17 +32,24 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { articles } from '@/data/articles';
+import { useCart } from '@/context/CartContext';
+import { useAdmin } from '@/context/AdminContext';
+import { useOrder } from '@/context/OrderContext';
 
 const AdminDashboard = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
+  const { user } = useCart();
   const [loading, setLoading] = useState(true);
+  const { productCount }  = useAdmin();
   const navigate = useNavigate();
-
+  const { totalOrderCount} = useOrder();
   useEffect(() => {
     // Get roles from localStorage instead of user_role
-    const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+    // const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+    const roles = user.roles;
     const isAdmin = Array.isArray(roles) && roles.includes('ROLE_ADMIN');
     setUserRole(isAdmin ? 'ROLE_ADMIN' : null);
+    console.log("uuuuuu", totalOrderCount);
     setLoading(false);
   }, []);
 
@@ -53,8 +60,8 @@ const AdminDashboard = () => {
 
   const stats = [
     { title: 'Total Users', value: '2,420', icon: Users, color: 'bg-blue-100 text-blue-700' },
-    { title: 'Orders', value: '845', icon: ShoppingCart, color: 'bg-green-100 text-green-700' },
-    { title: 'Products', value: '12', icon: Package, color: 'bg-purple-100 text-purple-700' },
+    { title: 'Orders', value: totalOrderCount.toString(), icon: ShoppingCart, color: 'bg-green-100 text-green-700' },
+    { title: 'Products', value: productCount.toString(), icon: Package, color: 'bg-purple-100 text-purple-700' },
     { title: 'Articles', value: articles.length.toString(), icon: FileText, color: 'bg-amber-100 text-amber-700' },
   ];
 

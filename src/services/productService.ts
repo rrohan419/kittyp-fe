@@ -57,6 +57,14 @@ interface WrappedProductResponse {
     status: number;
 }
 
+interface WrappedProductCountResponse {
+    success: boolean;
+    message: string;
+    data: number;
+    timestamp: string;
+    status: number;
+}
+
 export interface ProductDto {
     name: string;
     description: string;
@@ -81,9 +89,14 @@ export const fetchFilteredProducts = async ({ page, size, body }: FetchProducts)
 export const fetchProductByUuid = async( uuid : string): Promise<WrappedProductResponse> => {
     const response = await axiosInstance.get(`/product/${uuid}`);
     return response.data;
-}
+};
 
 export const addProduct = async (data: ProductDto): Promise<WrappedProductResponse> => {
     const response = await axiosInstance.post(`/product`, data);
+    return response.data;
+};
+
+export const fetchProductCount = async( isActive : Boolean): Promise<WrappedProductCountResponse> => {
+    const response = await axiosInstance.get(`admin/product/count?isActive=${isActive}`);
     return response.data;
 };

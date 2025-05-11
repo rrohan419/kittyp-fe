@@ -9,6 +9,8 @@ export interface OrderContextType {
     setTotalValue: React.Dispatch<React.SetStateAction<number>>;
     shippingCost: number;
     setShippingCost: React.Dispatch<React.SetStateAction<number>>;
+    totalOrderCount:number;
+    setTotalOrderCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
 
@@ -18,16 +20,19 @@ const OrderContext = createContext<OrderContextType>({
     totalValue: 0,
     setShippingCost: () => { },
     setTaxes: () => { },
-    setTotalValue: () => { }
+    setTotalValue: () => { },
+    totalOrderCount: 0,
+    setTotalOrderCount: () => { }
 });
 
 export const OrderProvider = ({ children }: { children: ReactNode }) => {
     const [taxes, setTaxes] = useState<Taxes>({ shippingCharges: 0, otherTax: 0, serviceCharge: 0 });
     const [totalValue, setTotalValue] = useState<number>(0);
     const [shippingCost, setShippingCost] = useState<number>(0);
-
+    const [totalOrderCount, setTotalOrderCount]= useState<number>(0);
+    
     return (
-        <OrderContext.Provider value={{ taxes, setTaxes, totalValue, setTotalValue, shippingCost, setShippingCost }}>
+        <OrderContext.Provider value={{ totalOrderCount, setTotalOrderCount, taxes, setTaxes, totalValue, setTotalValue, shippingCost, setShippingCost }}>
             {children}
         </OrderContext.Provider>
     );
