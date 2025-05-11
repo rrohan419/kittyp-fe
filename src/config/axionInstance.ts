@@ -46,7 +46,7 @@ axiosInstance.interceptors.response.use(
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         
-        window.location.href = '/login';
+        // window.location.href = '/login';
       }
       
     }
@@ -54,9 +54,9 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-axiosInstance.interceptors.request.use(request => {
-  console.log("Calling URL:", request.baseURL + request.url);
-  return request;
-});
+// axiosInstance.interceptors.request.use(request => {
+//   console.log("Calling URL:", request.baseURL + request.url);
+//   return request;
+// });
 
 export default axiosInstance;

@@ -160,7 +160,7 @@ export function Navbar() {
 
 
             {/* Admin Dashboard Link - Only visible for ROLE_ADMIN */}
-            {userRole === 'ROLE_ADMIN' && (
+            {userRole === 'ROLE_ADMIN' ? (
               <li>
                 <button
                   onClick={navigateToAdmin}
@@ -175,7 +175,7 @@ export function Navbar() {
                   Admin
                 </button>
               </li>
-            )}
+            ):(null)}
           </ul>
 
           <div className="flex items-center space-x-4">
