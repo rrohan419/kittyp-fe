@@ -6,6 +6,22 @@ import { API_BASE_URL } from "./env";
 //   baseURL: `${API_BASE_URL}/auth`, // Set your API base URL here
 //   timeout: 10000, // Timeout after 10 seconds
 // });
+type CreateInstanceAndInjectStoreFunction = (
+  _store: any,
+  _dispatch: any,
+  _persistor: any
+) => void;
+
+let persistor: any;
+let store: any;
+let dispatch: any;
+
+export const createInstanceAndInjectStore: CreateInstanceAndInjectStoreFunction =
+  (_store, _dispatch, _persistor) => {
+    store = _store;
+    persistor = _persistor;
+    dispatch = _dispatch;
+  };
 
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: `${API_BASE_URL}`, // Your API base URL here
@@ -45,10 +61,10 @@ axiosInstance.interceptors.response.use(
         // Optional: clear the invalid token to stop loops
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        
+
         window.location.href = '/login';
       }
-      
+
     }
     return Promise.reject(error);
   }
