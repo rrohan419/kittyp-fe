@@ -161,11 +161,12 @@ export default function Checkout() {
 
 
 
-                console.log("Values", currency, orderId, user);
+                // console.log("Values", currency, orderId, user);
+                // console.log("Values totalValue", totalValue);
                 await handleCheckout(taxes, totalValue, currency, orderId, user);
                 toast.success("Order placed successfully!");
                 clearCart();
-                navigate("/orders");
+                navigate("/profile");
             } catch (error) {
                 console.error("Failed to process order:", error);
                 toast.error("Failed to place order. Please try again.");

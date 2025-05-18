@@ -3,7 +3,8 @@ import { API_BASE_URL } from "../config/env";
 import axiosInstance from "../config/axionInstance"
 
 interface SignupData {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,8 @@ import ErrorDialog from '@/components/ui/error-dialog';
 
 const Signup = () => {
   const { toast } = useToast();
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,7 +39,7 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const handleGoogleSignup = () => googleLogin();
-
+  const navigate = useNavigate();
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -54,7 +55,7 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      const response = await signup({ name, email, password });
+      const response = await signup({ firstName,lastName, email, password });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -69,6 +70,7 @@ const Signup = () => {
 
       console.log("Signup successful:", response);
       setShowSuccessDialog(true);
+      navigate("/login")
     } catch (error: any) {
       // toast({
       //   title: "Signup Failed",
@@ -164,17 +166,33 @@ const Signup = () => {
               <CardContent>
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
+                    <Label htmlFor="name">First Name</Label>
                     <div className="relative">
                       <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input 
                         id="name" 
                         type="text" 
-                        placeholder="John Doe" 
+                        placeholder="John" 
                         className="pl-10"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
                         required 
+                      />
+                    </div>
+                  </div>
+
+                   <div className="space-y-2">
+                    <Label htmlFor="name">Last Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input 
+                        id="name" 
+                        type="text" 
+                        placeholder="Doe" 
+                        className="pl-10"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        // required 
                       />
                     </div>
                   </div>
