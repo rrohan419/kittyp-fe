@@ -21,7 +21,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { LogIn, Mail, Lock } from 'lucide-react';
+import { LogIn, Mail, Lock, EyeOff, Eye, EyeOffIcon } from 'lucide-react';
 import { authConfig } from '@/config/auth';
 import { useGoogleLogin } from '@react-oauth/google';
 import { login } from '@/services/authService';
@@ -34,6 +34,7 @@ const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -165,13 +166,21 @@ const Login = () => {
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
                         id="password"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
                         className="pl-10"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOffIcon className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
                     </div>
                   </div>
 

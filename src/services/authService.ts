@@ -23,13 +23,17 @@ interface AuthData {
     roles: string[];
   }
 
-  export interface WrappedJwtResponse {
+ export interface WrappedJwtResponse {
     success: boolean;
     message: string;
     data: JwtResponseModel;
   }
 
- 
+  export interface WrappedPasswordResetResponse {
+    success: boolean;
+    message: string;
+    data: boolean;
+  }
   
   export interface UserProfile {
     id: number;
@@ -79,4 +83,19 @@ export const login = async (data: AuthData): Promise<{ token, roles }> => {
   } catch (error: any) {
     throw new Error(error?.response?.data?.message || 'Login or user fetch failed.');
   }
+};
+
+export const sendPasswordResetCode = async (email: string): Promise<boolean> => {
+  const loginResponse = await axiosInstance.get<WrappedPasswordResetResponse>('/auth/send-code?email='+email);
+  return loginResponse.data.data;
+};
+
+export const verifyPasswordResetCode = async (code: string, email: string): Promise<boolean> => {
+  const loginResponse = await axiosInstance.get<WrappedPasswordResetResponse>('/auth/verify-code?code='+code+'&email='+email);
+  return loginResponse.data.data;
+};
+
+export const resetPassword = async (code: string, password: string, email: string): Promise<boolean> => {
+  const loginResponse = await axiosInstance.post<WrappedPasswordResetResponse>('/auth/password-reset', {password: password, code: code, email: email});
+  return loginResponse.data.data;
 };

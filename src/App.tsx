@@ -125,6 +125,9 @@ import { useAppDispatch } from './module/store/hooks';
 import { createInstanceAndInjectStore } from './config/axionInstance';
 import { persistor, store } from './module/store';
 import { PersistGate } from 'redux-persist/integration/react';
+import ForgotPassword from './pages/ForgotPassword';
+import VerifyResetCode from './pages/VerifyResetCode';
+import ResetPassword from './pages/ResetPassword';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -198,6 +201,9 @@ const App = () => {
                         <Route path="/contact" element={<Contact />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/signup" element={<Signup />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        <Route path="/verify-reset-code" element={<VerifyResetCode />} />
+                        <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/articles" element={<Articles />} />
                         <Route path="/cart" element={<Cart />} />
                         <Route path="/article/:slug" element={<ArticleDetail />} />
