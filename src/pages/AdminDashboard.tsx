@@ -35,8 +35,8 @@ import { articles } from '@/data/articles';
 import { useCart } from '@/context/CartContext';
 import { useAdmin } from '@/context/AdminContext';
 import { useOrder } from '@/context/OrderContext';
-import { useAppDispatch } from '@/module/store/hooks';
-import { increment } from '@/module/slice/DummySlice';
+import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
+import { decrement, increment } from '@/module/slice/DummySlice';
 
 const AdminDashboard = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -46,6 +46,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { totalOrderCount } = useOrder();
   const dispatch = useAppDispatch();
+  const value = useAppSelector((state) => state.dummyReducer?.value);
 
   useEffect(() => {
     const init = async () => {

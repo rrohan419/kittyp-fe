@@ -1,7 +1,6 @@
 import { LoginResponse } from "@/pages/Interface/PagesInterface";
 import { API_BASE_URL } from "../config/env";
-import axiosInstance from "../config/axionInstance"
-
+import axiosInstance from "../config/axionInstance"                                           
 interface SignupData {
   firstName: string;
   lastName: string;
@@ -43,6 +42,7 @@ interface AuthData {
     phoneNumber: string;
     uuid: string;
     createdAt: string;
+    accessToken: string;
   }
 
 export const signup = async (data: SignupData) => {
@@ -62,6 +62,7 @@ export const signup = async (data: SignupData) => {
 };
 
 export const login = async (data: AuthData): Promise<{ token, roles }> => {
+ 
   try {
     // Step 1: Login to get token
     const loginResponse = await axiosInstance.post<WrappedJwtResponse>('/auth/signin', data);
@@ -71,7 +72,6 @@ export const login = async (data: AuthData): Promise<{ token, roles }> => {
     // Step 2: Store token and roles
     localStorage.setItem('access_token', token);
     localStorage.setItem('roles', JSON.stringify(roles));
-
     console.log("user -> -> -> ->", loginResponse);
     console.log("user -> -> -> ->", { token, roles });
 

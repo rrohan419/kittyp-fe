@@ -12,10 +12,12 @@ import {
 } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 import { counterSlice } from "../slice/DummySlice";
+import { userSlice } from "../slice/UserSlice";
 
 
 const rootReducer = combineReducers({
-    dummyReducer: counterSlice.reducer
+    dummyReducer: counterSlice.reducer,
+    userReducer: userSlice.reducer
 });
 
 const persistConfig: any = {
