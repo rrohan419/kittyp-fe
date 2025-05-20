@@ -10,17 +10,22 @@ import { Navbar } from '@/components/layout/Navbar';
 import { format } from 'date-fns';
 import { useCart } from '@/context/CartContext';
 import Loading from '@/components/ui/loading';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Profile: React.FC = () => {
   const { user } = useCart();
-  
+
+  const location = useLocation();
+
+  console.log(location)
+
   if (!user) {
     return <Loading />;
   }
   return (
     <>
       <Navbar />
-        <div className="container mx-auto max-w-7xl mt-8 px-4">
+      <div className="container mx-auto max-w-7xl mt-8 px-4">
         <div className="space-y-8 py-6 md:py-12">
           <div className="space-y-8 py-8 md:py-12">
             <ProfileHeader
@@ -41,8 +46,8 @@ const Profile: React.FC = () => {
               recentViewsCount={24}
             /> */}
 
-              <Tabs defaultValue="favorites" className="w-full animate-fade-in">
-              <TabsList className="mb-6 w-full grid grid-cols-3 bg-accent text-accent-foreground">
+              <Tabs defaultValue='favorites' className="w-full animate-fade-in">
+                <TabsList className="mb-6 w-full grid grid-cols-3 bg-accent text-accent-foreground">
                   <TabsTrigger value="favorites">Favorites</TabsTrigger>
                   <TabsTrigger value="orders">Orders</TabsTrigger>
                   <TabsTrigger value="details">Account</TabsTrigger>
@@ -71,9 +76,9 @@ const Profile: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Phone</p>
-                          <p className="font-medium">{user.phoneCountryCode && user.phoneNumber 
-                              ? `${user.phoneCountryCode} ${user.phoneNumber}` 
-                              : 'Not provided'}</p>
+                          <p className="font-medium">{user.phoneCountryCode && user.phoneNumber
+                            ? `${user.phoneCountryCode} ${user.phoneNumber}`
+                            : 'Not provided'}</p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Address</p>
@@ -95,7 +100,7 @@ const Profile: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </div >
       <Footer />
     </>
   );
