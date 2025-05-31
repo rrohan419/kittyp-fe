@@ -16,7 +16,7 @@ import { fetchUserDetail } from '@/services/UserService';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { setUserAccessToken, setUserData } from '@/module/slice/UserSlice';
 
-interface CartItem extends Product {
+export interface CartItem extends Product {
   quantity: number;
   itemDetails?: {
     size: string;
@@ -39,7 +39,7 @@ interface CartContextType {
   itemCount: number;
   subtotal: number;
   resetCart: () => void;
-  initializeUserAndCart: () => Promise<void>;
+  // initializeUserAndCart: () => Promise<void>;
   currency: CurrencyType;
   orderId: string;
   user: UserProfile | undefined;
@@ -57,7 +57,7 @@ export const CartContext = createContext<CartContextType>({
   itemCount: 0,
   subtotal: 0,
   resetCart: () => { },
-  initializeUserAndCart: async () => { },
+  // initializeUserAndCart: async () => { },
   currency: CurrencyType.INR,
   orderId: '',
   isCartLoading: true,
@@ -73,37 +73,37 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const {taxes, totalValue} = useOrder();
   // const {accessToken, email} = useAppSelector((state) => state.userReducer);
   const dispatch = useAppDispatch();
-  const initializeUserAndCart = async () => {
-    setIsCartLoading(true);
-    let userData: UserProfile | undefined;
-    const accessToken = localStorage.getItem('access_token');
-    console.log("Access token", accessToken);
-    if (accessToken) {
-        try {
-          userData = await fetchUserDetail();
-          localStorage.setItem('user', JSON.stringify(userData));
-          setUser(userData);
-          dispatch(setUserData(userData));
-          dispatch(setUserAccessToken(accessToken));
-        } catch (error) {
-          console.error("Failed to fetch user details:", error);
-          toast.error("Failed to load user data.");
-          setIsCartLoading(false);
-          return;
-        }
-      // }
-      if (userData?.uuid) {
-        await syncCartWithBackend(userData.uuid);
-      } else {
-        setIsCartLoading(false); // If no user UUID, loading is done
-      }
-    } else {
-      setIsCartLoading(false); // If no access token, no user to fetch
-    }
-  };
+  // const initializeUserAndCart = async () => {
+  //   setIsCartLoading(true);
+  //   let userData: UserProfile | undefined;
+  //   const accessToken = localStorage.getItem('access_token');
+  //   console.log("Access token", accessToken);
+  //   if (accessToken) {
+  //       try {
+  //         userData = await fetchUserDetail();
+  //         localStorage.setItem('user', JSON.stringify(userData));
+  //         setUser(userData);
+  //         dispatch(setUserData(userData));
+  //         dispatch(setUserAccessToken(accessToken));
+  //       } catch (error) {
+  //         console.error("Failed to fetch user details:", error);
+  //         toast.error("Failed to load user data.");
+  //         setIsCartLoading(false);
+  //         return;
+  //       }
+  //     // }
+  //     if (userData?.uuid) {
+  //       await syncCartWithBackend(userData.uuid);
+  //     } else {
+  //       setIsCartLoading(false); // If no user UUID, loading is done
+  //     }
+  //   } else {
+  //     setIsCartLoading(false); // If no access token, no user to fetch
+  //   }
+  // };
 
   useEffect(() => {
-    initializeUserAndCart();
+    // initializeUserAndCart();
   }, []);
 
 
@@ -273,7 +273,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <CartContext.Provider
-      value={{ user, setUser, items, subtotal, isCartLoading, addItem, removeItem, updateQuantity, clearCart, itemCount, resetCart, initializeUserAndCart, currency, orderId}}
+      value={{ user, setUser, items, subtotal, isCartLoading, addItem, removeItem, updateQuantity, clearCart, itemCount, resetCart, currency, orderId}}
     >
       {children}
     </CartContext.Provider>

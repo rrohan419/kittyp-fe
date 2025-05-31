@@ -1,11 +1,12 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Heart } from 'lucide-react';
+import { ShoppingCart, Heart, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
 import { Product } from '@/services/productService';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/module/store';
+import { addToCartFromProduct } from '@/module/slice/CartSlice';
 
 interface ProductCardProps {
   product: Product;
@@ -16,15 +17,22 @@ interface ProductCardProps {
 export function ProductCard({ product, index = 0, className }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
-  const { addItem } = useCart();
+  const dispatch = useDispatch<AppDispatch>();
+  const { loading } = useSelector((state: RootState) => ({
+    loading: state.cartReducer.loading || state.cartReducer.isCartLoading
+  }));
   const { addFavorite, removeFavorite, isFavorite } = useFavorites();
   
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-
-      addItem(product);
+    try {
+      await dispatch(addToCartFromProduct(product)).unwrap();
+    } catch (error) {
+      // Error is already handled by the thunk
+      console.error('Error adding to cart:', error);
+    }
   };
 
   const handleToggleFavorite = (e: React.MouseEvent) => {
@@ -100,10 +108,20 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
       >
         <button
           onClick={handleAddToCart}
-          className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-md hover:bg-kitty-50 dark:hover:bg-gray-700 transition-colors"
+          disabled={loading}
+          className={cn(
+            "p-2 bg-white dark:bg-gray-800 rounded-full shadow-md transition-colors",
+            loading 
+              ? "opacity-70 cursor-not-allowed"
+              : "hover:bg-kitty-50 dark:hover:bg-gray-700"
+          )}
           aria-label="Add to cart"
         >
-          <ShoppingCart size={18}  className="text-gray-900 dark:text-white" />
+          {loading ? (
+            <Loader2 size={18} className="text-gray-900 dark:text-white animate-spin" />
+          ) : (
+            <ShoppingCart size={18} className="text-gray-900 dark:text-white" />
+          )}
         </button>
         <button
           onClick={handleToggleFavorite}

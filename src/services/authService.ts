@@ -1,6 +1,11 @@
 import { LoginResponse } from "@/pages/Interface/PagesInterface";
 import { API_BASE_URL } from "../config/env";
 import axiosInstance from "../config/axionInstance"                                           
+import { store } from '@/module/store/store';
+import { setUser } from '@/module/slice/CartSlice';
+import { fetchUserDetail } from "./UserService";
+// import { fetchUserProfile } from './userService';
+
 interface SignupData {
   firstName: string;
   lastName: string;
@@ -98,4 +103,20 @@ export const verifyPasswordResetCode = async (code: string, email: string): Prom
 export const resetPassword = async (code: string, password: string, email: string): Promise<boolean> => {
   const loginResponse = await axiosInstance.post<WrappedPasswordResetResponse>('/auth/password-reset', {password: password, code: code, email: email});
   return loginResponse.data.data;
+};
+
+export const initializeUser = async () => {
+    try {
+        const accessToken = localStorage.getItem('accessToken');
+        if (!accessToken) {
+            return null;
+        }
+
+        const userProfile = await fetchUserDetail();
+        store.dispatch(setUser(userProfile));
+        return userProfile;
+    } catch (error) {
+        console.error('Error initializing user:', error);
+        return null;
+    }
 };

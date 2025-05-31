@@ -32,41 +32,60 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { articles } from '@/data/articles';
-import { useCart } from '@/context/CartContext';
-import { useAdmin } from '@/context/AdminContext';
-import { useOrder } from '@/context/OrderContext';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
-import { decrement, increment } from '@/module/slice/DummySlice';
+import { initializeAdminDashboard } from '@/module/slice/AdminSlice';
+import { initializeUser } from '@/services/authService';
 
 const AdminDashboard = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
-  const { user } = useCart();
-  const [loading, setLoading] = useState(true);
-  const { productCount, initializeAdminDashboard } = useAdmin();
+  const [isCheckingRole, setIsCheckingRole] = useState(true);
   const navigate = useNavigate();
-  const { totalOrderCount } = useOrder();
   const dispatch = useAppDispatch();
-  const value = useAppSelector((state) => state.dummyReducer?.value);
+  
+  // Get state from Redux store
+  const { productCount, isDashboardLoading, totalOrderCount } = useAppSelector((state) => state.adminReducer);
+  const user = useAppSelector((state) => state.cartReducer.user);
 
   useEffect(() => {
     const init = async () => {
-      await initializeAdminDashboard();
+      try {
+        const accessToken = localStorage.getItem('access_token'); // Changed from accessToken to access_token to match authService
+        if (!accessToken) {
+          setIsCheckingRole(false);
+          return;
+        }
 
-      const roles = user.roles;
-      const isAdmin = Array.isArray(roles) && roles.includes('ROLE_ADMIN');
-      setUserRole(isAdmin ? 'ROLE_ADMIN' : null);
+        if (!user) {
+          await initializeUser();
+        }
 
-      setLoading(false);
+        await dispatch(initializeAdminDashboard());
+
+        const roles = user?.roles || [];
+        console.log("roles", roles);
+        const isAdmin = Array.isArray(roles) && roles.includes('ROLE_ADMIN');
+        setUserRole(isAdmin ? 'ROLE_ADMIN' : null);
+      } catch (error) {
+        console.error('Error initializing admin dashboard:', error);
+      } finally {
+        setIsCheckingRole(false);
+      }
     };
 
-    dispatch(increment());
-
     init();
-  }, []);
+  }, [dispatch, user]);
 
+  // Show loading while checking role or loading dashboard
+  if (isCheckingRole || isDashboardLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
-  // Redirect non-admin users
-  if (!loading && userRole !== 'ROLE_ADMIN') {
+  // Redirect non-admin users only after role check is complete
+  if (!isCheckingRole && userRole !== 'ROLE_ADMIN') {
     return <Navigate to="/" replace />;
   }
 
@@ -98,14 +117,6 @@ const AdminDashboard = () => {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -119,9 +130,6 @@ const AdminDashboard = () => {
                 Manage your store, monitor analytics, and handle content.
               </p>
             </div>
-            <div onClick={() => dispatch(increment())}>CLICK</div>
-            <div>VALue heere ---- {value}</div>
-            <div onClick={() => dispatch(decrement())}>CLICK</div>
 
             <NavigationMenu>
               <NavigationMenuList>
@@ -241,7 +249,6 @@ const AdminDashboard = () => {
                 <div className="space-y-4">
                   {recentOrders.map((order) => (
                     <div key={`admin-dash-order-id-${order.id}`} className="flex items-center justify-between">
-
                       <div className="space-y-1">
                         <p className="text-sm font-medium">{order.customer}</p>
                         <div className="flex items-center text-xs text-muted-foreground">

@@ -5,8 +5,6 @@ import { Hero } from '@/components/home/Hero';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { fadeUp, staggerContainer } from '@/utils/animations';
 import { useEffect, useState } from 'react';
 import { fetchFilteredProducts, Product, ProductFilterRequest } from '@/services/productService';
 import { ArticleSearchRequest, fetchArticles } from '@/services/articleService';

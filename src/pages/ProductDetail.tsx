@@ -1,48 +1,45 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchProductByUuid, Product } from '@/services/productService';
+import { Product } from '@/services/productService';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { ShoppingCart, Heart, ArrowLeft } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
 import { Button } from '@/components/ui/button';
-import { useFavorites } from '@/context/FavoritesContext';
 import { cn } from '@/lib/utils';
+import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
+import { fetchProduct, addToFavorites, removeFromFavorites } from '@/module/slice/ProductSlice';
+import { addToCartFromProduct } from '@/module/slice/CartSlice';
 
 const ProductDetail = () => {
   const { uuid } = useParams<{ uuid: string }>();
-  const [product, setProduct] = useState<Product | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const { addItem } = useCart();
   const navigate = useNavigate();
-  const { addFavorite, removeFavorite, isFavorite } = useFavorites();
+  const dispatch = useAppDispatch();
+
+  // Get state from Redux store
+  const { currentProduct: product, isLoading, error, favorites } = useAppSelector((state) => state.productReducer);
+  const { loading: cartLoading } = useAppSelector((state) => state.cartReducer);
 
   useEffect(() => {
-    const loadProduct = async () => {
-      if (!uuid) return;
+    if (uuid) {
+      dispatch(fetchProduct(uuid));
+    }
+  }, [dispatch, uuid]);
 
-      setIsLoading(true);
-      try {
-        const response = await fetchProductByUuid(uuid);
-        setProduct(response.data);
-        setSelectedImage(response.data.productImageUrls[0] || null);
-      } catch (err) {
-        console.error('Error fetching product:', err);
-        setError('Failed to load product details');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadProduct();
-  }, [uuid]);
+  useEffect(() => {
+    if (product?.productImageUrls?.length > 0) {
+      setSelectedImage(product.productImageUrls[0]);
+    }
+  }, [product]);
 
   const handleAddToCart = () => {
     if (product) {
-      addItem(product);
+      dispatch(addToCartFromProduct(product));
     }
+  };
+
+  const isFavorite = (productId: string) => {
+    return favorites.some(item => item.id === productId);
   };
 
   const handleToggleFavorite = () => {
@@ -56,9 +53,9 @@ const ProductDetail = () => {
     };
 
     if (isFavorite(product.uuid)) {
-      removeFavorite(product.uuid);
+      dispatch(removeFromFavorites(product.uuid));
     } else {
-      addFavorite(favoriteProduct);
+      dispatch(addToFavorites(favoriteProduct));
     }
   };
 
@@ -103,7 +100,6 @@ const ProductDetail = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
       <Navbar />
-
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
         <button
           onClick={handleGoBack}
@@ -130,8 +126,7 @@ const ProductDetail = () => {
                   <button
                     key={`product-image-index-number-${index}`}
                     onClick={() => setSelectedImage(imageUrl)}
-                    className={`aspect-square rounded-md overflow-hidden border-2 ${selectedImage === imageUrl ? 'border-kitty-500' : 'border-transparent'
-                      }`}
+                    className={`aspect-square rounded-md overflow-hidden border-2 ${selectedImage === imageUrl ? 'border-kitty-500' : 'border-transparent'}`}
                   >
                     <img
                       src={imageUrl}
@@ -202,22 +197,21 @@ const ProductDetail = () => {
                 onClick={handleToggleFavorite}
                 className={cn(
                   "w-full h-12 text-base flex items-center justify-center gap-2",
-                  isFavorite(product?.uuid || '') && "bg-pink-50 border-pink-200 hover:bg-pink-100 dark:bg-pink-900/20 dark:border-pink-800"
+                  isFavorite(product.uuid) && "bg-pink-50 border-pink-200 hover:bg-pink-100 dark:bg-pink-900/20 dark:border-pink-800"
                 )}
               >
                 <Heart
                   size={20}
                   className={cn(
-                    isFavorite(product?.uuid || '') && "text-pink-500 fill-current"
+                    isFavorite(product.uuid) && "text-pink-500 fill-current"
                   )}
                 />
-                {isFavorite(product?.uuid || '') ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                {isFavorite(product.uuid) ? 'Remove from Wishlist' : 'Add to Wishlist'}
               </Button>
             </div>
           </div>
         </div>
       </main>
-
       <Footer />
     </div>
   );
