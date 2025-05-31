@@ -13,11 +13,17 @@ import {
 import storage from "redux-persist/lib/storage";
 import { counterSlice } from "../slice/DummySlice";
 import { userSlice } from "../slice/UserSlice";
+import { cartSlice } from "../slice/CartSlice";
+import { adminSlice } from "../slice/AdminSlice";
+import productReducer, { productSlice } from "../slice/ProductSlice";
 
 
 const rootReducer = combineReducers({
     dummyReducer: counterSlice.reducer,
-    userReducer: userSlice.reducer
+    userReducer: userSlice.reducer,
+    cartReducer: cartSlice.reducer,
+    adminReducer: adminSlice.reducer,
+    productReducer: productSlice.reducer
 });
 
 const persistConfig: any = {

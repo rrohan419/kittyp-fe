@@ -2,6 +2,8 @@
 
 export interface Address {
     id?: string;
+    fullName: string;
+    phoneNumber: string;
     street: string;
     city: string;
     state: string;
@@ -36,7 +38,9 @@ const savedAddresses: Address[] = [
     state: "Delhi",
     postalCode: "110001",
     country: "India",
-    isDefault: true
+    isDefault: true,
+    fullName: "John Doe",
+    phoneNumber: "1234567890"
   },
   {
     id: "addr_2",
@@ -45,7 +49,9 @@ const savedAddresses: Address[] = [
     state: "Maharashtra",
     postalCode: "400001",
     country: "India",
-    isDefault: false
+    isDefault: false,
+    fullName: "Jane Smith",
+    phoneNumber: "0987654321"
   }
 ];
 

@@ -1,9 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddressForm } from "@/components/checkout/AddressForm";
@@ -17,12 +15,29 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { ArrowLeft, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { Address, fetchSavedAddresses } from "@/services/addressService";
-import { handleCheckout } from "@/services/paymentService";
-import { useOrder } from "@/context/OrderContext";
+import { 
+    callRazorpayCreateOrder, 
+    callRazorpayVerifyPayment, 
+    CurrencyType,
+    createOrder,
+    OrderRequest,
+    ShippingMethod
+} from "@/services/cartService";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState, AppDispatch } from "@/module/store";
+import { clearCartThunk } from "@/module/slice/CartSlice";
+import { loadRazorpayScript, handlePayment, RazorpayOptions, handlePaymentTimeout, handlePaymentCancellation } from "@/services/paymentService";
+
+// Add shipping method type and mapping
+const shippingMethodToEnum: Record<string, ShippingMethod> = {
+    'standard': ShippingMethod.STANDARD,
+    'express': ShippingMethod.EXPRESS,
+    'priority': ShippingMethod.PRIORITY
+};
 
 export default function Checkout() {
-    const { items, subtotal, currency, orderId, user, clearCart } = useCart();
-    const { taxes, totalValue } = useOrder();
+    const dispatch = useDispatch<AppDispatch>();
+    const { items, totalAmount, user } = useSelector((state: RootState) => state.cartReducer);
     const navigate = useNavigate();
 
     const [addresses, setAddresses] = useState<Address[]>([]);
@@ -33,13 +48,16 @@ export default function Checkout() {
     const [selectedBillingAddressId, setSelectedBillingAddressId] = useState<string>("");
     const [sameAsShipping, setSameAsShipping] = useState(true);
 
-    const [selectedShippingMethod, setSelectedShippingMethod] = useState("");
+    const [selectedShippingMethod, setSelectedShippingMethod] = useState<ShippingMethod | "">("");
     const [shippingCost, setShippingCost] = useState(0);
 
     const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+    const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(false);
+
+    const [paymentTimeout, setPaymentTimeout] = useState<NodeJS.Timeout | null>(null);
+    const [isPaymentPending, setIsPaymentPending] = useState(false);
 
     useEffect(() => {
-        // Redirect to cart if cart is empty
         if (items.length === 0) {
             navigate("/cart");
             return;
@@ -49,8 +67,6 @@ export default function Checkout() {
             try {
                 const savedAddresses = await fetchSavedAddresses();
                 setAddresses(savedAddresses);
-
-                // Set default address if available
                 const defaultAddress = savedAddresses.find(addr => addr.isDefault);
                 if (defaultAddress) {
                     setSelectedShippingAddressId(defaultAddress.id || "");
@@ -60,7 +76,6 @@ export default function Checkout() {
                     setSelectedBillingAddressId(savedAddresses[0].id || "");
                 }
             } catch (error) {
-                // console.error("Failed to load addresses:", error);
                 toast.error("Failed to load saved addresses");
             } finally {
                 setIsLoadingAddresses(false);
@@ -68,7 +83,59 @@ export default function Checkout() {
         }
 
         loadSavedAddresses();
-    }, [items.length, navigate, subtotal]);
+    }, [items.length, navigate]);
+
+    useEffect(() => {
+        // Check if Razorpay is already loaded
+        loadRazorpayScript().then(setIsRazorpayLoaded);
+    }, []);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            cleanupPaymentTimeout();
+            // Cleanup Razorpay scroll state if it exists
+            if ((window as any).__razorpayCleanup) {
+                (window as any).__razorpayCleanup();
+                delete (window as any).__razorpayCleanup;
+            }
+            // Always ensure scroll is restored
+            document.body.style.overflow = 'auto';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+        };
+    }, []);
+
+    const cleanupPaymentTimeout = () => {
+        if (paymentTimeout) {
+            clearTimeout(paymentTimeout);
+            setPaymentTimeout(null);
+        }
+        setIsPaymentPending(false);
+        setIsProcessingOrder(false);
+        // Restore scroll state
+        document.body.style.overflow = 'auto';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+    };
+
+    const handlePaymentCleanup = async (orderId: string, reason: 'timeout' | 'cancelled') => {
+        cleanupPaymentTimeout();
+        try {
+            if (reason === 'timeout') {
+                await handlePaymentTimeout(orderId);
+                toast.error("Payment session timed out. Please try again.");
+            } else {
+                await handlePaymentCancellation(orderId);
+                toast.info("Payment cancelled. You can try again when ready.");
+            }
+        } catch (error) {
+            console.error(`Error handling payment ${reason}:`, error);
+        }
+        navigate('/cart');
+    };
 
     const handleAddressCreated = (newAddress: Address) => {
         setAddresses(prev => [...prev, newAddress]);
@@ -79,63 +146,10 @@ export default function Checkout() {
         setShowAddAddressForm(false);
     };
 
-    const handleShippingMethodChange = (methodId: string, price: number) => {
+    const handleShippingMethodChange = (methodId: ShippingMethod, price: number) => {
         setSelectedShippingMethod(methodId);
         setShippingCost(price);
     };
-
-    // const handlePlaceOrder = async () => {
-    //     if (!selectedShippingAddressId) {
-    //         toast.error("Please select a shipping address");
-    //         return;
-    //     }
-
-    //     if (!sameAsShipping && !selectedBillingAddressId) {
-    //         toast.error("Please select a billing address");
-    //         return;
-    //     }
-
-    //     if (!selectedShippingMethod) {
-    //         toast.error("Please select a shipping method");
-    //         return;
-    //     }
-
-    //     setIsProcessingOrder(true);
-
-    //         try {
-    //           const { tax, serviceFee, total } = calculateOrderSummary(subtotal, shippingCost);
-
-    //           console.log("tax", tax);
-    //           console.log("serviceFee" , serviceFee);
-    //           console.log("tax" , tax);
-
-    //           const currentTaxes = {
-    //             serviceCharge: serviceFee,
-    //             shippingCharges: shippingCost,
-    //             otherTax: tax
-    //           };
-
-
-    //           console.log("handleCheckout called with the following parameters:");
-    //           console.log("Subtotal:", subtotal);
-    //           console.log("Total:", total);
-    //           console.log("Current Taxes:", currentTaxes);
-    //           console.log("Currency:", currency);
-    //           console.log("Order ID:", orderId);
-    //           console.log("User:", user);
-    //           await handleCheckout(total, currency, orderId, user);
-
-    //           toast.success("Order placed successfully!");
-    //           clearCart();
-    //         //   navigate("/orders");
-    //         } catch (error) {
-    //           console.error("Failed to process order:", error);
-    //           toast.error("Failed to place order. Please try again.");
-    //         } finally {
-    //         //   initializeUserAndCart();
-    //           setIsProcessingOrder(false);
-    //         }
-    //       };
 
     const handlePlaceOrder = async () => {
         if (!selectedShippingAddressId) {
@@ -153,26 +167,155 @@ export default function Checkout() {
             return;
         }
 
+        if (!user?.uuid) {
+            toast.error("Please login to continue");
+            return;
+        }
+
+        if (!isRazorpayLoaded) {
+            toast.error("Payment system is initializing. Please try again.");
+            return;
+        }
+
         setIsProcessingOrder(true);
+        setIsPaymentPending(true);
 
         try {
-            // In a real app, this would call an API to process the order
-            //   await new Promise(resolve => setTimeout(resolve, 1500));
+            // Get selected addresses
+            const shippingAddress = addresses.find(addr => addr.id === selectedShippingAddressId);
+            const billingAddress = sameAsShipping 
+                ? shippingAddress 
+                : addresses.find(addr => addr.id === selectedBillingAddressId);
 
+            if (!shippingAddress || (!sameAsShipping && !billingAddress)) {
+                throw new Error("Selected addresses not found");
+            }
 
+            // Create order from cart
+            const orderRequest: OrderRequest = {
+                shippingAddress: {
+                    street: shippingAddress.street,
+                    city: shippingAddress.city,
+                    state: shippingAddress.state,
+                    postalCode: shippingAddress.postalCode,
+                    country: shippingAddress.country
+                },
+                billingAddress: sameAsShipping ? {
+                    street: shippingAddress.street,
+                    city: shippingAddress.city,
+                    state: shippingAddress.state,
+                    postalCode: shippingAddress.postalCode,
+                    country: shippingAddress.country
+                } : {
+                    street: billingAddress!.street,
+                    city: billingAddress!.city,
+                    state: billingAddress!.state,
+                    postalCode: billingAddress!.postalCode,
+                    country: billingAddress!.country
+                },
+                shippingMethod: selectedShippingMethod
+            };
 
-            // console.log("Values", currency, orderId, user);
-            // console.log("Values totalValue", totalValue);
-            await handleCheckout(taxes, totalValue, currency, orderId, user);
-            toast.success("Order placed successfully!");
-            clearCart();
-            navigate("/profile", { state: "orders" });
+            const orderResponse = await createOrder(user.uuid, orderRequest);
+            
+            if (!orderResponse.success) {
+                throw new Error(orderResponse.message);
+            }
+
+            const { orderNumber, totalAmount } = orderResponse.data;
+
+            // Create Razorpay order
+            const razorpayOrderResponse = await callRazorpayCreateOrder({
+                amount: totalAmount,
+                currency: CurrencyType.INR,
+                receipt: orderNumber,
+                notes: [`user_id:${user.uuid}`, `order_number:${orderNumber}`],
+                taxes: orderResponse.data.taxes
+            });
+
+            if (!razorpayOrderResponse.success) {
+                throw new Error(razorpayOrderResponse.message);
+            }
+
+            const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+            if (!razorpayKey) {
+                toast.error("Payment configuration error. Please contact support.");
+                console.error("Razorpay key is missing");
+                return;
+            }
+
+            // Set a 5-minute timeout for payment completion
+            const timeout = setTimeout(() => {
+                if (isPaymentPending) {
+                    handlePaymentCleanup(razorpayOrderResponse.data.id, 'timeout');
+                }
+            }, 5 * 60 * 1000); // 5 minutes
+
+            setPaymentTimeout(timeout);
+
+            const options: RazorpayOptions = {
+                key: razorpayKey,
+                amount: razorpayOrderResponse.data.amount,
+                currency: razorpayOrderResponse.data.currency,
+                name: "Kittyp Haven",
+                description: `Order #${orderNumber}`,
+                order_id: razorpayOrderResponse.data.id,
+                handler: async function (response) {
+                    try {
+                        cleanupPaymentTimeout();
+                        const verifyResponse = await callRazorpayVerifyPayment({
+                            orderId: response.razorpay_order_id,
+                            paymentId: response.razorpay_payment_id,
+                            signature: response.razorpay_signature
+                        });
+
+                        if (verifyResponse.success) {
+                            await dispatch(clearCartThunk(user.uuid));
+                            toast.success("Payment successful!");
+                            navigate("/profile", { state: "orders" });
+                        } else {
+                            throw new Error("Payment verification failed");
+                        }
+                    } catch (error) {
+                        console.error('Payment verification error:', error);
+                        toast.error("Payment verification failed");
+                        navigate('/cart');
+                    }
+                },
+                modal: {
+                    ondismiss: function() {
+                        handlePaymentCleanup(razorpayOrderResponse.data.id, 'cancelled');
+                    },
+                    escape: true,
+                },
+                prefill: {
+                    name: shippingAddress.fullName || '',
+                    email: user.email || '',
+                    contact: shippingAddress.phoneNumber || ''
+                },
+                theme: {
+                    color: "#F43F5E"
+                }
+            };
+
+            try {
+                await handlePayment(options);
+            } catch (error: any) {
+                cleanupPaymentTimeout();
+                console.error('Payment failed:', error);
+                if (error.error?.description) {
+                    toast.error(error.error.description);
+                } else {
+                    toast.error("Payment failed. Please try again.");
+                }
+                navigate('/cart');
+            }
+
         } catch (error) {
+            cleanupPaymentTimeout();
             console.error("Failed to process order:", error);
             toast.error("Failed to place order. Please try again.");
-        } finally {
-            // initializeUserAndCart();
-            setIsProcessingOrder(false);
+            navigate('/cart');
         }
     };
 
@@ -234,7 +377,7 @@ export default function Checkout() {
                                                 <RadioGroup value={selectedShippingAddressId} className="space-y-3">
                                                     {addresses.map((address, index) => (
                                                         <AddressCard
-                                                            key={`selected-shipping-address-id-${address.id || index}`}
+                                                            key={`shipping-${address.id || index}`}
                                                             address={address}
                                                             id={`shipping-address-${index}`}
                                                             isSelected={selectedShippingAddressId === address.id}
@@ -287,7 +430,7 @@ export default function Checkout() {
                                             <RadioGroup value={selectedBillingAddressId} className="space-y-3">
                                                 {addresses.map((address, index) => (
                                                     <AddressCard
-                                                        key={`selected-billing-address-id-${address.id || index}`}
+                                                        key={`billing-${address.id || index}`}
                                                         address={address}
                                                         id={`billing-address-${index}`}
                                                         isSelected={selectedBillingAddressId === address.id}
@@ -337,22 +480,22 @@ export default function Checkout() {
                                 {/* Item summary */}
                                 <div className="space-y-3">
                                     {items.map(item => (
-                                        <div key={`order-summary-item-uuid-${item.uuid}`} className="flex justify-between">
+                                        <div key={`summary-${item.productUuid}`} className="flex justify-between">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-12 h-12 rounded-md bg-gray-100 overflow-hidden">
                                                     <img
-                                                        src={item.productImageUrls[0]}
-                                                        alt={item.name}
+                                                        src={`/product-images/${item.productUuid}.jpg`}
+                                                        alt={item.productName}
                                                         className="w-full h-full object-cover"
                                                     />
                                                 </div>
                                                 <div>
-                                                    <p className="font-medium">{item.name}</p>
+                                                    <p className="font-medium">{item.productName}</p>
                                                     <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <p>₹{(item.price * item.quantity).toFixed(2)}</p>
+                                                <p>{item.price * item.quantity}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -360,13 +503,17 @@ export default function Checkout() {
 
                                 <Separator />
 
-                                <OrderSummary shippingCost={shippingCost} />
+                                <OrderSummary 
+                                    amount={totalAmount}
+                                    shippingCost={shippingCost}
+                                    currency={CurrencyType.INR}
+                                />
 
                                 <Button
                                     className="w-full mt-6"
                                     size="lg"
                                     onClick={handlePlaceOrder}
-                                    disabled={isProcessingOrder}
+                                    disabled={isProcessingOrder || !user?.uuid}
                                 >
                                     {isProcessingOrder ? "Processing..." : "Place Order"}
                                 </Button>

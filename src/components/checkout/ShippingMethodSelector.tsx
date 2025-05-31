@@ -1,21 +1,19 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { LoadingState } from "@/components/ui/LoadingState";
-import { ShippingMethod } from "@/services/addressService";
-import { getShippingMethods } from "@/services/shippingService";
-import { useCart } from "@/context/CartContext";
+import { ShippingMethod } from "@/services/cartService";
+import { getShippingMethods, ShippingMethodInfo } from "@/services/shippingService";
 import { useOrder } from "@/context/OrderContext";
 
 interface ShippingMethodSelectorProps {
-  selectedMethod: string;
-  onMethodChange: (methodId: string, price: number) => void;
+  selectedMethod: ShippingMethod | "";
+  onMethodChange: (methodId: ShippingMethod, price: number) => void;
 }
 
 export function ShippingMethodSelector({ selectedMethod, onMethodChange }: ShippingMethodSelectorProps) {
-  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethodInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const {setTaxes} = useOrder();
 
@@ -26,7 +24,6 @@ export function ShippingMethodSelector({ selectedMethod, onMethodChange }: Shipp
         setShippingMethods(methods);
 
         if (!selectedMethod && methods.length > 0) {
-          // onMethodChange(methods[0].id, methods[0].price);
           const first = methods[0];
           onMethodChange(first.id, first.price);
           setTaxes(prev => ({ ...prev, shipping: first.price }));
@@ -41,7 +38,7 @@ export function ShippingMethodSelector({ selectedMethod, onMethodChange }: Shipp
     fetchShippingMethods();
   }, [selectedMethod, onMethodChange]);
 
-  const handleChange = (id: string, price: number) => {
+  const handleChange = (id: ShippingMethod, price: number) => {
     onMethodChange(id, price);
     setTaxes(prev => ({ ...prev, shipping: price })); 
   };
@@ -58,7 +55,6 @@ export function ShippingMethodSelector({ selectedMethod, onMethodChange }: Shipp
           className={`transition-all cursor-pointer ${
             selectedMethod === method.id ? 'border-kitty-500 ring-2 ring-kitty-200' : 'border-gray-200 hover:border-kitty-300'
           }`}
-          // onClick={() => onMethodChange(method.id, method.price)}
           onClick={() => handleChange(method.id, method.price)}
         >
           <CardContent className="p-4">

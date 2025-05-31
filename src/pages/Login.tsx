@@ -27,30 +27,32 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { login } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
 import { LoginResponse } from './Interface/PagesInterface';
-import { useCart } from '@/context/CartContext';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/module/store';
+import { initializeUserAndCart } from '@/module/slice/CartSlice';
+// import { useCart } from '@/context/CartContext';
 
 const Login = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const { initializeUserAndCart } = useCart();
+  // const { initializeUserAndCart } = useCart();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const loginResponse = await login({ email, password }); // `login` now returns UserProfile
+      const loginResponse = await login({ email, password });
       console.log("Login successful. loginResponse:", loginResponse);
-      // Save user and navigate (token already saved in login())
-      // localStorage.setItem("login_response", JSON.stringify(user));
+      await dispatch(initializeUserAndCart()).unwrap();
       navigate("/");
-      initializeUserAndCart();
     } catch (error: any) {
       console.error("Signin Error:", error);
       setErrorMessage(error.message || 'Login failed');

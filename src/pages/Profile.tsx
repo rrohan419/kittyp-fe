@@ -1,27 +1,36 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import ProfileHeader from '@/components/ui/ProfileHeader';
-import ProfileStats from '@/components/ui/ProfileStats';
 import FavoritesSection from '@/components/ui/FavoritesSection';
 import OrderHistory from '@/components/ui/OrderHistory';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Footer } from '@/components/layout/Footer';
 import { Navbar } from '@/components/layout/Navbar';
 import { format } from 'date-fns';
-import { useCart } from '@/context/CartContext';
 import Loading from '@/components/ui/loading';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/module/store';
 
 const Profile: React.FC = () => {
-  const { user } = useCart();
-
+  const { user } = useSelector((state: RootState) => state.cartReducer);
   const location = useLocation();
+  const navigate = useNavigate();
 
-  console.log(location)
+  useEffect(() => {
+    // Redirect to login if no user
+    if (!user) {
+      navigate('/login', { state: { from: location.pathname } });
+    }
+  }, [user, navigate, location.pathname]);
 
+  // Show loading while checking user state
   if (!user) {
     return <Loading />;
   }
+
+  // Get the active tab from location state
+  const defaultTab = location.state || 'favorites';
+
   return (
     <>
       <Navbar />
@@ -40,13 +49,7 @@ const Profile: React.FC = () => {
             />
 
             <div className="space-y-8">
-              {/* <ProfileStats 
-              purchasesCount={12} 
-              favoritesCount={5}
-              recentViewsCount={24}
-            /> */}
-
-              <Tabs defaultValue='favorites' className="w-full animate-fade-in">
+              <Tabs defaultValue={defaultTab} className="w-full animate-fade-in">
                 <TabsList className="mb-6 w-full grid grid-cols-3 bg-accent text-accent-foreground">
                   <TabsTrigger value="favorites">Favorites</TabsTrigger>
                   <TabsTrigger value="orders">Orders</TabsTrigger>
@@ -100,7 +103,7 @@ const Profile: React.FC = () => {
             </div>
           </div>
         </div>
-      </div >
+      </div>
       <Footer />
     </>
   );

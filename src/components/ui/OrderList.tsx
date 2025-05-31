@@ -12,10 +12,11 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { fetchFilteredOrders, OrderFilterRequest, fetchOrderInvoice } from "@/services/orderService";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, FileText, ShoppingBag } from "lucide-react";
+import { CalendarDays, FileText, ShoppingBag, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAppSelector } from "@/module/store/hooks";
+import { handleCheckout } from "@/services/paymentService";
 
 
 interface OrderListProps {
@@ -31,24 +32,44 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
         queryFn: () => fetchFilteredOrders(page, 10, filters),
         placeholderData: (previousData) => previousData,
     });
-    const useruuid = useAppSelector((state) => state.userReducer?.uuid);
+    const userUuid = useAppSelector((state) => state.cartReducer.user?.uuid);
+    const user = useAppSelector((state) => state.cartReducer.user);
+    const [loadingInvoiceForOrder, setLoadingInvoiceForOrder] = useState<string | null>(null);
+    const [processingPayment, setProcessingPayment] = useState<string | null>(null);
 
     const STATUS_COLORS: Record<string, string> = {
-        CAPTURED: "bg-yellow-100 text-yellow-800",
-        PROCESSING: "bg-blue-100 text-blue-700",
+        CREATED: "bg-yellow-100 text-yellow-800",
         SUCCESSFULL: "bg-green-100 text-green-800",
+        DELIVERED: "bg-green-100 text-green-800",
+        FAILED: "bg-red-100 text-red-700",
         REFUNDED: "bg-orange-100 text-orange-800",
         CANCELLED: "bg-red-100 text-red-700",
+        REFUND_INITIATED: "bg-orange-100 text-orange-800",
+        CAPTURED: "bg-yellow-100 text-yellow-800",
+        PROCESSING: "bg-blue-100 text-blue-700",
+        PAYMENT_PENDING: "bg-orange-100 text-orange-800",
+        PAYMENT_TIMEOUT: "bg-red-100 text-red-700",
+        PAYMENT_CANCELLED: "bg-red-100 text-red-700",
         DEFAULT: "bg-gray-100 text-gray-600",
     };
-    const [loadingInvoiceForOrder, setLoadingInvoiceForOrder] = useState<string | null>(null);
-
 
     const handleViewInvoice = async (orderNumber: string, e: React.MouseEvent) => {
         e.stopPropagation();
+        if (!userUuid) {
+            toast.error("Please login to view invoice");
+            return;
+        }
+
+        // Check if order status is successful before allowing invoice generation
+        const order = ordersData?.data.models.find(o => o.orderNumber === orderNumber);
+        if (!order || !['SUCCESSFULL', 'DELIVERED'].includes(order.status)) {
+            toast.error("Invoice is only available for successful orders");
+            return;
+        }
+
         try {
             setLoadingInvoiceForOrder(orderNumber);
-            const invoiceUrl = await fetchOrderInvoice(orderNumber, useruuid);
+            const invoiceUrl = await fetchOrderInvoice(orderNumber, userUuid);
             window.open(invoiceUrl, '_blank');
         } catch (error) {
             toast.error("Failed to get invoice. Please try again later.");
@@ -56,6 +77,35 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
         } finally {
             setLoadingInvoiceForOrder(null);
         }
+    };
+
+    const handleReinitiatePayment = async (order: any, e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent navigation to order details
+        if (!user) {
+            toast.error("Please login to reinitiate payment");
+            return;
+        }
+        
+        try {
+            setProcessingPayment(order.orderNumber);
+            await handleCheckout(
+                order.taxes,
+                order.totalAmount,
+                order.currency,
+                order.orderNumber,
+                user
+            );
+            toast.success("Payment initiated successfully");
+        } catch (error) {
+            console.error("Payment reinitiation failed:", error);
+            toast.error("Failed to reinitiate payment. Please try again.");
+        } finally {
+            setProcessingPayment(null);
+        }
+    };
+
+    const canReinitiatePayment = (status: string) => {
+        return ["PAYMENT_PENDING", "PAYMENT_TIMEOUT", "FAILED"].includes(status);
     };
 
     if (isLoading) {
@@ -149,7 +199,7 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
                                 )}
                             </div>
                             
-                            <div className="mt-4">
+                            <div className="mt-4 flex gap-2">
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -169,6 +219,28 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
                                         </>
                                     )}
                                 </Button>
+
+                                {canReinitiatePayment(order.status) && (
+                                    <Button
+                                        variant="default"
+                                        size="sm"
+                                        className="h-8 gap-1.5 text-xs bg-kitty-600 hover:bg-kitty-700"
+                                        onClick={(e) => handleReinitiatePayment(order, e)}
+                                        disabled={processingPayment === order.orderNumber}
+                                    >
+                                        {processingPayment === order.orderNumber ? (
+                                            <span className="flex items-center">
+                                                <span className="animate-spin mr-1.5 h-3 w-3 border-2 border-white/40 border-t-white rounded-full"></span>
+                                                Processing...
+                                            </span>
+                                        ) : (
+                                            <>
+                                                <RefreshCw className="h-3.5 w-3.5" /> 
+                                                Reinitiate Payment
+                                            </>
+                                        )}
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     </div>

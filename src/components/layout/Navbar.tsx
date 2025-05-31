@@ -14,6 +14,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '../ui/button';
 import { CartSidebar } from './CartSidebar';
+import { initializeUserAndCart } from '@/module/slice/CartSlice';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/module/store';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,10 +24,10 @@ export function Navbar() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const { itemCount } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
   const { resetCart } = useCart();
+  const dispatch = useDispatch<AppDispatch>();
 
 
 
@@ -47,6 +50,7 @@ export function Navbar() {
     // Check authentication status
     const token = localStorage.getItem('access_token');
     setIsAuthenticated(!!token);
+    
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);

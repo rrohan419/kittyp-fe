@@ -1,46 +1,32 @@
 import { Button } from "@/components/ui/button";
-import { CartItem } from "@/components/ui/CartItem";
-import { useCart } from "@/context/CartContext";
+import { CartItem as CartItemUI } from "@/components/ui/CartItem";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
-import { ArrowRight, ShoppingCart } from "lucide-react";
+import { ArrowRight, ShoppingCart, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { formatCurrency } from "@/services/cartService";
-import { handleCheckout } from "@/services/paymentService";
-import { UserProfile } from "@/services/authService";
+import { useDispatch, useSelector } from "react-redux";
+import { CurrencyType, formatCurrency } from "@/services/cartService";
+import { RootState, AppDispatch } from "@/module/store";
+import { resetCartThunk } from "@/module/slice/CartSlice";
 import { toast } from "sonner";
-import { useOrder } from "@/context/OrderContext";
-import { fetchUserDetail } from "@/services/UserService";
 
 export function CartSidebar() {
-  const { items, subtotal, itemCount, currency, orderId, user, resetCart } = useCart();
-  const {taxes, totalValue} = useOrder();
+  const dispatch = useDispatch<AppDispatch>();
+  const { items, totalAmount, user, loading, error } = useSelector((state: RootState) => ({
+    ...state.cartReducer,
+    loading: state.cartReducer.loading || state.cartReducer.isCartLoading
+  }));
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLocalCheckout = async () => {
-    setIsLoading(true);
+  const itemCount = items.reduce((count, item) => count + item.quantity, 0);
+
+  const handleClearCart = async () => {
     try {
-      let userToPass: UserProfile | null = null; // Declare userToPass 
-      if (!user) {
-        userToPass = await fetchUserDetail(); // Fetch user details
-        if (!userToPass) {
-          console.error("User is undefined. Cannot proceed with checkout.");
-          toast.error("Please login to continue with checkout.");
-          return;
-        }
-      } else {
-        userToPass = user;
-      }
-      // await handleCheckout(subtotal, currency, orderId, userToPass);
-      await handleCheckout(taxes, totalValue, currency, orderId, userToPass);
-      resetCart();
+      await dispatch(resetCartThunk()).unwrap();
     } catch (error) {
-      console.error("Checkout process failed:", error);
-      toast.error("Something went wrong");
-    } finally {
-      setIsLoading(false);
+      // Error is already handled by the thunk
+      console.error("Failed to clear cart:", error);
     }
   };
 
@@ -59,49 +45,69 @@ export function CartSidebar() {
           )}
         </button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-md flex flex-col">
-        <SheetHeader className="mb-5">
-          <SheetTitle>Your Cart ({itemCount} items)</SheetTitle>
-        </SheetHeader>
+      <SheetContent className="flex flex-col w-full sm:max-w-md p-0">
+        <div className="flex flex-col h-[100dvh] sm:h-full">
+          <div className="p-6">
+            <SheetHeader className="mb-5">
+              <div className="flex justify-between items-center">
+                <SheetTitle>Your Cart ({itemCount} items)</SheetTitle>
+                {items.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                    onClick={handleClearCart}
+                    disabled={loading}
+                  >
+                    <Trash2 size={16} className="mr-2" />
+                    Clear Cart
+                  </Button>
+                )}
+              </div>
+            </SheetHeader>
 
-        {items.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center py-8 space-y-4">
-            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-              <ShoppingCart size={24} className="text-gray-400" />
-            </div>
-            <p className="text-gray-500">Your cart is empty</p>
-            <Button
-              variant="outline"
-              className="mt-2"
-              onClick={() => setIsOpen(false)}
-              asChild
-            >
-              <Link to="/products">Browse Products</Link>
-            </Button>
+            {loading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-kitty-600"></div>
+              </div>
+            ) : items.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-8 space-y-4">
+                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+                  <ShoppingCart size={24} className="text-gray-400" />
+                </div>
+                <p className="text-gray-500">Your cart is empty</p>
+                <Button variant="outline" className="mt-2" onClick={() => setIsOpen(false)} asChild>
+                  <Link to="/products">Browse Products</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto">
+                <div className="space-y-4">
+                  {items.map((item) => (
+                    <CartItemUI
+                      key={`cart-sidebar-${item.productUuid}`}
+                      uuid={item.productUuid}
+                      name={item.productName}
+                      price={item.price}
+                      currency={CurrencyType.INR}
+                      quantity={item.quantity}
+                      image={`/product-images/${item.productUuid}.jpg`}
+                      className="py-4"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        ) : (
-          <>
-            <div className="flex-1 overflow-y-auto space-y-4 -mx-6 px-6">
-              {items.map((item) => (
-                <CartItem
-                  // key={item.uuid} 
-                  key={`cart-sidebar-${item.uuid}`}
-                  uuid={item.uuid}
-                  name={item.name}
-                  price={item.price}
-                  currency={item.currency}
-                  quantity={item.quantity}
-                  image={item.productImageUrls[0]}
-                  className="py-4"
-                />
-              ))}
-            </div>
 
-            <div className="pt-6 border-t mt-auto">
-              <div className="space-y-3 mb-4">
+          {items.length > 0 && (
+            <div className="mt-auto border-t bg-white dark:bg-gray-950 p-6 space-y-6">
+              <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
-                  <span className="font-medium">{formatCurrency(subtotal.toFixed(2), items[0].currency)}</span>
+                  <span className="font-medium">
+                    {formatCurrency(totalAmount.toFixed(2), CurrencyType.INR)}
+                  </span>
                 </div>
 
                 <div className="flex justify-between">
@@ -113,19 +119,28 @@ export function CartSidebar() {
 
                 <div className="flex justify-between font-semibold">
                   <span>Total</span>
-                  <span>{formatCurrency(subtotal.toFixed(2), items[0].currency)}</span>
+                  <span>{formatCurrency(totalAmount.toFixed(2), CurrencyType.INR)}</span>
                 </div>
               </div>
 
+              <div className="space-y-3">
+                <Button 
+                  className="w-full" 
+                  asChild 
+                  disabled={loading}
+                >
+                  <Link to="/checkout">
+                    {loading ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    ) : (
+                      "Proceed to Checkout"
+                    )}
+                  </Link>
+                </Button>
 
-              <Button className="w-full" asChild>
-                                <Link to="/checkout">Proceed to Checkout</Link>
-                              </Button>
-              <div className="space-y-3 mt-6">
-                {/* <Button className="w-full" onClick={() => handleLocalCheckout()} disabled={isLoading}>Checkout</Button> */}
                 <Button
                   variant="outline"
-                  disabled={isLoading}
+                  disabled={loading}
                   className="w-full flex items-center justify-center gap-2"
                   asChild
                   onClick={() => setIsOpen(false)}
@@ -137,8 +152,8 @@ export function CartSidebar() {
                 </Button>
               </div>
             </div>
-          </>
-        )}
+          )}
+        </div>
       </SheetContent>
     </Sheet>
   );

@@ -1,18 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { CartItem } from "@/components/ui/CartItem";
-import { useCart } from "@/context/CartContext";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
-import { formatCurrency } from "@/services/cartService";
+import { CurrencyType, formatCurrency } from "@/services/cartService";
 import { useState } from "react";
-import { useOrder } from "@/context/OrderContext";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState, AppDispatch } from "@/module/store";
+import { clearCartThunk } from "@/module/slice/CartSlice";
 
 export default function Cart() {
-  const { items, subtotal, clearCart} = useCart();
+  const dispatch = useDispatch<AppDispatch>();
+  const { items, totalAmount, user } = useSelector((state: RootState) => state.cartReducer);
   const [isLoading, setIsLoading] = useState(false);
-  const formattedTotal = formatCurrency(subtotal.toFixed(2), items[0]?.currency);
+
+  const handleClearCart = () => {
+    if (user?.uuid) {
+      dispatch(clearCartThunk(user.uuid));
+    }
+  };
 
   return (
     <>
@@ -23,7 +30,8 @@ export default function Cart() {
           {items.length > 0 && (
             <Button
               variant="outline"
-              onClick={clearCart}
+              onClick={handleClearCart}
+              disabled={!user?.uuid}
               className="text-red-500 hover:text-red-700 hover:bg-red-50"
             >
               Clear Cart
@@ -48,16 +56,15 @@ export default function Cart() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-
                 {items.map((item) => (
                   <CartItem
-                    key={`cart-item-uuid-${item.uuid}`}
-                    uuid={item.uuid}
-                    name={item.name}
+                    key={`cart-item-${item.productUuid}`}
+                    uuid={item.productUuid}
+                    name={item.productName}
                     price={item.price}
-                    currency={item.currency}
+                    currency={CurrencyType.INR}
                     quantity={item.quantity}
-                    image={item.productImageUrls?.[0] || '/placeholder.jpg'}
+                    image={`/product-images/${item.productUuid}.jpg`}
                   />
                 ))}
               </div>
@@ -70,8 +77,7 @@ export default function Cart() {
                 <div className="space-y-3 mb-4">
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
-                    {/* <span>${subtotal.toFixed(2)}</span> */}
-                    <span>{formattedTotal}</span>
+                    <span>{formatCurrency(totalAmount.toFixed(2), CurrencyType.INR)}</span>
                   </div>
 
                   <div className="flex justify-between">
@@ -83,15 +89,14 @@ export default function Cart() {
 
                   <div className="flex justify-between font-semibold">
                     <span>Total</span>
-                    {/* <span>${subtotal.toFixed(2)}</span> */}
-                    <span>{formattedTotal}</span>
+                    <span>{formatCurrency(totalAmount.toFixed(2), CurrencyType.INR)}</span>
                   </div>
                 </div>
 
-                {/* <Button className="w-full" onClick={() => handleLocalCheckout()} disabled={isLoading}>Proceed to Checkout</Button> */}
                 <Button className="w-full" asChild>
-                                <Link to="/checkout">Proceed to Checkout</Link>
-                              </Button>
+                  <Link to="/checkout">Proceed to Checkout</Link>
+                </Button>
+
                 <div className="mt-6">
                   <Button
                     variant="outline"
