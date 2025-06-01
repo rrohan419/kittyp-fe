@@ -201,8 +201,8 @@ export default function OrderDetail() {
                             )}
                         </span>
                     </div>
-                    <div className="text-left sm:text-right">
-                        <span className="block text-xl sm:text-2xl font-extrabold text-primary">
+                    <div className="hidden sm:block text-right">
+                        <span className="block text-2xl font-extrabold text-primary">
                             ₹{order.data.totalAmount}
                         </span>
                         <span className="text-xs text-muted-foreground">
