@@ -68,7 +68,7 @@ const Login = () => {
           toast({
             title: "Cart Synced",
             description: "Your cart items have been saved to your account",
-            duration: 3000,
+            duration: 1000,
           });
         }
       }).catch((error) => {
