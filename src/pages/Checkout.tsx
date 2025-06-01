@@ -12,6 +12,7 @@ import { RadioGroup } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { PaymentLoader } from "@/components/ui/PaymentLoader";
 import { ArrowLeft, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { Address, fetchSavedAddresses } from "@/services/addressService";
@@ -56,6 +57,7 @@ export default function Checkout() {
 
     const [paymentTimeout, setPaymentTimeout] = useState<NodeJS.Timeout | null>(null);
     const [isPaymentPending, setIsPaymentPending] = useState(false);
+    const [isPaymentVerifying, setIsPaymentVerifying] = useState(false);
 
     useEffect(() => {
         if (items.length === 0) {
@@ -263,6 +265,7 @@ export default function Checkout() {
                 handler: async function (response) {
                     try {
                         cleanupPaymentTimeout();
+                        setIsPaymentVerifying(true);
                         const verifyResponse = await callRazorpayVerifyPayment({
                             orderId: response.razorpay_order_id,
                             paymentId: response.razorpay_payment_id,
@@ -280,6 +283,8 @@ export default function Checkout() {
                         console.error('Payment verification error:', error);
                         toast.error("Payment verification failed");
                         navigate('/cart');
+                    } finally {
+                        setIsPaymentVerifying(false);
                     }
                 },
                 modal: {
@@ -319,12 +324,19 @@ export default function Checkout() {
         }
     };
 
-    if (isLoadingAddresses) {
+    if (isLoadingAddresses || isPaymentVerifying) {
         return (
             <>
                 <Navbar />
-                <div className="container mx-auto px-4 py-16 max-w-6xl min-h-[80vh]">
-                    <LoadingState message="Preparing checkout..." />
+                <div className="min-h-[calc(100vh-6rem)] flex items-center justify-center bg-white dark:bg-gray-950">
+                    {isPaymentVerifying ? (
+                        <PaymentLoader 
+                            message="Processing Your Order"
+                            subMessage="Please wait while we verify your payment and process your order. Do not close or refresh this page."
+                        />
+                    ) : (
+                        <LoadingState message="Preparing checkout..." />
+                    )}
                 </div>
                 <Footer />
             </>

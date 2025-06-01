@@ -49,16 +49,16 @@ const Contact = () => {
     };
 
     return (
-        <div className="min-h-screen bg-white dark:bg-gray-950">
+        <div className="min-h-screen bg-background">
             <Navbar />
 
             <main className="pt-24 pb-16">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="max-w-4xl mx-auto">
-                        <h1 className="text-4xl font-bold mb-8 text-center text-gray-900 dark:text-white">
+                        <h1 className="text-4xl font-bold mb-8 text-center text-foreground">
                             Contact Us
                         </h1>
-                        <p className="text-gray-600 dark:text-gray-400 mb-12 text-center max-w-2xl mx-auto">
+                        <p className="text-muted-foreground mb-12 text-center max-w-2xl mx-auto">
                             Have questions about our eco-friendly cat litter? Want to become a retailer?
                             We'd love to hear from you!
                         </p>
@@ -67,15 +67,15 @@ const Contact = () => {
                             <div className="space-y-6">
                                 <Card>
                                     <CardContent className="p-6 flex items-start space-x-4">
-                                        <Mail className="h-6 w-6 text-kitty-600 mt-1 flex-shrink-0" />
+                                        <Mail className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
                                         <div>
-                                            <h3 className="font-medium text-lg mb-1">Email Us</h3>
-                                            <p className="text-gray-600 dark:text-gray-400 mb-2">
+                                            <h3 className="font-medium text-lg mb-1 text-foreground">Email Us</h3>
+                                            <p className="text-muted-foreground mb-2">
                                                 For customer support and inquiries:
                                             </p>
                                             <a
                                                 href="mailto:support@kittyp.com"
-                                                className="text-kitty-600 hover:text-kitty-800 transition-colors"
+                                                className="text-primary hover:text-primary/90 transition-colors"
                                             >
                                                 support@kittyp.com
                                             </a>
@@ -85,15 +85,15 @@ const Contact = () => {
 
                                 <Card>
                                     <CardContent className="p-6 flex items-start space-x-4">
-                                        <Phone className="h-6 w-6 text-kitty-600 mt-1 flex-shrink-0" />
+                                        <Phone className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
                                         <div>
-                                            <h3 className="font-medium text-lg mb-1">Call Us</h3>
-                                            <p className="text-gray-600 dark:text-gray-400 mb-2">
+                                            <h3 className="font-medium text-lg mb-1 text-foreground">Call Us</h3>
+                                            <p className="text-muted-foreground mb-2">
                                                 Monday to Friday, 9am - 5pm EST:
                                             </p>
                                             <a
                                                 href="tel:+1-800-KITTY-P"
-                                                className="text-kitty-600 hover:text-kitty-800 transition-colors"
+                                                className="text-primary hover:text-primary/90 transition-colors"
                                             >
                                                 1-800-KITTY-P
                                             </a>
@@ -103,13 +103,13 @@ const Contact = () => {
 
                                 <Card>
                                     <CardContent className="p-6 flex items-start space-x-4">
-                                        <MapPin className="h-6 w-6 text-kitty-600 mt-1 flex-shrink-0" />
+                                        <MapPin className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
                                         <div>
-                                            <h3 className="font-medium text-lg mb-1">Visit Us</h3>
-                                            <p className="text-gray-600 dark:text-gray-400 mb-2">
+                                            <h3 className="font-medium text-lg mb-1 text-foreground">Visit Us</h3>
+                                            <p className="text-muted-foreground mb-2">
                                                 Our headquarters:
                                             </p>
-                                            <address className="not-italic">
+                                            <address className="not-italic text-foreground">
                                                 123 Eco Way<br />
                                                 Portland, OR 97201<br />
                                                 United States
@@ -122,7 +122,7 @@ const Contact = () => {
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
-                                        <MessageSquare className="h-5 w-5 text-kitty-600" />
+                                        <MessageSquare className="h-5 w-5 text-primary" />
                                         Send a Message
                                     </CardTitle>
                                     <CardDescription>
@@ -182,7 +182,7 @@ const Contact = () => {
                                             ></textarea>
                                         </div>
 
-                                        <Button type="submit" className="w-full bg-kitty-600 hover:bg-kitty-700">
+                                        <Button type="submit" className="w-full">
                                             Send Message
                                         </Button>
                                     </form>
@@ -191,10 +191,10 @@ const Contact = () => {
                         </div>
 
                         <div className="text-center mt-12">
-                            <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">
+                            <h2 className="text-2xl font-semibold mb-4 text-foreground">
                                 Join Our Community
                             </h2>
-                            <p className="text-gray-600 dark:text-gray-400 mb-6">
+                            <p className="text-muted-foreground mb-6">
                                 Follow us on social media for updates, promotions, and cat care tips!
                             </p>
 
@@ -203,7 +203,7 @@ const Contact = () => {
                                     href="https://www.fb.com/rrohan419"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-kitty-600 hover:text-kitty-800 transition-colors"
+                                    className="text-primary hover:text-primary/90 transition-colors"
                                 >
                                     Facebook
                                 </a>
@@ -211,7 +211,7 @@ const Contact = () => {
                                     href="https://www.instagram.com/rrohan419"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-kitty-600 hover:text-kitty-800 transition-colors"
+                                    className="text-primary hover:text-primary/90 transition-colors"
                                 >
                                     Instagram
                                 </a>
@@ -219,7 +219,7 @@ const Contact = () => {
                                     href="https://www.x.com/rrohan419"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-kitty-600 hover:text-kitty-800 transition-colors"
+                                    className="text-primary hover:text-primary/90 transition-colors"
                                 >
                                     Twitter
                                 </a>
@@ -227,7 +227,7 @@ const Contact = () => {
                                     href="https://www.youtube.com/"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-kitty-600 hover:text-kitty-800 transition-colors"
+                                    className="text-primary hover:text-primary/90 transition-colors"
                                 >
                                     YouTube
                                 </a>
@@ -241,6 +241,6 @@ const Contact = () => {
             <Footer />
         </div>
     );
-};
+}
 
 export default Contact;

@@ -6,6 +6,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { ShippingMethod } from "@/services/cartService";
 import { getShippingMethods, ShippingMethodInfo } from "@/services/shippingService";
 import { useOrder } from "@/context/OrderContext";
+import { cn } from "@/lib/utils";
 
 interface ShippingMethodSelectorProps {
   selectedMethod: ShippingMethod | "";
@@ -52,19 +53,22 @@ export function ShippingMethodSelector({ selectedMethod, onMethodChange }: Shipp
       {shippingMethods.map((method) => (
         <Card 
           key={method.id} 
-          className={`transition-all cursor-pointer ${
-            selectedMethod === method.id ? 'border-kitty-500 ring-2 ring-kitty-200' : 'border-gray-200 hover:border-kitty-300'
-          }`}
+          className={cn(
+            "transition-all cursor-pointer",
+            selectedMethod === method.id 
+              ? "border-primary ring-2 ring-primary/20" 
+              : "border-border hover:border-primary/50"
+          )}
           onClick={() => handleChange(method.id, method.price)}
         >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <Label className="font-medium text-base">{method.name}</Label>
-                <p className="text-sm text-gray-500 mt-1">{method.description}</p>
-                <p className="text-xs text-gray-400 mt-0.5">Estimated delivery: {method.estimatedDays}</p>
+                <Label className="font-medium text-base text-foreground">{method.name}</Label>
+                <p className="text-sm text-muted-foreground mt-1">{method.description}</p>
+                <p className="text-xs text-muted-foreground/70 mt-0.5">Estimated delivery: {method.estimatedDays}</p>
               </div>
-              <div className="font-semibold">₹{method.price}</div>
+              <div className="font-semibold text-foreground">₹{method.price}</div>
             </div>
           </CardContent>
         </Card>

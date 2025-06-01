@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
     Card,
     CardContent,
@@ -29,6 +29,7 @@ import { useAppSelector } from "@/module/store/hooks";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CurrencyType } from "@/services/cartService";
+import { cn } from "@/lib/utils";
 
 const STATUS_COLORS: Record<string, string> = {
     CREATED: "bg-yellow-100 text-yellow-800",
@@ -43,7 +44,7 @@ const STATUS_COLORS: Record<string, string> = {
     PAYMENT_PENDING: "bg-orange-100 text-orange-800",
     PAYMENT_TIMEOUT: "bg-red-100 text-red-700",
     PAYMENT_CANCELLED: "bg-red-100 text-red-700",
-    DEFAULT: "bg-gray-100 text-gray-600",
+    DEFAULT: "bg-muted text-muted-foreground",
 };
 
 const STATUS_MESSAGES: Record<string, { message: string; icon: JSX.Element }> = {
@@ -99,6 +100,7 @@ const STATUS_MESSAGES: Record<string, { message: string; icon: JSX.Element }> = 
 
 export default function OrderDetail() {
     const { orderId } = useParams<{ orderId: string }>();
+    const navigate = useNavigate();
     const user = useAppSelector((state) => state.cartReducer.user);
     const [processingPayment, setProcessingPayment] = useState(false);
 
@@ -106,6 +108,7 @@ export default function OrderDetail() {
         data: order,
         isLoading,
         isError,
+        refetch
     } = useQuery({
         queryKey: ['order', orderId],
         queryFn: () => fetchOrderByOrderNumber(orderId!),
@@ -131,17 +134,34 @@ export default function OrderDetail() {
             // Convert the currency string to CurrencyType
             const currency = order.data.currency === 'INR' ? CurrencyType.INR : CurrencyType.USD;
             
-            await handleCheckout(
+            const response = await handleCheckout(
                 order.data.taxes,
                 order.data.totalAmount,
                 currency,
                 order.data.orderNumber,
                 user
             );
-            toast.success("Payment initiated successfully");
-        } catch (error) {
-            console.error("Payment reinitiation failed:", error);
-            toast.error("Failed to reinitiate payment. Please try again.");
+
+            // If we get here, both payment and verification were successful
+            console.log("Payment and verification successful", response);
+            toast.success("Payment successful!");
+            // Just refresh the current order data instead of redirecting
+            await refetch();
+        } catch (error: any) {
+            console.error("Payment process error:", error);
+            
+            // Handle different types of errors
+            if (error.error?.description) {
+                // Razorpay specific error
+                toast.error(error.error.description);
+            } else if (error.message === "Payment cancelled by user") {
+                toast.error("Payment was cancelled");
+            } else if (error.message === "Payment verification failed") {
+                // This shouldn't happen now with the fixes, but keeping it for safety
+                toast.error("Payment verification failed. Please contact support if payment was deducted.");
+            } else {
+                toast.error("Payment failed. Please try again.");
+            }
         } finally {
             setProcessingPayment(false);
         }
@@ -158,18 +178,18 @@ export default function OrderDetail() {
         };
 
         return (
-            <div className="flex flex-col gap-3 py-4 px-4 bg-white/50 rounded-lg border border-gray-100">
+            <div className="flex flex-col gap-3 py-4 px-4 bg-card/50 rounded-lg border border-border">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Badge
-                            className={
-                                "rounded-full px-3 py-1 font-medium " +
-                                (STATUS_COLORS[status] || STATUS_COLORS.DEFAULT)
-                            }
+                            className={cn(
+                                "rounded-full px-3 py-1 font-medium",
+                                STATUS_COLORS[status] || STATUS_COLORS.DEFAULT
+                            )}
                         >
                             {status}
                         </Badge>
-                        <span className="text-gray-500 text-sm flex items-center">
+                        <span className="text-muted-foreground text-sm flex items-center">
                             <CalendarDays className="inline-block h-4 w-4 mr-1" />
                             {order.data.createdAt ? (
                                 <>
@@ -182,16 +202,16 @@ export default function OrderDetail() {
                         </span>
                     </div>
                     <div className="text-right">
-                        <span className="block text-2xl font-extrabold text-kitty-700">
+                        <span className="block text-2xl font-extrabold text-primary">
                             ₹{order.data.totalAmount}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-muted-foreground">
                             {order.data.orderItems.length} item{order.data.orderItems.length > 1 ? "s" : ""}
                         </span>
                     </div>
                 </div>
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         {statusInfo.icon}
                         {statusInfo.message}
                     </div>
@@ -200,13 +220,13 @@ export default function OrderDetail() {
                             <Button
                                 variant="default"
                                 size="sm"
-                                className="h-8 gap-1.5 text-xs bg-kitty-600 hover:bg-kitty-700"
+                                className="h-8 gap-1.5 text-xs"
                                 onClick={handleReinitiatePayment}
                                 disabled={processingPayment}
                             >
                                 {processingPayment ? (
                                     <span className="flex items-center">
-                                        <span className="animate-spin mr-1.5 h-3 w-3 border-2 border-white/40 border-t-white rounded-full"></span>
+                                        <span className="animate-spin mr-1.5 h-3 w-3 border-2 border-primary-foreground/40 border-t-primary-foreground rounded-full"></span>
                                         Processing...
                                     </span>
                                 ) : (
@@ -251,7 +271,7 @@ export default function OrderDetail() {
     }
 
     if (isError || !order) {
-        return <div className="text-red-500 text-center my-4">Error loading order details.</div>;
+        return <div className="text-destructive text-center my-4">Error loading order details.</div>;
     }
 
     if (!order) {
@@ -259,9 +279,9 @@ export default function OrderDetail() {
             <>
                 <Navbar />
                 <div className="container mx-auto px-4 pt-24 pb-8 py-12 max-w-2xl min-h-[80vh] flex flex-col items-center justify-center">
-                    <Info className="h-8 w-8 text-red-500 mb-3" />
-                    <p className="text-red-500 font-medium mb-4 text-center">Order not found.</p>
-                    <Link to="/orders" className="text-kitty-600 underline text-base font-semibold hover:text-kitty-900 transition">
+                    <Info className="h-8 w-8 text-destructive mb-3" />
+                    <p className="text-destructive font-medium mb-4 text-center">Order not found.</p>
+                    <Link to="/orders" className="text-primary hover:text-primary/90 underline text-base font-semibold transition">
                         Back to Orders
                     </Link>
                 </div>
@@ -275,19 +295,19 @@ export default function OrderDetail() {
             <Navbar />
             <div className="container mx-auto px-2 pt-24 pb-8 py-10 max-w-3xl min-h-[80vh] fade-in">
                 <div className="mb-8 flex items-center gap-2">
-                    <Link to="/profile" className="inline-flex items-center text-kitty-600 hover:bg-kitty-100 px-3 py-2 rounded-lg transition hover-lift font-bold group">
+                    <Link to="/profile" className="inline-flex items-center text-primary hover:bg-accent px-3 py-2 rounded-lg transition hover-lift font-bold group">
                         <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition" />
                         <span className="hidden sm:inline">Orders</span>
                     </Link>
-                    <span className="text-2xl font-extrabold text-kitty-600">/</span>
-                    <span className="text-base sm:text-xl font-bold text-gray-800">
-                        #<span className="text-kitty-600">{order.data.orderNumber}</span>
+                    <span className="text-2xl font-extrabold text-primary">/</span>
+                    <span className="text-base sm:text-xl font-bold text-foreground">
+                        #<span className="text-primary">{order.data.orderNumber}</span>
                     </span>
                 </div>
-                <Card className="glass-effect mb-8 bg-gradient-to-br from-white/90 via-kitty-100/60 to-kitty-50/90 border-0 shadow-[0_12px_40px_0_rgba(155,85,255,.08)] animate-fade-in">
+                <Card className="bg-gradient-to-br from-background via-accent/60 to-accent/20 border-border shadow-lg animate-fade-in">
                     <CardHeader>
-                        <CardTitle className="text-lg sm:text-xl font-bold flex items-center gap-2 text-kitty-800 mb-4">
-                            <PackageOpen className="h-5 w-5 sm:h-6 sm:w-6 text-primary/90 mr-2" />
+                        <CardTitle className="text-lg sm:text-xl font-bold flex items-center gap-2 text-foreground mb-4">
+                            <PackageOpen className="h-5 w-5 sm:h-6 sm:w-6 text-primary mr-2" />
                             Order Details
                         </CardTitle>
                         {renderStatusActions(order.data.status)}
@@ -303,23 +323,23 @@ export default function OrderDetail() {
                             {/* Mobile View for Items */}
                             <div className="sm:hidden space-y-4">
                                 {order.data.orderItems.map((item, i) => (
-                                    <div key={`order-item-mobile-${i}`} className="flex items-start gap-3 border-b pb-4">
+                                    <div key={`order-item-mobile-${i}`} className="flex items-start gap-3 border-b border-border pb-4">
                                         <img
                                             src={item.product.productImageUrls?.[0] || "https://placehold.co/80x80"}
                                             alt={item.product.name}
-                                            className="w-16 h-16 object-cover rounded-md border"
+                                            className="w-16 h-16 object-cover rounded-md border border-border"
                                         />
                                         <div className="flex-1">
                                             <Link
                                                 to={`/product/${item.product.uuid}`}
-                                                className="text-sm font-semibold text-kitty-600 hover:underline hover:text-kitty-800"
+                                                className="text-sm font-semibold text-primary hover:underline hover:text-primary/90"
                                             >
                                                 {item.product.name}
                                             </Link>
-                                            <div className="text-xs text-gray-500 mt-1">
+                                            <div className="text-xs text-muted-foreground mt-1">
                                                 Qty: {item.quantity} × ₹{item.price}
                                             </div>
-                                            <div className="text-sm font-semibold text-gray-700 mt-1">
+                                            <div className="text-sm font-semibold text-foreground mt-1">
                                                 Total: ₹{item.quantity * item.price}
                                             </div>
                                         </div>
@@ -339,33 +359,33 @@ export default function OrderDetail() {
                                 </TableHeader>
                                 <TableBody>
                                     {order.data.orderItems.map((item, i) => (
-                                        <TableRow key={`order-item-id-${i}`} className="hover:bg-kitty-50/40 transition">
+                                        <TableRow key={`order-item-id-${i}`} className="hover:bg-accent/40 transition">
                                             <TableCell className="flex items-center gap-3 py-4">
                                                 <img
                                                     src={item.product.productImageUrls?.[0] || "https://placehold.co/80x80"}
                                                     alt={item.product.name}
-                                                    className="w-12 h-12 object-cover rounded-md border"
+                                                    className="w-12 h-12 object-cover rounded-md border border-border"
                                                 />
-                                                <span className="text-sm font-semibold text-gray-800">
+                                                <span className="text-sm font-semibold text-foreground">
                                                     <Link
                                                         to={`/product/${item.product.uuid}`}
-                                                        className="text-kitty-600 hover:underline hover:text-kitty-800"
+                                                        className="text-primary hover:underline hover:text-primary/90"
                                                     >
                                                         {item.product.name}
                                                     </Link>
                                                 </span>
                                             </TableCell>
                                             <TableCell>
-                                                <div className="text-xs text-gray-700">
+                                                <div className="text-xs text-muted-foreground">
                                                     <div>Color: {item.itemDetails?.color || "-"}</div>
                                                     <div>Size: {item.itemDetails?.size || "-"}</div>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <span className="font-bold">{item.quantity}</span>
+                                                <span className="font-bold text-foreground">{item.quantity}</span>
                                             </TableCell>
                                             <TableCell>
-                                                <span className="font-semibold">₹{item.price}</span>
+                                                <span className="font-semibold text-foreground">₹{item.price}</span>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -376,13 +396,13 @@ export default function OrderDetail() {
                         {/* Shipping & Billing - Only show on desktop */}
                         <div className="hidden sm:flex flex-col md:flex-row gap-8 mt-8">
                             {/* Shipping Address */}
-                            <div className="flex-1 bg-white/70 rounded-2xl shadow px-4 py-3 border">
-                                <span className="flex items-center gap-1 font-semibold text-kitty-800">
+                            <div className="flex-1 bg-card/70 rounded-2xl shadow px-4 py-3 border border-border">
+                                <span className="flex items-center gap-1 font-semibold text-primary">
                                     <FileText className="h-4 w-4 mr-1" /> Shipping Address
                                 </span>
-                                <div className="text-gray-700 text-sm mt-1 space-y-0.5">
+                                <div className="text-muted-foreground text-sm mt-1 space-y-0.5">
                                     {order.data.shippingAddress ? (
-                                        <div className="text-gray-700 text-sm mt-1 space-y-0.5">
+                                        <div className="text-muted-foreground text-sm mt-1 space-y-0.5">
                                             <div>{order.data.shippingAddress.street}</div>
                                             <div>{order.data.shippingAddress.city}</div>
                                             <div>{order.data.shippingAddress.state}</div>
@@ -390,18 +410,18 @@ export default function OrderDetail() {
                                             <div>{order.data.shippingAddress.country}</div>
                                         </div>
                                     ) : (
-                                        <div className="text-sm text-red-500 mt-1">Shipping address not available</div>
+                                        <div className="text-sm text-destructive mt-1">Shipping address not available</div>
                                     )}
                                 </div>
                             </div>
                             {/* Billing Address */}
-                            <div className="flex-1 bg-white/70 rounded-2xl shadow px-4 py-3 border">
-                                <span className="flex items-center gap-1 font-semibold text-kitty-800">
+                            <div className="flex-1 bg-card/70 rounded-2xl shadow px-4 py-3 border border-border">
+                                <span className="flex items-center gap-1 font-semibold text-primary">
                                     <FileText className="h-4 w-4 mr-1" /> Billing Address
                                 </span>
-                                <div className="text-gray-700 text-sm mt-1 space-y-0.5">
+                                <div className="text-muted-foreground text-sm mt-1 space-y-0.5">
                                     {order.data.billingAddress ? (
-                                        <div className="text-gray-700 text-sm mt-1 space-y-0.5">
+                                        <div className="text-muted-foreground text-sm mt-1 space-y-0.5">
                                             <div>{order.data.billingAddress.street}</div>
                                             <div>{order.data.billingAddress.city}</div>
                                             <div>{order.data.billingAddress.state}</div>
@@ -409,35 +429,35 @@ export default function OrderDetail() {
                                             <div>{order.data.billingAddress.country}</div>
                                         </div>
                                     ) : (
-                                        <div className="text-sm text-red-500 mt-1">Billing address not available</div>
+                                        <div className="text-sm text-destructive mt-1">Billing address not available</div>
                                     )}
                                 </div>
                             </div>
                         </div>
 
                         {/* Total Breakdown - Simplified for mobile */}
-                        <div className="mt-8 bg-white/70 rounded-2xl shadow px-4 py-3 border">
-                            <span className="flex items-center gap-1 font-semibold text-kitty-800 mb-3">
+                        <div className="mt-8 bg-card/70 rounded-2xl shadow px-4 py-3 border border-border">
+                            <span className="flex items-center gap-1 font-semibold text-primary mb-3">
                                 <FileText className="h-4 w-4 mr-1" /> Order Summary
                             </span>
                             <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
+                                <div className="flex justify-between text-foreground">
                                     <span>Subtotal</span>
                                     <span>₹{order.data?.subTotal ?? 0}</span>
                                 </div>
                                 {(order.data?.taxes?.otherTax ?? 0) + (order.data?.taxes?.serviceCharge ?? 0) > 0 && (
-                                    <div className="flex justify-between">
+                                    <div className="flex justify-between text-foreground">
                                         <span>Tax</span>
                                         <span>₹{((order.data?.taxes?.otherTax ?? 0) + (order.data?.taxes?.serviceCharge ?? 0)).toFixed(2)}</span>
                                     </div>
                                 )}
                                 {order.data.taxes.shippingCharges > 0 && (
-                                    <div className="flex justify-between">
+                                    <div className="flex justify-between text-foreground">
                                         <span>Delivery</span>
                                         <span>₹{order.data?.taxes?.shippingCharges ?? 0}</span>
                                     </div>
                                 )}
-                                <div className="border-t pt-2 flex justify-between font-bold text-kitty-800">
+                                <div className="border-t border-border pt-2 flex justify-between font-bold text-primary">
                                     <span>{isPaymentSuccessful(order.data.status) ? 'Total Paid' : 'To be Paid'}</span>
                                     <span>₹{order.data.totalAmount}</span>
                                 </div>
@@ -446,7 +466,7 @@ export default function OrderDetail() {
 
                         {/* Bottom Total - Show only on desktop */}
                         <div className="mt-8 hidden sm:flex justify-end">
-                            <div className="rounded-full px-6 py-3 bg-gradient-to-r from-kitty-200 to-kitty-100 text-kitty-800 font-extrabold text-lg shadow">
+                            <div className="rounded-full px-6 py-3 bg-gradient-to-r from-primary/20 to-primary/10 text-primary font-extrabold text-lg shadow">
                                 {isPaymentSuccessful(order.data.status) ? 'Total Paid: ' : 'To be Paid: '}
                                 ₹{order.data.totalAmount}
                             </div>

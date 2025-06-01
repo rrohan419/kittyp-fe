@@ -1,0 +1,21 @@
+@import 'tailwindcss/base';
+@import './themes.css';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  /* Prevent layout shifts from scrollbar */
+  html {
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+} 

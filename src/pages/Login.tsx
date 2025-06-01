@@ -119,16 +119,16 @@ const Login = () => {
   });
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <div className="min-h-screen bg-background">
       <Navbar />
 
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-md mx-auto">
-            <h1 className="text-4xl font-bold mb-8 text-center text-gray-900 dark:text-white">
+            <h1 className="text-4xl font-bold mb-8 text-center text-foreground">
               Welcome Back
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-12 text-center">
+            <p className="text-muted-foreground mb-12 text-center">
               Sign in to your kittyp account to manage your eco-friendly cat litter orders.
             </p>
 
@@ -144,7 +144,7 @@ const Login = () => {
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="email"
                         type="email"
@@ -160,12 +160,12 @@ const Login = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <Label htmlFor="password">Password</Label>
-                      <Link to="/forgot-password" className="text-sm text-kitty-600 hover:text-kitty-700">
+                      <Link to="/forgot-password" className="text-sm text-primary hover:text-primary/90">
                         Forgot password?
                       </Link>
                     </div>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
@@ -178,7 +178,7 @@ const Login = () => {
                       <button
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
-                        className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
                         aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? <EyeOffIcon className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -186,35 +186,26 @@ const Login = () => {
                     </div>
                   </div>
 
-                  {/* <Button 
-                    type="submit" 
-                    disabled={loading}
-                    className="w-full bg-kitty-600 hover:bg-kitty-700 flex items-center justify-center gap-2"
-                  >
-                    <LogIn className="h-4 w-4" />
-                    Sign In
-                  </Button> */}
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-kitty-600 hover:bg-kitty-700 flex items-center justify-center gap-2"
+                    className="w-full flex items-center justify-center gap-2"
                   >
                     {loading ? (
-                      <div className="h-4 w-4 animate-spin border-2 border-white border-t-transparent rounded-full" />
+                      <div className="h-4 w-4 animate-spin border-2 border-primary-foreground border-t-transparent rounded-full" />
                     ) : (
                       <LogIn className="h-4 w-4" />
                     )}
                     Sign In
                   </Button>
-
                 </form>
 
                 <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300 dark:border-gray-700"></div>
+                    <div className="w-full border-t border-border"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">
+                    <span className="px-2 bg-background text-muted-foreground">
                       Or continue with
                     </span>
                   </div>
@@ -235,9 +226,9 @@ const Login = () => {
                 </Button>
               </CardContent>
               <CardFooter className="flex justify-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   Don't have an account?{" "}
-                  <Link to="/signup" className="text-kitty-600 hover:text-kitty-700 font-medium">
+                  <Link to="/signup" className="text-primary hover:text-primary/90 font-medium">
                     Sign up
                   </Link>
                 </p>
@@ -247,25 +238,7 @@ const Login = () => {
         </div>
       </main>
 
-      {/* Success Dialog
-      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Successfully Signed In!</DialogTitle>
-            <DialogDescription>
-              This is a demo login. In a real application, you would be redirected to your account dashboard.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end">
-            <Button onClick={() => setShowSuccessDialog(false)}>
-              Close
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog> */}
-
       <ErrorDialog showErrorDialog={showErrorDialog} setShowErrorDialog={setShowErrorDialog} errorMessage={errorMessage} />
-
 
       <Footer />
     </div>

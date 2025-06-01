@@ -1,11 +1,10 @@
-
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { fetchFilteredProducts, Product, ProductDto, ProductFilterRequest } from '@/services/productService';
 import { Navbar } from '@/components/layout/Navbar';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { Footer } from '@/components/layout/Footer';
-
+import { cn } from '@/lib/utils';
 
 const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -95,8 +94,6 @@ const Products: React.FC = () => {
     setHasMore(true); // Reset flag
   }, [productDto]);
 
-
-
   useEffect(() => {
     loadProducts();
   }, [page]);
@@ -117,17 +114,15 @@ const Products: React.FC = () => {
     };
   }, [hasMore]);
 
-
-
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
       <main className="pt-24">
         <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Products</h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
+            <h1 className="text-3xl font-bold text-foreground">Products</h1>
+            <p className="mt-2 text-muted-foreground">
               Browse our collection of premium quality products for your feline friend
             </p>
           </div>
@@ -137,16 +132,18 @@ const Products: React.FC = () => {
             <div className="hidden lg:block w-64 flex-shrink-0">
               <div className="sticky top-24 space-y-8">
                 <div>
-                  <h3 className="font-medium text-gray-900 dark:text-white mb-4">Categories</h3>
+                  <h3 className="font-medium text-foreground mb-4">Categories</h3>
                   <div className="space-y-2">
                     {categories.map(category => (
                       <button
                         key={`desktop-filter-category-${category}`}
                         onClick={() => setSelectedCategory(category)}
-                        className={`block w-full text-left px-3 py-2 rounded-md transition-colors ${selectedCategory === category
-                            ? 'bg-kitty-50 text-kitty-600 dark:bg-kitty-900/50 dark:text-kitty-400'
-                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                          }`}
+                        className={cn(
+                          "block w-full text-left px-3 py-2 rounded-md transition-colors",
+                          selectedCategory === category
+                            ? "bg-accent text-accent-foreground"
+                            : "text-muted-foreground hover:bg-accent/50"
+                        )}
                       >
                         {category}
                       </button>
@@ -155,16 +152,18 @@ const Products: React.FC = () => {
                 </div>
 
                 <div>
-                  <h3 className="font-medium text-gray-900 dark:text-white mb-4">Price</h3>
+                  <h3 className="font-medium text-foreground mb-4">Price</h3>
                   <div className="space-y-2">
                     {priceRanges.map((range, index) => (
                       <button
                         key={`desktop-filter-range-${index}`}
                         onClick={() => setSelectedPriceRange({ min: range.min, max: range.max })}
-                        className={`block w-full text-left px-3 py-2 rounded-md transition-colors ${selectedPriceRange?.min === range.min && selectedPriceRange?.max === range.max
-                            ? 'bg-kitty-50 text-kitty-600 dark:bg-kitty-900/50 dark:text-kitty-400'
-                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                          }`}
+                        className={cn(
+                          "block w-full text-left px-3 py-2 rounded-md transition-colors",
+                          selectedPriceRange?.min === range.min && selectedPriceRange?.max === range.max
+                            ? "bg-accent text-accent-foreground"
+                            : "text-muted-foreground hover:bg-accent/50"
+                        )}
                       >
                         {range.label}
                       </button>
@@ -175,7 +174,7 @@ const Products: React.FC = () => {
                 {(selectedCategory !== 'All' || selectedPriceRange || searchQuery) && (
                   <button
                     onClick={clearFilters}
-                    className="inline-flex items-center text-kitty-600 dark:text-kitty-400 font-medium hover:text-kitty-700 dark:hover:text-kitty-300"
+                    className="inline-flex items-center text-primary hover:text-primary/90 font-medium"
                   >
                     <X size={16} className="mr-1" />
                     Clear filters
@@ -188,7 +187,7 @@ const Products: React.FC = () => {
             <div className="lg:hidden flex justify-between items-center mb-4">
               <button
                 onClick={toggleMobileFilter}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+                className="inline-flex items-center px-4 py-2 border border-border rounded-md text-sm font-medium text-foreground bg-background hover:bg-accent/50"
               >
                 <SlidersHorizontal size={16} className="mr-2" />
                 Filters
@@ -199,7 +198,6 @@ const Products: React.FC = () => {
                   type="text"
                   placeholder="Search products..."
                   value={searchQuery}
-                  // onChange={e => setSearchQuery(e.target.value)}
                   onChange={e => {
                     const value = e.target.value;
                     setSearchQuery(value);
@@ -208,9 +206,9 @@ const Products: React.FC = () => {
                       name: value
                     }));
                   }}
-                  className="w-full px-4 py-2 pr-10 rounded-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-kitty-500 dark:bg-gray-800"
+                  className="w-full px-4 py-2 pr-10 rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-ring bg-background"
                 />
-                <Search size={18} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <Search size={18} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
               </div>
             </div>
 
@@ -218,19 +216,19 @@ const Products: React.FC = () => {
             {isMobileFilterOpen && (
               <div className="fixed inset-0 bg-black/50 z-50 lg:hidden" onClick={toggleMobileFilter}>
                 <div
-                  className="absolute right-0 top-0 h-full w-4/5 max-w-xs bg-white dark:bg-gray-900 p-6 overflow-y-auto"
+                  className="absolute right-0 top-0 h-full w-4/5 max-w-xs bg-background p-6 overflow-y-auto"
                   onClick={e => e.stopPropagation()}
                 >
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">Filters</h3>
-                    <button onClick={toggleMobileFilter} className="text-gray-500">
+                    <h3 className="text-lg font-medium text-foreground">Filters</h3>
+                    <button onClick={toggleMobileFilter} className="text-muted-foreground">
                       <X size={24} />
                     </button>
                   </div>
 
                   <div className="space-y-8">
                     <div>
-                      <h4 className="font-medium text-gray-900 dark:text-white mb-3">Categories</h4>
+                      <h4 className="font-medium text-foreground mb-3">Categories</h4>
                       <div className="space-y-2">
                         {categories.map(category => (
                           <button
@@ -239,10 +237,12 @@ const Products: React.FC = () => {
                               setSelectedCategory(category);
                               toggleMobileFilter();
                             }}
-                            className={`block w-full text-left px-3 py-2 rounded-md transition-colors ${selectedCategory === category
-                                ? 'bg-kitty-50 text-kitty-600 dark:bg-kitty-900/50 dark:text-kitty-400'
-                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                              }`}
+                            className={cn(
+                              "block w-full text-left px-3 py-2 rounded-md transition-colors",
+                              selectedCategory === category
+                                ? "bg-accent text-accent-foreground"
+                                : "text-muted-foreground hover:bg-accent/50"
+                            )}
                           >
                             {category}
                           </button>
@@ -251,7 +251,7 @@ const Products: React.FC = () => {
                     </div>
 
                     <div>
-                      <h4 className="font-medium text-gray-900 dark:text-white mb-3">Price</h4>
+                      <h4 className="font-medium text-foreground mb-3">Price</h4>
                       <div className="space-y-2">
                         {priceRanges.map((range, index) => (
                           <button
@@ -260,10 +260,12 @@ const Products: React.FC = () => {
                               setSelectedPriceRange({ min: range.min, max: range.max });
                               toggleMobileFilter();
                             }}
-                            className={`block w-full text-left px-3 py-2 rounded-md transition-colors ${selectedPriceRange?.min === range.min && selectedPriceRange?.max === range.max
-                                ? 'bg-kitty-50 text-kitty-600 dark:bg-kitty-900/50 dark:text-kitty-400'
-                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                              }`}
+                            className={cn(
+                              "block w-full text-left px-3 py-2 rounded-md transition-colors",
+                              selectedPriceRange?.min === range.min && selectedPriceRange?.max === range.max
+                                ? "bg-accent text-accent-foreground"
+                                : "text-muted-foreground hover:bg-accent/50"
+                            )}
                           >
                             {range.label}
                           </button>
@@ -277,7 +279,7 @@ const Products: React.FC = () => {
                           clearFilters();
                           toggleMobileFilter();
                         }}
-                        className="inline-flex items-center text-kitty-600 dark:text-kitty-400 font-medium hover:text-kitty-700 dark:hover:text-kitty-300"
+                        className="inline-flex items-center text-primary hover:text-primary/90 font-medium"
                       >
                         <X size={16} className="mr-1" />
                         Clear filters
@@ -291,7 +293,7 @@ const Products: React.FC = () => {
             <div className="flex-1">
               {/* Search - Desktop */}
               <div className="hidden lg:flex justify-between items-center mb-6">
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-muted-foreground">
                   Showing {displayedProducts.length} {displayedProducts.length === 1 ? 'product' : 'products'}
                 </p>
                 <div className="relative w-64">
@@ -299,7 +301,6 @@ const Products: React.FC = () => {
                     type="text"
                     placeholder="Search products..."
                     value={searchQuery}
-                    // onChange={e => setSearchQuery(e.target.value)}
                     onChange={e => {
                       const value = e.target.value;
                       setSearchQuery(value);
@@ -308,9 +309,9 @@ const Products: React.FC = () => {
                         name: value
                       }));
                     }}
-                    className="w-full px-4 py-2 pr-10 rounded-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-kitty-500 dark:bg-gray-800"
+                    className="w-full px-4 py-2 pr-10 rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-ring bg-background"
                   />
-                  <Search size={18} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <Search size={18} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                 </div>
               </div>
 
@@ -332,13 +333,13 @@ const Products: React.FC = () => {
                 <div ref={loaderRef} className="text-center py-10 text-muted-foreground">&nbsp;</div>
               ) : (
                 <div className="text-center py-12">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No products found</h3>
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <h3 className="text-lg font-medium text-foreground mb-2">No products found</h3>
+                  <p className="text-muted-foreground">
                     Try adjusting your search or filter criteria
                   </p>
                   <button
                     onClick={clearFilters}
-                    className="mt-4 inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-kitty-600 hover:bg-kitty-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-kitty-500"
+                    className="mt-4 inline-flex items-center justify-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
                   >
                     Clear all filters
                   </button>

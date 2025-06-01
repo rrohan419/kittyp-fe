@@ -143,16 +143,16 @@ const Signup = () => {
   });
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <div className="min-h-screen bg-background">
       <Navbar />
 
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-md mx-auto">
-            <h1 className="text-4xl font-bold mb-8 text-center text-gray-900 dark:text-white">
+            <h1 className="text-4xl font-bold mb-8 text-center text-foreground">
               Create an Account
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-12 text-center">
+            <p className="text-muted-foreground mb-12 text-center">
               Join kittyp to access eco-friendly cat litter products and exclusive offers.
             </p>
 
@@ -166,11 +166,11 @@ const Signup = () => {
               <CardContent>
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">First Name</Label>
+                    <Label htmlFor="firstName">First Name</Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
-                        id="name" 
+                        id="firstName" 
                         type="text" 
                         placeholder="John" 
                         className="pl-10"
@@ -181,18 +181,17 @@ const Signup = () => {
                     </div>
                   </div>
 
-                   <div className="space-y-2">
-                    <Label htmlFor="name">Last Name</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
-                        id="name" 
+                        id="lastName" 
                         type="text" 
                         placeholder="Doe" 
                         className="pl-10"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
-                        // required 
                       />
                     </div>
                   </div>
@@ -200,7 +199,7 @@ const Signup = () => {
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
                         id="email" 
                         type="email" 
@@ -216,7 +215,7 @@ const Signup = () => {
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
                         id="password" 
                         type="password" 
@@ -232,7 +231,7 @@ const Signup = () => {
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Confirm Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
                         id="confirmPassword" 
                         type="password" 
@@ -247,7 +246,7 @@ const Signup = () => {
                   
                   <Button 
                     type="submit" 
-                    className="w-full bg-kitty-600 hover:bg-kitty-700 flex items-center justify-center gap-2"
+                    className="w-full flex items-center justify-center gap-2"
                   >
                     <UserPlus className="h-4 w-4" />
                     Create Account
@@ -256,10 +255,10 @@ const Signup = () => {
 
                 <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300 dark:border-gray-700"></div>
+                    <div className="w-full border-t border-border"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">
+                    <span className="px-2 bg-background text-muted-foreground">
                       Or continue with
                     </span>
                   </div>
@@ -280,9 +279,9 @@ const Signup = () => {
                 </Button>
               </CardContent>
               <CardFooter className="flex justify-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   Already have an account?{" "}
-                  <Link to="/login" className="text-kitty-600 hover:text-kitty-700 font-medium">
+                  <Link to="/login" className="text-primary hover:text-primary/90 font-medium">
                     Sign in
                   </Link>
                 </p>
@@ -321,13 +320,14 @@ const Signup = () => {
           <CheckCircleIcon className="w-12 h-12 text-green-500" />
           <DialogHeader className="text-center">
             <DialogTitle className="text-xl font-bold">Account Created!</DialogTitle>
-            <DialogDescription className="text-gray-500">
-              Your account has been successfully created. You’ll receive a verification email shortly.
+            <DialogDescription className="text-muted-foreground">
+              Your account has been successfully created. You'll receive a verification email shortly.
             </DialogDescription>
           </DialogHeader>
           <Button 
             onClick={() => setShowSuccessDialog(false)} 
-            className="mt-4 w-full bg-green-500 hover:bg-green-600"
+            className="mt-4 w-full"
+            variant="success"
           >
             Got it!
           </Button>

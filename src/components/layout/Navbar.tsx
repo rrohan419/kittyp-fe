@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, LogIn, UserPlus, LogOut, CheckCircle, LayoutDashboard, Package, User2Icon } from 'lucide-react';
@@ -17,6 +15,7 @@ import { CartSidebar } from './CartSidebar';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/module/store';
+import { ThemeSwitcher } from '../ui/theme-switcher';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,8 +27,6 @@ export function Navbar() {
   const navigate = useNavigate();
   const { resetCart } = useCart();
   const dispatch = useDispatch<AppDispatch>();
-
-
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
@@ -100,20 +97,16 @@ export function Navbar() {
     <header
       className={cn(
         "fixed top-0 left-0 w-full z-50",
-        isOpen ? "bg-white dark:bg-gray-900 shadow-sm transition-none" :
+        isOpen ? "bg-background dark:bg-gray-900 shadow-sm transition-none" :
           scrolled
-            ? "bg-white/80 backdrop-blur-md shadow-sm dark:bg-black/80 transition-all duration-300"
+            ? "bg-background/80 backdrop-blur-md shadow-sm dark:bg-black/80 transition-all duration-300"
             : "bg-transparent transition-all duration-300"
       )}
     >
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-        <Link
-          to="/"
-          className="flex items-center space-x-2 text-xl font-bold text-kitty-700"
-          aria-label="kittyp home"
-        >
+        <Link to="/" className="inline-block">
           <span className="text-2xl font-extrabold tracking-tight">
-            kitty<span className="text-kitty-600">p</span>
+            kitty<span className="text-primary">p</span>
           </span>
         </Link>
 
@@ -125,10 +118,10 @@ export function Navbar() {
                 <Link
                   to={link.path}
                   className={cn(
-                    "text-sm font-medium hover:text-kitty-600 transition-colors",
+                    "text-sm font-medium hover:text-primary transition-colors",
                     isActive(link.path)
-                      ? "text-kitty-600"
-                      : "text-gray-700 dark:text-gray-300"
+                      ? "text-primary"
+                      : "text-foreground"
                   )}
                 >
                   {link.name}
@@ -136,49 +129,30 @@ export function Navbar() {
               </li>
             ))}
 
-            {/* My Orders Link - Visible when user is logged in */}
-            {/* {isAuthenticated && (
-              <button
-                onClick={() => navigate('/orders')}
-                className={cn(
-                  "block text-md font-small hover:text-kitty-600 transition-colors flex items-center",
-                  isActive('/orders')
-                    ? "text-kitty-600"
-                    : "text-gray-700 dark:text-gray-300"
-                )}
-              >
-                <Package size={16} className="mr-2" />
-                My Orders
-              </button>
-
-            )} */}
-
-
-
-            {/* Admin Dashboard Link - Only visible for ROLE_ADMIN */}
-            {userRole === 'ROLE_ADMIN' ? (
+            {userRole === 'ROLE_ADMIN' && (
               <li>
                 <button
                   onClick={navigateToAdmin}
                   className={cn(
-                    "text-md font-small hover:text-kitty-600 transition-colors flex items-center",
+                    "text-md font-small hover:text-primary transition-colors flex items-center",
                     isActive('/admin')
-                      ? "text-kitty-600"
-                      : "text-gray-700 dark:text-gray-300"
+                      ? "text-primary"
+                      : "text-foreground"
                   )}
                 >
                   <LayoutDashboard size={16} className="mr-2" />
                   Admin
                 </button>
               </li>
-            ):(null)}
+            )}
           </ul>
 
           <div className="flex items-center space-x-4">
+            <ThemeSwitcher />
             {isAuthenticated ? (
               <button
                 onClick={handleLogout}
-                className="flex items-center space-x-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-kitty-600 transition-colors"
+                className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors"
                 aria-label="Logout"
               >
                 <LogOut size={18} />
@@ -188,7 +162,7 @@ export function Navbar() {
               <div className="flex items-center space-x-3">
                 <Link
                   to="/login"
-                  className="flex items-center space-x-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-kitty-600 transition-colors"
+                  className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors"
                   aria-label="Login"
                 >
                   <LogIn size={18} />
@@ -196,218 +170,125 @@ export function Navbar() {
                 </Link>
                 <Link
                   to="/signup"
-                  className="flex items-center space-x-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-kitty-600 transition-colors"
-                  aria-label="Sign Up"
+                  className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors"
+                  aria-label="Sign up"
                 >
                   <UserPlus size={18} />
-                  <span>Sign Up</span>
+                  <span>Sign up</span>
                 </Link>
               </div>
-            )}
-
-            <CartSidebar />
-          </div>
-          <div>
-            {isAuthenticated && (
-              <button
-                onClick={() => navigate('/profile')}
-                className={cn(
-                  "block text-md font-small hover:text-kitty-600 transition-colors flex items-center",
-                  isActive('/profile')
-                    ? "text-kitty-600"
-                    : "text-gray-700 dark:text-gray-300"
-                )}
-              >
-                {/* <Package size={16} className="mr-2" /> */}
-                <User2Icon size={16} className="h-5 w-5" />
-                {/* Profile */}
-              </button>
             )}
           </div>
         </div>
 
-
         {/* Mobile Menu Button */}
-        <div className="flex md:hidden items-center space-x-4">
-          {isAuthenticated ? (
-            <button
-              onClick={handleLogout}
-              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              aria-label="Logout"
-            >
-              <LogOut size={20} />
-            </button>
-          ) : (
-            <Link
-              to="/login"
-              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              aria-label="Login"
-            >
-              <LogIn size={20} />
-            </Link>
-          )}
-
-          <CartSidebar />
-
+        <div className="flex items-center space-x-4 md:hidden">
+          <ThemeSwitcher />
           <button
             onClick={toggleMenu}
-            className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            aria-expanded={isOpen}
-            aria-label="Toggle menu"
+            className="text-foreground hover:text-primary transition-colors"
+            aria-label={isOpen ? "Close menu" : "Open menu"}
           >
             {isOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
-      </nav>
 
-      {/* Mobile Menu */}
-      <div
-        className={cn(
-          "fixed inset-y-0 right-0 w-full md:hidden bg-white dark:bg-gray-900 transform transition-transform duration-300 ease-out-expo shadow-xl z-50",
-          isOpen ? "translate-x-0" : "translate-x-full"
-        )}
-      >
-        <div className="flex items-center justify-end p-4">
-          <button
-            onClick={closeMenu}
-            className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            aria-label="Close menu"
-          >
-            <X size={24} />
-          </button>
-        </div>
-        <nav className="px-4 py-6 space-y-8">
-          <ul className="space-y-6">
-            {navLinks.map((link) => (
-              <li key={link.path}>
-                <Link
-                  to={link.path}
-                  className={cn(
-                    "block text-lg font-medium hover:text-kitty-600 transition-colors",
-                    isActive(link.path)
-                      ? "text-kitty-600"
-                      : "text-gray-700 dark:text-gray-300"
-                  )}
-                >
-                  {link.name}
-                </Link>
-              </li>
-            ))}
+        {/* Mobile Menu */}
+        <div
+          className={cn(
+            "absolute top-full left-0 w-full bg-background/80 backdrop-blur-md md:hidden transition-all duration-300 ease-in-out border-t border-border",
+            isOpen ? "opacity-100 visible" : "opacity-0 invisible"
+          )}
+        >
+          <div className="container mx-auto px-4 py-4">
+            <ul className="space-y-4">
+              {navLinks.map((link) => (
+                <li key={link.path}>
+                  <Link
+                    to={link.path}
+                    className={cn(
+                      "block text-sm font-medium hover:text-primary transition-colors",
+                      isActive(link.path)
+                        ? "text-primary"
+                        : "text-foreground"
+                    )}
+                    onClick={closeMenu}
+                  >
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
 
-            {/* {isAuthenticated && (
-              <li>
-                <button
-                  onClick={() => navigate('/orders')}
-                  className={cn(
-                    "block text-md font-medium hover:text-kitty-600 transition-colors flex items-center",
-                    isActive('/orders')
-                      ? "text-kitty-600"
-                      : "text-gray-700 dark:text-gray-300"
-                  )}
-                >
-                  <Package size={20} className="mr-2" />
-                  My Orders
-                </button>
-              </li>
-            )} */}
+              {userRole === 'ROLE_ADMIN' && (
+                <li>
+                  <button
+                    onClick={navigateToAdmin}
+                    className={cn(
+                      "w-full text-left text-sm font-medium hover:text-primary transition-colors flex items-center",
+                      isActive('/admin')
+                        ? "text-primary"
+                        : "text-foreground"
+                    )}
+                  >
+                    <LayoutDashboard size={16} className="mr-2" />
+                    Admin Dashboard
+                  </button>
+                </li>
+              )}
 
-            {/* Admin Dashboard Link - Only visible for ROLE_ADMIN */}
-            {userRole === 'ROLE_ADMIN' && (
-              <li>
-                <button
-                  onClick={navigateToAdmin}
-                  // className={cn(
-                  //   "block text-md font-medium hover:text-kitty-600 transition-colors flex items-center",
-                  //   isActive('/admin')
-                  //     ? "text-kitty-600"
-                  //     : "text-gray-700 dark:text-gray-300"
-                  // )}
-                  className={cn(
-                    "block text-lg font-medium hover:text-kitty-600 transition-colors",
-                    isActive('/admin')
-                      ? "text-kitty-600"
-                      : "text-gray-700 dark:text-gray-300"
-                  )}
-                >
-                  {/* <LayoutDashboard size={20} className="mr-2" /> */}
-                  Admin Dashboard
-                </button>
-              </li>
-            )}
-
-            {isAuthenticated && (
-              <button
-                onClick={() => navigate('/profile')}
-                className={cn(
-                  "block text-lg font-medium hover:text-kitty-600 transition-colors",
-                  isActive('/profile')
-                    ? "text-kitty-600"
-                    : "text-gray-700 dark:text-gray-300"
-                )}
-              >
-                {/* <Package size={16} className="mr-2" /> */}
-                {/* <User2Icon size={16}  className="h-5 w-5" /> */}
-                Profile
-              </button>
-            )}
-
-            <li>
               {isAuthenticated ? (
-                <button
-                  onClick={handleLogout}
-                  className="block text-lg font-medium hover:text-kitty-600 transition-colors text-gray-700 dark:text-gray-300"
-
-                >
-                  Logout
-                </button>
+                <li>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      closeMenu();
+                    }}
+                    className="w-full text-left text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center"
+                  >
+                    <LogOut size={18} className="mr-2" />
+                    Logout
+                  </button>
+                </li>
               ) : (
                 <>
-                  <Link
-                    to="/login"
-                    className="block text-lg font-medium hover:text-kitty-600 transition-colors text-gray-700 dark:text-gray-300"
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    to="/signup"
-                    className="mt-6 block text-lg font-medium hover:text-kitty-600 transition-colors text-gray-700 dark:text-gray-300"
-                  >
-                    Sign Up
-                  </Link>
+                  <li>
+                    <Link
+                      to="/login"
+                      className="block text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center"
+                      onClick={closeMenu}
+                    >
+                      <LogIn size={18} className="mr-2" />
+                      Login
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/signup"
+                      className="block text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center"
+                      onClick={closeMenu}
+                    >
+                      <UserPlus size={18} className="mr-2" />
+                      Sign up
+                    </Link>
+                  </li>
                 </>
               )}
-            </li>
-            <li>
-              <Link
-                to="/cart"
-                className="block text-lg font-medium hover:text-kitty-600 transition-colors text-gray-700 dark:text-gray-300"
-              >
-                Cart
-              </Link>
-            </li>
-          </ul>
-        </nav>
-      </div>
+            </ul>
+          </div>
+        </div>
+      </nav>
 
-      {/* Logout Success Dialog */}
+      {/* Success Dialog */}
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-600">
-              <CheckCircle size={20} />
-              Logged Out Successfully
-            </DialogTitle>
+            <DialogTitle>Logged Out Successfully</DialogTitle>
             <DialogDescription>
-              You've been logged out. See you soon!
+              You have been logged out of your account.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end">
-            <Button
-              onClick={() => setShowSuccessDialog(false)}
-              variant="outline"
-            >
-              Close
-            </Button>
+          <div className="flex justify-center items-center">
+            <CheckCircle className="h-12 w-12 text-green-500" />
           </div>
         </DialogContent>
       </Dialog>

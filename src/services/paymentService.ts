@@ -96,16 +96,20 @@ export const handleCheckout = (
         handler: async function (razorpayOrderResponse: RazorpayOrderResponse) {
           console.log("Payment successful", razorpayOrderResponse);
 
-          const razorpayVerifyResponse = await callRazorpayVerifyPayment({
-            orderId: razorpayOrderResponse.razorpay_order_id,
-            paymentId: razorpayOrderResponse.razorpay_payment_id,
-            signature: razorpayOrderResponse.razorpay_signature,
-          });
+          try {
+            const razorpayVerifyResponse = await callRazorpayVerifyPayment({
+              orderId: razorpayOrderResponse.razorpay_order_id,
+              paymentId: razorpayOrderResponse.razorpay_payment_id,
+              signature: razorpayOrderResponse.razorpay_signature,
+            });
 
-          if (razorpayVerifyResponse.status === 200) {
+            console.log("Verification response:", razorpayVerifyResponse);
+
+            // If we get here, verification was successful
             resolve(razorpayOrderResponse);
-          } else {
-            reject("Payment verification failed");
+          } catch (verifyError) {
+            console.error("Verification failed:", verifyError);
+            reject(new Error("Payment verification failed"));
           }
         },
         prefill: {
@@ -116,14 +120,22 @@ export const handleCheckout = (
         theme: {
           color: "#9D57FF",
         },
+        modal: {
+          ondismiss: function() {
+            reject(new Error("Payment cancelled by user"));
+          },
+          escape: true,
+        }
       };
 
       const rzp = new window.Razorpay(options);
       rzp.on("payment.failed", (error: RazorpayError) => {
+        console.error("Payment failed:", error);
         reject(error);
       });
       rzp.open();
     } catch (err) {
+      console.error("Error in handleCheckout:", err);
       reject(err);
     }
   });
