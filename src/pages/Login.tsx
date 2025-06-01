@@ -54,21 +54,32 @@ const Login = () => {
     try {
       // First, perform the login
       const loginResponse = await login({ email, password });
-      console.log("Login successful. loginResponse:", loginResponse);
-
-      // Then initialize user and sync carts
-      await dispatch(initializeUserAndCart()).unwrap();
-
-      // Show success message if guest cart was synced
-      if (hasGuestCartItems) {
+      
+      // Navigate immediately after successful login
+      navigate("/");
+      
+      // Handle cart sync and other non-critical operations asynchronously
+      Promise.all([
+        dispatch(initializeUserAndCart()),
+        // Add any other non-critical operations here
+      ]).then(() => {
+        // Show success message if guest cart was synced
+        if (hasGuestCartItems) {
+          toast({
+            title: "Cart Synced",
+            description: "Your cart items have been saved to your account",
+            duration: 1000,
+          });
+        }
+      }).catch((error) => {
+        console.error("Error in background operations:", error);
         toast({
-          title: "Cart Synced",
-          description: "Your cart items have been saved to your account",
+          title: "Background Sync Warning",
+          description: "Some features may take a moment to update",
           duration: 3000,
         });
-      }
+      });
 
-      navigate("/");
     } catch (error: any) {
       console.error("Signin Error:", error);
       setErrorMessage(error.message || 'Login failed');

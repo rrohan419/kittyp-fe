@@ -105,7 +105,7 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
         {!isImageLoaded && (
           <div className="absolute inset-0 bg-gray-100 dark:bg-gray-800 animate-pulse" />
         )}
-        <Link to={`/products/${uuid}`}>
+        <Link to={`/product/${uuid}`}>
           <img
             src={image}
             alt={name}
@@ -119,7 +119,7 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
       </div>
       
       <div className="flex-1 min-w-0">
-        <Link to={`/products/${uuid}`} className="hover:text-kitty-600 transition-colors">
+        <Link to={`/product/${uuid}`} className="hover:text-kitty-600 transition-colors">
           <h3 className="text-base font-medium text-gray-900 dark:text-white">{name}</h3>
         </Link>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">

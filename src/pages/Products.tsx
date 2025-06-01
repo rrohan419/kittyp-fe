@@ -39,8 +39,6 @@ const Products: React.FC = () => {
 
       const newProducts = response.data.models;
       setProductCount(response.data.totalElements);
-      console.log('Fetched Products:', response.data);
-      console.log('newProducts Products:', newProducts);
 
       setProducts(prev => [...prev, ...newProducts]);
       setHasMore(!response.data.isLast);
@@ -328,7 +326,7 @@ const Products: React.FC = () => {
                   ))}
                 </div>
               ) : isLoading ? (
-                <div className="text-center py-10 text-muted-foreground">Loading more articles...</div>
+                <div className="text-center py-10 text-muted-foreground">Loading more products...</div>
               ) : hasMore ? (
                 <div ref={loaderRef} className="text-center py-10 text-muted-foreground">&nbsp;</div>
               ) : (
