@@ -16,6 +16,7 @@ import { userSlice } from "../slice/UserSlice";
 import { cartSlice } from "../slice/CartSlice";
 import { adminSlice } from "../slice/AdminSlice";
 import productReducer, { productSlice } from "../slice/ProductSlice";
+import { authSlice } from "../slice/AuthSlice";
 
 
 const rootReducer = combineReducers({
@@ -23,7 +24,8 @@ const rootReducer = combineReducers({
     userReducer: userSlice.reducer,
     cartReducer: cartSlice.reducer,
     adminReducer: adminSlice.reducer,
-    productReducer: productSlice.reducer
+    productReducer: productSlice.reducer,
+    authReducer: authSlice.reducer
 });
 
 const persistConfig: any = {

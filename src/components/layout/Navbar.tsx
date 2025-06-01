@@ -12,7 +12,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '../ui/button';
 import { CartSidebar } from './CartSidebar';
-import { initializeUserAndCart } from '@/module/slice/CartSlice';
+import { initializeUserAndCart, switchToGuestCart } from '@/module/slice/CartSlice';
+import { clearUser } from '@/module/slice/AuthSlice';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/module/store';
 import { ThemeSwitcher } from '../ui/theme-switcher';
@@ -25,7 +26,6 @@ export function Navbar() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const { resetCart } = useCart();
   const dispatch = useDispatch<AppDispatch>();
 
   const toggleMenu = () => setIsOpen(!isOpen);
@@ -40,14 +40,13 @@ export function Navbar() {
       }
     };
 
-    const roles = JSON.parse(localStorage.getItem('roles') || null);
+    const roles = JSON.parse(localStorage.getItem('roles') || 'null');
     const isAdmin = Array.isArray(roles) && roles.includes('ROLE_ADMIN');
     setUserRole(isAdmin ? 'ROLE_ADMIN' : null);
 
     // Check authentication status
     const token = localStorage.getItem('access_token');
     setIsAuthenticated(!!token);
-    
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -58,17 +57,28 @@ export function Navbar() {
     closeMenu();
   }, [location.pathname]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('roles');
-    setIsAuthenticated(false);
-    setUserRole(null);
-    setShowSuccessDialog(true);
-    resetCart();
-    setTimeout(() => {
-      navigate('/');
-    }, 1500);
+  const handleLogout = async () => {
+    try {
+      // Switch to guest cart instead of clearing the cart
+      await dispatch(switchToGuestCart()).unwrap();
+      
+      // Clear auth data
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('roles');
+      dispatch(clearUser());
+      
+      setIsAuthenticated(false);
+      setUserRole(null);
+      setShowSuccessDialog(true);
+
+      // Navigate after a short delay
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
   };
 
   const navLinks = [
