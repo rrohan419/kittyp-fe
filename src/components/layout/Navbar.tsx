@@ -163,14 +163,23 @@ export function Navbar() {
             </div>
             <CartSidebar />
             {isAuthenticated ? (
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
-                aria-label="Logout"
-              >
-                <LogOut size={18} />
-                <span>Logout</span>
-              </button>
+              <div className="flex items-center space-x-4">
+                <Link
+                  to="/profile"
+                  className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
+                  aria-label="Profile"
+                >
+                  <User2Icon size={18} />
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
+                  aria-label="Logout"
+                >
+                  <LogOut size={18} />
+                  <span>Logout</span>
+                </button>
+              </div>
             ) : (
               <div className="flex items-center space-x-3">
                 <Link
@@ -191,7 +200,6 @@ export function Navbar() {
                 </Link>
               </div>
             )}
-            
           </div>
         </div>
 
@@ -254,18 +262,30 @@ export function Navbar() {
               )}
 
               {isAuthenticated ? (
-                <li>
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      closeMenu();
-                    }}
-                    className="w-full text-left text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center"
-                  >
-                    <LogOut size={18} className="mr-2" />
-                    Logout
-                  </button>
-                </li>
+                <>
+                  <li>
+                    <Link
+                      to="/profile"
+                      className="block text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center"
+                      onClick={closeMenu}
+                    >
+                      <User2Icon size={18} className="mr-2" />
+                      Profile
+                    </Link>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        closeMenu();
+                      }}
+                      className="w-full text-left text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center"
+                    >
+                      <LogOut size={18} className="mr-2" />
+                      Logout
+                    </button>
+                  </li>
+                </>
               ) : (
                 <>
                   <li>
