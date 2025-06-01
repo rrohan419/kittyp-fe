@@ -279,3 +279,46 @@ export const createOrder = async (userUuid: string, orderRequest: OrderRequest):
     return response.data;
 };
 
+// Add CartService class after the existing types and before the existing functions
+export class CartService {
+  async addToCart(request: CartItemRequest): Promise<ApiSuccessResponse<CartResponse>> {
+    const userUuid = localStorage.getItem('userUuid');
+    if (!userUuid) {
+      throw new Error('User not found');
+    }
+    return addToCart(userUuid, request);
+  }
+
+  async getCart(): Promise<ApiSuccessResponse<CartResponse>> {
+    const userUuid = localStorage.getItem('userUuid');
+    if (!userUuid) {
+      throw new Error('User not found');
+    }
+    return getCartByUser(userUuid);
+  }
+
+  async updateCartItem(request: CartItemRequest): Promise<ApiSuccessResponse<CartResponse>> {
+    const userUuid = localStorage.getItem('userUuid');
+    if (!userUuid) {
+      throw new Error('User not found');
+    }
+    return updateCartItem(userUuid, request);
+  }
+
+  async removeFromCart(productUuid: string): Promise<ApiSuccessResponse<CartResponse>> {
+    const userUuid = localStorage.getItem('userUuid');
+    if (!userUuid) {
+      throw new Error('User not found');
+    }
+    return removeFromCart(userUuid, productUuid);
+  }
+
+  async clearCart(): Promise<ApiSuccessResponse<void>> {
+    const userUuid = localStorage.getItem('userUuid');
+    if (!userUuid) {
+      throw new Error('User not found');
+    }
+    return clearCart(userUuid);
+  }
+}
+

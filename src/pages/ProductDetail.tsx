@@ -38,6 +38,8 @@ const ProductDetail = () => {
     e.preventDefault();
     e.stopPropagation();
 
+    if (!product) return;
+
     try {
       setIsAddingToCart(true);
       await dispatch(addToCartFromProduct(product)).unwrap();

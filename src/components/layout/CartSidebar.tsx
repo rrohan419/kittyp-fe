@@ -2,8 +2,8 @@ import { Button } from "@/components/ui/button";
 import { CartItem as CartItemUI } from "@/components/ui/CartItem";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
-import { Link } from "react-router-dom";
-import { ArrowRight, ShoppingCart, Trash2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, LogIn, ShoppingCart, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { CurrencyType, formatCurrency } from "@/services/cartService";
@@ -14,10 +14,15 @@ import { cn } from "@/lib/utils";
 
 export function CartSidebar() {
   const dispatch = useDispatch<AppDispatch>();
-  const { items, totalAmount, user, loading, error } = useSelector((state: RootState) => ({
-    ...state.cartReducer,
+  const navigate = useNavigate();
+  const { items, totalAmount, loading } = useSelector((state: RootState) => ({
+    items: state.cartReducer.items,
+    totalAmount: state.cartReducer.totalAmount,
     loading: state.cartReducer.loading || state.cartReducer.isCartLoading
   }));
+  
+  // Get user from auth state
+  const user = useSelector((state: RootState) => state.authReducer.user);
   const [isOpen, setIsOpen] = useState(false);
 
   const itemCount = items.reduce((count, item) => count + item.quantity, 0);
@@ -25,10 +30,30 @@ export function CartSidebar() {
   const handleClearCart = async () => {
     try {
       await dispatch(resetCartThunk()).unwrap();
+      toast.success("Cart cleared successfully");
     } catch (error) {
-      // Error is already handled by the thunk
       console.error("Failed to clear cart:", error);
+      toast.error("Failed to clear cart");
     }
+  };
+
+  const handleCheckout = () => {
+    // Debug log to check user state
+    console.log('Checkout clicked:', {
+      user,
+      accessToken: localStorage.getItem('access_token')
+    });
+
+    const accessToken = localStorage.getItem('access_token');
+    
+    if (!accessToken) {
+      setIsOpen(false);
+      navigate("/login");
+      return;
+    }
+
+    setIsOpen(false);
+    navigate("/checkout");
   };
 
   return (
@@ -125,28 +150,34 @@ export function CartSidebar() {
               </div>
 
               <div className="space-y-3">
+                {!localStorage.getItem('access_token') && (
+                  <div className="bg-muted/50 p-3 rounded-lg text-sm text-muted-foreground flex items-center gap-2">
+                    <LogIn size={16} />
+                    <p>Log in to sync your cart and checkout</p>
+                  </div>
+                )}
+
                 <Button 
-                  className="w-full" 
-                  asChild 
+                  className="w-full flex items-center justify-center gap-2" 
+                  onClick={handleCheckout}
                   disabled={loading}
                 >
-                  <Link to="/checkout">
-                    {loading ? (
-                      <div className="h-4 w-4 rounded-full border-2 border-primary-foreground/20 border-t-primary-foreground animate-spin"></div>
-                    ) : (
-                      "Proceed to Checkout"
-                    )}
-                  </Link>
+                  {loading ? (
+                    <div className="h-4 w-4 rounded-full border-2 border-primary-foreground/20 border-t-primary-foreground animate-spin" />
+                  ) : (
+                    <>
+                      Proceed to Checkout
+                      <ArrowRight size={16} />
+                    </>
+                  )}
                 </Button>
 
                 <Button
                   variant="outline"
-                  disabled={loading}
                   className="w-full flex items-center justify-center gap-2"
                   asChild
-                  onClick={() => setIsOpen(false)}
                 >
-                  <Link to="/cart">
+                  <Link to="/cart" onClick={() => setIsOpen(false)}>
                     View Cart
                     <ArrowRight size={16} />
                   </Link>

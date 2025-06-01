@@ -27,8 +27,8 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { login } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
 import { LoginResponse } from './Interface/PagesInterface';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/module/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/module/store';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
 // import { useCart } from '@/context/CartContext';
 
@@ -42,6 +42,9 @@ const Login = () => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const hasGuestCartItems = useSelector((state: RootState) => 
+    state.cartReducer.items.length > 0 && state.cartReducer.isGuestCart
+  );
   // const { initializeUserAndCart } = useCart();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -49,9 +52,22 @@ const Login = () => {
     setLoading(true);
 
     try {
+      // First, perform the login
       const loginResponse = await login({ email, password });
       console.log("Login successful. loginResponse:", loginResponse);
+
+      // Then initialize user and sync carts
       await dispatch(initializeUserAndCart()).unwrap();
+
+      // Show success message if guest cart was synced
+      if (hasGuestCartItems) {
+        toast({
+          title: "Cart Synced",
+          description: "Your cart items have been saved to your account",
+          duration: 3000,
+        });
+      }
+
       navigate("/");
     } catch (error: any) {
       console.error("Signin Error:", error);
