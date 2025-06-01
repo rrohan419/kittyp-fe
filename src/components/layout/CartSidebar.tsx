@@ -39,7 +39,7 @@ export function CartSidebar() {
         >
           <ShoppingCart size={20} />
           {itemCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-kitty-600 text-white w-5 h-5 flex items-center justify-center rounded-full text-xs">
+            <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground w-5 h-5 flex items-center justify-center rounded-full text-xs">
               {itemCount}
             </span>
           )}

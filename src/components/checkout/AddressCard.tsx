@@ -1,9 +1,9 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Address } from "@/services/addressService";
+import { cn } from "@/lib/utils";
 
 interface AddressCardProps {
   address: Address;
@@ -15,7 +15,10 @@ interface AddressCardProps {
 export function AddressCard({ address, isSelected, onSelect, id }: AddressCardProps) {
   return (
     <Card 
-      className={`transition-all cursor-pointer ${isSelected ? 'border-kitty-500 ring-2 ring-kitty-200' : 'border-gray-200 hover:border-kitty-300'}`}
+      className={cn(
+        "transition-all cursor-pointer",
+        isSelected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/50"
+      )}
       onClick={onSelect}
     >
       <CardContent className="p-4">
@@ -28,13 +31,13 @@ export function AddressCard({ address, isSelected, onSelect, id }: AddressCardPr
                 {address.street}
               </Label>
               {address.isDefault && (
-                <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                <Badge variant="secondary" className="text-xs">
                   Default
                 </Badge>
               )}
             </div>
             
-            <div className="text-sm text-gray-500 mt-1">
+            <div className="text-sm text-muted-foreground mt-1">
               {address.city}, {address.state} {address.postalCode}<br />
               {address.country}
             </div>

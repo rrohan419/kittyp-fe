@@ -1,10 +1,11 @@
+import React, { useState } from 'react';
 import { Footer } from '@/components/layout/Footer';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, ArrowRight, ArrowLeft, Check, Cat, Recycle } from 'lucide-react';
-import React, { useState } from 'react';
+import { cn } from '@/lib/utils';
 
 const HowToUse = () => {
   const [newCatStep, setNewCatStep] = useState(0);
@@ -118,13 +119,14 @@ const HowToUse = () => {
         <button
           key={`progress-id-${i}`}
           onClick={() => onClick(i)}
-          className={`w-3 h-3 rounded-full transition-all duration-300 ${
+          className={cn(
+            "w-3 h-3 rounded-full transition-all duration-300",
             i === current
-              ? "bg-kitty-600 scale-125"
+              ? "bg-primary scale-125"
               : i < current
-              ? "bg-kitty-400"
-              : "bg-gray-300 dark:bg-gray-700"
-          }`}
+              ? "bg-primary/40"
+              : "bg-muted"
+          )}
           aria-label={`Go to step ${i + 1}`}
         />
       ))}
@@ -132,16 +134,16 @@ const HowToUse = () => {
   );
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <div className="min-h-screen bg-background">
       <Navbar />
 
       <main className="pt-24 pb-16">
         <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-12 text-center">
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4 animate-fade-up">
-              How to Use <span className="text-kitty-600">Kittyp</span> Cat Litter
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4 animate-fade-up">
+              How to Use <span className="text-primary">Kittyp</span> Cat Litter
             </h1>
-            <p className="mt-2 text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto animate-fade-up animate-delay-100">
+            <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto animate-fade-up animate-delay-100">
               Follow our simple, step-by-step guide to introduce our eco-friendly cat litter to your feline friend
             </p>
           </div>
@@ -158,32 +160,32 @@ const HowToUse = () => {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="new-cat" className="bg-gradient-to-br from-white to-kitty-50 dark:from-gray-900 dark:to-kitty-950 p-6 rounded-lg shadow-lg animate-fade-in">
+            <TabsContent value="new-cat" className="bg-gradient-to-br from-background to-accent/20 p-6 rounded-lg shadow-lg animate-fade-in">
               <div className="flex flex-col items-center">
-                <h2 className="text-2xl md:text-3xl font-semibold mb-8 text-kitty-700 dark:text-kitty-300 text-center">
+                <h2 className="text-2xl md:text-3xl font-semibold mb-8 text-primary text-center">
                   Introducing Kittyp to a New Cat
                 </h2>
 
-                <Card className="w-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-kitty-200 dark:border-kitty-800 transition-all duration-300">
+                <Card className="w-full bg-card/90 backdrop-blur-sm border-border transition-all duration-300">
                   <CardContent className="p-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="p-6">
                         <div className="flex items-center mb-4">
-                          <span className="flex items-center justify-center w-8 h-8 bg-kitty-600 text-white rounded-full mr-3">
+                          <span className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full mr-3">
                             {newCatStep + 1}
                           </span>
-                          <h3 className="text-xl font-semibold text-kitty-700 dark:text-kitty-300">
+                          <h3 className="text-xl font-semibold text-primary">
                             {newCatSteps[newCatStep].title}
                           </h3>
                         </div>
                         
-                        <p className="text-gray-700 dark:text-gray-300 mb-6">
+                        <p className="text-foreground mb-6">
                           {newCatSteps[newCatStep].content}
                         </p>
                         
-                        <div className="bg-kitty-50 dark:bg-kitty-900/30 p-4 rounded-md flex items-start mb-6">
-                          <CheckCircle className="w-5 h-5 text-kitty-600 dark:text-kitty-400 mr-2 flex-shrink-0 mt-0.5" />
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <div className="bg-accent p-4 rounded-md flex items-start mb-6">
+                          <CheckCircle className="w-5 h-5 text-primary mr-2 flex-shrink-0 mt-0.5" />
+                          <p className="text-sm text-muted-foreground">
                             <span className="font-semibold">Pro Tip:</span> {newCatSteps[newCatStep].tip}
                           </p>
                         </div>
@@ -214,7 +216,7 @@ const HowToUse = () => {
                         </div>
                       </div>
                       
-                      <div className="relative h-full min-h-[300px] bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                      <div className="relative h-full min-h-[300px] bg-muted overflow-hidden">
                         <img 
                           src={newCatSteps[newCatStep].image} 
                           alt={newCatSteps[newCatStep].title}
@@ -233,32 +235,32 @@ const HowToUse = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="transition" className="bg-gradient-to-br from-white to-kitty-50 dark:from-gray-900 dark:to-kitty-950 p-6 rounded-lg shadow-lg animate-fade-in">
+            <TabsContent value="transition" className="bg-gradient-to-br from-background to-accent/20 p-6 rounded-lg shadow-lg animate-fade-in">
               <div className="flex flex-col items-center">
-                <h2 className="text-2xl md:text-3xl font-semibold mb-8 text-kitty-700 dark:text-kitty-300 text-center">
+                <h2 className="text-2xl md:text-3xl font-semibold mb-8 text-primary text-center">
                   Transitioning from Another Litter to Kittyp
                 </h2>
 
-                <Card className="w-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-kitty-200 dark:border-kitty-800 transition-all duration-300">
+                <Card className="w-full bg-card/90 backdrop-blur-sm border-border transition-all duration-300">
                   <CardContent className="p-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="p-6">
                         <div className="flex items-center mb-4">
-                          <span className="flex items-center justify-center w-8 h-8 bg-kitty-600 text-white rounded-full mr-3">
+                          <span className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full mr-3">
                             {transitionStep + 1}
                           </span>
-                          <h3 className="text-xl font-semibold text-kitty-700 dark:text-kitty-300">
+                          <h3 className="text-xl font-semibold text-primary">
                             {transitionSteps[transitionStep].title}
                           </h3>
                         </div>
                         
-                        <p className="text-gray-700 dark:text-gray-300 mb-6">
+                        <p className="text-foreground mb-6">
                           {transitionSteps[transitionStep].content}
                         </p>
                         
-                        <div className="bg-kitty-50 dark:bg-kitty-900/30 p-4 rounded-md flex items-start mb-6">
-                          <Recycle className="w-5 h-5 text-kitty-600 dark:text-kitty-400 mr-2 flex-shrink-0 mt-0.5" />
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <div className="bg-accent p-4 rounded-md flex items-start mb-6">
+                          <Recycle className="w-5 h-5 text-primary mr-2 flex-shrink-0 mt-0.5" />
+                          <p className="text-sm text-muted-foreground">
                             <span className="font-semibold">Helpful Hint:</span> {transitionSteps[transitionStep].tip}
                           </p>
                         </div>
@@ -289,7 +291,7 @@ const HowToUse = () => {
                         </div>
                       </div>
                       
-                      <div className="relative h-full min-h-[300px] bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                      <div className="relative h-full min-h-[300px] bg-muted overflow-hidden">
                         <img 
                           src={transitionSteps[transitionStep].image} 
                           alt={transitionSteps[transitionStep].title}

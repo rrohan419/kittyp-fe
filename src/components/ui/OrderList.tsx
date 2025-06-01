@@ -17,6 +17,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useAppSelector } from "@/module/store/hooks";
 import { handleCheckout } from "@/services/paymentService";
+import { CurrencyType } from "@/services/cartService";
 
 
 interface OrderListProps {
@@ -27,7 +28,7 @@ interface OrderListProps {
 
 export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) => {
     const navigate = useNavigate();
-    const { data: ordersData, isLoading, isError } = useQuery({
+    const { data: ordersData, isLoading, isError, refetch } = useQuery({
         queryKey: ['orders', page, filters],
         queryFn: () => fetchFilteredOrders(page, 10, filters),
         placeholderData: (previousData) => previousData,
@@ -88,17 +89,37 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
         
         try {
             setProcessingPayment(order.orderNumber);
-            await handleCheckout(
+            // Convert the currency string to CurrencyType
+            const currency = order.currency === 'INR' ? CurrencyType.INR : CurrencyType.USD;
+            
+            const response = await handleCheckout(
                 order.taxes,
                 order.totalAmount,
-                order.currency,
+                currency,
                 order.orderNumber,
                 user
             );
-            toast.success("Payment initiated successfully");
-        } catch (error) {
-            console.error("Payment reinitiation failed:", error);
-            toast.error("Failed to reinitiate payment. Please try again.");
+
+            // If we get here, both payment and verification were successful
+            console.log("Payment and verification successful", response);
+            toast.success("Payment successful!");
+            // Just refresh the current orders list instead of redirecting
+            await refetch();
+        } catch (error: any) {
+            console.error("Payment process error:", error);
+            
+            // Handle different types of errors
+            if (error.error?.description) {
+                // Razorpay specific error
+                toast.error(error.error.description);
+            } else if (error.message === "Payment cancelled by user") {
+                toast.error("Payment was cancelled");
+            } else if (error.message === "Payment verification failed") {
+                // This shouldn't happen now with the fixes, but keeping it for safety
+                toast.error("Payment verification failed. Please contact support if payment was deducted.");
+            } else {
+                toast.error("Payment failed. Please try again.");
+            }
         } finally {
             setProcessingPayment(null);
         }

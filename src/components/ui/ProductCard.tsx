@@ -17,6 +17,7 @@ interface ProductCardProps {
 export function ProductCard({ product, index = 0, className }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
   const dispatch = useDispatch<AppDispatch>();
   const { loading } = useSelector((state: RootState) => ({
     loading: state.cartReducer.loading || state.cartReducer.isCartLoading
@@ -28,10 +29,12 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
     e.stopPropagation();
 
     try {
+      setIsAddingToCart(true);
       await dispatch(addToCartFromProduct(product)).unwrap();
     } catch (error) {
-      // Error is already handled by the thunk
       console.error('Error adding to cart:', error);
+    } finally {
+      setIsAddingToCart(false);
     }
   };
 
@@ -108,16 +111,16 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
       >
         <button
           onClick={handleAddToCart}
-          disabled={loading}
+          disabled={isAddingToCart || loading}
           className={cn(
             "p-2 bg-white dark:bg-gray-800 rounded-full shadow-md transition-colors",
-            loading 
+            (isAddingToCart || loading)
               ? "opacity-70 cursor-not-allowed"
               : "hover:bg-kitty-50 dark:hover:bg-gray-700"
           )}
           aria-label="Add to cart"
         >
-          {loading ? (
+          {isAddingToCart || loading ? (
             <Loader2 size={18} className="text-gray-900 dark:text-white animate-spin" />
           ) : (
             <ShoppingCart size={18} className="text-gray-900 dark:text-white" />

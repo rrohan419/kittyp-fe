@@ -4,20 +4,21 @@ import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Heart, Leaf, Shield, Users, Award, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 const About = () => {
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <div className="min-h-screen bg-background">
       <Navbar />
 
       <main className="pt-24 pb-16">
         {/* Hero Section */}
         <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-12 md:mb-20">
           <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 animate-fade-up">
-              About <span className="text-kitty-600">Kittyp</span>
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6 animate-fade-up">
+              About <span className="text-primary">Kittyp</span>
             </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-400 animate-fade-up animate-delay-100">
+            <p className="text-xl text-muted-foreground animate-fade-up animate-delay-100">
               Creating eco-friendly cat litter solutions that are better for your pet, 
               your home, and our planet.
             </p>
@@ -25,20 +26,20 @@ const About = () => {
         </section>
 
         {/* Our Story Section */}
-        <section className="bg-gray-50 dark:bg-gray-900 pb-16 md:pb-24">
+        <section className="bg-muted pb-16 md:pb-24">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
               <div className="order-2 md:order-1 animate-fade-up">
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Our Story</h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                <h2 className="text-3xl font-bold text-foreground mb-6">Our Story</h2>
+                <p className="text-muted-foreground mb-4">
                   Kittyp was founded in 2020 by a team of pet lovers and environmental scientists who believed 
                   cat litter could be better – for cats, for homes, and for our planet.
                 </p>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                <p className="text-muted-foreground mb-4">
                   After two years of research and development, we created a revolutionary plant-based cat litter 
                   that outperforms traditional clay litters while reducing environmental impact.
                 </p>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-muted-foreground">
                   Today, we're proud to offer products that thousands of cat owners trust, helping to divert 
                   tons of clay litter from landfills every year.
                 </p>
@@ -57,8 +58,8 @@ const About = () => {
         {/* Our Mission Section */}
         <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Our Mission</h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400">
+            <h2 className="text-3xl font-bold text-foreground mb-6">Our Mission</h2>
+            <p className="text-xl text-muted-foreground">
               We're on a mission to revolutionize pet care by creating products that are healthier for pets, 
               more convenient for owners, and kinder to our planet.
             </p>
@@ -67,34 +68,35 @@ const About = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                icon: <Heart className="h-10 w-10 text-kitty-600" />,
+                icon: <Heart className="h-10 w-10 text-primary" />,
                 title: "Healthier for Cats",
                 content: "Our dust-free, chemical-free formulas are gentle on sensitive paws and respiratory systems."
               },
               {
-                icon: <Leaf className="h-10 w-10 text-kitty-600" />,
+                icon: <Leaf className="h-10 w-10 text-primary" />,
                 title: "Better for the Planet",
                 content: "Made from sustainable plant materials that biodegrade naturally, reducing landfill waste."
               },
               {
-                icon: <Shield className="h-10 w-10 text-kitty-600" />,
+                icon: <Shield className="h-10 w-10 text-primary" />,
                 title: "Safer for Homes",
                 content: "Non-toxic ingredients mean a healthier environment for your entire family."
               }
             ].map((item, index) => (
               <div 
-                key={index} 
-                className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 text-center transition-transform hover:scale-105"
+                key={item.title}
+                className={cn(
+                  "flex flex-col items-center text-center p-8 rounded-xl",
+                  "bg-card border border-border",
+                  "animate-fade-up"
+                )}
+                style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className="inline-flex items-center justify-center rounded-full bg-kitty-100 dark:bg-kitty-900 p-4 mb-6">
+                <div className="p-3 bg-accent rounded-full mb-6">
                   {item.icon}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                  {item.title}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  {item.content}
-                </p>
+                <h3 className="text-xl font-semibold text-foreground mb-4">{item.title}</h3>
+                <p className="text-muted-foreground">{item.content}</p>
               </div>
             ))}
           </div>
@@ -166,8 +168,8 @@ const About = () => {
         {/* Values Section */}
         <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Our Values</h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400">
+            <h2 className="text-3xl font-bold text-foreground mb-6">Our Values</h2>
+            <p className="text-xl text-muted-foreground">
               The principles that guide everything we do at Kittyp.
             </p>
           </div>
@@ -175,40 +177,41 @@ const About = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {[
               {
-                icon: <Leaf className="h-8 w-8 text-kitty-600" />,
+                icon: <Leaf className="h-8 w-8 text-primary" />,
                 title: "Sustainability First",
                 content: "We prioritize eco-friendly materials and processes in every product decision."
               },
               {
-                icon: <Award className="h-8 w-8 text-kitty-600" />,
+                icon: <Award className="h-8 w-8 text-primary" />,
                 title: "Quality Without Compromise",
                 content: "We never sacrifice performance for sustainability – our products must excel at both."
               },
               {
-                icon: <Users className="h-8 w-8 text-kitty-600" />,
+                icon: <Users className="h-8 w-8 text-primary" />,
                 title: "Community Focused",
                 content: "We build lasting relationships with customers, partners, and environmental organizations."
               },
               {
-                icon: <Shield className="h-8 w-8 text-kitty-600" />,
+                icon: <Shield className="h-8 w-8 text-primary" />,
                 title: "Transparency",
                 content: "We're honest about our ingredients, manufacturing processes, and environmental impact."
               }
             ].map((value, index) => (
               <div 
-                key={index} 
-                className="flex space-x-4 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-100 dark:border-gray-700"
+                key={value.title}
+                className={cn(
+                  "flex items-start p-6 rounded-xl",
+                  "bg-card border border-border",
+                  "animate-fade-up"
+                )}
+                style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className="flex-shrink-0 mt-1">
+                <div className="p-2 bg-accent rounded-lg mr-4">
                   {value.icon}
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                    {value.title}
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    {value.content}
-                  </p>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">{value.title}</h3>
+                  <p className="text-muted-foreground">{value.content}</p>
                 </div>
               </div>
             ))}

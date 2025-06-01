@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Product } from '@/services/productService';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
-import { ShoppingCart, Heart, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, Heart, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
@@ -13,6 +13,7 @@ import { addToCartFromProduct } from '@/module/slice/CartSlice';
 const ProductDetail = () => {
   const { uuid } = useParams<{ uuid: string }>();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
@@ -32,9 +33,32 @@ const ProductDetail = () => {
     }
   }, [product]);
 
-  const handleAddToCart = () => {
-    if (product) {
-      dispatch(addToCartFromProduct(product));
+  // const handleAddToCart = async () => {
+  //   if (!product) return;
+
+  //   try {
+  //     setIsAddingToCart(true);
+  //     await dispatch(addToCartFromProduct(product)).unwrap();
+  //   } catch (error) {
+  //     console.error('Error adding to cart:', error);
+  //   } finally {
+  //     setTimeout(() => {
+  //       setIsAddingToCart(false);
+  //     }, 100); // Small delay to ensure state updates properly
+  //   }
+  // };
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      setIsAddingToCart(true);
+      await dispatch(addToCartFromProduct(product)).unwrap();
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+    } finally {
+      setIsAddingToCart(false);
     }
   };
 
@@ -186,15 +210,29 @@ const ProductDetail = () => {
             <div className="pt-6 space-y-4">
               <Button
                 onClick={handleAddToCart}
-                className="w-full h-12 text-base flex items-center justify-center gap-2"
+                disabled={isAddingToCart}
+                className={cn(
+                  "w-full h-12 text-base flex items-center justify-center gap-2",
+                  isAddingToCart && "opacity-70 cursor-not-allowed"
+                )}
               >
-                <ShoppingCart size={20} />
-                Add to Cart
+                {isAddingToCart ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Adding to Cart...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="h-5 w-5" />
+                    <span>Add to Cart</span>
+                  </>
+                )}
               </Button>
 
               <Button
                 variant="outline"
                 onClick={handleToggleFavorite}
+                disabled={isAddingToCart}
                 className={cn(
                   "w-full h-12 text-base flex items-center justify-center gap-2",
                   isFavorite(product.uuid) && "bg-pink-50 border-pink-200 hover:bg-pink-100 dark:bg-pink-900/20 dark:border-pink-800"

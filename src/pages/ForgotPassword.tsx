@@ -44,18 +44,18 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <div className="min-h-screen bg-background">
       <Navbar />
 
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-md mx-auto">
-            <Link to="/login" className="inline-flex items-center text-kitty-600 mb-6 hover:text-kitty-700">
+            <Link to="/login" className="inline-flex items-center text-primary hover:text-primary/90 mb-6">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Login
             </Link>
 
-            <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
+            <h1 className="text-3xl font-bold mb-6 text-foreground">
               Forgot Password
             </h1>
             
@@ -71,7 +71,7 @@ const ForgotPassword = () => {
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
                         id="email" 
                         type="email" 
@@ -86,7 +86,7 @@ const ForgotPassword = () => {
                   
                   <Button 
                     type="submit" 
-                    className="w-full bg-kitty-600 hover:bg-kitty-700"
+                    className="w-full"
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? "Sending..." : "Send Reset Code"}
@@ -94,9 +94,9 @@ const ForgotPassword = () => {
                 </form>
               </CardContent>
               <CardFooter className="flex justify-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   Remember your password?{" "}
-                  <Link to="/login" className="text-kitty-600 hover:text-kitty-700 font-medium">
+                  <Link to="/login" className="text-primary hover:text-primary/90 font-medium">
                     Sign in
                   </Link>
                 </p>
