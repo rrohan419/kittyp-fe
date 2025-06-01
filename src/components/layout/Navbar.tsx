@@ -148,11 +148,14 @@ export function Navbar() {
           </ul>
 
           <div className="flex items-center space-x-4">
-            <ThemeSwitcher />
+            <div className="w-9">
+              <ThemeSwitcher />
+            </div>
+            <CartSidebar />
             {isAuthenticated ? (
               <button
                 onClick={handleLogout}
-                className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors"
+                className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
                 aria-label="Logout"
               >
                 <LogOut size={18} />
@@ -162,7 +165,7 @@ export function Navbar() {
               <div className="flex items-center space-x-3">
                 <Link
                   to="/login"
-                  className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors"
+                  className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
                   aria-label="Login"
                 >
                   <LogIn size={18} />
@@ -170,7 +173,7 @@ export function Navbar() {
                 </Link>
                 <Link
                   to="/signup"
-                  className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors"
+                  className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
                   aria-label="Sign up"
                 >
                   <UserPlus size={18} />
@@ -178,12 +181,16 @@ export function Navbar() {
                 </Link>
               </div>
             )}
+            
           </div>
         </div>
 
         {/* Mobile Menu Button */}
         <div className="flex items-center space-x-4 md:hidden">
-          <ThemeSwitcher />
+          <div className="w-9">
+            <ThemeSwitcher />
+          </div>
+          <CartSidebar />
           <button
             onClick={toggleMenu}
             className="text-foreground hover:text-primary transition-colors"

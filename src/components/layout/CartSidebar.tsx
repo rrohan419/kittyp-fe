@@ -10,6 +10,7 @@ import { CurrencyType, formatCurrency } from "@/services/cartService";
 import { RootState, AppDispatch } from "@/module/store";
 import { resetCartThunk } from "@/module/slice/CartSlice";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export function CartSidebar() {
   const dispatch = useDispatch<AppDispatch>();
@@ -34,12 +35,12 @@ export function CartSidebar() {
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
         <button
-          className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="relative p-2 rounded-full hover:bg-accent transition-colors"
           aria-label="Shopping Cart"
         >
-          <ShoppingCart size={20} />
+          <ShoppingCart className="h-5 w-5 text-foreground" />
           {itemCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground w-5 h-5 flex items-center justify-center rounded-full text-xs">
+            <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground w-5 h-5 flex items-center justify-center rounded-full text-black text-xs font-medium shadow-sm">
               {itemCount}
             </span>
           )}
@@ -55,7 +56,7 @@ export function CartSidebar() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={handleClearCart}
                     disabled={loading}
                   >
@@ -68,14 +69,14 @@ export function CartSidebar() {
 
             {loading ? (
               <div className="flex-1 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-kitty-600"></div>
+                <div className="h-8 w-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
               </div>
             ) : items.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-8 space-y-4">
-                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-                  <ShoppingCart size={24} className="text-gray-400" />
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                  <ShoppingCart size={24} className="text-muted-foreground" />
                 </div>
-                <p className="text-gray-500">Your cart is empty</p>
+                <p className="text-muted-foreground">Your cart is empty</p>
                 <Button variant="outline" className="mt-2" onClick={() => setIsOpen(false)} asChild>
                   <Link to="/products">Browse Products</Link>
                 </Button>
@@ -101,23 +102,23 @@ export function CartSidebar() {
           </div>
 
           {items.length > 0 && (
-            <div className="mt-auto border-t bg-white dark:bg-gray-950 p-6 space-y-6">
+            <div className="mt-auto border-t border-border bg-background p-6 space-y-6">
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
-                  <span className="font-medium">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="font-medium text-foreground">
                     {formatCurrency(totalAmount.toFixed(2), CurrencyType.INR)}
                   </span>
                 </div>
 
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Shipping</span>
-                  <span>Calculated at checkout</span>
+                  <span className="text-muted-foreground">Shipping</span>
+                  <span className="text-foreground">Calculated at checkout</span>
                 </div>
 
                 <Separator />
 
-                <div className="flex justify-between font-semibold">
+                <div className="flex justify-between font-semibold text-foreground">
                   <span>Total</span>
                   <span>{formatCurrency(totalAmount.toFixed(2), CurrencyType.INR)}</span>
                 </div>
@@ -131,7 +132,7 @@ export function CartSidebar() {
                 >
                   <Link to="/checkout">
                     {loading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <div className="h-4 w-4 rounded-full border-2 border-primary-foreground/20 border-t-primary-foreground animate-spin"></div>
                     ) : (
                       "Proceed to Checkout"
                     )}

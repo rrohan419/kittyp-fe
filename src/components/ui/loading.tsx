@@ -1,19 +1,12 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react'; // For a spinner icon
 
 const Loading = () => {
   return (
-    <div className="fixed inset-0 bg-background flex items-center justify-center z-50">
-      <motion.div
-        className="flex flex-col items-center gap-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Loader2 className="h-12 w-12 text-primary animate-spin" />
-        <p className="text-lg text-muted-foreground">Loading...</p>
-      </motion.div>
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="relative">
+        <div className="h-16 w-16 rounded-full border-4 border-muted animate-pulse"></div>
+        <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-4 border-t-primary animate-spin"></div>
+      </div>
     </div>
   );
 };
