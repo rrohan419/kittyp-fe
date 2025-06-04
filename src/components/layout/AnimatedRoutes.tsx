@@ -32,7 +32,11 @@ export function AnimatedRoutes() {
   const location = useLocation();
 
   return (
-    <AnimatePresence mode="wait" initial={false} onExitComplete={() => window.scrollTo(0, 0)}>
+    <AnimatePresence mode="wait" initial={false} onExitComplete={() => window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'smooth'
+    })}>
       <Routes location={location} key={location.pathname}>
         <Route
           path="/"
