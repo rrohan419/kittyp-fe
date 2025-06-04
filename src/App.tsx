@@ -3,13 +3,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/context/CartContext";
 import NotFound from "./pages/NotFound";
 import { ScrollToTop } from "./utils/ScrollToTop";
 import { FavoritesProvider } from "@/context/FavoritesContext";
 import Loading from "@/components/ui/loading";
-import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import Checkout from './pages/Checkout';
 import Products from './pages/Products';
 import { OrderProvider } from './context/OrderContext';
@@ -43,88 +42,42 @@ import VerifyResetCode from './pages/VerifyResetCode';
 import ResetPassword from './pages/ResetPassword';
 import { CartInitializer } from './components/cart/CartInitializer';
 import "@/styles/global.css";
+import { Navbar } from "./components/layout/Navbar";
+import { AnimatedRoutes } from "./components/layout/AnimatedRoutes";
+import { ThemeProvider } from './components/providers/ThemeProvider';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
-      staleTime: 30000,
-    }
-  }
+      refetchOnWindowFocus: false,
+    },
+  },
 });
 
-const AppContent = () => (
-  <ThemeProvider>
-    <TooltipProvider>
-      <OrderProvider>
-        <AdminProvider>
-          <FavoritesProvider>
-            <CartProvider>
-              <Toaster />
-              <Sonner 
-                position="bottom-left"
-                toastOptions={{
-                  style: {
-                    background: 'hsl(var(--primary))',
-                    color: 'hsl(var(--primary-foreground))',
-                    border: '1px solid hsl(var(--border))',
-                  },
-                }} 
-              />
-              <BrowserRouter>
-                <ScrollToTop />
-                <Suspense fallback={<Loading />}>
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/products" element={<Products />} />
-                    <Route path="/product/:uuid" element={<ProductDetail />} />
-                    <Route path="/how-to-use" element={<HowToUse />} />
-                    <Route path="/blogs" element={<Blogs />} />
-                    <Route path="/why-eco-litter" element={<WhyEcoLitter />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/privacy" element={<PrivacyPolicy />} />
-                    <Route path="/terms" element={<TermsOfService />} />
-                    <Route path="/sitemap" element={<Sitemap />} />
-                    <Route path="/contact" element={<Contact />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/signup" element={<Signup />} />
-                    <Route path="/articles" element={<Articles />} />
-                    <Route path="/cart" element={<Cart />} />
-                    <Route path="/article/:slug" element={<ArticleDetail />} />
-                    <Route path="/admin" element={<AdminDashboard />} />
-                    <Route path="/admin/articles/new" element={<AdminArticleEditor />} />
-                    <Route path="/admin/articles/edit/:id" element={<AdminArticleEditor />} />
-                    <Route path="/orders" element={<MyOrders />} />
-                    <Route path="/orders/:orderId" element={<OrderDetail />} />
-                    <Route path="/checkout" element={<Checkout />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/verify-reset-code" element={<VerifyResetCode />} />
-                    <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Suspense>
-              </BrowserRouter>
-            </CartProvider>
-          </FavoritesProvider>
-        </AdminProvider>
-      </OrderProvider>
-    </TooltipProvider>
-  </ThemeProvider>
-);
-
-const App = () => {
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Provider store={store}>
-        <PersistGate loading={<Loading />} persistor={persistor}>
-          <CartInitializer>
-            <AppContent />
-          </CartInitializer>
-        </PersistGate>
-      </Provider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <FavoritesProvider>
+            <CartProvider>
+              <Router>
+                <div className="relative min-h-screen bg-background overflow-hidden">
+                  <div className="fixed top-0 left-0 right-0 z-50">
+                    <Navbar />
+                  </div>
+                  <div className="relative min-h-screen">
+                    <AnimatedRoutes />
+                  </div>
+                  <Toaster />
+                </div>
+              </Router>
+            </CartProvider>
+          </FavoritesProvider>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
-};
+}
 
 export default App;

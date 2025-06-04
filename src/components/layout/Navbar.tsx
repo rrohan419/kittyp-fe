@@ -33,10 +33,9 @@ export function Navbar() {
 
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 20) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
+      const shouldBeScrolled = window.scrollY > 20;
+      if (scrolled !== shouldBeScrolled) {
+        setScrolled(shouldBeScrolled);
       }
     };
 
@@ -49,8 +48,9 @@ export function Navbar() {
     setIsAuthenticated(!!token);
 
     window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Initial check
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [scrolled]);
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -106,15 +106,15 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        "fixed top-0 left-0 w-full z-50",
-        isOpen ? "bg-background dark:bg-gray-900 shadow-sm transition-none" :
+        "fixed top-0 left-0 w-full z-[9999] isolate",
+        isOpen ? "bg-background dark:bg-gray-900 shadow-sm" :
           scrolled
-            ? "bg-background/80 backdrop-blur-md shadow-sm dark:bg-black/80 transition-all duration-300"
-            : "bg-transparent transition-all duration-300"
+            ? "bg-background/95 backdrop-blur-sm shadow-sm dark:bg-black/95"
+            : "bg-background/80 dark:bg-black/80"
       )}
     >
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-        <Link to="/" className="inline-block">
+        <Link to="/" className="inline-block relative z-[9999]">
           <span className="text-2xl font-extrabold tracking-tight">
             kitty<span className="text-primary">p</span>
           </span>
