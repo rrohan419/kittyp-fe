@@ -58,7 +58,7 @@ const Sitemap = () => {
                         <li key={`site-map-link-index-${linkIndex}`}>
                           <Link 
                             to={link.path}
-                            className="text-kitty-600 dark:text-kitty-400 hover:text-kitty-800 dark:hover:text-kitty-300 transition-colors"
+                            className="text-kitty-1600 dark:text-white hover:text-kitty-800 dark:hover:text-primary/90 transition-colors"
                           >
                             {link.name}
                           </Link>
