@@ -62,11 +62,11 @@ function App() {
           <FavoritesProvider>
             <CartProvider>
               <Router>
-                <div className="relative min-h-screen bg-background overflow-hidden">
+                <div className="min-h-screen bg-background">
                   <div className="fixed top-0 left-0 right-0 z-50">
                     <Navbar />
                   </div>
-                  <div className="relative min-h-screen">
+                  <div className="pt-16">
                     <AnimatedRoutes />
                   </div>
                   <Toaster />
