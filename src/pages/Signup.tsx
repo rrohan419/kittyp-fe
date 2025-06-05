@@ -54,38 +54,43 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      const response = await signup({ firstName,lastName, email, password });
+      const response = await signup({ firstName, lastName, email, password });
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Signup failed");
       }
 
-      // toast({
-      //   title: "Signup Successful",
-      //   description: "Your account has been created.",
-      //   variant: "default",
-      // });
-
-      console.log("Signup successful:", response);
+      // Show success dialog first
       setShowSuccessDialog(true);
-      navigate("/login")
+      
+      // Wait for dialog animation and user acknowledgment
+      setTimeout(() => {
+        // Reset form
+        setFirstName('');
+        setLastName('');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        
+        // Show success toast
+        toast({
+          title: "Account created successfully",
+          description: "Please login with your new account",
+          duration: 3000,
+        });
+
+        // Navigate to login
+        navigate("/login");
+      }, 2000);
+
     } catch (error: any) {
-      // toast({
-      //   title: "Signup Failed",
-      //   description: error.message || "An error occurred. Please try again.",
-      //   variant: "destructive",
-      // });
       console.error("Signup Error:", error.message);
-    setErrorMessage(error.message); // Store the error message
-    setShowErrorDialog(true); // Show error dialog
+      setErrorMessage(error.message);
+      setShowErrorDialog(true);
     } finally {
       setLoading(false);
     }
-
-    // Since signup is not required, just show success message
-    console.log('Signup attempted with:', { name, email });
-    // setShowSuccessDialog(true);
   };
 
   const googleLogin = useGoogleLogin({
@@ -174,6 +179,7 @@ const Signup = () => {
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         required 
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -189,6 +195,7 @@ const Signup = () => {
                         className="pl-10"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -205,6 +212,7 @@ const Signup = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required 
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -221,6 +229,7 @@ const Signup = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required 
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -237,6 +246,7 @@ const Signup = () => {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required 
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -244,9 +254,14 @@ const Signup = () => {
                   <Button 
                     type="submit" 
                     className="w-full flex items-center justify-center gap-2"
+                    disabled={loading}
                   >
-                    <UserPlus className="h-4 w-4" />
-                    Create Account
+                    {loading ? (
+                      <div className="h-4 w-4 animate-spin border-2 border-primary-foreground border-t-transparent rounded-full" />
+                    ) : (
+                      <UserPlus className="h-4 w-4" />
+                    )}
+                    {loading ? 'Creating Account...' : 'Create Account'}
                   </Button>
                 </form>
 
@@ -265,6 +280,7 @@ const Signup = () => {
                   variant="outline"
                   className="w-full flex items-center justify-center gap-2"
                   onClick={() => handleGoogleSignup()}
+                  disabled={loading}
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -318,15 +334,18 @@ const Signup = () => {
           <DialogHeader className="text-center">
             <DialogTitle className="text-xl font-bold">Account Created!</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Your account has been successfully created. You'll receive a verification email shortly.
+              Your account has been successfully created. You will be redirected to login.
             </DialogDescription>
           </DialogHeader>
           <Button 
-            onClick={() => setShowSuccessDialog(false)} 
+            onClick={() => {
+              setShowSuccessDialog(false);
+              navigate("/login");
+            }}
             className="mt-4 w-full"
-            variant="destructive"
+            variant="default"
           >
-            Got it!
+            Continue to Login
           </Button>
         </motion.div>
       </DialogContent>
