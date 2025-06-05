@@ -277,7 +277,6 @@ export default function OrderDetail() {
     if (!order) {
         return (
             <>
-                <Navbar />
                 <div className="container mx-auto px-4 pt-24 pb-8 py-12 max-w-2xl min-h-[80vh] flex flex-col items-center justify-center">
                     <Info className="h-8 w-8 text-destructive mb-3" />
                     <p className="text-destructive font-medium mb-4 text-center">Order not found.</p>
@@ -292,7 +291,6 @@ export default function OrderDetail() {
 
     return (
         <>
-            <Navbar />
             <div className="container mx-auto px-4 pt-24 pb-8 max-w-3xl min-h-[80vh] fade-in">
                 <div className="mb-6 flex items-center gap-2">
                     <Link to="/profile" className="inline-flex items-center text-primary hover:bg-accent px-3 py-2 rounded-lg transition hover-lift font-bold group">

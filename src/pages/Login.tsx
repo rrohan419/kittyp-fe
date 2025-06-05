@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
-import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,7 +27,7 @@ import { login } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
 import { LoginResponse } from './Interface/PagesInterface';
 import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '@/module/store';
+import { AppDispatch, RootState } from '@/module/store/store';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
 // import { useCart } from '@/context/CartContext';
 
@@ -55,30 +54,20 @@ const Login = () => {
       // First, perform the login
       const loginResponse = await login({ email, password });
       
-      // Navigate immediately after successful login
-      navigate("/");
+      // Initialize user and cart state
+      await dispatch(initializeUserAndCart()).unwrap();
       
-      // Handle cart sync and other non-critical operations asynchronously
-      Promise.all([
-        dispatch(initializeUserAndCart()),
-        // Add any other non-critical operations here
-      ]).then(() => {
-        // Show success message if guest cart was synced
-        if (hasGuestCartItems) {
-          toast({
-            title: "Cart Synced",
-            description: "Your cart items have been saved to your account",
-            duration: 1000,
-          });
-        }
-      }).catch((error) => {
-        console.error("Error in background operations:", error);
+      // Show success message if guest cart was synced
+      if (hasGuestCartItems) {
         toast({
-          title: "Background Sync Warning",
-          description: "Some features may take a moment to update",
-          duration: 3000,
+          title: "Cart Synced",
+          description: "Your cart items have been saved to your account",
+          duration: 1000,
         });
-      });
+      }
+
+      // Navigate after successful initialization
+      navigate("/");
 
     } catch (error: any) {
       console.error("Signin Error:", error);
@@ -147,7 +136,6 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
 
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">

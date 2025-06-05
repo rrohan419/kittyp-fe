@@ -3,11 +3,10 @@ import { CartItem } from "@/components/ui/CartItem";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
-import { Navbar } from "@/components/layout/Navbar";
 import { CurrencyType, formatCurrency } from "@/services/cartService";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState, AppDispatch } from "@/module/store";
+import { AppDispatch, RootState } from '@/module/store/store';
 import { clearCartThunk } from "@/module/slice/CartSlice";
 
 export default function Cart() {
@@ -23,7 +22,6 @@ export default function Cart() {
 
   return (
     <>
-      <Navbar />
       <div className="container max-w-6xl mx-auto px-4 pt-24 pb-16">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold">Your Cart</h1>

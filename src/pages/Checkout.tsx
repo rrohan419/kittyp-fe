@@ -25,7 +25,7 @@ import {
     ShippingMethod
 } from "@/services/cartService";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState, AppDispatch } from "@/module/store";
+import { AppDispatch, RootState } from '@/module/store/store';
 import { clearCartThunk } from "@/module/slice/CartSlice";
 import { loadRazorpayScript, handlePayment, RazorpayOptions, handlePaymentTimeout, handlePaymentCancellation } from "@/services/paymentService";
 
@@ -327,7 +327,6 @@ export default function Checkout() {
     if (isLoadingAddresses || isPaymentVerifying) {
         return (
             <>
-                <Navbar />
                 <div className="min-h-[calc(100vh-6rem)] flex items-center justify-center bg-white dark:bg-gray-950">
                     {isPaymentVerifying ? (
                         <PaymentLoader 
@@ -345,7 +344,6 @@ export default function Checkout() {
 
     return (
         <>
-            <Navbar />
             <div className="container mx-auto px-4 pt-24 pb-16 max-w-6xl">
                 <div className="flex items-center mb-8">
                     <Button

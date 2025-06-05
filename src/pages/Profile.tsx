@@ -4,12 +4,11 @@ import FavoritesSection from '@/components/ui/FavoritesSection';
 import OrderHistory from '@/components/ui/OrderHistory';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Footer } from '@/components/layout/Footer';
-import { Navbar } from '@/components/layout/Navbar';
 import { format } from 'date-fns';
 import Loading from '@/components/ui/loading';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { RootState } from '@/module/store';
+import { RootState } from '@/module/store/store';
 
 const Profile: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.cartReducer);
@@ -33,7 +32,6 @@ const Profile: React.FC = () => {
 
   return (
     <>
-      <Navbar />
       <div className="container mx-auto max-w-7xl mt-8 px-4">
         <div className="space-y-8 py-6 md:py-12">
           <div className="space-y-8 py-8 md:py-12">

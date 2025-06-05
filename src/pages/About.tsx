@@ -1,5 +1,4 @@
 import React from 'react';
-import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Heart, Leaf, Shield, Users, Award, MapPin } from 'lucide-react';
@@ -9,7 +8,6 @@ import { cn } from '@/lib/utils';
 const About = () => {
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
 
       <main className="pt-24 pb-16">
         {/* Hero Section */}

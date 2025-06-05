@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Product } from '@/services/productService';
-import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { ShoppingCart, Heart, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -82,7 +80,6 @@ const ProductDetail = () => {
   if (error || !product) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="flex flex-col items-center justify-center h-[60vh]">
             <h2 className="text-2xl font-bold text-foreground mb-4">
@@ -101,7 +98,6 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
         <button
           onClick={handleGoBack}
