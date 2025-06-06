@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Heart, Loader2 } from 'lucide-react';
+import { ShoppingCart, Heart, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFavorites } from '@/context/FavoritesContext';
 import { Product } from '@/services/productService';
 import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '@/module/store';
+import { AppDispatch, RootState } from '@/module/store/store';
 import { addToCartFromProduct } from '@/module/slice/CartSlice';
+import { toast } from 'sonner';
 
 interface ProductCardProps {
   product: Product;
@@ -27,6 +28,11 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (product.stockQuantity <= 0) {
+      toast.error("This product is out of stock");
+      return;
+    }
 
     try {
       setIsAddingToCart(true);
@@ -53,6 +59,14 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
     } else {
       addFavorite(favoriteProduct);
     }
+  };
+
+  const formatCurrency = (value: number, currency: string) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 2,
+    }).format(value);
   };
   
   return (
@@ -83,23 +97,43 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
             onLoad={() => setIsImageLoaded(true)}
           />
           
-          <div className="absolute bottom-4 left-4">
-            <span className="inline-block px-3 py-1 text-xs font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-full">
+          <div className="absolute bottom-4 left-4 flex gap-2">
+            <span className="inline-block px-3 py-1 text-xs font-medium bg-white/90 dark:bg-gray-800/90 text-gray-900 dark:text-white rounded-full shadow-sm backdrop-blur-sm">
               {product.category}
             </span>
+            {product.stockQuantity <= 0 && (
+              <span className="inline-block px-3 py-1 text-xs font-medium bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-full shadow-sm backdrop-blur-sm border border-red-200 dark:border-red-500/30">
+                Out of Stock
+              </span>
+            )}
+            {product.stockQuantity > 0 && product.stockQuantity <= 2 && (
+              <span className="inline-block px-3 py-1 text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-full shadow-sm backdrop-blur-sm border border-amber-200 dark:border-amber-500/30">
+                Only {product.stockQuantity} left!
+              </span>
+            )}
           </div>
           
           <div 
             className={cn(
-              "absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent transition-opacity duration-300",
+              "absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent transition-opacity duration-300",
               isHovered ? "opacity-100" : "opacity-0"
             )}
           />
         </div>
         
         <div className="p-4">
-          <h3 className="font-medium text-gray-900 dark:text-white">{product.name}</h3>
-          <p className="mt-1 text-gray-700 dark:text-gray-300">${product.price?.toFixed(2) ?? "0.00"}</p>
+          <div className="flex justify-between items-start">
+            <h3 className="font-medium text-gray-900 dark:text-white line-clamp-2">{product.name}</h3>
+            {product.stockQuantity <= 0 && (
+              <span className="flex items-center text-xs font-medium text-red-500 dark:text-red-400 ml-2">
+                <AlertCircle size={14} className="mr-1" />
+                No Stock
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-gray-700 dark:text-gray-300">
+            {formatCurrency(product.price, product.currency)}
+          </p>
         </div>
       </Link>
       
@@ -111,17 +145,23 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
       >
         <button
           onClick={handleAddToCart}
-          disabled={isAddingToCart || loading}
+          disabled={isAddingToCart || loading || product.stockQuantity <= 0}
           className={cn(
-            "p-2 bg-white dark:bg-gray-800 rounded-full shadow-md transition-colors",
+            "p-2 rounded-full shadow-md transition-colors",
+            product.stockQuantity <= 0
+              ? "bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30"
+              : "bg-white dark:bg-gray-800 hover:bg-kitty-50 dark:hover:bg-gray-700",
             (isAddingToCart || loading)
               ? "opacity-70 cursor-not-allowed"
-              : "hover:bg-kitty-50 dark:hover:bg-gray-700"
+              : ""
           )}
-          aria-label="Add to cart"
+          aria-label={product.stockQuantity <= 0 ? "Out of stock" : "Add to cart"}
+          title={product.stockQuantity <= 0 ? "Out of stock" : "Add to cart"}
         >
           {isAddingToCart || loading ? (
-            <Loader2 size={18} className="text-gray-900 dark:text-white animate-spin" />
+            <Loader2 size={18} className="animate-spin" />
+          ) : product.stockQuantity <= 0 ? (
+            <AlertCircle size={18} />
           ) : (
             <ShoppingCart size={18} className="text-gray-900 dark:text-white" />
           )}

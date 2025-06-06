@@ -11,8 +11,8 @@ export interface Product {
     productImageUrls: string[];
     category: string;
     attribute: Attributes;
-    currency: CurrencyType
-
+    currency: CurrencyType;
+    stockQuantity: number;
 }
 export interface Attributes {
     color: string;

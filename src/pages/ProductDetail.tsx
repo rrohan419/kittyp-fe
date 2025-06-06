@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
-import { ShoppingCart, Heart, ArrowLeft, Loader2 } from 'lucide-react';
+import { ShoppingCart, Heart, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
@@ -147,10 +147,29 @@ const ProductDetail = () => {
               <p className="mt-2 text-2xl font-semibold text-primary">
                 ${product.price.toFixed(2)}
               </p>
-              <div className="mt-2">
-                <span className="inline-block px-3 py-1 text-xs font-medium bg-muted text-muted-foreground rounded-full">
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <span className="inline-block px-3 py-1 text-xs font-medium bg-muted/80 text-muted-foreground rounded-full shadow-sm">
                   {product.category}
                 </span>
+                {product.stockQuantity <= 0 ? (
+                  <div className="flex items-center">
+                    <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-full shadow-sm border border-red-200 dark:border-red-500/30">
+                      <AlertCircle size={12} className="mr-1" />
+                      Out of Stock
+                    </span>
+                  </div>
+                ) : product.stockQuantity <= 2 ? (
+                  <div className="flex items-center">
+                    <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-full shadow-sm border border-amber-200 dark:border-amber-500/30">
+                      <AlertCircle size={12} className="mr-1" />
+                      Only {product.stockQuantity} left in stock!
+                    </span>
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full shadow-sm border border-emerald-200 dark:border-emerald-500/30">
+                    In Stock
+                  </span>
+                )}
               </div>
             </div>
 
@@ -185,26 +204,41 @@ const ProductDetail = () => {
             )}
 
             <div className="pt-6 space-y-4">
-              <Button
-                onClick={handleAddToCart}
-                disabled={isAddingToCart}
-                className={cn(
-                  "w-full h-12 text-base flex items-center justify-center gap-2",
-                  isAddingToCart && "opacity-70 cursor-not-allowed"
-                )}
-              >
-                {isAddingToCart ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Adding to Cart...</span>
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart className="h-5 w-5" />
-                    <span>Add to Cart</span>
-                  </>
-                )}
-              </Button>
+              {product.stockQuantity <= 0 ? (
+                <Button
+                  disabled
+                  className="w-full h-12 text-base flex items-center justify-center gap-2 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30 hover:bg-red-100 dark:hover:bg-red-500/20"
+                >
+                  <AlertCircle className="h-5 w-5" />
+                  <span>Out of Stock</span>
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleAddToCart}
+                  disabled={isAddingToCart}
+                  className={cn(
+                    "w-full h-12 text-base flex items-center justify-center gap-2",
+                    isAddingToCart && "opacity-70 cursor-not-allowed"
+                  )}
+                >
+                  {isAddingToCart ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>Adding to Cart...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="h-5 w-5" />
+                      <span>
+                        {product.stockQuantity <= 2 
+                          ? `Add to Cart (${product.stockQuantity} left)`
+                          : 'Add to Cart'
+                        }
+                      </span>
+                    </>
+                  )}
+                </Button>
+              )}
 
               <Button
                 variant="outline"
