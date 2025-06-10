@@ -51,6 +51,7 @@ export default function Checkout() {
     const [paymentTimeout, setPaymentTimeout] = useState<NodeJS.Timeout | null>(null);
     const [isPaymentPending, setIsPaymentPending] = useState(false);
     const [isPaymentVerifying, setIsPaymentVerifying] = useState(false);
+    const [isRedirecting, setIsRedirecting] = useState(false);
 
     useEffect(() => {
         if (items.length === 0) {
@@ -117,8 +118,8 @@ export default function Checkout() {
     };
 
     const handlePaymentCleanup = async (orderId: string, reason: 'timeout' | 'cancelled') => {
-        cleanupPaymentTimeout();
         try {
+            setIsRedirecting(true);
             if (reason === 'timeout') {
                 await handlePaymentTimeout(orderId);
                 toast.error("Payment session timed out. Please try again.");
@@ -128,8 +129,9 @@ export default function Checkout() {
             }
         } catch (error) {
             console.error(`Error handling payment ${reason}:`, error);
+        } finally {
+            navigate('/cart');
         }
-        navigate('/cart');
     };
 
     const handleAddressCreated = (newAddress: Address) => {
@@ -336,6 +338,7 @@ export default function Checkout() {
                 },
                 modal: {
                     ondismiss: function () {
+                        setIsRedirecting(true);
                         handlePaymentCleanup(razorpayOrderResponse.data.id, 'cancelled');
                     },
                     escape: true,
@@ -354,6 +357,7 @@ export default function Checkout() {
                 await handlePayment(options);
             } catch (error: any) {
                 cleanupPaymentTimeout();
+                setIsRedirecting(true);
                 console.error('Payment failed:', error);
                 if (error.error?.description) {
                     toast.error(error.error.description);
@@ -368,6 +372,7 @@ export default function Checkout() {
             console.error("Failed to process order:", error);
             setIsProcessingOrder(false);
             setIsPaymentPending(false);
+            setIsRedirecting(true);
             
             toast.dismiss(); // Clear any existing toasts
             toast.error("Failed to place order. Please try again.", {
@@ -380,7 +385,7 @@ export default function Checkout() {
         }
     };
 
-    if (isLoadingAddresses || isPaymentVerifying) {
+    if (isLoadingAddresses || isPaymentVerifying || isRedirecting) {
         return (
             <>
                 <div className="min-h-[calc(100vh-6rem)] flex items-center justify-center bg-white dark:bg-gray-950">
@@ -388,6 +393,11 @@ export default function Checkout() {
                         <PaymentLoader
                             message="Processing Your Order"
                             subMessage="Please wait while we verify your payment and process your order. Do not close or refresh this page."
+                        />
+                    ) : isRedirecting ? (
+                        <PaymentLoader
+                            message="Redirecting"
+                            subMessage="Please wait while we redirect you..."
                         />
                     ) : (
                         <LoadingState message="Preparing checkout..." />

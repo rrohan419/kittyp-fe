@@ -38,7 +38,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
             "data-[type=success]:!bg-green-50 data-[type=success]:!border-green-500/30 data-[type=success]:!text-green-800 dark:data-[type=success]:!bg-green-950/30 dark:data-[type=success]:!text-green-300",
             "data-[type=error]:!bg-red-50 data-[type=error]:!border-red-500/30 data-[type=error]:!text-red-800 dark:data-[type=error]:!bg-red-950/30 dark:data-[type=error]:!text-red-300",
             "data-[type=info]:!bg-primary/5 data-[type=info]:!border-primary/30 data-[type=info]:!text-primary dark:data-[type=info]:!bg-primary-950/30 dark:data-[type=info]:!text-primary-300",
-            "data-[type=warning]:!bg-yellow-50 data-[type=warning]:!border-yellow-500/30 data-[type=warning]:!text-yellow-800 dark:data-[type=warning]:!bg-yellow-950/30 dark:data-[type=warning]:!text-yellow-300",
+            "data-[type=warning]:!bg-yellow-50 data-[type=warning]:!border-yellow-toast500/30 data-[type=warning]:!text-yellow-800 dark:data-[type=warning]:!bg-yellow-950/30 dark:data-[type=warning]:!text-yellow-300",
           ].join(" "),
           title: [
             "group-[.toast]:font-semibold",

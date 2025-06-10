@@ -17,19 +17,19 @@ import {
     Info,
     RefreshCw,
 } from "lucide-react";
-import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { fetchOrderByOrderNumber, fetchOrderInvoice } from "@/services/orderService";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Button } from "@/components/ui/button";
-import { handleCheckout } from "@/services/paymentService";
 import { useAppSelector } from "@/module/store/hooks";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CurrencyType } from "@/services/cartService";
 import { cn } from "@/lib/utils";
+import { PaymentLoader } from "@/components/ui/PaymentLoader";
+import { reinitiatePayment } from "@/utils/paymentUtils";
 
 const STATUS_COLORS: Record<string, string> = {
     CREATED: "bg-yellow-100 text-yellow-800",
@@ -103,6 +103,7 @@ export default function OrderDetail() {
     const navigate = useNavigate();
     const user = useAppSelector((state) => state.cartReducer.user);
     const [processingPayment, setProcessingPayment] = useState(false);
+    const [isPaymentVerifying, setIsPaymentVerifying] = useState(false);
 
     const {
         data: order,
@@ -131,39 +132,19 @@ export default function OrderDetail() {
         
         try {
             setProcessingPayment(true);
-            // Convert the currency string to CurrencyType
-            const currency = order.data.currency === 'INR' ? CurrencyType.INR : CurrencyType.USD;
             
-            const response = await handleCheckout(
-                order.data.taxes,
-                order.data.totalAmount,
-                currency,
-                order.data.orderNumber,
-                user
-            );
-
-            // If we get here, both payment and verification were successful
-            console.log("Payment and verification successful", response);
-            toast.success("Payment successful!");
-            // Just refresh the current order data instead of redirecting
+            await reinitiatePayment({
+                order: order.data,
+                user,
+                onVerifying: () => setIsPaymentVerifying(true),
+                onSuccess: () => refetch(),
+                onComplete: () => {
+                    setProcessingPayment(false);
+                    setIsPaymentVerifying(false);
+                }
+            });
+        } catch (error) {
             await refetch();
-        } catch (error: any) {
-            console.error("Payment process error:", error);
-            
-            // Handle different types of errors
-            if (error.error?.description) {
-                // Razorpay specific error
-                toast.error(error.error.description);
-            } else if (error.message === "Payment cancelled by user") {
-                toast.error("Payment was cancelled");
-            } else if (error.message === "Payment verification failed") {
-                // This shouldn't happen now with the fixes, but keeping it for safety
-                toast.error("Payment verification failed. Please contact support if payment was deducted.");
-            } else {
-                toast.error("Payment failed. Please try again.");
-            }
-        } finally {
-            setProcessingPayment(false);
         }
     };
 
@@ -266,8 +247,22 @@ export default function OrderDetail() {
         );
     };
 
-    if (isLoading) {
-        return <LoadingState message="Loading order details..." />;
+    if (isLoading || isPaymentVerifying) {
+        return (
+            <>
+                <div className="min-h-[calc(100vh-6rem)] flex items-center justify-center bg-white dark:bg-gray-950">
+                    {isPaymentVerifying ? (
+                        <PaymentLoader
+                            message="Processing Your Order"
+                            subMessage="Please wait while we verify your payment and process your order. Do not close or refresh this page."
+                        />
+                    ) : (
+                        <LoadingState message="Loading order details..." />
+                    )}
+                </div>
+                <Footer />
+            </>
+        );
     }
 
     if (isError || !order) {
