@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
-import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,14 +20,14 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 import { UserPlus, Mail, Lock, User, CheckCircleIcon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { signup } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
 
 const Signup = () => {
-  const { toast } = useToast();
+  const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -39,15 +38,13 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const handleGoogleSignup = () => googleLogin();
-  const navigate = useNavigate();
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (password !== confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match.",
-        variant: "destructive"
+      toast.error("Passwords don't match", {
+        description: "Please make sure your passwords match."
       });
       return;
     }
@@ -55,38 +52,42 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      const response = await signup({ firstName,lastName, email, password });
+      const response = await signup({ firstName, lastName, email, password });
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Signup failed");
       }
 
-      // toast({
-      //   title: "Signup Successful",
-      //   description: "Your account has been created.",
-      //   variant: "default",
-      // });
-
-      console.log("Signup successful:", response);
+      // Show success dialog first
       setShowSuccessDialog(true);
-      navigate("/login")
+      
+      // Wait for dialog animation and user acknowledgment
+      setTimeout(() => {
+        // Reset form
+        setFirstName('');
+        setLastName('');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        
+        // Show success toast
+        toast.success("Account created successfully", {
+          description: "Please login with your new account",
+          duration: 3000,
+        });
+
+        // Navigate to login
+        navigate("/login");
+      }, 2000);
+
     } catch (error: any) {
-      // toast({
-      //   title: "Signup Failed",
-      //   description: error.message || "An error occurred. Please try again.",
-      //   variant: "destructive",
-      // });
       console.error("Signup Error:", error.message);
-    setErrorMessage(error.message); // Store the error message
-    setShowErrorDialog(true); // Show error dialog
+      setErrorMessage(error.message);
+      setShowErrorDialog(true);
     } finally {
       setLoading(false);
     }
-
-    // Since signup is not required, just show success message
-    console.log('Signup attempted with:', { name, email });
-    // setShowSuccessDialog(true);
   };
 
   const googleLogin = useGoogleLogin({
@@ -122,19 +123,15 @@ const Signup = () => {
         // localStorage.setItem("id_token", id_token);
       } catch (error) {
         console.error("Error during token exchange:", error);
-        toast({
-          title: "Signup Failed",
+        toast.error("Signup Failed", {
           description: "Could not complete Google signup. Please try again.",
-          variant: "destructive",
         });
       }
     },
     onError: (errorResponse) => {
       console.error("Google Login Error:", errorResponse);
-      toast({
-        title: "Google Signup Failed",
+      toast.error("Google Signup Failed", {
         description: "Authentication error. Please try again.",
-        variant: "destructive",
       });
     },
     flow: "auth-code",
@@ -144,8 +141,6 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
-
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-md mx-auto">
@@ -177,6 +172,7 @@ const Signup = () => {
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         required 
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -192,6 +188,7 @@ const Signup = () => {
                         className="pl-10"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -208,6 +205,7 @@ const Signup = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required 
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -224,6 +222,7 @@ const Signup = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required 
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -240,6 +239,7 @@ const Signup = () => {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required 
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -247,9 +247,14 @@ const Signup = () => {
                   <Button 
                     type="submit" 
                     className="w-full flex items-center justify-center gap-2"
+                    disabled={loading}
                   >
-                    <UserPlus className="h-4 w-4" />
-                    Create Account
+                    {loading ? (
+                      <div className="h-4 w-4 animate-spin border-2 border-primary-foreground border-t-transparent rounded-full" />
+                    ) : (
+                      <UserPlus className="h-4 w-4" />
+                    )}
+                    {loading ? 'Creating Account...' : 'Create Account'}
                   </Button>
                 </form>
 
@@ -268,6 +273,7 @@ const Signup = () => {
                   variant="outline"
                   className="w-full flex items-center justify-center gap-2"
                   onClick={() => handleGoogleSignup()}
+                  disabled={loading}
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -321,15 +327,18 @@ const Signup = () => {
           <DialogHeader className="text-center">
             <DialogTitle className="text-xl font-bold">Account Created!</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Your account has been successfully created. You'll receive a verification email shortly.
+              Your account has been successfully created. You will be redirected to login.
             </DialogDescription>
           </DialogHeader>
           <Button 
-            onClick={() => setShowSuccessDialog(false)} 
+            onClick={() => {
+              setShowSuccessDialog(false);
+              navigate("/login");
+            }}
             className="mt-4 w-full"
-            variant="success"
+            variant="default"
           >
-            Got it!
+            Continue to Login
           </Button>
         </motion.div>
       </DialogContent>

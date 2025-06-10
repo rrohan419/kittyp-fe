@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Footer } from '@/components/layout/Footer';
-import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,10 +11,9 @@ import {
     CardTitle
 } from '@/components/ui/card';
 import { Mail, Phone, MapPin, MessageSquare } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 
 const Contact = () => {
-    const { toast } = useToast();
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -34,9 +32,8 @@ const Contact = () => {
         console.log('Form submitted:', formData);
 
         // Show success toast
-        toast({
-            title: "Message Sent!",
-            description: "We'll get back to you as soon as possible.",
+        toast.success("Message Sent!", {
+            description: "We'll get back to you as soon as possible."
         });
 
         // Reset form
@@ -50,7 +47,6 @@ const Contact = () => {
 
     return (
         <div className="min-h-screen bg-background">
-            <Navbar />
 
             <main className="pt-24 pb-16">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">

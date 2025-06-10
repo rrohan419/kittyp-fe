@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
-import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 import { ArrowLeft, Lock, Check, EyeOffIcon, Eye } from 'lucide-react';
 import { resetPassword } from '@/services/authService';
 
 const ResetPassword = () => {
-    const { toast } = useToast();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -23,34 +21,28 @@ const ResetPassword = () => {
         // Get email from session storage
         const resetEmail = sessionStorage.getItem('resetEmail');
         if (!resetEmail) {
-            toast({
-                title: "Error",
-                description: "No email found. Please restart the password reset process.",
-                variant: "destructive"
+            toast.error("Error", {
+                description: "No email found. Please restart the password reset process."
             });
             navigate('/forgot-password');
         } else {
             setEmail(resetEmail);
         }
-    }, [navigate, toast]);
+    }, [navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (password !== confirmPassword) {
-            toast({
-                title: "Passwords don't match",
-                description: "Please make sure your passwords match.",
-                variant: "destructive"
+            toast.error("Passwords don't match", {
+                description: "Please make sure your passwords match."
             });
             return;
         }
 
         if (password.length < 8) {
-            toast({
-                title: "Password too short",
-                description: "Password must be at least 8 characters long.",
-                variant: "destructive"
+            toast.error("Password too short", {
+                description: "Password must be at least 8 characters long."
             });
             return;
         }
@@ -62,9 +54,8 @@ const ResetPassword = () => {
             const success = await resetPassword(resetCode, password, email);
 
             if (success) {
-                toast({
-                    title: "Password reset successful",
-                    description: "Your password has been reset. You can now login with your new password.",
+                toast.success("Password reset successful", {
+                    description: "Your password has been reset. You can now login with your new password."
                 });
                 // Clear session storage
                 sessionStorage.removeItem('resetEmail');
@@ -72,10 +63,8 @@ const ResetPassword = () => {
                 navigate('/login');
             }
         } catch (error) {
-            toast({
-                title: "Error",
-                description: "Failed to reset password. Please try again.",
-                variant: "destructive"
+            toast.error("Error", {
+                description: "Failed to reset password. Please try again."
             });
         } finally {
             setIsSubmitting(false);
@@ -84,7 +73,6 @@ const ResetPassword = () => {
 
     return (
         <div className="min-h-screen bg-white dark:bg-gray-950">
-            <Navbar />
 
             <main className="pt-24 pb-16">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">

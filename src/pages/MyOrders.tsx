@@ -1,11 +1,9 @@
-
 import {
     Card,
     CardContent,
 } from "@/components/ui/card";
 import { Package, Search } from "lucide-react";
 import { Footer } from "@/components/layout/Footer";
-import { Navbar } from "@/components/layout/Navbar";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectTrigger, SelectValue, SelectItem } from "@/components/ui/select";
 import { OrderList } from "@/components/ui/OrderList";
@@ -24,9 +22,9 @@ const ORDER_STATUSES = [
 
 export default function MyOrders() {
     const [page, setPage] = useState(1);
-    const userUuid = useAppSelector((state) => state.userReducer?.uuid);
+    const userUuid = useAppSelector((state) => state.authReducer.user?.uuid);
     const [filters, setFilters] = useState<OrderFilterRequest>({
-        userUuid: userUuid, // This should come from auth context
+        userUuid: userUuid,
         orderNumber: null,
         orderStatus: null,
     });
@@ -44,7 +42,6 @@ export default function MyOrders() {
 
     return (
         <>
-            <Navbar />
             <div className="container mx-auto px-2 pt-24 pb-8 py-8 max-w-3xl min-h-[80vh]">
                 <h1 className="text-3xl font-extrabold text-kitty-600 mb-6 text-center bg-gradient-to-r from-kitty-400/80 to-kitty-600/80 bg-clip-text text-transparent animate-fade-in">
                     <Package className="inline-block mr-2 mb-1 text-kitty-500" /> My Orders

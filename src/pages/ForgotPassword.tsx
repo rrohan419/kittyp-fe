@@ -1,17 +1,15 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
-import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 import { Mail, ArrowLeft } from 'lucide-react';
 import { sendPasswordResetCode } from '@/services/authService';
 
 const ForgotPassword = () => {
-  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -24,19 +22,16 @@ const ForgotPassword = () => {
       const success = await sendPasswordResetCode(email);
       
       if (success) {
-        toast({
-          title: "Verification code sent",
-          description: "Please check your email for the verification code.",
+        toast.success("Verification code sent", {
+          description: "Please check your email for the verification code."
         });
         // Store email in session storage for the next step
         sessionStorage.setItem('resetEmail', email);
         navigate('/verify-reset-code');
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to send verification code. Please try again.",
-        variant: "destructive"
+      toast.error("Error", {
+        description: "Failed to send verification code. Please try again."
       });
     } finally {
       setIsSubmitting(false);
@@ -45,8 +40,6 @@ const ForgotPassword = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
-
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-md mx-auto">

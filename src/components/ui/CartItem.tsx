@@ -4,8 +4,8 @@ import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { cn } from '@/lib/utils';
 import { CurrencyType, formatCurrency } from '@/services/cartService';
-import { updateCartItemQuantity, removeItemFromCart } from '@/module/slice/CartSlice';
-import { RootState, AppDispatch } from '@/module/store';
+import { updateCartItemQuantity, removeItemFromCart, addToCart, resetCart, updateCartQuantity } from '@/module/slice/CartSlice';
+import { RootState, AppDispatch } from '@/module/store/store';
 
 interface CartItemProps {
   uuid: string;
@@ -36,15 +36,34 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
   const isLoading = Object.values(loadingStates).some(Boolean);
   
   const handleIncrement = async () => {
-    if (!user?.uuid || loadingStates.increment) return;
+    if (loadingStates.increment) return;
     
     try {
       setLoadingStates(prev => ({ ...prev, increment: true }));
-      await dispatch(updateCartItemQuantity({
-        userUuid: user.uuid,
-        productUuid: uuid,
-        quantity: quantity + 1
-      })).unwrap();
+      if (user?.uuid) {
+        await dispatch(updateCartItemQuantity({
+          userUuid: user.uuid,
+          productUuid: uuid,
+          quantity: quantity + 1
+        })).unwrap();
+      } else {
+        dispatch(addToCart({
+          uuid,
+          name,
+          price,
+          stockQuantity: Infinity,
+          currency,
+          productImageUrls: [image],
+          description: "",
+          status: "active",
+          category: "",
+          attribute: {
+            color: "",
+            size: "",
+            material: ""
+          }
+        }));
+      }
     } catch (error) {
       console.error('Error incrementing quantity:', error);
     } finally {
@@ -53,16 +72,23 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
   };
   
   const handleDecrement = async () => {
-    if (!user?.uuid || loadingStates.decrement) return;
+    if (loadingStates.decrement) return;
     
     try {
       setLoadingStates(prev => ({ ...prev, decrement: true }));
       if (quantity > 1) {
-        await dispatch(updateCartItemQuantity({
-          userUuid: user.uuid,
-          productUuid: uuid,
-          quantity: quantity - 1
-        })).unwrap();
+        if (user?.uuid) {
+          await dispatch(updateCartItemQuantity({
+            userUuid: user.uuid,
+            productUuid: uuid,
+            quantity: quantity - 1
+          })).unwrap();
+        } else {
+          dispatch(updateCartQuantity({
+            uuid,
+            quantity: quantity - 1
+          }));
+        }
       } else {
         await handleRemove();
       }
@@ -74,14 +100,18 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
   };
   
   const handleRemove = async () => {
-    if (!user?.uuid || loadingStates.remove) return;
+    if (loadingStates.remove) return;
     
     try {
       setLoadingStates(prev => ({ ...prev, remove: true }));
-      await dispatch(removeItemFromCart({
-        userUuid: user.uuid,
-        productUuid: uuid
-      })).unwrap();
+      if (user?.uuid) {
+        await dispatch(removeItemFromCart({
+          userUuid: user.uuid,
+          productUuid: uuid
+        })).unwrap();
+      } else {
+        dispatch(resetCart());
+      }
     } catch (error) {
       console.error('Error removing item:', error);
     } finally {
@@ -92,16 +122,9 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
   return (
     <div className={cn(
       "flex items-start space-x-4 py-6 border-b border-gray-200 dark:border-gray-800 relative",
-      isLoading && "opacity-70",
       className
     )}>
-      {isLoading && (
-        <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 flex items-center justify-center z-10">
-          <Loader2 className="h-6 w-6 animate-spin text-kitty-600" />
-        </div>
-      )}
-      
-      <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
+      <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
         {!isImageLoaded && (
           <div className="absolute inset-0 bg-gray-100 dark:bg-gray-800 animate-pulse" />
         )}
@@ -110,7 +133,7 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
             src={image}
             alt={name}
             className={cn(
-              "w-full h-full object-cover transition-opacity",
+              "w-full h-full object-cover transition-opacity duration-300",
               isImageLoaded ? "opacity-100" : "opacity-0"
             )}
             onLoad={() => setIsImageLoaded(true)}
@@ -131,39 +154,36 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
             <button
               onClick={handleDecrement}
               className={cn(
-                "p-1.5 transition-colors relative",
+                "p-1.5 transition-colors relative w-8 h-8 flex items-center justify-center",
                 loadingStates.decrement 
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-gray-600 dark:text-gray-400 hover:text-kitty-600 dark:hover:text-kitty-400"
               )}
               aria-label="Decrease quantity"
-              disabled={!user?.uuid || isLoading}
+              disabled={isLoading}
             >
               {loadingStates.decrement ? (
-                <Loader2 size={16} className="animate-spin" />
+                <Loader2 size={16} className="animate-spin absolute" />
               ) : (
                 <Minus size={16} />
               )}
             </button>
-            <span className={cn(
-              "w-8 text-center text-sm",
-              isLoading && "text-gray-400"
-            )}>
+            <span className="w-8 text-center text-sm border-x border-gray-200 dark:border-gray-700 py-1.5">
               {quantity}
             </span>
             <button
               onClick={handleIncrement}
               className={cn(
-                "p-1.5 transition-colors relative",
+                "p-1.5 transition-colors relative w-8 h-8 flex items-center justify-center",
                 loadingStates.increment 
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-gray-600 dark:text-gray-400 hover:text-kitty-600 dark:hover:text-kitty-400"
               )}
               aria-label="Increase quantity"
-              disabled={!user?.uuid || isLoading}
+              disabled={isLoading}
             >
               {loadingStates.increment ? (
-                <Loader2 size={16} className="animate-spin" />
+                <Loader2 size={16} className="animate-spin absolute" />
               ) : (
                 <Plus size={16} />
               )}
@@ -173,16 +193,16 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
           <button
             onClick={handleRemove}
             className={cn(
-              "transition-colors",
+              "transition-colors w-8 h-8 flex items-center justify-center relative",
               loadingStates.remove 
                 ? "text-gray-400 cursor-not-allowed"
                 : "text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400"
             )}
             aria-label="Remove item"
-            disabled={!user?.uuid || isLoading}
+            disabled={isLoading}
           >
             {loadingStates.remove ? (
-              <Loader2 size={18} className="animate-spin" />
+              <Loader2 size={18} className="animate-spin absolute" />
             ) : (
               <Trash2 size={18} />
             )}
@@ -191,12 +211,7 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
       </div>
       
       <div className="text-right">
-        <p className={cn(
-          "text-base font-medium",
-          isLoading
-            ? "text-gray-400"
-            : "text-gray-900 dark:text-white"
-        )}>
+        <p className="text-base font-medium text-gray-900 dark:text-white">
           {formatCurrency((price * quantity).toFixed(2), currency)}
         </p>
       </div>

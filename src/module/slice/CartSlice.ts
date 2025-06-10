@@ -11,8 +11,10 @@ import {
 import { fetchUserDetail } from "@/services/UserService";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { toast } from "sonner";
-import { Product } from "@/services/productService";
+import { Product, fetchProductByUuid } from "@/services/productService";
 import { CartItemResponse as BaseCartItemResponse, CartResponse, CartService } from '@/services/cartService';
+import { createSelector } from '@reduxjs/toolkit';
+import { RootState } from '@/module/store/store';
 
 export type CartItemResponse = BaseCartItemResponse & {
   synced?: boolean;
@@ -34,6 +36,7 @@ export interface CartState {
   isCartLoading: boolean;
   error: string | null;
   isGuestCart: boolean;
+  isSyncing: boolean;
 }
 
 const initialState: CartState = {
@@ -44,8 +47,37 @@ const initialState: CartState = {
   loading: false,
   error: null,
   user: undefined,
-  isGuestCart: true
+  isGuestCart: true,
+  isSyncing: false
 };
+
+// Memoized selectors
+export const selectCartState = (state: RootState) => state.cartReducer;
+
+export const selectCartItems = createSelector(
+  selectCartState,
+  (cart) => cart.items
+);
+
+export const selectCartTotalAmount = createSelector(
+  selectCartState,
+  (cart) => cart.totalAmount
+);
+
+export const selectCartLoading = createSelector(
+  [selectCartState],
+  (cart) => cart.loading || cart.isCartLoading
+);
+
+export const selectCartUser = createSelector(
+  selectCartState,
+  (cart) => cart.user
+);
+
+export const selectCartSyncStatus = createSelector(
+  selectCartState,
+  (cart) => cart.isSyncing
+);
 
 // Async thunks
 export const initializeUserAndCart = createAsyncThunk(
@@ -68,15 +100,19 @@ export const initializeUserAndCart = createAsyncThunk(
       localStorage.setItem('user', JSON.stringify(userData));
       dispatch(setUser(userData));
 
-      // If there are guest items, sync them with the backend cart
+      // If there are guest items, start background sync
       if (hasGuestItems) {
-        await dispatch(syncCartsAfterLogin()).unwrap();
-      } else {
-        // If no guest items, just fetch the backend cart
-        const response = await getCartByUser(userData.uuid);
-        console.log('CartSlice - Cart data fetched:', !!response);
-        dispatch(setCart(response.data));
+        // Start background sync without waiting
+        dispatch(backgroundSyncCarts());
+        
+        // Return early with just the user data
+        return userData;
       }
+
+      // If no guest items, just fetch the backend cart
+      const response = await getCartByUser(userData.uuid);
+      console.log('CartSlice - Cart data fetched:', !!response);
+      dispatch(setCart(response.data));
 
       return userData;
     } catch (err) {
@@ -151,7 +187,7 @@ export const resetCartThunk = createAsyncThunk(
         await clearCartService(userUuid);
       }
       dispatch(resetCart());
-      toast.success("Cart reset successfully");
+      // toast.success("Cart reset successfully");
     } catch (err) {
       toast.error("Failed to reset cart");
       throw err;
@@ -163,8 +199,25 @@ export const addToCartFromProduct = createAsyncThunk(
   'cart/addToCartFromProduct',
   async (product: Product, { getState, dispatch }) => {
     try {
+      // Get current state
       const state = getState() as { cartReducer: CartState };
       const accessToken = localStorage.getItem('access_token');
+
+      // Check if product is in stock
+      if (product.stockQuantity <= 0) {
+        toast.error(`${product.name} is out of stock`);
+        return;
+      }
+
+      // Check current cart quantity for this product
+      const existingItem = state.cartReducer.items.find(item => item.productUuid === product.uuid);
+      const currentQuantity = existingItem?.quantity || 0;
+
+      // Check if adding would exceed stock
+      if (currentQuantity >= product.stockQuantity) {
+        toast.warning(`Cannot add more ${product.name}. Maximum available quantity (${product.stockQuantity}) reached.`);
+        return;
+      }
 
       // If user is logged in, add to backend cart
       if (accessToken) {
@@ -186,6 +239,21 @@ export const addToCartFromProduct = createAsyncThunk(
           throw new Error('Invalid product');
         }
 
+        // Fetch latest product data to ensure stock quantity is current
+        const latestProduct = await fetchProductByUuid(product.uuid);
+        const availableStock = latestProduct.data.stockQuantity;
+
+        // Final stock check with latest data
+        if (availableStock <= 0) {
+          toast.error(`${product.name} is out of stock`);
+          return;
+        }
+
+        if (currentQuantity >= availableStock) {
+          toast.warning(`Cannot add more ${product.name}. Maximum available quantity (${availableStock}) reached.`);
+          return;
+        }
+
         const response = await addToCartService(userUuid, { 
           productUuid: product.uuid, 
           quantity: 1 
@@ -194,9 +262,13 @@ export const addToCartFromProduct = createAsyncThunk(
         dispatch(setCart(response.data));
         toast.success(`${product.name} added to cart`);
       } else {
-        // If not logged in, add to local cart
-        dispatch(addToCart(product));
-        toast.success(`${product.name} added to cart`);
+        // For guest cart, check quantity before adding
+        if (currentQuantity + 1 <= product.stockQuantity) {
+          dispatch(addToCart(product));
+          toast.success(`${product.name} added to cart`);
+        } else {
+          toast.warning(`Cannot add more ${product.name}. Maximum available quantity (${product.stockQuantity}) reached.`);
+        }
       }
     } catch (err) {
       const error = err as Error;
@@ -223,12 +295,9 @@ export const syncGuestCartWithUser = createAsyncThunk(
 
       // Mark items as synced
       return guestItems.map(item => ({
-        productUuid: item.productUuid,
-        productName: item.productName,
-        price: item.price,
-        quantity: item.quantity,
-        totalPrice: item.price * item.quantity,
-        synced: true
+        ...item,
+        synced: true,
+        currency: item.currency || CurrencyType.INR // Add currency with fallback
       }));
     } catch (error) {
       toast.error('Failed to sync cart with your account');
@@ -267,10 +336,50 @@ export const syncCartsAfterLogin = createAsyncThunk(
       // If there are items in the guest cart, add them to the backend cart
       if (guestCartItems.length > 0) {
         for (const item of guestCartItems) {
-          await addToCartService(userData.uuid, {
-            productUuid: item.productUuid,
-            quantity: item.quantity
-          });
+          try {
+            // Fetch current product data to check availability
+            const productResponse = await fetchProductByUuid(item.productUuid);
+            const product = productResponse.data;
+            
+            // Check if product exists and is active
+            if (!product || product.stockQuantity === undefined) {
+              toast.error(`${item.productName} is no longer available`);
+              continue;
+            }
+
+            // Find if this product already exists in backend cart
+            const existingBackendItem = backendCart.items.find(
+              backendItem => backendItem.productUuid === item.productUuid
+            );
+            const currentBackendQuantity = existingBackendItem?.quantity || 0;
+
+            // Calculate how many more items we can add
+            const remainingStock = Math.max(0, product.stockQuantity - currentBackendQuantity);
+
+            if (remainingStock <= 0) {
+              toast.error(`${item.productName} is out of stock`);
+              continue;
+            }
+
+            // Calculate the quantity we can actually add
+            const quantityToAdd = Math.min(item.quantity, remainingStock);
+            
+            if (quantityToAdd < item.quantity) {
+              toast.warning(
+                `Only added ${quantityToAdd} units of ${item.productName} (${remainingStock} available)`
+              );
+            }
+
+            if (quantityToAdd > 0) {
+              await addToCartService(userData.uuid, {
+                productUuid: item.productUuid,
+                quantity: quantityToAdd
+              });
+            }
+          } catch (error) {
+            console.error(`Failed to sync item ${item.productName}:`, error);
+            toast.error(`Failed to sync ${item.productName}`);
+          }
         }
         
         // Fetch the final merged cart
@@ -286,6 +395,90 @@ export const syncCartsAfterLogin = createAsyncThunk(
     } catch (error) {
       console.error('Failed to sync carts:', error);
       toast.error('Failed to sync your cart');
+      throw error;
+    }
+  }
+);
+
+// Background sync thunk
+export const backgroundSyncCarts = createAsyncThunk(
+  'cart/backgroundSyncCarts',
+  async (_, { getState, dispatch }) => {
+    try {
+      const state = getState() as { cartReducer: CartState };
+      const guestCartItems = state.cartReducer.items;
+      
+      // First, fetch the user's existing cart from backend
+      const userData = await fetchUserDetail();
+      const backendCartResponse = await getCartByUser(userData.uuid);
+      const backendCart = backendCartResponse.data;
+
+      // Start with backend cart
+      dispatch(setCart(backendCart));
+
+      // If there are items in the guest cart, add them to the backend cart
+      if (guestCartItems.length > 0) {
+        let syncedItems = 0;
+        let failedItems = 0;
+
+        for (const item of guestCartItems) {
+          try {
+            // Fetch current product data to check availability
+            const productResponse = await fetchProductByUuid(item.productUuid);
+            const product = productResponse.data;
+            
+            if (!product || product.stockQuantity === undefined) {
+              failedItems++;
+              continue;
+            }
+
+            // Find if this product already exists in backend cart
+            const existingBackendItem = backendCart.items.find(
+              backendItem => backendItem.productUuid === item.productUuid
+            );
+            const currentBackendQuantity = existingBackendItem?.quantity || 0;
+            const remainingStock = Math.max(0, product.stockQuantity - currentBackendQuantity);
+
+            if (remainingStock <= 0) {
+              failedItems++;
+              continue;
+            }
+
+            // Calculate the quantity we can actually add
+            const quantityToAdd = Math.min(item.quantity, remainingStock);
+            
+            if (quantityToAdd > 0) {
+              await addToCartService(userData.uuid, {
+                productUuid: item.productUuid,
+                quantity: quantityToAdd
+              });
+              syncedItems++;
+            }
+          } catch (error) {
+            console.error(`Failed to sync item ${item.productName}:`, error);
+            failedItems++;
+          }
+        }
+        
+        // Fetch the final merged cart
+        const finalCartResponse = await getCartByUser(userData.uuid);
+        dispatch(setCart(finalCartResponse.data));
+
+        // Show a summary toast only if there were items to sync
+        if (syncedItems > 0 || failedItems > 0) {
+          const message = [];
+          if (syncedItems > 0) message.push(`${syncedItems} items synced`);
+          if (failedItems > 0) message.push(`${failedItems} items couldn't be synced`);
+          toast.success('Cart Sync Complete', {
+            description: message.join(', '),
+          });
+        }
+      }
+
+      return backendCart;
+    } catch (error) {
+      console.error('Failed to sync carts:', error);
+      // Don't show error toast here as this is a background process
       throw error;
     }
   }
@@ -332,26 +525,41 @@ export const cartSlice = createSlice({
     },
     addToCart(state, action: PayloadAction<Product>) {
       const existingItem = state.items.find(item => item.productUuid === action.payload.uuid);
+      
+      // Check if adding would exceed available stock
       if (existingItem) {
-        existingItem.quantity += 1;
-        existingItem.totalPrice = existingItem.price * existingItem.quantity;
+        if (existingItem.quantity < action.payload.stockQuantity) {
+          existingItem.quantity += 1;
+          existingItem.totalPrice = existingItem.price * existingItem.quantity;
+        }
       } else {
-        state.items.push({
-          productUuid: action.payload.uuid,
-          productName: action.payload.name,
-          price: action.payload.price,
-          quantity: 1,
-          totalPrice: action.payload.price,
-        });
+        if (action.payload.stockQuantity > 0) {
+          state.items.push({
+            productUuid: action.payload.uuid,
+            productName: action.payload.name,
+            price: action.payload.price,
+            quantity: 1,
+            totalPrice: action.payload.price,
+            productImageUrls: action.payload.productImageUrls,
+            currency: action.payload.currency,
+          });
+        }
       }
       state.totalAmount = state.items.reduce((total, item) => total + item.totalPrice, 0);
+    },
+    updateCartQuantity(state, action: PayloadAction<{uuid: string, quantity: number}>) {
+      const existingItem = state.items.find(item => item.productUuid === action.payload.uuid);
+      if (existingItem) {
+        existingItem.quantity = action.payload.quantity;
+        existingItem.totalPrice = existingItem.price * existingItem.quantity;
+        state.totalAmount = state.items.reduce((total, item) => total + item.totalPrice, 0);
+      }
     }
   },
   extraReducers: (builder) => {
     builder
       // Initialize User and Cart
       .addCase(initializeUserAndCart.pending, (state) => {
-        // Don't set loading state for background sync
         state.error = null;
       })
       .addCase(initializeUserAndCart.fulfilled, (state) => {
@@ -360,9 +568,21 @@ export const cartSlice = createSlice({
         state.error = null;
       })
       .addCase(initializeUserAndCart.rejected, (state, action) => {
-        // Don't set error state for background sync
         state.isCartLoading = false;
         state.loading = false;
+      })
+      // Background sync cases
+      .addCase(backgroundSyncCarts.pending, (state) => {
+        state.isSyncing = true;
+        state.error = null;
+      })
+      .addCase(backgroundSyncCarts.fulfilled, (state) => {
+        state.isSyncing = false;
+        state.error = null;
+      })
+      .addCase(backgroundSyncCarts.rejected, (state) => {
+        state.isSyncing = false;
+        // Don't set error state as this is a background process
       })
       // Reset Cart
       .addCase(resetCartThunk.pending, (state) => {
@@ -423,7 +643,8 @@ export const {
   clearCart,
   resetCart,
   addToCart,
-  createGuestCart
+  createGuestCart,
+  updateCartQuantity
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

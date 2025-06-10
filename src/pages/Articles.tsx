@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Navbar } from '@/components/layout/Navbar';
 import {
   Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
 } from '@/components/ui/card';
@@ -59,7 +58,6 @@ const Articles: React.FC = () => {
 
   return (
     <>
-      <Navbar />
       <div className="pt-24 pb-16 container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <header className="mb-12">

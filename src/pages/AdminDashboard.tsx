@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import {
   BarChart,
@@ -31,14 +30,17 @@ import {
 } from "@/components/ui/navigation-menu";
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { articles } from '@/data/articles';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { initializeAdminDashboard } from '@/module/slice/AdminSlice';
 import { initializeUser } from '@/services/authService';
+import { fetchArticles, ArticleSearchRequest } from '@/services/articleService';
+import { ArticleApiResponse, ArticleList } from '@/pages/Interface/PagesInterface';
 
 const AdminDashboard = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isCheckingRole, setIsCheckingRole] = useState(true);
+  const [articles, setArticles] = useState<ArticleList[]>([]);
+  const [isLoadingArticles, setIsLoadingArticles] = useState(false);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   
@@ -46,10 +48,31 @@ const AdminDashboard = () => {
   const { productCount, isDashboardLoading, totalOrderCount } = useAppSelector((state) => state.adminReducer);
   const user = useAppSelector((state) => state.cartReducer.user);
 
+  // Fetch articles
+  const loadArticles = async () => {
+    setIsLoadingArticles(true);
+    try {
+      const searchRequest: ArticleSearchRequest = {
+        name: null,
+        isRandom: null
+      };
+      const response = await fetchArticles({
+        page: 0,
+        size: 10,
+        body: searchRequest
+      });
+      setArticles(response.data.models || []);
+    } catch (error) {
+      console.error('Error fetching articles:', error);
+    } finally {
+      setIsLoadingArticles(false);
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
       try {
-        const accessToken = localStorage.getItem('access_token'); // Changed from accessToken to access_token to match authService
+        const accessToken = localStorage.getItem('access_token');
         if (!accessToken) {
           setIsCheckingRole(false);
           return;
@@ -60,9 +83,9 @@ const AdminDashboard = () => {
         }
 
         await dispatch(initializeAdminDashboard());
+        await loadArticles();
 
         const roles = user?.roles || [];
-        console.log("roles", roles);
         const isAdmin = Array.isArray(roles) && roles.includes('ROLE_ADMIN');
         setUserRole(isAdmin ? 'ROLE_ADMIN' : null);
       } catch (error) {
@@ -115,12 +138,10 @@ const AdminDashboard = () => {
       default:
         return 'bg-gray-100 text-gray-800';
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
-
       <main className="flex-1 pt-24 pb-16 bg-gray-50 dark:bg-gray-900">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 mb-8">
@@ -284,14 +305,18 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {articles.length > 0 ? (
+                  {isLoadingArticles ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : articles.length > 0 ? (
                     <div className="border rounded-md divide-y">
                       {articles.map((article) => (
-                        <div key={`admin-dash-article-id-${article.id}`} className="flex items-center justify-between p-4">
+                        <div key={`admin-dash-article-${article.slug}`} className="flex items-center justify-between p-4">
                           <div className="space-y-1">
                             <div className="font-medium">{article.title}</div>
                             <div className="flex items-center text-xs text-muted-foreground">
-                              <span>{new Date(article.publishedAt).toLocaleDateString()}</span>
+                              <span>{new Date(article.createdAt).toLocaleDateString()}</span>
                               <span className="mx-1">•</span>
                               <span>{article.category}</span>
                               <span className="mx-1">•</span>
@@ -302,7 +327,7 @@ const AdminDashboard = () => {
                             <Button variant="outline" size="sm" onClick={() => navigate(`/article/${article.slug}`)}>
                               View
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => navigate(`/admin/article/edit/${article.id}`)}>
+                            <Button variant="outline" size="sm" onClick={() => navigate(`/admin/articles/edit/${article.slug}`)}>
                               Edit
                             </Button>
                           </div>

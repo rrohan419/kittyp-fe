@@ -16,8 +16,9 @@ import { CalendarDays, FileText, ShoppingBag, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAppSelector } from "@/module/store/hooks";
-import { handleCheckout } from "@/services/paymentService";
 import { CurrencyType } from "@/services/cartService";
+import { PaymentLoader } from "@/components/ui/PaymentLoader";
+import { reinitiatePayment } from "@/utils/paymentUtils";
 
 
 interface OrderListProps {
@@ -37,6 +38,7 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
     const user = useAppSelector((state) => state.cartReducer.user);
     const [loadingInvoiceForOrder, setLoadingInvoiceForOrder] = useState<string | null>(null);
     const [processingPayment, setProcessingPayment] = useState<string | null>(null);
+    const [isPaymentVerifying, setIsPaymentVerifying] = useState(false);
 
     const STATUS_COLORS: Record<string, string> = {
         CREATED: "bg-yellow-100 text-yellow-800",
@@ -89,39 +91,19 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
         
         try {
             setProcessingPayment(order.orderNumber);
-            // Convert the currency string to CurrencyType
-            const currency = order.currency === 'INR' ? CurrencyType.INR : CurrencyType.USD;
             
-            const response = await handleCheckout(
-                order.taxes,
-                order.totalAmount,
-                currency,
-                order.orderNumber,
-                user
-            );
-
-            // If we get here, both payment and verification were successful
-            console.log("Payment and verification successful", response);
-            toast.success("Payment successful!");
-            // Just refresh the current orders list instead of redirecting
+            await reinitiatePayment({
+                order,
+                user,
+                onVerifying: () => setIsPaymentVerifying(true),
+                onSuccess: () => navigate(`/orders/${order.orderNumber}`),
+                onComplete: () => {
+                    setProcessingPayment(null);
+                    setIsPaymentVerifying(false);
+                }
+            });
+        } catch (error) {
             await refetch();
-        } catch (error: any) {
-            console.error("Payment process error:", error);
-            
-            // Handle different types of errors
-            if (error.error?.description) {
-                // Razorpay specific error
-                toast.error(error.error.description);
-            } else if (error.message === "Payment cancelled by user") {
-                toast.error("Payment was cancelled");
-            } else if (error.message === "Payment verification failed") {
-                // This shouldn't happen now with the fixes, but keeping it for safety
-                toast.error("Payment verification failed. Please contact support if payment was deducted.");
-            } else {
-                toast.error("Payment failed. Please try again.");
-            }
-        } finally {
-            setProcessingPayment(null);
         }
     };
 
@@ -129,8 +111,19 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
         return ["PAYMENT_PENDING", "PAYMENT_TIMEOUT", "FAILED"].includes(status);
     };
 
-    if (isLoading) {
-        return <LoadingState message="Loading your orders..." />;
+    if (isLoading || isPaymentVerifying) {
+        return (
+            <div className="space-y-4">
+                {isPaymentVerifying ? (
+                    <PaymentLoader
+                        message="Processing Your Order"
+                        subMessage="Please wait while we verify your payment and process your order. Do not close or refresh this page."
+                    />
+                ) : (
+                    <LoadingState message="Loading your orders..." />
+                )}
+            </div>
+        );
     }
 
     if (isError) {

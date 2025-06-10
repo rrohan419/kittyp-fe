@@ -7,19 +7,19 @@ import { ArrowRight, LogIn, ShoppingCart, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { CurrencyType, formatCurrency } from "@/services/cartService";
-import { RootState, AppDispatch } from "@/module/store";
-import { resetCartThunk } from "@/module/slice/CartSlice";
+import { RootState, AppDispatch } from "@/module/store/store";
+import { resetCartThunk, selectCartItems, selectCartTotalAmount, selectCartLoading } from "@/module/slice/CartSlice";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export function CartSidebar() {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const { items, totalAmount, loading } = useSelector((state: RootState) => ({
-    items: state.cartReducer.items,
-    totalAmount: state.cartReducer.totalAmount,
-    loading: state.cartReducer.loading || state.cartReducer.isCartLoading
-  }));
+  
+  // Use memoized selectors
+  const items = useSelector(selectCartItems);
+  const totalAmount = useSelector(selectCartTotalAmount);
+  const loading = useSelector(selectCartLoading);
   
   // Get user from auth state
   const user = useSelector((state: RootState) => state.authReducer.user);
@@ -117,7 +117,7 @@ export function CartSidebar() {
                       price={item.price}
                       currency={CurrencyType.INR}
                       quantity={item.quantity}
-                      image={`/product-images/${item.productUuid}.jpg`}
+                      image={item.productImageUrls?.[0]}
                       className="py-4"
                     />
                   ))}

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Footer } from '@/components/layout/Footer';
-import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -135,7 +134,6 @@ const HowToUse = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
 
       <main className="pt-24 pb-16">
         <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">

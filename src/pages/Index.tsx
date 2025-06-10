@@ -1,11 +1,10 @@
-import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Hero } from '@/components/home/Hero';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { fetchFilteredProducts, Product, ProductFilterRequest } from '@/services/productService';
+import { fetchFilteredProducts, ProductFilterRequest } from '@/services/productService';
 import { ArticleSearchRequest, fetchArticles } from '@/services/articleService';
 import { cn } from '@/lib/utils';
 
@@ -57,8 +56,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
-
       <main className="pt-8">
         <Hero />
 

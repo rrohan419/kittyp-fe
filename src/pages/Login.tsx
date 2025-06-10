@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
-import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,27 +12,16 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 import { LogIn, Mail, Lock, EyeOff, Eye, EyeOffIcon } from 'lucide-react';
-import { authConfig } from '@/config/auth';
 import { useGoogleLogin } from '@react-oauth/google';
 import { login } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
-import { LoginResponse } from './Interface/PagesInterface';
 import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '@/module/store';
+import { AppDispatch, RootState } from '@/module/store/store';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
-// import { useCart } from '@/context/CartContext';
 
 const Login = () => {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const [email, setEmail] = useState('');
@@ -55,30 +43,19 @@ const Login = () => {
       // First, perform the login
       const loginResponse = await login({ email, password });
       
-      // Navigate immediately after successful login
-      navigate("/");
+      // Initialize user and cart state (this will trigger background sync if needed)
+      await dispatch(initializeUserAndCart()).unwrap();
       
-      // Handle cart sync and other non-critical operations asynchronously
-      Promise.all([
-        dispatch(initializeUserAndCart()),
-        // Add any other non-critical operations here
-      ]).then(() => {
-        // Show success message if guest cart was synced
-        if (hasGuestCartItems) {
-          toast({
-            title: "Cart Synced",
-            description: "Your cart items have been saved to your account",
-            duration: 1000,
-          });
-        }
-      }).catch((error) => {
-        console.error("Error in background operations:", error);
-        toast({
-          title: "Background Sync Warning",
-          description: "Some features may take a moment to update",
+      // Show a notification about cart syncing if there are guest items
+      if (hasGuestCartItems) {
+        toast.success("Logging you in", {
+          description: "Your cart items will be synced in the background",
           duration: 3000,
         });
-      });
+      }
+
+      // Navigate immediately after login
+      navigate("/");
 
     } catch (error: any) {
       console.error("Signin Error:", error);
@@ -125,19 +102,15 @@ const Login = () => {
         // localStorage.setItem("id_token", id_token);
       } catch (error) {
         console.error("Error during token exchange:", error);
-        toast({
-          title: "Signup Failed",
+        toast.error("Signup Failed", {
           description: "Could not complete Google signup. Please try again.",
-          variant: "destructive",
         });
       }
     },
     onError: (errorResponse) => {
       console.error("Google Login Error:", errorResponse);
-      toast({
-        title: "Google Signup Failed",
+      toast.error("Google Signup Failed", {
         description: "Authentication error. Please try again.",
-        variant: "destructive",
       });
     },
     flow: "auth-code",
@@ -147,7 +120,6 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
 
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">

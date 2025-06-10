@@ -13,6 +13,8 @@ interface AddressFormProps {
 
 export function AddressForm({ onAddressCreated, onCancel }: AddressFormProps) {
   const [address, setAddress] = useState<Address>({
+    fullName: "",
+    phoneNumber: "",
     street: "",
     city: "",
     state: "",

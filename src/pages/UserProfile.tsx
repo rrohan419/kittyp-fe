@@ -1,5 +1,4 @@
 import { Footer } from "@/components/layout/Footer";
-import { Navbar } from "@/components/layout/Navbar";
 import React, { useState } from "react";
 
 const UserProfile: React.FC = () => {
@@ -28,7 +27,6 @@ const UserProfile: React.FC = () => {
 
   return (
     <>
-    <Navbar />
     {/* <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-primary/30 via-secondary/20 to-background/30"> */}
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-primary/30 via-secondary/20 to-background/30 pt-20">
 

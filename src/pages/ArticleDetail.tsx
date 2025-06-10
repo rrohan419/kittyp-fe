@@ -1,16 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { Navbar } from '@/components/layout/Navbar';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { getArticleById } from '@/data/articles';
-import { Comment as CommentType } from '@/pages/Interface/articles';
 import { formatDistance } from 'date-fns';
 import { ArrowLeft, Calendar, Clock, Heart, MessageSquare, Share2, Tag, ThumbsUp } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { fetchArticleBySlug } from '@/services/articleService';
 import { LoadingState } from '@/components/ui/LoadingState';
 
@@ -92,7 +88,6 @@ const ArticlePage = () => {
   if (loading) {
     return (
       <>
-        <Navbar />
         <div className="container max-w-6xl mx-auto px-4 pt-24 pb-16">
           <LoadingState message="Loading the article..." />
         </div>
@@ -110,7 +105,6 @@ const ArticlePage = () => {
 
   return (
     <>
-      <Navbar />
       <article className="pt-24 pb-16">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">

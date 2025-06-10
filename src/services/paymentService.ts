@@ -2,7 +2,7 @@ import { callRazorpayCreateOrder, callRazorpayVerifyPayment, CurrencyType, Taxes
 import { UserProfile } from "./authService";
 import { useOrder } from "@/context/OrderContext";
 import axiosInstance from "@/config/axionInstance";
-import { store } from "@/module/store";
+import { store } from "@/module/store/store";
 import { initializeUserAndCart } from "@/module/slice/CartSlice";
 
 export interface RazorpayOptions {
