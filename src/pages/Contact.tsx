@@ -11,10 +11,9 @@ import {
     CardTitle
 } from '@/components/ui/card';
 import { Mail, Phone, MapPin, MessageSquare } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 
 const Contact = () => {
-    const { toast } = useToast();
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -33,9 +32,8 @@ const Contact = () => {
         console.log('Form submitted:', formData);
 
         // Show success toast
-        toast({
-            title: "Message Sent!",
-            description: "We'll get back to you as soon as possible.",
+        toast.success("Message Sent!", {
+            description: "We'll get back to you as soon as possible."
         });
 
         // Reset form

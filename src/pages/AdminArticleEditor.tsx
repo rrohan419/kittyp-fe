@@ -32,7 +32,7 @@ import {
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 // import { Article, Author } from '@/types/article';
 import { articles } from '@/data/articles';
 import { FileText, Save, Send } from 'lucide-react';
@@ -57,7 +57,6 @@ type ArticleFormValues = z.infer<typeof articleFormSchema>;
 const AdminArticleEditor = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -90,18 +89,9 @@ const AdminArticleEditor = () => {
 
   // Handle form submission
   const onSubmit = (values: ArticleFormValues) => {
-    // Mock saving to backend - in a real app this would be an API call
-    // const author: Author = {
-    //   id: "admin1",
-    //   name: values.status === "DRAFT" ? "Admin (Draft)" : values.status === "PUBLISHED" ? values.author?.name || "Admin" : "Admin",
-    //   avatar: values.author?.avatar || "https://randomuser.me/api/portraits/women/63.jpg",
-    //   role: values.author?.role || "Administrator"
-    // };
-    
     const newArticle: Partial<Article> = {
       ...values,
       id: `article-${Date.now()}`,
-      // author,
       publishedAt: values.status === "PUBLISHED" ? new Date().toISOString() : undefined,
       comments: []
     };
@@ -109,9 +99,8 @@ const AdminArticleEditor = () => {
     console.log("Saving article:", newArticle);
     
     // Show success message
-    toast({
-      title: values.status === "PUBLISHED" ? "Article Published!" : "Draft Saved!",
-      description: `"${values.title}" has been ${values.status === "PUBLISHED" ? "published" : "saved as a draft"}.`,
+    toast.success(values.status === "PUBLISHED" ? "Article Published!" : "Draft Saved!", {
+      description: `"${values.title}" has been ${values.status === "PUBLISHED" ? "published" : "saved as a draft"}.`
     });
     
     // Redirect to admin dashboard

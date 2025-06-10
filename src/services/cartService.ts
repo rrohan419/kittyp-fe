@@ -200,6 +200,7 @@ export type CartItemResponse = {
   price: number;
   quantity: number;
   totalPrice: number;
+  productImageUrls?: string[];
 };
 
 export type CartResponse = {

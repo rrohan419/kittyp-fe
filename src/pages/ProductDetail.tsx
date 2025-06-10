@@ -8,6 +8,7 @@ import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { fetchProduct, addToFavorites, removeFromFavorites } from '@/module/slice/ProductSlice';
 import { addToCartFromProduct } from '@/module/slice/CartSlice';
 import Loading from '@/components/ui/loading';
+import { toast } from 'sonner';
 
 const ProductDetail = () => {
   const { uuid } = useParams<{ uuid: string }>();
@@ -18,7 +19,12 @@ const ProductDetail = () => {
 
   // Get state from Redux store
   const { currentProduct: product, isLoading, error, favorites } = useAppSelector((state) => state.productReducer);
-  const { loading: cartLoading } = useAppSelector((state) => state.cartReducer);
+  const { loading: cartLoading, items: cartItems } = useAppSelector((state) => state.cartReducer);
+
+  // Calculate available quantity based on stock and cart
+  const cartItem = cartItems.find(item => item.productUuid === product?.uuid);
+  const cartQuantity = cartItem?.quantity || 0;
+  const availableQuantity = product ? Math.max(0, product.stockQuantity - cartQuantity) : 0;
 
   useEffect(() => {
     if (uuid) {
@@ -35,18 +41,24 @@ const ProductDetail = () => {
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
+  
     if (!product) return;
-
+  
     try {
+      if (availableQuantity <= 0) {
+        toast.warning("Maximum quantity in cart reached");
+        return;
+      }
+  
       setIsAddingToCart(true);
       await dispatch(addToCartFromProduct(product)).unwrap();
     } catch (error) {
-      console.error('Error adding to cart:', error);
+      console.error("Error adding to cart:", error);
     } finally {
       setIsAddingToCart(false);
     }
   };
+  
 
   const isFavorite = (productId: string) => {
     return favorites.some(item => item.id === productId);
@@ -151,18 +163,18 @@ const ProductDetail = () => {
                 <span className="inline-block px-3 py-1 text-xs font-medium bg-muted/80 text-muted-foreground rounded-full shadow-sm">
                   {product.category}
                 </span>
-                {product.stockQuantity <= 0 ? (
+                {availableQuantity <= 0 ? (
                   <div className="flex items-center">
                     <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-full shadow-sm border border-red-200 dark:border-red-500/30">
                       <AlertCircle size={12} className="mr-1" />
-                      Out of Stock
+                      {product.stockQuantity <= 0 ? "Out of Stock" : "Maximum quantity in cart"}
                     </span>
                   </div>
-                ) : product.stockQuantity <= 2 ? (
+                ) : availableQuantity <= 2 ? (
                   <div className="flex items-center">
                     <span className="inline-flex items-center px-3 py-1 text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-full shadow-sm border border-amber-200 dark:border-amber-500/30">
                       <AlertCircle size={12} className="mr-1" />
-                      Only {product.stockQuantity} left in stock!
+                      Only {availableQuantity} left available!
                     </span>
                   </div>
                 ) : (
@@ -204,13 +216,13 @@ const ProductDetail = () => {
             )}
 
             <div className="pt-6 space-y-4">
-              {product.stockQuantity <= 0 ? (
+              {availableQuantity <= 0 ? (
                 <Button
                   disabled
                   className="w-full h-12 text-base flex items-center justify-center gap-2 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30 hover:bg-red-100 dark:hover:bg-red-500/20"
                 >
                   <AlertCircle className="h-5 w-5" />
-                  <span>Out of Stock</span>
+                  <span>{product.stockQuantity <= 0 ? "Out of Stock" : "Maximum quantity in cart"}</span>
                 </Button>
               ) : (
                 <Button
@@ -230,8 +242,8 @@ const ProductDetail = () => {
                     <>
                       <ShoppingCart className="h-5 w-5" />
                       <span>
-                        {product.stockQuantity <= 2 
-                          ? `Add to Cart (${product.stockQuantity} left)`
+                        {availableQuantity <= 2 
+                          ? `Add to Cart (${availableQuantity} left)`
                           : 'Add to Cart'
                         }
                       </span>

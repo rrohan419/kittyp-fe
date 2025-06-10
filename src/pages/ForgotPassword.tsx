@@ -5,12 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 import { Mail, ArrowLeft } from 'lucide-react';
 import { sendPasswordResetCode } from '@/services/authService';
 
 const ForgotPassword = () => {
-  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -23,19 +22,16 @@ const ForgotPassword = () => {
       const success = await sendPasswordResetCode(email);
       
       if (success) {
-        toast({
-          title: "Verification code sent",
-          description: "Please check your email for the verification code.",
+        toast.success("Verification code sent", {
+          description: "Please check your email for the verification code."
         });
         // Store email in session storage for the next step
         sessionStorage.setItem('resetEmail', email);
         navigate('/verify-reset-code');
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to send verification code. Please try again.",
-        variant: "destructive"
+      toast.error("Error", {
+        description: "Failed to send verification code. Please try again."
       });
     } finally {
       setIsSubmitting(false);

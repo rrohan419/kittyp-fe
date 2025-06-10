@@ -20,14 +20,14 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 import { UserPlus, Mail, Lock, User, CheckCircleIcon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { signup } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
 
 const Signup = () => {
-  const { toast } = useToast();
+  const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -38,15 +38,13 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const handleGoogleSignup = () => googleLogin();
-  const navigate = useNavigate();
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (password !== confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match.",
-        variant: "destructive"
+      toast.error("Passwords don't match", {
+        description: "Please make sure your passwords match."
       });
       return;
     }
@@ -74,8 +72,7 @@ const Signup = () => {
         setConfirmPassword('');
         
         // Show success toast
-        toast({
-          title: "Account created successfully",
+        toast.success("Account created successfully", {
           description: "Please login with your new account",
           duration: 3000,
         });
@@ -126,19 +123,15 @@ const Signup = () => {
         // localStorage.setItem("id_token", id_token);
       } catch (error) {
         console.error("Error during token exchange:", error);
-        toast({
-          title: "Signup Failed",
+        toast.error("Signup Failed", {
           description: "Could not complete Google signup. Please try again.",
-          variant: "destructive",
         });
       }
     },
     onError: (errorResponse) => {
       console.error("Google Login Error:", errorResponse);
-      toast({
-        title: "Google Signup Failed",
+      toast.error("Google Signup Failed", {
         description: "Authentication error. Please try again.",
-        variant: "destructive",
       });
     },
     flow: "auth-code",
