@@ -293,7 +293,3 @@
     background: rgba(255, 255, 255, 0.3);
   }
 }
-
-.no-text-shadow {
-  text-shadow: none !important;
-}

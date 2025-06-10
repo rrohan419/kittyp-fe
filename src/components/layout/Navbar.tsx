@@ -24,13 +24,14 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
 
   // Get auth state from Redux
   const user = useSelector((state: RootState) => state.cartReducer.user);
-  const isAuthenticated = !!user;
+  const isAuthenticated = !!user && !isLoggingOut;
   const userRole = user?.roles?.includes('ROLE_ADMIN') ? 'ROLE_ADMIN' : null;
 
   const toggleMenu = () => setIsOpen(!isOpen);
@@ -63,24 +64,39 @@ export function Navbar() {
   }, [location.pathname]);
 
   const handleLogout = async () => {
+    if (isLoggingOut) return;
+
     try {
-      // Switch to guest cart instead of clearing the cart
-      await dispatch(switchToGuestCart()).unwrap();
-      
-      // Clear auth data
+      setIsLoggingOut(true);
+      closeMenu();
+
+      // First, clear auth data from localStorage
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
       localStorage.removeItem('roles');
-      dispatch(clearUser());
-      
+
+      // Then dispatch actions
+      await Promise.all([
+        dispatch(switchToGuestCart()).unwrap(),
+        dispatch(clearUser())
+      ]);
+
+      // Show success dialog
       setShowSuccessDialog(true);
 
       // Navigate after a short delay
       setTimeout(() => {
-        navigate('/');
+        setShowSuccessDialog(false);
+        navigate('/', { replace: true });
+        // Reset logout state after navigation
+        setTimeout(() => {
+          setIsLoggingOut(false);
+        }, 100);
       }, 1500);
     } catch (error) {
       console.error('Error during logout:', error);
+      setIsLoggingOut(false);
+      setShowSuccessDialog(false);
     }
   };
 
@@ -116,7 +132,7 @@ export function Navbar() {
               ? "bg-background/95 backdrop-blur-sm shadow-sm dark:bg-black/95"
               : "bg-background/80 dark:bg-black/80"
         )}
-        style={{ 
+        style={{
           WebkitFontSmoothing: 'none',
           MozOsxFontSmoothing: 'grayscale',
           textShadow: 'none',
@@ -341,6 +357,7 @@ export function Navbar() {
       </header>
 
       {/* Success Dialog */}
+
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
         <DialogPortal>
           <DialogOverlay className="z-[100]" />
@@ -351,8 +368,13 @@ export function Navbar() {
                 You have been logged out of your account.
               </DialogDescription>
             </DialogHeader>
-            <div className="flex justify-center items-center">
+
+            <div className="flex justify-center items-center mt-4">
               <CheckCircle className="h-12 w-12 text-green-500" />
+            </div>
+
+            <div className="mt-3 flex justify-center">
+              <Button onClick={() => setShowSuccessDialog(false)}>OK</Button>
             </div>
           </DialogContent>
         </DialogPortal>

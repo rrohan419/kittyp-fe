@@ -34,7 +34,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 // import { Article, Author } from '@/types/article';
-import { articles } from '@/data/articles';
 import { FileText, Save, Send } from 'lucide-react';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import { Article, Author } from './Interface/articles';

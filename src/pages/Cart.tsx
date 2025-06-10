@@ -60,7 +60,7 @@ export default function Cart() {
                     uuid={item.productUuid}
                     name={item.productName}
                     price={item.price}
-                    currency={CurrencyType.INR}
+                    currency={item.currency}
                     quantity={item.quantity}
                     image={`/product-images/${item.productUuid}.jpg`}
                   />

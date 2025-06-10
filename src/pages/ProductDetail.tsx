@@ -9,6 +9,7 @@ import { fetchProduct, addToFavorites, removeFromFavorites } from '@/module/slic
 import { addToCartFromProduct } from '@/module/slice/CartSlice';
 import Loading from '@/components/ui/loading';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/services/cartService';
 
 const ProductDetail = () => {
   const { uuid } = useParams<{ uuid: string }>();
@@ -157,7 +158,8 @@ const ProductDetail = () => {
             <div>
               <h1 className="text-3xl font-bold text-foreground">{product.name}</h1>
               <p className="mt-2 text-2xl font-semibold text-primary">
-                ${product.price.toFixed(2)}
+                {/* ${product.price.toFixed(2)} */}
+                {formatCurrency(product.price, product.currency)}
               </p>
               <div className="mt-2 flex items-center gap-2 flex-wrap">
                 <span className="inline-block px-3 py-1 text-xs font-medium bg-muted/80 text-muted-foreground rounded-full shadow-sm">

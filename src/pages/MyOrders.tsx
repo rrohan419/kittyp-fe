@@ -1,4 +1,3 @@
-
 import {
     Card,
     CardContent,
@@ -23,9 +22,9 @@ const ORDER_STATUSES = [
 
 export default function MyOrders() {
     const [page, setPage] = useState(1);
-    const userUuid = useAppSelector((state) => state.userReducer?.uuid);
+    const userUuid = useAppSelector((state) => state.authReducer.user?.uuid);
     const [filters, setFilters] = useState<OrderFilterRequest>({
-        userUuid: userUuid, // This should come from auth context
+        userUuid: userUuid,
         orderNumber: null,
         orderStatus: null,
     });

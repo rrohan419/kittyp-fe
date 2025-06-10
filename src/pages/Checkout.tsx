@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,9 +15,9 @@ import { PaymentLoader } from "@/components/ui/PaymentLoader";
 import { ArrowLeft, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { Address, fetchSavedAddresses } from "@/services/addressService";
-import { 
-    callRazorpayCreateOrder, 
-    callRazorpayVerifyPayment, 
+import {
+    callRazorpayCreateOrder,
+    callRazorpayVerifyPayment,
     CurrencyType,
     createOrder,
     OrderRequest,
@@ -29,12 +28,6 @@ import { AppDispatch, RootState } from '@/module/store/store';
 import { clearCartThunk } from "@/module/slice/CartSlice";
 import { loadRazorpayScript, handlePayment, RazorpayOptions, handlePaymentTimeout, handlePaymentCancellation } from "@/services/paymentService";
 
-// Add shipping method type and mapping
-const shippingMethodToEnum: Record<string, ShippingMethod> = {
-    'standard': ShippingMethod.STANDARD,
-    'express': ShippingMethod.EXPRESS,
-    'priority': ShippingMethod.PRIORITY
-};
 
 export default function Checkout() {
     const dispatch = useDispatch<AppDispatch>();
@@ -185,8 +178,8 @@ export default function Checkout() {
         try {
             // Get selected addresses
             const shippingAddress = addresses.find(addr => addr.id === selectedShippingAddressId);
-            const billingAddress = sameAsShipping 
-                ? shippingAddress 
+            const billingAddress = sameAsShipping
+                ? shippingAddress
                 : addresses.find(addr => addr.id === selectedBillingAddressId);
 
             if (!shippingAddress || (!sameAsShipping && !billingAddress)) {
@@ -218,10 +211,64 @@ export default function Checkout() {
                 shippingMethod: selectedShippingMethod
             };
 
-            const orderResponse = await createOrder(user.uuid, orderRequest);
-            
+            let orderResponse;
+            try {
+                orderResponse = await createOrder(user.uuid, orderRequest);
+            } catch (error: any) {
+                console.error("Order creation error:", error);
+                // Clear processing states
+                setIsProcessingOrder(false);
+                setIsPaymentPending(false);
+
+                // Get error message from response or fallback
+                let errorMessage = "Failed to create order";
+                if (error.response?.data?.message) {
+                    errorMessage = error.response.data.message;
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
+                // Force show the error toast
+                toast.dismiss(); // Clear any existing toasts
+                toast.error(errorMessage, {
+                    duration: 5000,
+                });
+
+                // Handle insufficient stock separately
+                if (errorMessage.includes("Insufficient stock")) {
+                    const match = errorMessage.match(/Insufficient stock for product: (.+)\. Available: (\d+)/);
+                    if (match) {
+                        const [, productName, availableQty] = match;
+                        setTimeout(() => {
+                            toast.error(`Only ${availableQty} unit(s) available for ${productName}. Please update your cart.`, {
+                                duration: 5000,
+                            });
+                        }, 100); // Slight delay to ensure both messages are seen
+                    }
+                }
+
+                // Navigate back to cart after a short delay
+                setTimeout(() => {
+                    navigate('/cart');
+                }, 2000);
+                
+                return;
+            }
+
             if (!orderResponse.success) {
-                throw new Error(orderResponse.message);
+                setIsProcessingOrder(false);
+                setIsPaymentPending(false);
+                
+                toast.dismiss(); // Clear any existing toasts
+                toast.error(orderResponse.message || "Failed to place order", {
+                    duration: 5000,
+                });
+                
+                setTimeout(() => {
+                    navigate('/cart');
+                }, 2000);
+                
+                return;
             }
 
             const { orderNumber, totalAmount } = orderResponse.data;
@@ -288,7 +335,7 @@ export default function Checkout() {
                     }
                 },
                 modal: {
-                    ondismiss: function() {
+                    ondismiss: function () {
                         handlePaymentCleanup(razorpayOrderResponse.data.id, 'cancelled');
                     },
                     escape: true,
@@ -319,8 +366,17 @@ export default function Checkout() {
         } catch (error) {
             cleanupPaymentTimeout();
             console.error("Failed to process order:", error);
-            toast.error("Failed to place order. Please try again.");
-            navigate('/cart');
+            setIsProcessingOrder(false);
+            setIsPaymentPending(false);
+            
+            toast.dismiss(); // Clear any existing toasts
+            toast.error("Failed to place order. Please try again.", {
+                duration: 5000,
+            });
+            
+            setTimeout(() => {
+                navigate('/cart');
+            }, 2000);
         }
     };
 
@@ -329,7 +385,7 @@ export default function Checkout() {
             <>
                 <div className="min-h-[calc(100vh-6rem)] flex items-center justify-center bg-white dark:bg-gray-950">
                     {isPaymentVerifying ? (
-                        <PaymentLoader 
+                        <PaymentLoader
                             message="Processing Your Order"
                             subMessage="Please wait while we verify your payment and process your order. Do not close or refresh this page."
                         />
@@ -513,7 +569,7 @@ export default function Checkout() {
 
                                 <Separator />
 
-                                <OrderSummary 
+                                <OrderSummary
                                     amount={totalAmount}
                                     shippingCost={shippingCost}
                                     currency={CurrencyType.INR}

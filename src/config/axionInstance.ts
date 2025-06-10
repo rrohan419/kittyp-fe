@@ -1,11 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { API_BASE_URL } from "./env";
 
-// Create an Axios instance
-// const axiosInstance = axios.create({
-//   baseURL: `${API_BASE_URL}/auth`, // Set your API base URL here
-//   timeout: 10000, // Timeout after 10 seconds
-// });
 type CreateInstanceAndInjectStoreFunction = (
   _store: any,
   _dispatch: any,

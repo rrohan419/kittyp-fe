@@ -1,15 +1,15 @@
-
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Outlet, useNavigation } from "react-router-dom";
 import { CartProvider } from "@/context/CartContext";
 import { FavoritesProvider } from "@/context/FavoritesContext";
 
 import "@/styles/global.css";
 import { Navbar } from "./components/layout/Navbar";
-import { AnimatedRoutes } from "./components/layout/AnimatedRoutes";
 import { ThemeProvider } from './components/providers/ThemeProvider';
+import { cn } from "./lib/utils";
+import { ScrollToTop } from "./utils/ScrollToTop";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,23 +20,28 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  const navigation = useNavigation();
+  const isLoading = navigation.state === "loading";
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
           <FavoritesProvider>
             <CartProvider>
-              <Router>
-                <div className="min-h-screen bg-background">
-                  <div className="fixed top-0 left-0 right-0 z-50">
-                    <Navbar />
-                  </div>
-                  <div className="pt-16">
-                    <AnimatedRoutes />
-                  </div>
-                  <Toaster />
+              <div className={cn(
+                "min-h-screen bg-background transition-opacity duration-200",
+                isLoading && "opacity-75"
+              )}>
+                <div className="fixed top-0 left-0 right-0 z-50">
+                  <Navbar />
                 </div>
-              </Router>
+                <div className="pt-16">
+                  <Outlet />
+                </div>
+                <Toaster />
+                <ScrollToTop />
+              </div>
             </CartProvider>
           </FavoritesProvider>
         </TooltipProvider>

@@ -12,24 +12,14 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
 import { toast } from "sonner";
 import { LogIn, Mail, Lock, EyeOff, Eye, EyeOffIcon } from 'lucide-react';
-import { authConfig } from '@/config/auth';
 import { useGoogleLogin } from '@react-oauth/google';
 import { login } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
-import { LoginResponse } from './Interface/PagesInterface';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
-// import { useCart } from '@/context/CartContext';
 
 const Login = () => {
   const navigate = useNavigate();
