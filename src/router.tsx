@@ -27,6 +27,10 @@ import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
 import App from './App';
 import { PageTransition } from './components/layout/PageTransition';
+import AdminArticles from './pages/AdminArticles';
+import AdminOrders from './pages/AdminOrders';
+import AdminProducts from './pages/AdminProducts';
+import AdminUsers from './pages/AdminUsers';
 
 export const router = createBrowserRouter(
   [
@@ -119,12 +123,28 @@ export const router = createBrowserRouter(
           element: <PageTransition><AdminDashboard /></PageTransition>,
         },
         {
+          path: "admin/orders",
+          element: <PageTransition><AdminOrders /></PageTransition>,
+        },
+        {
+          path: "admin/products",
+          element: <PageTransition><AdminProducts /></PageTransition>,
+        },
+        {
+          path: "admin/users",
+          element: <PageTransition><AdminUsers /></PageTransition>,
+        },
+        {
           path: "admin/articles/new",
           element: <PageTransition><AdminArticleEditor /></PageTransition>,
         },
         {
           path: "admin/articles/edit/:id",
           element: <PageTransition><AdminArticleEditor /></PageTransition>,
+        },
+        {
+          path: "admin/articles",
+          element: <PageTransition><AdminArticles /></PageTransition>,
         },
         {
           path: "forgot-password",
@@ -144,10 +164,5 @@ export const router = createBrowserRouter(
         },
       ],
     },
-  ],
-  {
-    future: {
-      v7_relativeSplatPath: true
-    }
-  }
+  ]
 ); 

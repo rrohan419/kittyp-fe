@@ -372,10 +372,6 @@ export function Navbar() {
             <div className="flex justify-center items-center mt-4">
               <CheckCircle className="h-12 w-12 text-green-500" />
             </div>
-
-            <div className="mt-3 flex justify-center">
-              <Button onClick={() => setShowSuccessDialog(false)}>OK</Button>
-            </div>
           </DialogContent>
         </DialogPortal>
       </Dialog>

@@ -15,6 +15,7 @@ import { PaymentLoader } from "@/components/ui/PaymentLoader";
 import { ArrowLeft, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { Address, fetchSavedAddresses } from "@/services/addressService";
+import { useTheme } from "@/components/providers/ThemeProvider";
 import {
     callRazorpayCreateOrder,
     callRazorpayVerifyPayment,
@@ -33,6 +34,7 @@ export default function Checkout() {
     const dispatch = useDispatch<AppDispatch>();
     const { items, totalAmount, user } = useSelector((state: RootState) => state.cartReducer);
     const navigate = useNavigate();
+    const { colorScheme, resolvedMode } = useTheme();
 
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
@@ -146,6 +148,25 @@ export default function Checkout() {
     const handleShippingMethodChange = (methodId: ShippingMethod, price: number) => {
         setSelectedShippingMethod(methodId);
         setShippingCost(price);
+    };
+
+    // Function to get theme color based on current theme
+    const getThemeColor = () => {
+        // Get color based on colorScheme
+        switch (colorScheme) {
+            case 'purple':
+                return '#9D57FF';
+            case 'blue':
+                return '#3B82F6';
+            case 'green':
+                return '#22C55E';
+            case 'autumn':
+                return '#FB923C';
+            case 'ocean':
+                return '#0EA5E9';
+            default: // default/pink theme
+                return resolvedMode === 'dark' ? '#F43F7A' : '#F43F5E';
+        }
     };
 
     const handlePlaceOrder = async () => {
@@ -349,7 +370,7 @@ export default function Checkout() {
                     contact: shippingAddress.phoneNumber || ''
                 },
                 theme: {
-                    color: "#F43F5E"
+                    color: getThemeColor()
                 }
             };
 

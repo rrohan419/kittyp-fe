@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
-import { ShoppingCart, Heart, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { ShoppingCart, Heart, ArrowLeft, Loader2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
@@ -15,6 +15,7 @@ const ProductDetail = () => {
   const { uuid } = useParams<{ uuid: string }>();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
@@ -26,6 +27,10 @@ const ProductDetail = () => {
   const cartItem = cartItems.find(item => item.productUuid === product?.uuid);
   const cartQuantity = cartItem?.quantity || 0;
   const availableQuantity = product ? Math.max(0, product.stockQuantity - cartQuantity) : 0;
+
+  // Constants for description truncation
+  const DESCRIPTION_MAX_LENGTH = 300;
+  const shouldTruncate = product?.description && product.description.length > DESCRIPTION_MAX_LENGTH;
 
   useEffect(() => {
     if (uuid) {
@@ -86,6 +91,16 @@ const ProductDetail = () => {
     navigate(-1);
   };
 
+  const getFormattedDescription = () => {
+    if (!product?.description) return '';
+    
+    if (!isDescriptionExpanded && shouldTruncate) {
+      return `${product.description.slice(0, DESCRIPTION_MAX_LENGTH)}...`;
+    }
+    
+    return product.description;
+  };
+
   if (isLoading) {
     return <Loading />;
   }
@@ -112,14 +127,6 @@ const ProductDetail = () => {
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
-        <button
-          onClick={handleGoBack}
-          className="flex items-center text-muted-foreground hover:text-primary transition-colors mb-6"
-        >
-          <ArrowLeft size={16} className="mr-2" />
-          Back to Products
-        </button>
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* Product Images */}
           <div className="space-y-4">
@@ -187,8 +194,34 @@ const ProductDetail = () => {
               </div>
             </div>
 
-            <div className="prose dark:prose-invert max-w-none">
-              <p className="text-foreground">{product.description}</p>
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-foreground">Description</h3>
+              <div className="prose dark:prose-invert max-w-none">
+                <div className={cn(
+                  "relative rounded-lg bg-muted/30 p-4",
+                  !isDescriptionExpanded && shouldTruncate && "pb-12"
+                )}>
+                  <p className="text-foreground whitespace-pre-wrap">
+                    {getFormattedDescription()}
+                  </p>
+                  {shouldTruncate && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                      className={cn(
+                        "flex items-center gap-2 mt-2",
+                        !isDescriptionExpanded && "absolute bottom-2 left-1/2 transform -translate-x-1/2"
+                      )}
+                    >
+                      {isDescriptionExpanded ? (
+                        <>Show Less <ChevronUp size={16} /></>
+                      ) : (
+                        <>Read More <ChevronDown size={16} /></>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
 
             {product.attribute && (

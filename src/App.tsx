@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Outlet, useNavigation } from "react-router-dom";
 import { CartProvider } from "@/context/CartContext";
 import { FavoritesProvider } from "@/context/FavoritesContext";
+import { GlobalBreadcrumbs } from "./components/layout/GlobalBreadcrumbs";
 
 import "@/styles/global.css";
 import { Navbar } from "./components/layout/Navbar";
@@ -36,9 +37,14 @@ function App() {
                 <div className="fixed top-0 left-0 right-0 z-50">
                   <Navbar />
                 </div>
-                <div className="pt-16">
-                  <Outlet />
-                </div>
+                <main className="pt-16">
+                  <div className="fixed top-16 z-40">
+                    <GlobalBreadcrumbs />
+                  </div>
+                  <div className="relative">
+                    <Outlet />
+                  </div>
+                </main>
                 <Toaster />
                 <ScrollToTop />
               </div>

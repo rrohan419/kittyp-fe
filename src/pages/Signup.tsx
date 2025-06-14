@@ -252,7 +252,7 @@ const Signup = () => {
                     {loading ? (
                       <div className="h-4 w-4 animate-spin border-2 border-primary-foreground border-t-transparent rounded-full" />
                     ) : (
-                      <UserPlus className="h-4 w-4" />
+                    <UserPlus className="h-4 w-4" />
                     )}
                     {loading ? 'Creating Account...' : 'Create Account'}
                   </Button>

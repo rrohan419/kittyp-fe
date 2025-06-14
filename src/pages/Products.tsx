@@ -176,10 +176,10 @@ const Products: React.FC = () => {
                 {(selectedCategory !== 'All' || selectedPriceRange || searchQuery) && (
                   <div className="border-t border-border pt-6">
                     <Button
-                      onClick={clearFilters}
+                    onClick={clearFilters}
                       variant="outline"
                       className="w-full justify-start"
-                    >
+                  >
                       <X size={16} className="mr-2" />
                       Clear all filters
                     </Button>
@@ -226,76 +226,76 @@ const Products: React.FC = () => {
                   onClick={e => e.stopPropagation()}
                 >
                   <ScrollArea className="h-full pr-4">
-                    <div className="flex justify-between items-center mb-6">
+                  <div className="flex justify-between items-center mb-6">
                       <h3 className="text-lg font-semibold">Filters</h3>
                       <Button variant="ghost" size="icon" onClick={toggleMobileFilter}>
                         <X size={20} />
                       </Button>
-                    </div>
+                  </div>
 
                     <div className="space-y-6">
-                      <div>
+                    <div>
                         <h4 className="font-medium mb-3">Categories</h4>
                         <div className="space-y-1.5">
-                          {categories.map(category => (
-                            <button
+                        {categories.map(category => (
+                          <button
                               key={`mobile-filter-category-${category}`}
-                              onClick={() => {
-                                setSelectedCategory(category);
-                                toggleMobileFilter();
-                              }}
-                              className={cn(
+                            onClick={() => {
+                              setSelectedCategory(category);
+                              toggleMobileFilter();
+                            }}
+                            className={cn(
                                 "w-full text-left px-4 py-2.5 rounded-lg transition-all duration-200",
-                                selectedCategory === category
+                              selectedCategory === category
                                   ? "bg-primary text-primary-foreground shadow-md"
                                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                              )}
-                            >
-                              {category}
-                            </button>
-                          ))}
-                        </div>
+                            )}
+                          >
+                            {category}
+                          </button>
+                        ))}
                       </div>
+                    </div>
 
                       <div className="border-t border-border pt-6">
                         <h4 className="font-medium mb-3">Price Range</h4>
                         <div className="space-y-1.5">
-                          {priceRanges.map((range, index) => (
-                            <button
-                              key={`mobile-filter-range-${index}`}
-                              onClick={() => {
-                                setSelectedPriceRange({ min: range.min, max: range.max });
-                                toggleMobileFilter();
-                              }}
-                              className={cn(
-                                "w-full text-left px-4 py-2.5 rounded-lg transition-all duration-200",
-                                selectedPriceRange?.min === range.min && selectedPriceRange?.max === range.max
-                                  ? "bg-primary text-primary-foreground shadow-md"
-                                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                              )}
-                            >
-                              {range.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {(selectedCategory !== 'All' || selectedPriceRange || searchQuery) && (
-                        <div className="border-t border-border pt-6">
-                          <Button
+                        {priceRanges.map((range, index) => (
+                          <button
+                            key={`mobile-filter-range-${index}`}
                             onClick={() => {
-                              clearFilters();
+                              setSelectedPriceRange({ min: range.min, max: range.max });
                               toggleMobileFilter();
                             }}
+                            className={cn(
+                                "w-full text-left px-4 py-2.5 rounded-lg transition-all duration-200",
+                              selectedPriceRange?.min === range.min && selectedPriceRange?.max === range.max
+                                  ? "bg-primary text-primary-foreground shadow-md"
+                                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                            )}
+                          >
+                            {range.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {(selectedCategory !== 'All' || selectedPriceRange || searchQuery) && (
+                        <div className="border-t border-border pt-6">
+                          <Button
+                        onClick={() => {
+                          clearFilters();
+                          toggleMobileFilter();
+                        }}
                             variant="outline"
                             className="w-full justify-start"
-                          >
+                      >
                             <X size={16} className="mr-2" />
                             Clear all filters
                           </Button>
                         </div>
-                      )}
-                    </div>
+                    )}
+                  </div>
                   </ScrollArea>
                 </div>
               </div>

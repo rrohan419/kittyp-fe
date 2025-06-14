@@ -16,6 +16,12 @@ export interface LoginResponse {
     role: string;
   }
   
+  export enum ArticleStatus {
+    PUBLISHED = 'PUBLISHED',
+    DRAFT = 'DRAFT',
+    ARCHIVED = 'ARCHIVED'
+  }
+  
   export interface ArticleList {
     title: string;
     slug: string;
@@ -25,7 +31,8 @@ export interface LoginResponse {
     tags: string[];
     author: Author;
     category: string;
-    coverImage : string
+    coverImage : string;
+    status: ArticleStatus;
   }
   
   export interface ArticleApiResponse {
