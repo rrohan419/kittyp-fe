@@ -1,26 +1,31 @@
 import React, { useEffect } from 'react';
 import ProfileHeader from '@/components/ui/ProfileHeader';
-import FavoritesSection from '@/components/ui/FavoritesSection';
+// import FavoritesSection from '@/components/ui/FavoritesSection';
 import OrderHistory from '@/components/ui/OrderHistory';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Footer } from '@/components/layout/Footer';
 import { format } from 'date-fns';
 import Loading from '@/components/ui/loading';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/module/store/store';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '@/module/store/store';
+import { initializeUserAndCart } from '@/module/slice/CartSlice';
+import FavoritesSection from '@/components/ui/FavoritesSection';
 
 const Profile: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.cartReducer);
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
-    // Redirect to login if no user
-    if (!user) {
+    const token = localStorage.getItem('access_token');
+    if (token && !user) {
+      dispatch(initializeUserAndCart());
+    } else if (!token) {
       navigate('/login', { state: { from: location.pathname } });
     }
-  }, [user, navigate, location.pathname]);
+  }, [dispatch, user, navigate, location.pathname]);
 
   // Show loading while checking user state
   if (!user) {

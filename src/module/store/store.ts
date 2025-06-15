@@ -4,13 +4,15 @@ import dummyReducer from '../slice/DummySlice';
 import adminReducer from '../slice/AdminSlice';
 import productReducer from '../slice/ProductSlice';
 import authReducer, { AuthState } from '../slice/AuthSlice';
+import favoritesReducer from '../slice/FavoritesSlice';
 import { persistReducer, persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
+import { userSlice } from '../slice/UserSlice';
 
 const persistConfig = {
     key: 'root',
     storage,
-    whitelist: ['cartReducer', 'authReducer'] // Only persist cart and auth state
+    whitelist: ['cartReducer', 'authReducer', 'favoritesReducer', 'user'] // Only persist cart, auth, favorites and user state
 };
 
 const rootReducer = combineReducers({
@@ -18,7 +20,9 @@ const rootReducer = combineReducers({
     dummyReducer,
     adminReducer,
     productReducer,
-    authReducer
+    authReducer,
+    favoritesReducer,
+    user: userSlice.reducer
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

@@ -5,23 +5,28 @@ import { ShoppingCart, Heart, ArrowLeft, Loader2, AlertCircle, ChevronDown, Chev
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
-import { fetchProduct, addToFavorites, removeFromFavorites } from '@/module/slice/ProductSlice';
+import { fetchProduct } from '@/module/slice/ProductSlice';
 import { addToCartFromProduct } from '@/module/slice/CartSlice';
+import { selectFavorites } from '@/module/slice/FavoritesSlice';
 import Loading from '@/components/ui/loading';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/services/cartService';
+import { handleToggleFavorite } from '@/utils/favorites';
 
 const ProductDetail = () => {
   const { uuid } = useParams<{ uuid: string }>();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
   // Get state from Redux store
-  const { currentProduct: product, isLoading, error, favorites } = useAppSelector((state) => state.productReducer);
+  const { currentProduct: product, isLoading, error } = useAppSelector((state) => state.productReducer);
   const { loading: cartLoading, items: cartItems } = useAppSelector((state) => state.cartReducer);
+  const favorites = useAppSelector(selectFavorites);
+  const userUuid = useAppSelector((state) => state.authReducer.user?.uuid);
 
   // Calculate available quantity based on stock and cart
   const cartItem = cartItems.find(item => item.productUuid === product?.uuid);
@@ -58,8 +63,10 @@ const ProductDetail = () => {
   
       setIsAddingToCart(true);
       await dispatch(addToCartFromProduct(product)).unwrap();
+      toast.success("Added to cart successfully");
     } catch (error) {
       console.error("Error adding to cart:", error);
+      toast.error("Failed to add to cart");
     } finally {
       setIsAddingToCart(false);
     }
@@ -67,23 +74,16 @@ const ProductDetail = () => {
   
 
   const isFavorite = (productId: string) => {
-    return favorites.some(item => item.id === productId);
+    return favorites.some(item => item.uuid === productId);
   };
 
-  const handleToggleFavorite = () => {
+  const handleToggleFavoriteWrapper = async () => {
     if (!product) return;
-
-    const favoriteProduct = {
-      id: product.uuid,
-      name: product.name,
-      price: product.price,
-      image: product.productImageUrls && product.productImageUrls[0] ? product.productImageUrls[0] : "",
-    };
-
-    if (isFavorite(product.uuid)) {
-      dispatch(removeFromFavorites(product.uuid));
-    } else {
-      dispatch(addToFavorites(favoriteProduct));
+    setIsFavoriteLoading(true);
+    try {
+      await handleToggleFavorite(dispatch, userUuid, product, favorites);
+    } finally {
+      setIsFavoriteLoading(false);
     }
   };
 
@@ -289,8 +289,8 @@ const ProductDetail = () => {
 
               <Button
                 variant="outline"
-                onClick={handleToggleFavorite}
-                disabled={isAddingToCart}
+                onClick={handleToggleFavoriteWrapper}
+                disabled={isAddingToCart || isFavoriteLoading}
                 className={cn(
                   "w-full h-12 text-base flex items-center justify-center gap-2",
                   isFavorite(product.uuid) && "bg-primary/10 border-primary/20 hover:bg-primary/20"

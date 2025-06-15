@@ -3,7 +3,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Outlet, useNavigation } from "react-router-dom";
 import { CartProvider } from "@/context/CartContext";
-import { FavoritesProvider } from "@/context/FavoritesContext";
 import { GlobalBreadcrumbs } from "./components/layout/GlobalBreadcrumbs";
 
 import "@/styles/global.css";
@@ -28,7 +27,6 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          <FavoritesProvider>
             <CartProvider>
               <div className={cn(
                 "min-h-screen bg-background transition-opacity duration-200",
@@ -49,7 +47,6 @@ function App() {
                 <ScrollToTop />
               </div>
             </CartProvider>
-          </FavoritesProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

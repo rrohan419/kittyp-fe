@@ -8,6 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
+import { selectFavorites } from '@/module/slice/FavoritesSlice';
+import { toast } from 'sonner';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/module/store/store';
+import { handleToggleFavorite } from '@/utils/favorites';
 
 const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -29,6 +35,10 @@ const Products: React.FC = () => {
     status: null,
     isRandom : false,
   });
+
+  const dispatch = useAppDispatch();
+  const favorites = useAppSelector(selectFavorites);
+  const { user } = useSelector((state: RootState) => state.cartReducer);
 
   const loadProducts = useCallback(async () => {
     if (!hasMore || isLoading) return;
@@ -88,6 +98,10 @@ const Products: React.FC = () => {
 
     return filtered;
   }, [products, searchQuery]);
+
+  const handleToggleFavoriteWrapper = async (product: Product) => {
+    await handleToggleFavorite(dispatch, user.uuid, product, favorites);
+  };
 
   useEffect(() => {
     setProducts([]);  // Reset products when filters change
@@ -351,6 +365,8 @@ const Products: React.FC = () => {
                       product={product}
                       index={index}
                       className="animate-fade-up"
+                      onToggleFavorite={() => handleToggleFavoriteWrapper(product)}
+                      isFavorite={favorites.some(item => item.uuid === product.uuid)}
                     />
                   ))}
                 </div>

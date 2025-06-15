@@ -109,9 +109,9 @@ export function CartSidebar() {
             ) : (
               <div className="flex-1 overflow-y-auto">
                 <div className="space-y-4">
-                  {items.map((item) => (
+                  {items.map((item, index) => (
                     <CartItemUI
-                      key={`cart-sidebar-${item.productUuid}`}
+                      key={`cart-sidebar-${item.productUuid}-${index}`}
                       uuid={item.productUuid}
                       name={item.productName}
                       price={item.price}

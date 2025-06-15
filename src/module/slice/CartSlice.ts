@@ -232,29 +232,12 @@ export const addToCartFromProduct = createAsyncThunk(
       // For logged-in users
       let userUuid = state.cartReducer.user?.uuid;
 
-      // Parallel execution of user fetch and product fetch if needed
-      const [userData, latestProduct] = await Promise.all([
-        !userUuid ? fetchUserDetail() : null,
-        fetchProductByUuid(product.uuid)
-      ]);
-
-      // Handle user data if it was fetched
-      if (userData) {
+      // Only fetch user data if needed
+      if (!userUuid) {
+        const userData = await fetchUserDetail();
         localStorage.setItem('user', JSON.stringify(userData));
         dispatch(setUser(userData));
         userUuid = userData.uuid;
-      }
-
-      // Final stock validation with latest data
-      const availableStock = latestProduct.data.stockQuantity;
-      if (availableStock <= 0) {
-        toast.error(`${product.name} is out of stock`);
-        return;
-      }
-
-      if (currentQuantity >= availableStock) {
-        toast.warning(`Cannot add more ${product.name}. Maximum available quantity (${availableStock}) reached.`);
-        return;
       }
 
       // Add to cart
