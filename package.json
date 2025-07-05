@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "local": "vite --mode devlocal",
+    "build:local": "vite build --mode devlocal",
     "build:dev": "vite build --mode development",
-    "local": "vite",
-    "build:local": "vite build --mode local",
+    "build:prod": "vite build --mode production",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -53,10 +54,10 @@
     "framer-motion": "^12.6.3",
     "input-otp": "^1.2.4",
     "lucide-react": "^0.462.0",
-    "next-themes": "^0.3.0",
+
     "razorpay": "^2.9.6",
     "react": "^19.1.0",
-    "react-day-picker": "^8.10.1",
+    "react-day-picker": "^9.4.3",
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.53.0",
     "react-redux": "^9.2.0",
