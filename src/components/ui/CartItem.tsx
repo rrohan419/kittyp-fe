@@ -126,7 +126,7 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
     )}>
       <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
         {!isImageLoaded && (
-          <div className="absolute inset-0 bg-gray-100 dark:bg-gray-800 animate-pulse" />
+          <div className="absolute inset-0 bg-muted animate-pulse" />
         )}
         <Link to={`/product/${uuid}`}>
           <img

@@ -1,39 +1,41 @@
 import { useEffect, useRef, PropsWithChildren } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '@/module/store';
+import { AppDispatch, RootState } from '@/module/store/store';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
 
 export function CartInitializer({ children }: PropsWithChildren) {
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useSelector((state: RootState) => state.cartReducer);
+  const { user: authUser, isAuthenticated } = useSelector((state: RootState) => state.authReducer);
+  const { user: cartUser } = useSelector((state: RootState) => state.cartReducer);
   const initRef = useRef(false);
 
   useEffect(() => {
     const initCart = async () => {
       try {
-        const accessToken = localStorage.getItem('access_token');
         console.log('CartInitializer - Checking conditions:', {
-          hasAccessToken: !!accessToken,
-          hasUser: !!user,
+          isAuthenticated,
+          hasAuthUser: !!authUser,
+          hasCartUser: !!cartUser,
           isInitialized: initRef.current
         });
         
-        // Initialize if we have a token and haven't initialized yet
-        if (accessToken && !initRef.current) {
-          console.log('CartInitializer - Starting initialization');
+        // Initialize cart only if user is authenticated and cart user is not set
+        if (isAuthenticated && authUser && !cartUser && !initRef.current) {
+          console.log('CartInitializer - Starting cart initialization');
           initRef.current = true;
+          
           await dispatch(initializeUserAndCart()).unwrap();
-          console.log('CartInitializer - Initialization complete');
+          console.log('CartInitializer - Cart initialization complete');
         }
       } catch (error) {
-        console.error('Background cart sync failed:', error);
+        console.error('Cart initialization failed:', error);
         // Reset the ref on error so we can try again
         initRef.current = false;
       }
     };
 
     initCart();
-  }, [dispatch, user]); // Remove user?.uuid dependency to allow initial load
+  }, [dispatch, isAuthenticated, authUser, cartUser]); // Include all relevant dependencies
 
   return <>{children}</>;
 } 

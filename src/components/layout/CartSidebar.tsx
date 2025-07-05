@@ -117,7 +117,7 @@ export function CartSidebar() {
                       price={item.price}
                       currency={CurrencyType.INR}
                       quantity={item.quantity}
-                      image={item.productImageUrls?.[0]}
+                      image={item.productImageUrls?.[0] ?? ""}
                       className="py-4"
                     />
                   ))}

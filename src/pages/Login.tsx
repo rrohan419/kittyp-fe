@@ -19,6 +19,7 @@ import { login } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
+import { validateAndSetUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
 
 const Login = () => {
@@ -43,7 +44,10 @@ const Login = () => {
       // First, perform the login
       const loginResponse = await login({ email, password });
       
-      // Initialize user and cart state (this will trigger background sync if needed)
+      // Validate token and set user in AuthSlice
+      await dispatch(validateAndSetUser()).unwrap();
+      
+      // Initialize cart state (this will trigger background sync if needed)
       await dispatch(initializeUserAndCart()).unwrap();
       
       // Show a notification about cart syncing if there are guest items

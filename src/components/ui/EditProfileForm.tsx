@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -57,15 +57,30 @@ const EditProfileForm = () => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      firstName: user?.firstName || "",
-      lastName: user?.lastName || "",
-      email: user?.email || "",
-      phoneCountryCode: user?.phoneCountryCode || "+1",
-      phoneNumber: user?.phoneNumber || "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      phoneCountryCode: "+1",
+      phoneNumber: "",
       address: "",
       birthday: "",
     },
   });
+
+  // Update form values when user data changes
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        phoneCountryCode: user.phoneCountryCode || "+1",
+        phoneNumber: user.phoneNumber || "",
+        address: "",
+        birthday: "",
+      });
+    }
+  }, [user, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user?.uuid) {

@@ -83,21 +83,25 @@ export const selectCartSyncStatus = createSelector(
 export const initializeUserAndCart = createAsyncThunk(
   'cart/initializeUserAndCart',
   async (_, { dispatch, getState }) => {
-    const accessToken = localStorage.getItem('access_token');
-    if (!accessToken) return null;
-
     try {
-      console.log('CartSlice - Starting initialization');
+      console.log('CartSlice - Starting cart initialization');
       
       // Get the current state to check for guest cart items
       const state = getState() as { cartReducer: CartState };
       const hasGuestItems = state.cartReducer.items.length > 0 && state.cartReducer.isGuestCart;
 
-      // Always fetch user data on initialization
-      const userData = await fetchUserDetail();
-      console.log('CartSlice - User data fetched:', !!userData);
+      // Get user from AuthSlice
+      const authState = getState() as { authReducer: { user: UserProfile } };
+      const userData = authState.authReducer.user;
       
-      localStorage.setItem('user', JSON.stringify(userData));
+      if (!userData) {
+        console.log('CartSlice - No user data from AuthSlice');
+        return null;
+      }
+
+      console.log('CartSlice - User data from AuthSlice:', !!userData);
+      
+      // Set user in cart state
       dispatch(setUser(userData));
 
       // If there are guest items, start background sync

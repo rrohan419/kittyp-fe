@@ -14,7 +14,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { PaymentLoader } from "@/components/ui/PaymentLoader";
 import { ArrowLeft, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
-import { Address, fetchSavedAddresses } from "@/services/addressService";
+import { Address, AddressModel, fetchSavedAddresses, findAllSavedAddress, deleteAddress } from "@/services/addressService";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import {
     callRazorpayCreateOrder,
@@ -36,7 +36,8 @@ export default function Checkout() {
     const navigate = useNavigate();
     const { colorScheme, resolvedMode } = useTheme();
 
-    const [addresses, setAddresses] = useState<Address[]>([]);
+    // const [addresses, setAddresses] = useState<Address[]>([]);
+    const [savedAddresses, setSavedAddresses] = useState<AddressModel[]>([]);
     const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
     const [showAddAddressForm, setShowAddAddressForm] = useState(false);
 
@@ -60,28 +61,33 @@ export default function Checkout() {
             navigate("/cart");
             return;
         }
-
-        async function loadSavedAddresses() {
-            try {
-                const savedAddresses = await fetchSavedAddresses();
-                setAddresses(savedAddresses);
-                const defaultAddress = savedAddresses.find(addr => addr.isDefault);
-                if (defaultAddress) {
-                    setSelectedShippingAddressId(defaultAddress.id || "");
-                    setSelectedBillingAddressId(defaultAddress.id || "");
-                } else if (savedAddresses.length > 0) {
-                    setSelectedShippingAddressId(savedAddresses[0].id || "");
-                    setSelectedBillingAddressId(savedAddresses[0].id || "");
-                }
-            } catch (error) {
-                toast.error("Failed to load saved addresses");
-            } finally {
-                setIsLoadingAddresses(false);
-            }
-        }
-
-        loadSavedAddresses();
     }, [items.length, navigate]);
+
+    useEffect(() => {
+        const fetchAddresses = async () => {
+            if (user?.uuid) {
+                try {
+                    setIsLoadingAddresses(true);
+                    const addresses = await findAllSavedAddress(user.uuid);
+                    const fetchedAddresses = addresses.data;
+
+                setSavedAddresses(fetchedAddresses);
+
+                if (fetchedAddresses.length > 0) {
+                    setSelectedShippingAddressId(fetchedAddresses[0].uuid);
+                    setSelectedBillingAddressId(fetchedAddresses[0].uuid);
+                }
+                    console.log("db saved address", addresses);
+                } catch (error) {
+                    toast.error("Failed to load saved addresses");
+                } finally {
+                    setIsLoadingAddresses(false);
+                }
+
+            }
+        };
+        fetchAddresses();
+    }, [user?.uuid]);
 
     useEffect(() => {
         // Check if Razorpay is already loaded
@@ -136,13 +142,56 @@ export default function Checkout() {
         }
     };
 
-    const handleAddressCreated = (newAddress: Address) => {
-        setAddresses(prev => [...prev, newAddress]);
-        setSelectedShippingAddressId(newAddress.id || "");
+    // const handleAddressCreated = (newAddress: Address) => {
+    //     setAddresses(prev => [...prev, newAddress]);
+     const handleAddressCreated = (newAddress: AddressModel) => {
+        console.log("New address created:", newAddress);
+        setSavedAddresses(prev => [...prev, newAddress]);
+        setSelectedShippingAddressId(newAddress.uuid || "");
         if (sameAsShipping) {
-            setSelectedBillingAddressId(newAddress.id || "");
+            setSelectedBillingAddressId(newAddress.uuid || "");
         }
         setShowAddAddressForm(false);
+    };
+
+    const handleAddressDelete = async (addressUuid: string) => {
+        if (!user?.uuid) {
+            toast.error("User not found");
+            return;
+        }
+
+        try {
+            await deleteAddress(user.uuid, addressUuid);
+            setSavedAddresses(prev => prev.filter(addr => addr.uuid !== addressUuid));
+            
+            // Update selected addresses if the deleted address was selected
+            if (selectedShippingAddressId === addressUuid) {
+                const remainingAddresses = savedAddresses.filter(addr => addr.uuid !== addressUuid);
+                if (remainingAddresses.length > 0) {
+                    setSelectedShippingAddressId(remainingAddresses[0].uuid);
+                    if (sameAsShipping) {
+                        setSelectedBillingAddressId(remainingAddresses[0].uuid);
+                    }
+                } else {
+                    setSelectedShippingAddressId("");
+                    if (sameAsShipping) {
+                        setSelectedBillingAddressId("");
+                    }
+                }
+            } else if (selectedBillingAddressId === addressUuid) {
+                const remainingAddresses = savedAddresses.filter(addr => addr.uuid !== addressUuid);
+                if (remainingAddresses.length > 0) {
+                    setSelectedBillingAddressId(remainingAddresses[0].uuid);
+                } else {
+                    setSelectedBillingAddressId("");
+                }
+            }
+            
+            toast.success("Address deleted successfully");
+        } catch (error) {
+            console.error("Failed to delete address:", error);
+            toast.error("Failed to delete address");
+        }
     };
 
     const handleShippingMethodChange = (methodId: ShippingMethod, price: number) => {
@@ -200,10 +249,15 @@ export default function Checkout() {
 
         try {
             // Get selected addresses
-            const shippingAddress = addresses.find(addr => addr.id === selectedShippingAddressId);
+            // const shippingAddress = addresses.find(addr => addr.id === selectedShippingAddressId);
+            // const billingAddress = sameAsShipping
+            //     ? shippingAddress
+            //     : addresses.find(addr => addr.id === selectedBillingAddressId);
+
+            const shippingAddress = savedAddresses.find(addr => addr.uuid === selectedShippingAddressId);
             const billingAddress = sameAsShipping
                 ? shippingAddress
-                : addresses.find(addr => addr.id === selectedBillingAddressId);
+                : savedAddresses.find(addr => addr.uuid === selectedBillingAddressId);
 
             if (!shippingAddress || (!sameAsShipping && !billingAddress)) {
                 throw new Error("Selected addresses not found");
@@ -250,7 +304,7 @@ export default function Checkout() {
                 } else if (error.message) {
                     errorMessage = error.message;
                 }
-                
+
                 // Force show the error toast
                 toast.dismiss(); // Clear any existing toasts
                 toast.error(errorMessage, {
@@ -274,23 +328,23 @@ export default function Checkout() {
                 setTimeout(() => {
                     navigate('/cart');
                 }, 2000);
-                
+
                 return;
             }
 
             if (!orderResponse.success) {
                 setIsProcessingOrder(false);
                 setIsPaymentPending(false);
-                
+
                 toast.dismiss(); // Clear any existing toasts
                 toast.error(orderResponse.message || "Failed to place order", {
                     duration: 5000,
                 });
-                
+
                 setTimeout(() => {
                     navigate('/cart');
                 }, 2000);
-                
+
                 return;
             }
 
@@ -365,7 +419,7 @@ export default function Checkout() {
                     escape: true,
                 },
                 prefill: {
-                    name: shippingAddress.fullName || '',
+                    name: shippingAddress.name || '',
                     email: user.email || '',
                     contact: shippingAddress.phoneNumber || ''
                 },
@@ -394,12 +448,12 @@ export default function Checkout() {
             setIsProcessingOrder(false);
             setIsPaymentPending(false);
             setIsRedirecting(true);
-            
+
             toast.dismiss(); // Clear any existing toasts
             toast.error("Failed to place order. Please try again.", {
                 duration: 5000,
             });
-            
+
             setTimeout(() => {
                 navigate('/cart');
             }, 2000);
@@ -431,6 +485,34 @@ export default function Checkout() {
 
     return (
         <>
+            <style>
+                {`
+                    .address-scroll-container::-webkit-scrollbar {
+                        width: 8px;
+                    }
+                    .address-scroll-container::-webkit-scrollbar-track {
+                        background: rgb(243 244 246);
+                        border-radius: 4px;
+                    }
+                    .address-scroll-container::-webkit-scrollbar-thumb {
+                        background: rgb(156 163 175);
+                        border-radius: 4px;
+                    }
+                    .address-scroll-container::-webkit-scrollbar-thumb:hover {
+                        background: rgb(107 114 128);
+                    }
+                    
+                    .dark .address-scroll-container::-webkit-scrollbar-track {
+                        background: rgb(55 65 81);
+                    }
+                    .dark .address-scroll-container::-webkit-scrollbar-thumb {
+                        background: rgb(107 114 128);
+                    }
+                    .dark .address-scroll-container::-webkit-scrollbar-thumb:hover {
+                        background: rgb(156 163 175);
+                    }
+                `}
+            </style>
             <div className="container mx-auto px-4 pt-24 pb-16 max-w-6xl">
                 <div className="flex items-center mb-8">
                     <Button
@@ -462,7 +544,7 @@ export default function Checkout() {
                                     />
                                 ) : (
                                     <>
-                                        {addresses.length === 0 ? (
+                                        {savedAddresses.length === 0 ? (
                                             <div className="text-center py-4">
                                                 <p className="text-gray-500 mb-4">You don't have any saved addresses</p>
                                                 <Button onClick={() => setShowAddAddressForm(true)}>
@@ -471,17 +553,26 @@ export default function Checkout() {
                                             </div>
                                         ) : (
                                             <>
-                                                <RadioGroup value={selectedShippingAddressId} className="space-y-3">
-                                                    {addresses.map((address, index) => (
+                                                <div className="relative">
+                                                    <div className="max-h-80 overflow-y-auto pr-2 space-y-3 address-scroll-container">
+                                                        <RadioGroup value={selectedShippingAddressId} className="space-y-3">
+                                                                                                                {savedAddresses.map((address, index) => (
                                                         <AddressCard
-                                                            key={`shipping-${address.id || index}`}
+                                                            key={`shipping-${address.uuid || index}`}
                                                             address={address}
                                                             id={`shipping-address-${index}`}
-                                                            isSelected={selectedShippingAddressId === address.id}
-                                                            onSelect={() => setSelectedShippingAddressId(address.id || "")}
+                                                            isSelected={selectedShippingAddressId === address.uuid}
+                                                            onSelect={() => setSelectedShippingAddressId(address.uuid || "")}
+                                                            onDelete={() => handleAddressDelete(address.uuid)}
+                                                            showDeleteButton={true}
                                                         />
                                                     ))}
-                                                </RadioGroup>
+                                                        </RadioGroup>
+                                                    </div>
+                                                    {savedAddresses.length > 3 && (
+                                                        <div className="absolute bottom-0 left-0 right-2 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none dark:from-gray-950"></div>
+                                                    )}
+                                                </div>
 
                                                 <Button
                                                     variant="outline"
@@ -524,24 +615,33 @@ export default function Checkout() {
                                         </TabsList>
 
                                         <TabsContent value="existing">
-                                            <RadioGroup value={selectedBillingAddressId} className="space-y-3">
-                                                {addresses.map((address, index) => (
+                                            <div className="relative">
+                                                <div className="max-h-80 overflow-y-auto pr-2 space-y-3 address-scroll-container">
+                                                    <RadioGroup value={selectedBillingAddressId} className="space-y-3">
+                                                                                                        {savedAddresses.map((address, index) => (
                                                     <AddressCard
-                                                        key={`billing-${address.id || index}`}
+                                                        key={`billing-${address.uuid || index}`}
                                                         address={address}
                                                         id={`billing-address-${index}`}
-                                                        isSelected={selectedBillingAddressId === address.id}
-                                                        onSelect={() => setSelectedBillingAddressId(address.id || "")}
+                                                        isSelected={selectedBillingAddressId === address.uuid}
+                                                        onSelect={() => setSelectedBillingAddressId(address.uuid || "")}
+                                                        onDelete={() => handleAddressDelete(address.uuid)}
+                                                        showDeleteButton={true}
                                                     />
                                                 ))}
-                                            </RadioGroup>
+                                                    </RadioGroup>
+                                                </div>
+                                                {savedAddresses.length > 3 && (
+                                                    <div className="absolute bottom-0 left-0 right-2 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none dark:from-gray-950"></div>
+                                                )}
+                                            </div>
                                         </TabsContent>
 
                                         <TabsContent value="new">
                                             <AddressForm
                                                 onAddressCreated={(newAddress) => {
-                                                    setAddresses(prev => [...prev, newAddress]);
-                                                    setSelectedBillingAddressId(newAddress.id || "");
+                                                    setSavedAddresses(prev => [...prev, newAddress]);
+                                                    setSelectedBillingAddressId(newAddress.uuid || "");
                                                 }}
                                                 onCancel={() => { }}
                                             />
@@ -579,9 +679,9 @@ export default function Checkout() {
                                     {items.map(item => (
                                         <div key={`summary-${item.productUuid}`} className="flex justify-between">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-12 h-12 rounded-md bg-gray-100 overflow-hidden">
+                                                <div className="w-12 h-12 rounded-md bg-muted overflow-hidden">
                                                     <img
-                                                        src={`/product-images/${item.productUuid}.jpg`}
+                                                        src={item.productImageUrls?.[0] ?? ""}
                                                         alt={item.productName}
                                                         className="w-full h-full object-cover"
                                                     />

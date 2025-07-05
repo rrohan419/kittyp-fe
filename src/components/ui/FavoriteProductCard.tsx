@@ -1,8 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, ShoppingCart, X } from 'lucide-react';
+import { Heart, ShoppingCart, X, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from './button';
 import { FavoriteProduct } from '@/services/favoritesService';
 
 interface FavoriteProductCardProps {
@@ -69,19 +68,21 @@ export function FavoriteProductCard({ product, onToggleFavorite, className }: Fa
             </div>
             
             {/* Quick action buttons */}
-            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+            {/* <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
               <Button
                 size="sm"
                 variant="outline"
                 className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
-                onClick={(e) => {
-                  e.preventDefault();
-                  // Add to cart functionality would go here
-                }}
+                onClick={handleAddToCart}
+                disabled={isAddingToCart || loading}
               >
-                <ShoppingCart className="h-4 w-4" />
+                {isAddingToCart || loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ShoppingCart className="h-4 w-4" />
+                )}
               </Button>
-            </div>
+            </div> */}
           </div>
         </div>
       </Link>

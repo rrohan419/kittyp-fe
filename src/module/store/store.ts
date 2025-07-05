@@ -5,6 +5,7 @@ import adminReducer from '../slice/AdminSlice';
 import productReducer from '../slice/ProductSlice';
 import authReducer, { AuthState } from '../slice/AuthSlice';
 import favoritesReducer from '../slice/FavoritesSlice';
+import orderReducer from '../slice/OrderSlice';
 import { persistReducer, persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import { userSlice } from '../slice/UserSlice';
@@ -22,6 +23,7 @@ const rootReducer = combineReducers({
     productReducer,
     authReducer,
     favoritesReducer,
+    orderReducer,
     user: userSlice.reducer
 });
 
