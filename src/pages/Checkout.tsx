@@ -266,24 +266,39 @@ export default function Checkout() {
             // Create order from cart
             const orderRequest: OrderRequest = {
                 shippingAddress: {
+                    uuid: shippingAddress.uuid,
+                    name: shippingAddress.name,
                     street: shippingAddress.street,
                     city: shippingAddress.city,
                     state: shippingAddress.state,
                     postalCode: shippingAddress.postalCode,
-                    country: shippingAddress.country
+                    country: shippingAddress.country,
+                    formattedAddress: shippingAddress.formattedAddress,
+                    phoneNumber: shippingAddress.phoneNumber,
+                    user: shippingAddress.user
                 },
                 billingAddress: sameAsShipping ? {
+                    uuid: shippingAddress.uuid,
+                    name: shippingAddress.name,
                     street: shippingAddress.street,
                     city: shippingAddress.city,
                     state: shippingAddress.state,
                     postalCode: shippingAddress.postalCode,
-                    country: shippingAddress.country
+                    country: shippingAddress.country,
+                    formattedAddress: shippingAddress.formattedAddress,
+                    phoneNumber: shippingAddress.phoneNumber,
+                    user: shippingAddress.user
                 } : {
+                    uuid: billingAddress.uuid,
+                    name: billingAddress.name,
                     street: billingAddress!.street,
                     city: billingAddress!.city,
                     state: billingAddress!.state,
                     postalCode: billingAddress!.postalCode,
-                    country: billingAddress!.country
+                    country: billingAddress!.country,
+                    formattedAddress: billingAddress.formattedAddress,
+                    phoneNumber: billingAddress.phoneNumber,
+                    user: billingAddress.user
                 },
                 shippingMethod: selectedShippingMethod
             };
