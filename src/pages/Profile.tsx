@@ -1,30 +1,56 @@
 import React, { useEffect } from 'react';
 import ProfileHeader from '@/components/ui/ProfileHeader';
-import FavoritesSection from '@/components/ui/FavoritesSection';
+// import FavoritesSection from '@/components/ui/FavoritesSection';
 import OrderHistory from '@/components/ui/OrderHistory';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Footer } from '@/components/layout/Footer';
 import { format } from 'date-fns';
 import Loading from '@/components/ui/loading';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/module/store/store';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '@/module/store/store';
+import { validateAndSetUser } from '@/module/slice/AuthSlice';
+import { useOrderCount } from '@/hooks/useOrderCount';
+import FavoritesSection from '@/components/ui/FavoritesSection';
+import { findAllSavedAddress } from '@/services/addressService';
 
 const Profile: React.FC = () => {
-  const { user } = useSelector((state: RootState) => state.cartReducer);
+  const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
+  const { totalOrderCount, isLoading: ordersLoading } = useOrderCount(user?.uuid);
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
-    // Redirect to login if no user
-    if (!user) {
+    const token = localStorage.getItem('access_token');
+    if (token && !isAuthenticated && !loading) {
+      dispatch(validateAndSetUser());
+    } else if (!token) {
       navigate('/login', { state: { from: location.pathname } });
     }
-  }, [user, navigate, location.pathname]);
+  }, [dispatch, isAuthenticated, loading, navigate, location.pathname]);
+
+  const [savedAddresses, setSavedAddresses] = React.useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      if (user?.uuid) {
+        const addresses = await findAllSavedAddress(user.uuid);
+        console.log("db saved address", addresses);
+      }
+    };
+    fetchAddresses();
+  }, [user?.uuid]);
 
   // Show loading while checking user state
-  if (!user) {
+  if (loading || (!isAuthenticated && localStorage.getItem('access_token'))) {
     return <Loading />;
+  }
+
+  // Redirect if not authenticated
+  if (!isAuthenticated || !user) {
+    navigate('/login', { state: { from: location.pathname } });
+    return null;
   }
 
   // Get the active tab from location state
@@ -43,7 +69,7 @@ const Profile: React.FC = () => {
                   ? format(new Date(user.createdAt), "do MMMM yyyy")
                   : "-"
               }
-              ordersCount={12}
+              ordersCount={ordersLoading ? null : totalOrderCount}
             />
 
             <div className="space-y-8">

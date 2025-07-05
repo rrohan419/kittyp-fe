@@ -14,11 +14,12 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '../ui/button';
 import { CartSidebar } from './CartSidebar';
-import { initializeUserAndCart, switchToGuestCart } from '@/module/slice/CartSlice';
+import { switchToGuestCart } from '@/module/slice/CartSlice';
 import { clearUser } from '@/module/slice/AuthSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { ThemeSwitcher } from '../ui/theme-switcher';
+import { UserProfile } from '@/services/authService';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -29,21 +30,13 @@ export function Navbar() {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
 
-  // Get auth state from Redux
-  const user = useSelector((state: RootState) => state.cartReducer.user);
-  const isAuthenticated = !!user && !isLoggingOut;
+  // Get auth state from AuthSlice
+  const { user, isAuthenticated: authIsAuthenticated, loading: authLoading } = useSelector((state: RootState) => state.authReducer);
+  const isAuthenticated = authIsAuthenticated && !isLoggingOut;
   const userRole = user?.roles?.includes('ROLE_ADMIN') ? 'ROLE_ADMIN' : null;
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
-
-  // Initialize user state when component mounts
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (token && !user) {
-      dispatch(initializeUserAndCart());
-    }
-  }, [dispatch, user]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -52,6 +45,8 @@ export function Navbar() {
         setScrolled(shouldBeScrolled);
       }
     };
+
+    console.log('isAuthenticated:', isAuthenticated);
 
     window.addEventListener('scroll', handleScroll);
     handleScroll(); // Initial check
@@ -75,11 +70,9 @@ export function Navbar() {
       localStorage.removeItem('user');
       localStorage.removeItem('roles');
 
-      // Then dispatch actions
-      await Promise.all([
-        dispatch(switchToGuestCart()).unwrap(),
-        dispatch(clearUser())
-      ]);
+      // Then dispatch actions in sequence
+      await dispatch(switchToGuestCart()).unwrap();
+      dispatch(clearUser());
 
       // Show success dialog
       setShowSuccessDialog(true);
@@ -371,10 +364,6 @@ export function Navbar() {
 
             <div className="flex justify-center items-center mt-4">
               <CheckCircle className="h-12 w-12 text-green-500" />
-            </div>
-
-            <div className="mt-3 flex justify-center">
-              <Button onClick={() => setShowSuccessDialog(false)}>OK</Button>
             </div>
           </DialogContent>
         </DialogPortal>

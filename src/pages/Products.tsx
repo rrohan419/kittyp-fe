@@ -8,6 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
+import { selectFavorites } from '@/module/slice/FavoritesSlice';
+import { toast } from 'sonner';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/module/store/store';
+import { handleToggleFavorite } from '@/utils/favorites';
 
 const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -29,6 +35,10 @@ const Products: React.FC = () => {
     status: null,
     isRandom : false,
   });
+
+  const dispatch = useAppDispatch();
+  const favorites = useAppSelector(selectFavorites);
+  const { user } = useSelector((state: RootState) => state.cartReducer);
 
   const loadProducts = useCallback(async () => {
     if (!hasMore || isLoading) return;
@@ -88,6 +98,10 @@ const Products: React.FC = () => {
 
     return filtered;
   }, [products, searchQuery]);
+
+  const handleToggleFavoriteWrapper = async (product: Product) => {
+    await handleToggleFavorite(dispatch, user.uuid, product, favorites);
+  };
 
   useEffect(() => {
     setProducts([]);  // Reset products when filters change
@@ -176,10 +190,10 @@ const Products: React.FC = () => {
                 {(selectedCategory !== 'All' || selectedPriceRange || searchQuery) && (
                   <div className="border-t border-border pt-6">
                     <Button
-                      onClick={clearFilters}
+                    onClick={clearFilters}
                       variant="outline"
                       className="w-full justify-start"
-                    >
+                  >
                       <X size={16} className="mr-2" />
                       Clear all filters
                     </Button>
@@ -226,76 +240,76 @@ const Products: React.FC = () => {
                   onClick={e => e.stopPropagation()}
                 >
                   <ScrollArea className="h-full pr-4">
-                    <div className="flex justify-between items-center mb-6">
+                  <div className="flex justify-between items-center mb-6">
                       <h3 className="text-lg font-semibold">Filters</h3>
                       <Button variant="ghost" size="icon" onClick={toggleMobileFilter}>
                         <X size={20} />
                       </Button>
-                    </div>
+                  </div>
 
                     <div className="space-y-6">
-                      <div>
+                    <div>
                         <h4 className="font-medium mb-3">Categories</h4>
                         <div className="space-y-1.5">
-                          {categories.map(category => (
-                            <button
+                        {categories.map(category => (
+                          <button
                               key={`mobile-filter-category-${category}`}
-                              onClick={() => {
-                                setSelectedCategory(category);
-                                toggleMobileFilter();
-                              }}
-                              className={cn(
+                            onClick={() => {
+                              setSelectedCategory(category);
+                              toggleMobileFilter();
+                            }}
+                            className={cn(
                                 "w-full text-left px-4 py-2.5 rounded-lg transition-all duration-200",
-                                selectedCategory === category
+                              selectedCategory === category
                                   ? "bg-primary text-primary-foreground shadow-md"
                                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                              )}
-                            >
-                              {category}
-                            </button>
-                          ))}
-                        </div>
+                            )}
+                          >
+                            {category}
+                          </button>
+                        ))}
                       </div>
+                    </div>
 
                       <div className="border-t border-border pt-6">
                         <h4 className="font-medium mb-3">Price Range</h4>
                         <div className="space-y-1.5">
-                          {priceRanges.map((range, index) => (
-                            <button
-                              key={`mobile-filter-range-${index}`}
-                              onClick={() => {
-                                setSelectedPriceRange({ min: range.min, max: range.max });
-                                toggleMobileFilter();
-                              }}
-                              className={cn(
-                                "w-full text-left px-4 py-2.5 rounded-lg transition-all duration-200",
-                                selectedPriceRange?.min === range.min && selectedPriceRange?.max === range.max
-                                  ? "bg-primary text-primary-foreground shadow-md"
-                                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                              )}
-                            >
-                              {range.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {(selectedCategory !== 'All' || selectedPriceRange || searchQuery) && (
-                        <div className="border-t border-border pt-6">
-                          <Button
+                        {priceRanges.map((range, index) => (
+                          <button
+                            key={`mobile-filter-range-${index}`}
                             onClick={() => {
-                              clearFilters();
+                              setSelectedPriceRange({ min: range.min, max: range.max });
                               toggleMobileFilter();
                             }}
+                            className={cn(
+                                "w-full text-left px-4 py-2.5 rounded-lg transition-all duration-200",
+                              selectedPriceRange?.min === range.min && selectedPriceRange?.max === range.max
+                                  ? "bg-primary text-primary-foreground shadow-md"
+                                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                            )}
+                          >
+                            {range.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {(selectedCategory !== 'All' || selectedPriceRange || searchQuery) && (
+                        <div className="border-t border-border pt-6">
+                          <Button
+                        onClick={() => {
+                          clearFilters();
+                          toggleMobileFilter();
+                        }}
                             variant="outline"
                             className="w-full justify-start"
-                          >
+                      >
                             <X size={16} className="mr-2" />
                             Clear all filters
                           </Button>
                         </div>
-                      )}
-                    </div>
+                    )}
+                  </div>
                   </ScrollArea>
                 </div>
               </div>
@@ -351,6 +365,8 @@ const Products: React.FC = () => {
                       product={product}
                       index={index}
                       className="animate-fade-up"
+                      onToggleFavorite={() => handleToggleFavoriteWrapper(product)}
+                      isFavorite={favorites.some(item => item.uuid === product.uuid)}
                     />
                   ))}
                 </div>

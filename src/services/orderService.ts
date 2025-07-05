@@ -1,5 +1,6 @@
 import axiosInstance from "@/config/axionInstance";
 import { Taxes } from "./cartService";
+import { UserProfile } from "./authService";
 
 export interface OrderAddress {
   street: string | null;
@@ -47,6 +48,7 @@ export interface Order {
   shippingAddress: OrderAddress | null;
   billingAddress: OrderAddress | null;
   orderItems: OrderItem[];
+  user: UserProfile;
 }
 
 export interface OrderFilterRequest {

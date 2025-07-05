@@ -120,3 +120,51 @@ export const initializeUser = async () => {
         return null;
     }
 };
+
+// Add token validation function
+export const validateToken = async (): Promise<boolean> => {
+    try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            return false;
+        }
+
+        // Make a call to a protected endpoint to validate the token
+        const response = await axiosInstance.get('/user/me');
+        return response.status === 200;
+    } catch (error: any) {
+        console.error('Token validation failed:', error);
+        
+        // If token is invalid, clear it
+        if (error.response?.status === 401) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('roles');
+        }
+        
+        return false;
+    }
+};
+
+// Add function to get current user with token validation
+export const getCurrentUser = async (): Promise<UserProfile | null> => {
+    try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            return null;
+        }
+
+        // Validate token first
+        const isValid = await validateToken();
+        if (!isValid) {
+            return null;
+        }
+
+        // If token is valid, fetch user details
+        const userProfile = await fetchUserDetail();
+        return userProfile;
+    } catch (error) {
+        console.error('Error getting current user:', error);
+        return null;
+    }
+};

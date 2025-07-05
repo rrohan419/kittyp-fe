@@ -83,21 +83,25 @@ export const selectCartSyncStatus = createSelector(
 export const initializeUserAndCart = createAsyncThunk(
   'cart/initializeUserAndCart',
   async (_, { dispatch, getState }) => {
-    const accessToken = localStorage.getItem('access_token');
-    if (!accessToken) return null;
-
     try {
-      console.log('CartSlice - Starting initialization');
+      console.log('CartSlice - Starting cart initialization');
       
       // Get the current state to check for guest cart items
       const state = getState() as { cartReducer: CartState };
       const hasGuestItems = state.cartReducer.items.length > 0 && state.cartReducer.isGuestCart;
 
-      // Always fetch user data on initialization
-      const userData = await fetchUserDetail();
-      console.log('CartSlice - User data fetched:', !!userData);
+      // Get user from AuthSlice
+      const authState = getState() as { authReducer: { user: UserProfile } };
+      const userData = authState.authReducer.user;
       
-      localStorage.setItem('user', JSON.stringify(userData));
+      if (!userData) {
+        console.log('CartSlice - No user data from AuthSlice');
+        return null;
+      }
+
+      console.log('CartSlice - User data from AuthSlice:', !!userData);
+      
+      // Set user in cart state
       dispatch(setUser(userData));
 
       // If there are guest items, start background sync
@@ -199,77 +203,55 @@ export const addToCartFromProduct = createAsyncThunk(
   'cart/addToCartFromProduct',
   async (product: Product, { getState, dispatch }) => {
     try {
-      // Get current state
+      // Get current state and check auth token once
       const state = getState() as { cartReducer: CartState };
       const accessToken = localStorage.getItem('access_token');
+      const isLoggedIn = !!accessToken;
 
-      // Check if product is in stock
+      // Early validation for stock
       if (product.stockQuantity <= 0) {
         toast.error(`${product.name} is out of stock`);
         return;
       }
 
-      // Check current cart quantity for this product
+      // Check current cart quantity once
       const existingItem = state.cartReducer.items.find(item => item.productUuid === product.uuid);
       const currentQuantity = existingItem?.quantity || 0;
 
-      // Check if adding would exceed stock
+      // Early validation for max quantity
       if (currentQuantity >= product.stockQuantity) {
         toast.warning(`Cannot add more ${product.name}. Maximum available quantity (${product.stockQuantity}) reached.`);
         return;
       }
 
-      // If user is logged in, add to backend cart
-      if (accessToken) {
-        let userUuid = state.cartReducer.user?.uuid;
-
-        if (!userUuid) {
-          try {
-            const userData = await fetchUserDetail();
-            localStorage.setItem('user', JSON.stringify(userData));
-            dispatch(setUser(userData));
-            userUuid = userData.uuid;
-          } catch (error) {
-            console.error('Failed to fetch user details:', error);
-            throw new Error('Failed to initialize user. Please try logging in again.');
-          }
-        }
-
-        if (!product.uuid) {
-          throw new Error('Invalid product');
-        }
-
-        // Fetch latest product data to ensure stock quantity is current
-        const latestProduct = await fetchProductByUuid(product.uuid);
-        const availableStock = latestProduct.data.stockQuantity;
-
-        // Final stock check with latest data
-        if (availableStock <= 0) {
-          toast.error(`${product.name} is out of stock`);
-          return;
-        }
-
-        if (currentQuantity >= availableStock) {
-          toast.warning(`Cannot add more ${product.name}. Maximum available quantity (${availableStock}) reached.`);
-          return;
-        }
-
-        const response = await addToCartService(userUuid, { 
-          productUuid: product.uuid, 
-          quantity: 1 
-        });
-        
-        dispatch(setCart(response.data));
-        toast.success(`${product.name} added to cart`);
-      } else {
-        // For guest cart, check quantity before adding
+      // Handle guest cart early if not logged in
+      if (!isLoggedIn) {
         if (currentQuantity + 1 <= product.stockQuantity) {
           dispatch(addToCart(product));
           toast.success(`${product.name} added to cart`);
-        } else {
-          toast.warning(`Cannot add more ${product.name}. Maximum available quantity (${product.stockQuantity}) reached.`);
         }
+        return;
       }
+
+      // For logged-in users
+      let userUuid = state.cartReducer.user?.uuid;
+
+      // Only fetch user data if needed
+      if (!userUuid) {
+        const userData = await fetchUserDetail();
+        localStorage.setItem('user', JSON.stringify(userData));
+        dispatch(setUser(userData));
+        userUuid = userData.uuid;
+      }
+
+      // Add to cart
+      const response = await addToCartService(userUuid!, { 
+        productUuid: product.uuid, 
+        quantity: 1 
+      });
+      
+      dispatch(setCart(response.data));
+      toast.success(`${product.name} added to cart`);
     } catch (err) {
       const error = err as Error;
       toast.error(error.message || "Failed to add item to cart");

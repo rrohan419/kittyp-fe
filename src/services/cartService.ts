@@ -1,5 +1,6 @@
 import axiosInstance from "@/config/axionInstance";
 import { Product } from "./productService";
+import { AddressModel } from "./addressService";
 
 export type Address = {
   street: string;
@@ -250,8 +251,8 @@ export const clearCart = async (userUuid: string): Promise<ApiSuccessResponse<vo
 };
 
 export type OrderRequest = {
-    billingAddress: Address;
-    shippingAddress: Address;
+    billingAddress: AddressModel;
+    shippingAddress: AddressModel;
     shippingMethod: ShippingMethod;
 };
 

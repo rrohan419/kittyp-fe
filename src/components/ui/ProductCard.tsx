@@ -2,7 +2,6 @@ import { useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Heart, Loader2, AlertCircle, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useFavorites } from '@/context/FavoritesContext';
 import { Product } from '@/services/productService';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '@/module/store/store';
@@ -16,15 +15,16 @@ interface ProductCardProps {
   product: Product;
   index?: number;
   className?: string;
+  onToggleFavorite: () => void;
+  isFavorite: boolean;
 }
 
-export function ProductCard({ product, index = 0, className }: ProductCardProps) {
+export function ProductCard({ product, index = 0, className, onToggleFavorite, isFavorite }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const dispatch = useDispatch<AppDispatch>();
   const loading = useSelector(selectCartLoading);
-  const { addFavorite, removeFavorite, isFavorite } = useFavorites();
   
   const handleAddToCart = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -45,33 +45,11 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
     }
   }, [dispatch, product]);
 
-  const favoriteProduct = useMemo(() => ({
-    id: product.uuid,
-    name: product.name,
-    price: product.price,
-    image: product.productImageUrls && product.productImageUrls[0] ? product.productImageUrls[0] : "",
-  }), [product.uuid, product.name, product.price, product.productImageUrls]);
-
   const handleToggleFavorite = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    if (isFavorite(product.uuid)) {
-      removeFavorite(product.uuid);
-    } else {
-      addFavorite(favoriteProduct);
-    }
-  }, [product.uuid, favoriteProduct, isFavorite, removeFavorite, addFavorite]);
-
-  // const formatCurrency = useCallback((value: number, currency: string) => {
-  //   return new Intl.NumberFormat("en-US", {
-  //     style: "currency",
-  //     currency,
-  //     minimumFractionDigits: 2,
-  //   }).format(value);
-  // }, []);
-  
-  const isProductFavorite = useMemo(() => isFavorite(product.uuid), [isFavorite, product.uuid]);
+    onToggleFavorite();
+  }, [onToggleFavorite]);
 
   // Generate random rating for demo (replace with actual rating system)
   const rating = useMemo(() => (Math.random() * 2 + 3).toFixed(1), []);
@@ -152,18 +130,18 @@ export function ProductCard({ product, index = 0, className }: ProductCardProps)
               <div className="flex items-center gap-2 sm:opacity-0 sm:translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
                 <Button
                   size="icon"
-                  variant={isProductFavorite ? "destructive" : "secondary"}
+                  variant={isFavorite ? "destructive" : "secondary"}
                   onClick={handleToggleFavorite}
                   className={cn(
                     "h-9 w-9 rounded-full transition-transform hover:scale-105",
-                    isProductFavorite && "hover:bg-destructive/90"
+                    isFavorite && "hover:bg-destructive/90"
                   )}
                 >
                   <Heart 
                     size={16} 
                     className={cn(
                       "transition-colors",
-                      isProductFavorite && "fill-current"
+                      isFavorite && "fill-current"
                     )} 
                   />
                 </Button>

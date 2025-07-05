@@ -57,7 +57,7 @@ const AdminDashboard = () => {
         isRandom: null
       };
       const response = await fetchArticles({
-        page: 0,
+        page: 1,
         size: 10,
         body: searchRequest
       });
@@ -113,10 +113,10 @@ const AdminDashboard = () => {
   }
 
   const stats = [
-    { title: 'Total Users', value: '2,420', icon: Users, color: 'bg-blue-100 text-blue-700' },
-    { title: 'Orders', value: totalOrderCount.toString(), icon: ShoppingCart, color: 'bg-green-100 text-green-700' },
-    { title: 'Products', value: productCount.toString(), icon: Package, color: 'bg-purple-100 text-purple-700' },
-    { title: 'Articles', value: articles.length.toString(), icon: FileText, color: 'bg-amber-100 text-amber-700' },
+    { title: 'Total Users', value: '2,420', icon: Users, color: 'bg-blue-100 text-blue-700', route: '/admin/users' },
+    { title: 'Orders', value: totalOrderCount.toString(), icon: ShoppingCart, color: 'bg-green-100 text-green-700', route: '/admin/orders' },
+    { title: 'Products', value: productCount.toString(), icon: Package, color: 'bg-purple-100 text-purple-700', route: '/admin/products' },
+    { title: 'Articles', value: articles.length.toString(), icon: FileText, color: 'bg-amber-100 text-amber-700', route: '/admin/articles' },
   ];
 
   const recentOrders = [
@@ -225,7 +225,11 @@ const AdminDashboard = () => {
           {/* Dashboard Stats */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat, index) => (
-              <Card key={`admin-dash-stats-${index}`} className="overflow-hidden">
+              <Card 
+                key={`admin-dash-stats-${index}`} 
+                className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => navigate(stat.route)}
+              >
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
