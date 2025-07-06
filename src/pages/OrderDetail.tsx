@@ -403,6 +403,7 @@ export default function OrderDetail() {
                                 </span>
                                 {order.data.shippingAddress ? (
                                     <div className="text-muted-foreground text-sm space-y-0.5">
+                                        <div>{order.data.shippingAddress.name}</div>
                                         <div>{order.data.shippingAddress.street}</div>
                                         <div>{order.data.shippingAddress.city}</div>
                                         <div>{order.data.shippingAddress.state}</div>
@@ -421,6 +422,7 @@ export default function OrderDetail() {
                                 </span>
                                 {order.data.billingAddress ? (
                                     <div className="text-muted-foreground text-sm space-y-0.5">
+                                        <div>{order.data.billingAddress.name}</div>
                                         <div>{order.data.billingAddress.street}</div>
                                         <div>{order.data.billingAddress.city}</div>
                                         <div>{order.data.billingAddress.state}</div>

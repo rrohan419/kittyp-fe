@@ -3,11 +3,13 @@ import { Taxes } from "./cartService";
 import { UserProfile } from "./authService";
 
 export interface OrderAddress {
+  name: string | null;
   street: string | null;
   city: string | null;
   state: string | null;
   postalCode: string | null;
   country: string | null;
+  formattedAddress: string | null;
 }
 
 export interface OrderProduct {
