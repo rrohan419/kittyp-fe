@@ -7,6 +7,6 @@ import CustomRoot from './Root.tsx';
 
 // createRoot(document.getElementById("root")!).render(<App />);
 createRoot(document.getElementById("root")!).render(
-  <GoogleOAuthProvider clientId="954024777360-lju1esfmeo6vuovpfv03604vs600uc1i.apps.googleusercontent.com">
+  <GoogleOAuthProvider clientId="554859125201-1t3dbale4g7ar10fk3ljfkmkm0p7fav1.apps.googleusercontent.com">
     <CustomRoot />
   </GoogleOAuthProvider>)

@@ -15,7 +15,7 @@ import {
 import { toast } from "sonner";
 import { LogIn, Mail, Lock, EyeOff, Eye, EyeOffIcon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
-import { login } from '@/services/authService';
+import { login, socialSso } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
@@ -31,7 +31,7 @@ const Login = () => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const hasGuestCartItems = useSelector((state: RootState) => 
+  const hasGuestCartItems = useSelector((state: RootState) =>
     state.cartReducer.items.length > 0 && state.cartReducer.isGuestCart
   );
   // const { initializeUserAndCart } = useCart();
@@ -43,13 +43,13 @@ const Login = () => {
     try {
       // First, perform the login
       const loginResponse = await login({ email, password });
-      
+
       // Validate token and set user in AuthSlice
       await dispatch(validateAndSetUser()).unwrap();
-      
+
       // Initialize cart state (this will trigger background sync if needed)
       await dispatch(initializeUserAndCart()).unwrap();
-      
+
       // Show a notification about cart syncing if there are guest items
       if (hasGuestCartItems) {
         toast.success("Logging you in", {
@@ -75,41 +75,21 @@ const Login = () => {
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      console.log("Google Login Success:", tokenResponse);
-      try {
-        const response = await fetch("http://localhost:8001/public/v1/social-sso", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            token: tokenResponse.code, // The authorization code
-            provider: "GOOGLE",
-          }),
-        });
+      
+      await socialSso(tokenResponse);
 
-        if (!response.ok) {
-          throw new Error("Backend response: " + (await response.text()));
-        }
+      await dispatch(validateAndSetUser()).unwrap();
 
-        const data = await response.json();
-        console.log("Backend Response:", data);
-        // setShowSuccessDialog(true);
+      // Initialize cart state (this will trigger background sync if needed)
+      await dispatch(initializeUserAndCart()).unwrap();
 
-        // Access the tokens if returned by your backend
-        const { access_token, id_token } = data;
-        console.log("Access Token:", access_token);
-        console.log("ID Token:", id_token);
+      // Show success message
+      toast.success("Google login successful!", {
+        description: "Welcome back!",
+      });
 
-        // Optionally store tokens (e.g., in localStorage or a state management solution)
-        // localStorage.setItem("access_token", access_token);
-        // localStorage.setItem("id_token", id_token);
-      } catch (error) {
-        console.error("Error during token exchange:", error);
-        toast.error("Signup Failed", {
-          description: "Could not complete Google signup. Please try again.",
-        });
-      }
+      // Navigate to home page
+      navigate("/");
     },
     onError: (errorResponse) => {
       console.error("Google Login Error:", errorResponse);
@@ -117,9 +97,8 @@ const Login = () => {
         description: "Authentication error. Please try again.",
       });
     },
-    flow: "auth-code",
+    flow: "implicit", // Use implicit flow to prevent redirects
     scope: "email profile", // Ensure you request necessary scopes
-    redirect_uri: "http://localhost:8080/home", // Explicitly set redirect URI
   });
 
   return (
@@ -217,7 +196,7 @@ const Login = () => {
                 <Button
                   variant="outline"
                   className="w-full flex items-center justify-center gap-2"
-                  onClick={handleGoogleLogin}
+                  onClick={() => handleGoogleLogin()}
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
