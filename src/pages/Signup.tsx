@@ -5,15 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { motion } from "framer-motion";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -23,8 +23,12 @@ import {
 import { toast } from "sonner";
 import { UserPlus, Mail, Lock, User, CheckCircleIcon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
-import { signup } from '@/services/authService';
+import { signup, socialSso } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/module/store/store';
+import { validateAndSetUser } from '@/module/slice/AuthSlice';
+import { initializeUserAndCart } from '@/module/slice/CartSlice';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -38,10 +42,11 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const handleGoogleSignup = () => googleLogin();
+  const dispatch = useDispatch<AppDispatch>();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (password !== confirmPassword) {
       toast.error("Passwords don't match", {
         description: "Please make sure your passwords match."
@@ -61,7 +66,7 @@ const Signup = () => {
 
       // Show success dialog first
       setShowSuccessDialog(true);
-      
+
       // Wait for dialog animation and user acknowledgment
       setTimeout(() => {
         // Reset form
@@ -70,7 +75,7 @@ const Signup = () => {
         setEmail('');
         setPassword('');
         setConfirmPassword('');
-        
+
         // Show success toast
         toast.success("Account created successfully", {
           description: "Please login with your new account",
@@ -92,41 +97,17 @@ const Signup = () => {
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      console.log("Google Login Success:", tokenResponse);
-      try {
-        const response = await fetch("http://localhost:8001/public/v1/social-sso", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            token: tokenResponse.code, // The authorization code
-            provider: "GOOGLE",
-          }),
-        });
+     
+      await socialSso(tokenResponse);
 
-        if (!response.ok) {
-          throw new Error("Backend response: " + (await response.text()));
-        }
+      await dispatch(validateAndSetUser()).unwrap();
 
-        const data = await response.json();
-        console.log("Backend Response:", data);
-        setShowSuccessDialog(true);
+      // Initialize cart state (this will trigger background sync if needed)
+      await dispatch(initializeUserAndCart()).unwrap();
 
-        // Access the tokens if returned by your backend
-        const { access_token, id_token } = data;
-        console.log("Access Token:", access_token);
-        console.log("ID Token:", id_token);
-
-        // Optionally store tokens (e.g., in localStorage or a state management solution)
-        // localStorage.setItem("access_token", access_token);
-        // localStorage.setItem("id_token", id_token);
-      } catch (error) {
-        console.error("Error during token exchange:", error);
-        toast.error("Signup Failed", {
-          description: "Could not complete Google signup. Please try again.",
-        });
-      }
+      // Show success message
+      toast.success("Google login successful!");
+      navigate("/");
     },
     onError: (errorResponse) => {
       console.error("Google Login Error:", errorResponse);
@@ -134,9 +115,8 @@ const Signup = () => {
         description: "Authentication error. Please try again.",
       });
     },
-    flow: "auth-code",
+    flow: "implicit", // Use implicit flow to prevent redirects
     scope: "email profile", // Ensure you request necessary scopes
-    redirect_uri: "http://localhost:8080/home", // Explicitly set redirect URI
   });
 
   return (
@@ -164,14 +144,14 @@ const Signup = () => {
                     <Label htmlFor="firstName">First Name</Label>
                     <div className="relative">
                       <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="firstName" 
-                        type="text" 
-                        placeholder="John" 
+                      <Input
+                        id="firstName"
+                        type="text"
+                        placeholder="John"
                         className="pl-10"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
-                        required 
+                        required
                         disabled={loading}
                       />
                     </div>
@@ -181,10 +161,10 @@ const Signup = () => {
                     <Label htmlFor="lastName">Last Name</Label>
                     <div className="relative">
                       <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="lastName" 
-                        type="text" 
-                        placeholder="Doe" 
+                      <Input
+                        id="lastName"
+                        type="text"
+                        placeholder="Doe"
                         className="pl-10"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
@@ -197,31 +177,31 @@ const Signup = () => {
                     <Label htmlFor="email">Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        placeholder="name@example.com" 
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="name@example.com"
                         className="pl-10"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        required 
+                        required
                         disabled={loading}
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="password" 
-                        type="password" 
-                        placeholder="••••••••" 
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="••••••••"
                         className="pl-10"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        required 
+                        required
                         disabled={loading}
                       />
                     </div>
@@ -231,28 +211,28 @@ const Signup = () => {
                     <Label htmlFor="confirmPassword">Confirm Password</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="confirmPassword" 
-                        type="password" 
-                        placeholder="••••••••" 
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        placeholder="••••••••"
                         className="pl-10"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        required 
+                        required
                         disabled={loading}
                       />
                     </div>
                   </div>
-                  
-                  <Button 
-                    type="submit" 
+
+                  <Button
+                    type="submit"
                     className="w-full flex items-center justify-center gap-2"
                     disabled={loading}
                   >
                     {loading ? (
                       <div className="h-4 w-4 animate-spin border-2 border-primary-foreground border-t-transparent rounded-full" />
                     ) : (
-                    <UserPlus className="h-4 w-4" />
+                      <UserPlus className="h-4 w-4" />
                     )}
                     {loading ? 'Creating Account...' : 'Create Account'}
                   </Button>
@@ -269,7 +249,7 @@ const Signup = () => {
                   </div>
                 </div>
 
-                <Button 
+                <Button
                   variant="outline"
                   className="w-full flex items-center justify-center gap-2"
                   onClick={() => handleGoogleSignup()}
@@ -314,38 +294,38 @@ const Signup = () => {
         </DialogContent>
       </Dialog> */}
 
-    <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-      <DialogContent className="p-6 max-w-md">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="flex flex-col items-center"
-        >
-          <CheckCircleIcon className="w-12 h-12 text-green-500" />
-          <DialogHeader className="text-center">
-            <DialogTitle className="text-xl font-bold">Account Created!</DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Your account has been successfully created. You will be redirected to login.
-            </DialogDescription>
-          </DialogHeader>
-          <Button 
-            onClick={() => {
-              setShowSuccessDialog(false);
-              navigate("/login");
-            }}
-            className="mt-4 w-full"
-            variant="default"
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="p-6 max-w-md">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="flex flex-col items-center"
           >
-            Continue to Login
-          </Button>
-        </motion.div>
-      </DialogContent>
-    </Dialog>
+            <CheckCircleIcon className="w-12 h-12 text-green-500" />
+            <DialogHeader className="text-center">
+              <DialogTitle className="text-xl font-bold">Account Created!</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                Your account has been successfully created. You will be redirected to login.
+              </DialogDescription>
+            </DialogHeader>
+            <Button
+              onClick={() => {
+                setShowSuccessDialog(false);
+                navigate("/login");
+              }}
+              className="mt-4 w-full"
+              variant="default"
+            >
+              Continue to Login
+            </Button>
+          </motion.div>
+        </DialogContent>
+      </Dialog>
 
-    {/* Error Dialog */}
-    <ErrorDialog showErrorDialog={showErrorDialog} setShowErrorDialog={setShowErrorDialog} errorMessage={errorMessage} />
+      {/* Error Dialog */}
+      <ErrorDialog showErrorDialog={showErrorDialog} setShowErrorDialog={setShowErrorDialog} errorMessage={errorMessage} />
 
       <Footer />
     </div>
