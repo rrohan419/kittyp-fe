@@ -75,21 +75,30 @@ const Login = () => {
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      
-      await socialSso(tokenResponse);
+      try {
+        setLoading(true);
+        await socialSso(tokenResponse);
 
-      await dispatch(validateAndSetUser()).unwrap();
+        await dispatch(validateAndSetUser()).unwrap();
 
-      // Initialize cart state (this will trigger background sync if needed)
-      await dispatch(initializeUserAndCart()).unwrap();
+        // Initialize cart state (this will trigger background sync if needed)
+        await dispatch(initializeUserAndCart()).unwrap();
 
-      // Show success message
-      toast.success("Google login successful!", {
-        description: "Welcome back!",
-      });
+        // Show success message
+        toast.success("Google login successful!", {
+          description: "Welcome back!",
+        });
 
-      // Navigate to home page
-      navigate("/");
+        // Navigate to home page
+        navigate("/");
+      } catch (error: any) {
+        console.error("Google Login Error:", error);
+        toast.error("Google Signup Failed", {
+          description: "Authentication error. Please try again.",
+        });
+      } finally {
+        setLoading(false);
+      }
     },
     onError: (errorResponse) => {
       console.error("Google Login Error:", errorResponse);
@@ -197,6 +206,7 @@ const Login = () => {
                   variant="outline"
                   className="w-full flex items-center justify-center gap-2"
                   onClick={() => handleGoogleLogin()}
+                  disabled={loading}
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />

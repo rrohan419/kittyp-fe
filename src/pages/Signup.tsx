@@ -21,7 +21,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { toast } from "sonner";
-import { UserPlus, Mail, Lock, User, CheckCircleIcon } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, CheckCircleIcon, LogIn, Timer } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { signup, socialSso } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
@@ -97,17 +97,27 @@ const Signup = () => {
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-     
-      await socialSso(tokenResponse);
+      try {
+        setLoading(true);
+        await socialSso(tokenResponse);
 
-      await dispatch(validateAndSetUser()).unwrap();
+        await dispatch(validateAndSetUser()).unwrap();
 
-      // Initialize cart state (this will trigger background sync if needed)
-      await dispatch(initializeUserAndCart()).unwrap();
+        // Initialize cart state (this will trigger background sync if needed)
+        await dispatch(initializeUserAndCart()).unwrap();
 
-      // Show success message
-      toast.success("Google login successful!");
-      navigate("/");
+        // Show success message
+        toast.success("Google login successful!");
+
+        // Navigate to home page
+        navigate("/");
+      } catch (error: any) {
+        toast.error("Google Signup Failed", {
+          description: "Authentication error. Please try again.",
+        });
+      } finally {
+        setLoading(false);
+      }
     },
     onError: (errorResponse) => {
       console.error("Google Login Error:", errorResponse);
