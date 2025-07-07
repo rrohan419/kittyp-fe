@@ -14,7 +14,6 @@ import Checkout from "@/pages/Checkout";
 import MyOrders from "@/pages/MyOrders";
 import OrderDetail from "@/pages/OrderDetail";
 import About from "@/pages/About";
-import Blogs from "@/pages/Blogs";
 import ArticleDetail from "@/pages/ArticleDetail";
 import AdminArticleEditor from "@/pages/AdminArticleEditor";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
@@ -97,10 +96,6 @@ export const router = createBrowserRouter(
         {
           path: "about",
           element: <PageTransition><About /></PageTransition>,
-        },
-        {
-          path: "blogs",
-          element: <PageTransition><Blogs /></PageTransition>,
         },
         {
           path: "why-eco-litter",

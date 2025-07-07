@@ -29,7 +29,7 @@ const Sitemap = () => {
         { name: "Privacy Policy", path: "/privacy" },
         { name: "Terms of Service", path: "/terms" },
         { name: "Contact Us", path: "/contact" },
-        { name: "Blog", path: "/blogs" }
+        { name: "Article", path: "/articles" }
       ]
     }
   ];

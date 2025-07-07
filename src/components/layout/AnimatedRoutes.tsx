@@ -16,7 +16,6 @@ import Checkout from "@/pages/Checkout";
 import MyOrders from "@/pages/MyOrders";
 import OrderDetail from "@/pages/OrderDetail";
 import About from "@/pages/About";
-import Blogs from "@/pages/Blogs";
 import ArticleDetail from "@/pages/ArticleDetail";
 import AdminArticleEditor from "@/pages/AdminArticleEditor";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
@@ -155,14 +154,6 @@ export function AnimatedRoutes() {
           element={
             <PageTransition key={location.pathname}>
               <About />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/blogs"
-          element={
-            <PageTransition key={location.pathname}>
-              <Blogs />
             </PageTransition>
           }
         />
