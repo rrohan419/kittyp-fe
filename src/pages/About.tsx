@@ -277,7 +277,7 @@ const About = () => {
               </Link>
               <Link to="/why-eco-litter">
                 <Button size="lg" variant="outline" className="bg-transparent border-white text-white hover:bg-white/10 w-full sm:w-auto">
-                  Learn More
+                  Why Choose Eco-Friendly Litter
                 </Button>
               </Link>
             </div>

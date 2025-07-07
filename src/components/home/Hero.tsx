@@ -43,7 +43,7 @@ export function Hero() {
                   "transition-colors duration-200"
                 )}
               >
-                Learn More
+                Why Eco-Friendly Litter
               </Link>
             </div>
             
