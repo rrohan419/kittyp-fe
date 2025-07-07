@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://www.kittyp.in/sitemap.xml
+
+# Disallow admin pages
+Disallow: /admin/
+Disallow: /admin/*
+
+# Allow important pages
+Allow: /products
+Allow: /articles
+Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /terms 

@@ -212,7 +212,8 @@ export const getSiteMap = async () => {
     const response = await fetch(`${API_BASE_URL}/public/sitemap.xml`, {
       method: "GET",
       headers: {
-        "Content-Type": "application/json",
+        "Accept": "application/xml",
+        "Content-Type": "application/xml",
       },
     });
     return response;
