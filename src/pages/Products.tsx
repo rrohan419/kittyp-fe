@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/module/store/store';
 import { handleToggleFavorite } from '@/utils/favorites';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -22,6 +23,7 @@ const Products: React.FC = () => {
   const [selectedPriceRange, setSelectedPriceRange] = useState<null | { min: number, max: number }>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const observer = useRef<IntersectionObserver | null>(null);
   const loaderRef = useRef<HTMLDivElement | null>(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -64,7 +66,7 @@ const Products: React.FC = () => {
 
   const categories = [
     'All',
-    'Cat Litter',
+    'Litter',
     'toys',
     'food',
     'Accessories'
@@ -74,6 +76,14 @@ const Products: React.FC = () => {
     setSelectedCategory('All');
     setSelectedPriceRange(null);
     setSearchQuery('');
+    setProductDto({
+      name: null,
+      category: null,
+      minPrice: null,
+      maxPrice: null,
+      status: null,
+      isRandom: false,
+    });
   };
 
   const toggleMobileFilter = () => {
@@ -81,10 +91,10 @@ const Products: React.FC = () => {
   };
 
   const priceRanges = [
-    { label: 'Under $25', min: 0, max: 25 },
-    { label: '$25 - $50', min: 25, max: 50 },
-    { label: '$50 - $100', min: 50, max: 100 },
-    { label: 'Over $100', min: 100, max: Infinity }
+    { label: 'Under ₹250', min: 0, max: 250 },
+    { label: '$250 - ₹500', min: 250, max: 500 },
+    { label: '$500 - ₹1000', min: 500, max: 1000 },
+    { label: 'Over ₹1000', min: 1000, max: Infinity }
   ];
 
   const displayedProducts = useMemo(() => {
@@ -102,6 +112,14 @@ const Products: React.FC = () => {
   const handleToggleFavoriteWrapper = async (product: Product) => {
     await handleToggleFavorite(dispatch, user.uuid, product, favorites);
   };
+
+  // Update productDto when debounced search query changes
+  useEffect(() => {
+    setProductDto(prev => ({
+      ...prev,
+      name: debouncedSearchQuery || null
+    }));
+  }, [debouncedSearchQuery]);
 
   useEffect(() => {
     setProducts([]);  // Reset products when filters change
@@ -153,7 +171,13 @@ const Products: React.FC = () => {
                     {categories.map(category => (
                       <button
                         key={`desktop-filter-category-${category}`}
-                        onClick={() => setSelectedCategory(category)}
+                        onClick={() => {
+                          setSelectedCategory(category);
+                          setProductDto(prev => ({
+                            ...prev,
+                            category: category === 'All' ? null : category
+                          }));
+                        }}
                         className={cn(
                           "w-full text-left px-4 py-2.5 rounded-lg transition-all duration-200",
                           selectedCategory === category
@@ -173,7 +197,14 @@ const Products: React.FC = () => {
                     {priceRanges.map((range, index) => (
                       <button
                         key={`desktop-filter-range-${index}`}
-                        onClick={() => setSelectedPriceRange({ min: range.min, max: range.max })}
+                        onClick={() => {
+                          setSelectedPriceRange({ min: range.min, max: range.max });
+                          setProductDto(prev => ({
+                            ...prev,
+                            minPrice: range.min,
+                            maxPrice: range.max === Infinity ? null : range.max
+                          }));
+                        }}
                         className={cn(
                           "w-full text-left px-4 py-2.5 rounded-lg transition-all duration-200",
                           selectedPriceRange?.min === range.min && selectedPriceRange?.max === range.max
@@ -218,14 +249,7 @@ const Products: React.FC = () => {
                   type="text"
                   placeholder="Search products..."
                   value={searchQuery}
-                  onChange={e => {
-                    const value = e.target.value;
-                    setSearchQuery(value);
-                    setProductDto(prev => ({
-                      ...prev,
-                      name: value
-                    }));
-                  }}
+                  onChange={e => setSearchQuery(e.target.value)}
                   className="w-full pr-10"
                 />
                 <Search size={18} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
@@ -256,6 +280,10 @@ const Products: React.FC = () => {
                               key={`mobile-filter-category-${category}`}
                             onClick={() => {
                               setSelectedCategory(category);
+                              setProductDto(prev => ({
+                                ...prev,
+                                category: category === 'All' ? null : category
+                              }));
                               toggleMobileFilter();
                             }}
                             className={cn(
@@ -279,6 +307,11 @@ const Products: React.FC = () => {
                             key={`mobile-filter-range-${index}`}
                             onClick={() => {
                               setSelectedPriceRange({ min: range.min, max: range.max });
+                              setProductDto(prev => ({
+                                ...prev,
+                                minPrice: range.min,
+                                maxPrice: range.max === Infinity ? null : range.max
+                              }));
                               toggleMobileFilter();
                             }}
                             className={cn(
@@ -322,8 +355,8 @@ const Products: React.FC = () => {
                   <Badge variant="secondary" className="px-3 py-1">
                     {displayedProducts.length} {displayedProducts.length === 1 ? 'product' : 'products'}
                   </Badge>
-                  {(selectedCategory !== 'All' || selectedPriceRange) && (
-                    <div className="flex gap-2">
+                  {(selectedCategory !== 'All' || selectedPriceRange || searchQuery) && (
+                    <div className="flex gap-2 flex-wrap">
                       {selectedCategory !== 'All' && (
                         <Badge variant="outline" className="px-3 py-1">
                           {selectedCategory}
@@ -334,6 +367,11 @@ const Products: React.FC = () => {
                           {priceRanges.find(r => r.min === selectedPriceRange.min)?.label}
                         </Badge>
                       )}
+                      {searchQuery && (
+                        <Badge variant="outline" className="px-3 py-1">
+                          Search: "{searchQuery}"
+                        </Badge>
+                      )}
                     </div>
                   )}
                 </div>
@@ -342,14 +380,7 @@ const Products: React.FC = () => {
                     type="text"
                     placeholder="Search products..."
                     value={searchQuery}
-                    onChange={e => {
-                      const value = e.target.value;
-                      setSearchQuery(value);
-                      setProductDto(prev => ({
-                        ...prev,
-                        name: value
-                      }));
-                    }}
+                    onChange={e => setSearchQuery(e.target.value)}
                     className="pr-10"
                   />
                   <Search size={18} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
@@ -357,7 +388,12 @@ const Products: React.FC = () => {
               </div>
 
               {/* Products grid */}
-              {products.length > 0 ? (
+              {isLoading && page === 1 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                  <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
+                  <p className="text-lg">Loading products...</p>
+                </div>
+              ) : products.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {products.map((product, index) => (
                     <ProductCard
@@ -369,11 +405,6 @@ const Products: React.FC = () => {
                       isFavorite={favorites.some(item => item.uuid === product.uuid)}
                     />
                   ))}
-                </div>
-              ) : isLoading ? (
-                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                  <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
-                  <p className="text-lg">Loading products...</p>
                 </div>
               ) : hasMore ? (
                 <div ref={loaderRef} className="py-10">&nbsp;</div>
