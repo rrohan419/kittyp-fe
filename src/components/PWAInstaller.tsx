@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { X, Download, RefreshCw, Info } from 'lucide-react';
+import { X, Download, RefreshCw, Info, Smartphone } from 'lucide-react';
 import { useTheme } from '@/components/providers/ThemeProvider';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -18,191 +18,121 @@ export function PWAInstaller() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [showReinstallPrompt, setShowReinstallPrompt] = useState(false);
-  const [hasBeenInstalled, setHasBeenInstalled] = useState(false);
   const [showManualInstall, setShowManualInstall] = useState(false);
-  const hasBeenInstalledRef = useRef(false);
+  const [hasManifest, setHasManifest] = useState(false);
+  const [hasServiceWorker, setHasServiceWorker] = useState(false);
   const installPromptShownRef = useRef(false);
   const { colorScheme, resolvedMode } = useTheme();
 
   useEffect(() => {
-    console.log('PWA Installer: Component mounted');
-    
     // Check if app is already installed
     const isCurrentlyInstalled = window.matchMedia('(display-mode: standalone)').matches;
-    console.log('PWA Installer: Currently installed:', isCurrentlyInstalled);
     setIsInstalled(isCurrentlyInstalled);
 
-    // Check if app was previously installed (localStorage)
-    const wasInstalled = localStorage.getItem('kittyp-pwa-installed');
-    console.log('PWA Installer: Was previously installed:', wasInstalled);
-    if (wasInstalled === 'true') {
-      setHasBeenInstalled(true);
-      hasBeenInstalledRef.current = true;
-    }
+    // Check for manifest
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    setHasManifest(!!manifestLink);
 
-    // If currently installed, mark as has been installed
-    if (isCurrentlyInstalled) {
-      setHasBeenInstalled(true);
-      hasBeenInstalledRef.current = true;
-    }
-
-    // Check PWA criteria
-    const checkPWACriteria = () => {
-      console.log('PWA Installer: Checking PWA criteria...');
-      console.log('PWA Installer: Service Worker available:', 'serviceWorker' in navigator);
-      console.log('PWA Installer: HTTPS:', window.location.protocol === 'https:');
-      console.log('PWA Installer: Manifest:', !!document.querySelector('link[rel="manifest"]'));
-      console.log('PWA Installer: Display mode:', window.matchMedia('(display-mode: standalone)').matches);
-    };
-    
-    checkPWACriteria();
+    // Check for service worker
+    setHasServiceWorker('serviceWorker' in navigator);
 
     // Listen for beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
-      console.log('PWA Installer: beforeinstallprompt event fired!');
       e.preventDefault();
+      console.log('PWA: beforeinstallprompt event fired');
       setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setShowInstallPrompt(true);
       installPromptShownRef.current = true;
-      
-      // Show reinstall prompt if previously installed
-      if (hasBeenInstalledRef.current) {
-        console.log('PWA Installer: Showing reinstall prompt');
-        setShowReinstallPrompt(true);
-      } else {
-        console.log('PWA Installer: Showing install prompt');
-        setShowInstallPrompt(true);
-      }
     };
 
     // Listen for appinstalled event
     const handleAppInstalled = () => {
-      console.log('PWA Installer: App installed event fired');
+      console.log('PWA: App installed successfully');
       setIsInstalled(true);
       setShowInstallPrompt(false);
-      setShowReinstallPrompt(false);
       setShowManualInstall(false);
       setDeferredPrompt(null);
-      setHasBeenInstalled(true);
-      hasBeenInstalledRef.current = true;
-      localStorage.setItem('kittyp-pwa-installed', 'true');
     };
 
     // Listen for online/offline status
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    // Check for app uninstallation (when display mode changes from standalone)
-    const mediaQuery = window.matchMedia('(display-mode: standalone)');
-    const handleDisplayModeChange = (e: MediaQueryListEvent) => {
-      console.log('PWA Installer: Display mode changed:', e.matches);
-      if (!e.matches && hasBeenInstalledRef.current) {
-        // App was uninstalled
-        console.log('PWA Installer: App was uninstalled, showing reinstall prompt');
-        setIsInstalled(false);
-        setShowReinstallPrompt(true);
-      } else if (e.matches) {
-        // App was installed
-        console.log('PWA Installer: App was installed');
-        setIsInstalled(true);
-        setShowReinstallPrompt(false);
-        setShowInstallPrompt(false);
-        setShowManualInstall(false);
-      }
+    const handleOnline = () => {
+      console.log('PWA: Back online');
+      setIsOnline(true);
+    };
+    const handleOffline = () => {
+      console.log('PWA: Went offline');
+      setIsOnline(false);
     };
 
-    mediaQuery.addEventListener('change', handleDisplayModeChange);
+    // Listen for manual trigger event
+    const handleManualTrigger = () => {
+      console.log('PWA: Manual trigger received');
+      if (!isCurrentlyInstalled && !installPromptShownRef.current) {
+        setShowManualInstall(true);
+      }
+    };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('manual-pwa-trigger', handleManualTrigger);
 
-    // Show manual install option after a delay if no beforeinstallprompt event fires
-    // and the app hasn't been installed yet
+    // If no beforeinstallprompt after 3s, show manual instructions
     const timer = setTimeout(() => {
-      console.log('PWA Installer: Timer fired, checking if we should show manual install');
-      console.log('PWA Installer: Current state - installed:', isCurrentlyInstalled, 'hasBeenInstalled:', hasBeenInstalledRef.current, 'deferredPrompt:', !!deferredPrompt, 'installPromptShown:', installPromptShownRef.current);
-      
-      // Check if we should show reinstall prompt (app was previously installed but not currently installed)
-      if (!isCurrentlyInstalled && hasBeenInstalledRef.current && !installPromptShownRef.current) {
-        console.log('PWA Installer: Showing reinstall prompt (app was previously installed)');
-        setShowReinstallPrompt(true);
-      }
-      // Only show manual install if:
-      // 1. App is not currently installed
-      // 2. App was never installed before
-      // 3. No deferred prompt available
-      // 4. No install prompt was shown by beforeinstallprompt event
-      else if (!isCurrentlyInstalled && !hasBeenInstalledRef.current && !deferredPrompt && !installPromptShownRef.current) {
-        console.log('PWA Installer: Showing manual install prompt');
+      if (!installPromptShownRef.current && !isCurrentlyInstalled && hasManifest) {
+        console.log('PWA: No install prompt detected, showing manual install');
         setShowManualInstall(true);
       }
     }, 3000);
 
     return () => {
       clearTimeout(timer);
-      mediaQuery.removeEventListener('change', handleDisplayModeChange);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('manual-pwa-trigger', handleManualTrigger);
     };
-  }, []); // Remove dependencies to avoid re-running effect
+  }, [hasManifest]);
 
   const handleInstallClick = async () => {
-    console.log('PWA Installer: Install button clicked');
-    if (!deferredPrompt) {
-      console.log('PWA Installer: No deferred prompt available');
-      return;
+    if (deferredPrompt) {
+      try {
+        console.log('PWA: Triggering install prompt');
+        deferredPrompt.prompt();
+        const choiceResult = await deferredPrompt.userChoice;
+        console.log('PWA: User choice:', choiceResult.outcome);
+        setDeferredPrompt(null);
+        setShowInstallPrompt(false);
+      } catch (error) {
+        console.error('PWA: Error during install:', error);
+      }
+    }
+  };
+
+  const handleManualInstall = () => {
+    const userAgent = navigator.userAgent;
+    let instructions = '';
+
+    if (/iPad|iPhone|iPod/.test(userAgent)) {
+      instructions = 'To install: Tap the Share button (square with arrow) and select "Add to Home Screen"';
+    } else if (/Android/.test(userAgent)) {
+      instructions = 'To install: Tap the menu button (three dots) and select "Add to Home Screen" or "Install App"';
+    } else if (/Chrome/.test(userAgent)) {
+      instructions = 'To install: Click the install icon in the address bar or use the menu (three dots) → "Install Kittyp"';
+    } else {
+      instructions = 'Please use your browser\'s menu to install this app. Look for "Install" or "Add to Home Screen" option.';
     }
 
-    console.log('PWA Installer: Prompting for installation');
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    console.log('PWA Installer: User choice outcome:', outcome);
-    if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
-    } else {
-      console.log('User dismissed the install prompt');
-    }
-    
-    setDeferredPrompt(null);
-    setShowInstallPrompt(false);
-    setShowReinstallPrompt(false);
+    alert(instructions);
   };
 
   const handleRefresh = () => {
     window.location.reload();
   };
 
-  const handleManualInstall = () => {
-    console.log('PWA Installer: Manual install button clicked');
-    // For iOS Safari, show instructions
-    if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-      alert('To install: Tap the Share button (square with arrow) and select "Add to Home Screen"');
-    } else {
-      // For other browsers, try to trigger install
-      if (deferredPrompt) {
-        handleInstallClick();
-      } else {
-        alert('Please use your browser\'s menu to install this app. Look for "Install" or "Add to Home Screen" option.');
-      }
-    }
-  };
-
-  // Debug info
-  console.log('PWA Installer: Render state -', {
-    isInstalled,
-    hasBeenInstalled: hasBeenInstalledRef.current,
-    deferredPrompt: !!deferredPrompt,
-    showInstallPrompt,
-    showReinstallPrompt,
-    showManualInstall,
-    installPromptShown: installPromptShownRef.current
-  });
-
+  // Don't show anything if already installed
   if (isInstalled) return null;
 
   return (
@@ -235,43 +165,12 @@ export function PWAInstaller() {
         </Card>
       )}
 
-      {/* Reinstall Prompt */}
-      {showReinstallPrompt && (
+      {/* Manual Install Prompt */}
+      {showManualInstall && (
         <Card className="fixed bottom-4 right-4 w-80 z-50 shadow-lg border-primary/30 bg-primary/5 backdrop-blur-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg text-primary">Reinstall Kittyp</CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowReinstallPrompt(false)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <CardDescription className="text-muted-foreground">
-              Get back offline access and app features
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <Button 
-              onClick={handleInstallClick} 
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Reinstall App
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Manual Install Prompt */}
-      {showManualInstall && (
-        <Card className="fixed bottom-4 right-4 w-80 z-50 shadow-lg border-accent bg-accent/5 backdrop-blur-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg text-accent-foreground">Install Kittyp</CardTitle>
+              <CardTitle className="text-lg text-primary">Install Kittyp</CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
@@ -288,9 +187,9 @@ export function PWAInstaller() {
           <CardContent className="pt-0">
             <Button 
               onClick={handleManualInstall} 
-              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
             >
-              <Info className="h-4 w-4 mr-2" />
+              <Smartphone className="h-4 w-4 mr-2" />
               Install Instructions
             </Button>
           </CardContent>
