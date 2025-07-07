@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { X, Download, RefreshCw, Info } from 'lucide-react';
+import { useTheme } from '@/components/providers/ThemeProvider';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -22,6 +23,7 @@ export function PWAInstaller() {
   const [showManualInstall, setShowManualInstall] = useState(false);
   const hasBeenInstalledRef = useRef(false);
   const installPromptShownRef = useRef(false);
+  const { colorScheme, resolvedMode } = useTheme();
 
   useEffect(() => {
     console.log('PWA Installer: Component mounted');
@@ -122,12 +124,17 @@ export function PWAInstaller() {
       console.log('PWA Installer: Timer fired, checking if we should show manual install');
       console.log('PWA Installer: Current state - installed:', isCurrentlyInstalled, 'hasBeenInstalled:', hasBeenInstalledRef.current, 'deferredPrompt:', !!deferredPrompt, 'installPromptShown:', installPromptShownRef.current);
       
+      // Check if we should show reinstall prompt (app was previously installed but not currently installed)
+      if (!isCurrentlyInstalled && hasBeenInstalledRef.current && !installPromptShownRef.current) {
+        console.log('PWA Installer: Showing reinstall prompt (app was previously installed)');
+        setShowReinstallPrompt(true);
+      }
       // Only show manual install if:
       // 1. App is not currently installed
       // 2. App was never installed before
       // 3. No deferred prompt available
       // 4. No install prompt was shown by beforeinstallprompt event
-      if (!isCurrentlyInstalled && !hasBeenInstalledRef.current && !deferredPrompt && !installPromptShownRef.current) {
+      else if (!isCurrentlyInstalled && !hasBeenInstalledRef.current && !deferredPrompt && !installPromptShownRef.current) {
         console.log('PWA Installer: Showing manual install prompt');
         setShowManualInstall(true);
       }
@@ -202,24 +209,25 @@ export function PWAInstaller() {
     <>
       {/* Install Prompt */}
       {showInstallPrompt && (
-        <Card className="fixed bottom-4 right-4 w-80 z-50 shadow-lg border-primary/20">
+        <Card className="fixed bottom-4 right-4 w-80 z-50 shadow-lg border-primary/20 bg-card/95 backdrop-blur-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Install Kittyp</CardTitle>
+              <CardTitle className="text-lg text-card-foreground">Install Kittyp</CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowInstallPrompt(false)}
+                className="text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <CardDescription>
+            <CardDescription className="text-muted-foreground">
               Install our app for a better experience with offline access
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <Button onClick={handleInstallClick} className="w-full">
+            <Button onClick={handleInstallClick} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
               <Download className="h-4 w-4 mr-2" />
               Install App
             </Button>
@@ -229,27 +237,27 @@ export function PWAInstaller() {
 
       {/* Reinstall Prompt */}
       {showReinstallPrompt && (
-        <Card className="fixed bottom-4 right-4 w-80 z-50 shadow-lg border-purple-200 bg-purple-50">
+        <Card className="fixed bottom-4 right-4 w-80 z-50 shadow-lg border-primary/30 bg-primary/5 backdrop-blur-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg text-purple-800">Reinstall Kittyp</CardTitle>
+              <CardTitle className="text-lg text-primary">Reinstall Kittyp</CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowReinstallPrompt(false)}
-                className="text-purple-600 hover:text-purple-800"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <CardDescription className="text-purple-600">
+            <CardDescription className="text-muted-foreground">
               Get back offline access and app features
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
             <Button 
               onClick={handleInstallClick} 
-              className="w-full bg-purple-600 hover:bg-purple-700"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               <Download className="h-4 w-4 mr-2" />
               Reinstall App
@@ -260,27 +268,27 @@ export function PWAInstaller() {
 
       {/* Manual Install Prompt */}
       {showManualInstall && (
-        <Card className="fixed bottom-4 right-4 w-80 z-50 shadow-lg border-blue-200 bg-blue-50">
+        <Card className="fixed bottom-4 right-4 w-80 z-50 shadow-lg border-accent bg-accent/5 backdrop-blur-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg text-blue-800">Install Kittyp</CardTitle>
+              <CardTitle className="text-lg text-accent-foreground">Install Kittyp</CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowManualInstall(false)}
-                className="text-blue-600 hover:text-blue-800"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <CardDescription className="text-blue-600">
+            <CardDescription className="text-muted-foreground">
               Install our app for offline access and better experience
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
             <Button 
               onClick={handleManualInstall} 
-              className="w-full bg-blue-600 hover:bg-blue-700"
+              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
             >
               <Info className="h-4 w-4 mr-2" />
               Install Instructions
@@ -291,10 +299,10 @@ export function PWAInstaller() {
 
       {/* Offline Indicator */}
       {!isOnline && (
-        <Card className="fixed top-4 right-4 w-80 z-50 shadow-lg border-orange-200 bg-orange-50">
+        <Card className="fixed top-4 right-4 w-80 z-50 shadow-lg border-destructive/30 bg-destructive/5 backdrop-blur-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg text-orange-800">You're Offline</CardTitle>
-            <CardDescription className="text-orange-600">
+            <CardTitle className="text-lg text-destructive">You're Offline</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Some features may be limited. Check your connection.
             </CardDescription>
           </CardHeader>
@@ -302,7 +310,7 @@ export function PWAInstaller() {
             <Button 
               variant="outline" 
               onClick={handleRefresh}
-              className="w-full border-orange-200 text-orange-700 hover:bg-orange-100"
+              className="w-full border-destructive/20 text-destructive hover:bg-destructive/10"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Retry Connection
