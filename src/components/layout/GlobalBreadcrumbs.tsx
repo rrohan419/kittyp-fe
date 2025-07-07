@@ -48,6 +48,7 @@ const breadcrumbConfig: BreadcrumbConfig = {
   '/privacy': { label: 'Privacy Policy' },
   '/terms': { label: 'Terms of Service' },
   '/sitemap': { label: 'Sitemap' },
+  '/sitemap.xml': { label: 'XML Sitemap' },
 };
 
 interface BreadcrumbItem {

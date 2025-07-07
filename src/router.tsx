@@ -19,6 +19,7 @@ import AdminArticleEditor from "@/pages/AdminArticleEditor";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import Sitemap from "@/pages/Sitemap";
+import SitemapXml from "@/pages/SitemapXml";
 import WhyEcoLitter from "@/pages/WhyEcoLitter";
 import ForgotPassword from "@/pages/ForgotPassword";
 import VerifyResetCode from "@/pages/VerifyResetCode";
@@ -112,6 +113,10 @@ export const router = createBrowserRouter(
         {
           path: "sitemap",
           element: <PageTransition><Sitemap /></PageTransition>,
+        },
+        {
+          path: "sitemap.xml",
+          element: <SitemapXml />,
         },
         {
           path: "admin/*",
