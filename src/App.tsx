@@ -12,6 +12,7 @@ import { cn } from "./lib/utils";
 import { ScrollToTop } from "./utils/ScrollToTop";
 import { AuthInitializer } from "./components/auth/AuthInitializer";
 import { CartInitializer } from "./components/cart/CartInitializer";
+import { PWAInstaller } from "./components/PWAInstaller";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -49,6 +50,7 @@ function App() {
                     </main>
                     <Toaster />
                     <ScrollToTop />
+                    <PWAInstaller />
                   </div>
                 </CartInitializer>
               </AuthInitializer>
