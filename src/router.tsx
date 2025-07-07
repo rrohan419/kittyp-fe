@@ -119,6 +119,10 @@ export const router = createBrowserRouter(
           element: <SitemapXml />,
         },
         {
+          path: "robots.txt",
+          element: <div>User-agent: *<br/>Allow: /<br/>Sitemap: https://www.kittyp.in/sitemap.xml</div>,
+        },
+        {
           path: "admin/*",
           element: <PageTransition><AdminDashboard /></PageTransition>,
         },
