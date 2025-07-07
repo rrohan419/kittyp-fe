@@ -16,6 +16,9 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'robots.txt', 'sitemap.xml'],
+      injectRegister: 'auto',
+      strategies: 'generateSW',
+      filename: 'sw.js',
       manifest: {
         name: 'Kittyp - Eco-Friendly',
         short_name: 'Kittyp',
@@ -38,11 +41,22 @@ export default defineConfig(({ mode }) => ({
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
+          },
+          {
+            src: '/apple-touch-icon.png',
+            sizes: '180x180',
+            type: 'image/png',
+            purpose: 'any'
           }
         ],
         categories: ['shopping', 'lifestyle', 'pets'],
         lang: 'en',
-        dir: 'ltr'
+        dir: 'ltr',
+        prefer_related_applications: false,
+        related_applications: [],
+        edge_side_panel: {
+          preferred_width: 400
+        }
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
