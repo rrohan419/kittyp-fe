@@ -205,3 +205,18 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
     return null;
   }
 };
+
+export const getSiteMap = async () => {
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/public/sitemap.xml`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response;
+  } catch (error: any) {
+    throw error.response?.data || "failed. Please try again.";
+  }
+};

@@ -21,6 +21,7 @@ import AdminArticleEditor from "@/pages/AdminArticleEditor";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import Sitemap from "@/pages/Sitemap";
+import SitemapXml from "@/pages/SitemapXml";
 import WhyEcoLitter from "@/pages/WhyEcoLitter";
 import ForgotPassword from "@/pages/ForgotPassword";
 import VerifyResetCode from "@/pages/VerifyResetCode";
@@ -188,6 +189,10 @@ export function AnimatedRoutes() {
               <Sitemap />
             </PageTransition>
           }
+        />
+        <Route
+          path="/sitemap.xml"
+          element={<SitemapXml />}
         />
         <Route
           path="/admin/*"
