@@ -12,20 +12,20 @@ export function CartInitializer({ children }: PropsWithChildren) {
   useEffect(() => {
     const initCart = async () => {
       try {
-        console.log('CartInitializer - Checking conditions:', {
-          isAuthenticated,
-          hasAuthUser: !!authUser,
-          hasCartUser: !!cartUser,
-          isInitialized: initRef.current
-        });
+        // console.log('CartInitializer - Checking conditions:', {
+        //   isAuthenticated,
+        //   hasAuthUser: !!authUser,
+        //   hasCartUser: !!cartUser,
+        //   isInitialized: initRef.current
+        // });
         
         // Initialize cart only if user is authenticated and cart user is not set
         if (isAuthenticated && authUser && !cartUser && !initRef.current) {
-          console.log('CartInitializer - Starting cart initialization');
+          // console.log('CartInitializer - Starting cart initialization');
           initRef.current = true;
           
           await dispatch(initializeUserAndCart()).unwrap();
-          console.log('CartInitializer - Cart initialization complete');
+          // console.log('CartInitializer - Cart initialization complete');
         }
       } catch (error) {
         console.error('Cart initialization failed:', error);

@@ -13,7 +13,8 @@ const initialState: UserProfile = {
     lastName: '',
     email: '',
     accessToken: '',
-    roles: []
+    roles: [],
+    ownerPets: [],
 }
 
 export const userSlice = createSlice({
@@ -32,6 +33,7 @@ export const userSlice = createSlice({
                 state.phoneNumber = action.payload.phoneNumber;
                 state.uuid = action.payload.uuid;
                 state.createdAt = action.payload.createdAt;
+                state.ownerPets = action.payload.ownerPets;
             }
         },
         resetUserData: (state) => {
@@ -45,6 +47,7 @@ export const userSlice = createSlice({
             state.createdAt ='';
             state.phoneCountryCode = '';
             state.enabled = false;
+            state.ownerPets = [];
         },
         setUserAccessToken: (state, action: PayloadAction<string>) => {
             state.accessToken = action.payload;

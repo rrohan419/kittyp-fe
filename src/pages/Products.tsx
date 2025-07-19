@@ -34,13 +34,13 @@ const Products: React.FC = () => {
     category: null,
     minPrice: null,
     maxPrice: null,
-    status: null,
+    status: ['ACTIVE', 'OUT_OF_STOCK'],
     isRandom : false,
   });
 
   const dispatch = useAppDispatch();
   const favorites = useAppSelector(selectFavorites);
-  const { user } = useSelector((state: RootState) => state.cartReducer);
+  const { user } = useSelector((state: RootState) => state.authReducer);
 
   const loadProducts = useCallback(async () => {
     if (!hasMore || isLoading) return;
@@ -92,8 +92,8 @@ const Products: React.FC = () => {
 
   const priceRanges = [
     { label: 'Under ₹250', min: 0, max: 250 },
-    { label: '$250 - ₹500', min: 250, max: 500 },
-    { label: '$500 - ₹1000', min: 500, max: 1000 },
+    { label: '₹250 - ₹500', min: 250, max: 500 },
+    { label: '₹500 - ₹1000', min: 500, max: 1000 },
     { label: 'Over ₹1000', min: 1000, max: Infinity }
   ];
 

@@ -29,7 +29,7 @@ const Contact = () => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         // In a real app, you would send the form data to your backend
-        console.log('Form submitted:', formData);
+        // console.log('Form submitted:', formData);
 
         // Show success toast
         toast.success("Message Sent!", {
@@ -73,7 +73,7 @@ const Contact = () => {
                                                 href="mailto:support@kittyp.com"
                                                 className="text-primary hover:text-primary/90 transition-colors"
                                             >
-                                                support@kittyp.com
+                                                support@kittyp.in
                                             </a>
                                         </div>
                                     </CardContent>

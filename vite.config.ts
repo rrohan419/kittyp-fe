@@ -20,9 +20,9 @@ export default defineConfig(({ mode }) => ({
       strategies: 'generateSW',
       filename: 'sw.js',
       manifest: {
-        name: 'Kittyp - Eco-Friendly',
+        name: 'Kittyp - Eco-Friendly Pet Products',
         short_name: 'Kittyp',
-        description: 'Sustainable products that\'s kind to your pet, your home, and our planet',
+        description: 'Pure by Nature, Trusted by You. Kittyp by Tenjiku Naturals offers clean, sustainable pine wood cat litter—natural, chemical-free, and ultra-absorbent.',
         start_url: '/',
         display: 'standalone',
         background_color: '#ffffff',

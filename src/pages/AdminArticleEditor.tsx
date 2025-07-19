@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import {
@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { FileText, Save, Send } from 'lucide-react';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import { Article, Author } from './Interface/articles';
+import { createArticle, editArticle, fetchArticleBySlug } from '@/services/articleService';
 
 // Define the form schema
 const articleFormSchema = z.object({
@@ -53,10 +54,21 @@ const articleFormSchema = z.object({
 
 type ArticleFormValues = z.infer<typeof articleFormSchema>;
 
+const DEFAULT_AUTHOR = {
+  id: 1,
+  name: 'Admin',
+  avatar: '',
+  role: 'ADMIN',
+};
+
 const AdminArticleEditor = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [fetchingArticle, setFetchingArticle] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { slug } = useParams();
 
   useEffect(() => {
     const roles = JSON.parse(localStorage.getItem('roles') || '[]');
@@ -64,6 +76,31 @@ const AdminArticleEditor = () => {
     setUserRole(isAdmin ? 'ROLE_ADMIN' : null);
     setLoading(false);
   }, []);
+
+  // Fetch article for edit mode
+  useEffect(() => {
+    if (slug) {
+      setFetchingArticle(true);
+      fetchArticleBySlug({ slug })
+        .then(res => {
+          const data = res.data;
+          form.reset({
+            title: data.title,
+            slug: data.slug,
+            excerpt: data.excerpt,
+            content: data.content,
+            coverImage: data.coverImage,
+            category: data.category,
+            tags: data.tags,
+            readTime: data.readTime,
+            status: 'DRAFT', // Always default to DRAFT for editing
+          });
+        })
+        .catch(() => setFetchError('Failed to load article'))
+        .finally(() => setFetchingArticle(false));
+    }
+    // eslint-disable-next-line
+  }, [slug]);
 
   // Redirect non-admin users
   if (!loading && userRole !== 'ROLE_ADMIN') {
@@ -87,23 +124,35 @@ const AdminArticleEditor = () => {
   });
 
   // Handle form submission
-  const onSubmit = (values: ArticleFormValues) => {
-    const newArticle: Partial<Article> = {
-      ...values,
-      id: `article-${Date.now()}`,
-      publishedAt: values.status === "PUBLISHED" ? new Date().toISOString() : undefined,
-      comments: []
-    };
-    
-    console.log("Saving article:", newArticle);
-    
-    // Show success message
-    toast.success(values.status === "PUBLISHED" ? "Article Published!" : "Draft Saved!", {
-      description: `"${values.title}" has been ${values.status === "PUBLISHED" ? "published" : "saved as a draft"}.`
-    });
-    
-    // Redirect to admin dashboard
-    navigate('/admin');
+  const onSubmit = async (values: ArticleFormValues) => {
+    setSubmitting(true);
+    try {
+      const payload = {
+        title: values.title,
+        slug: values.slug,
+        excerpt: values.excerpt,
+        content: values.content,
+        coverImage: values.coverImage,
+        category: values.category,
+        tags: Array.isArray(values.tags) ? values.tags : [],
+        readTime: values.readTime,
+        author: DEFAULT_AUTHOR,
+      };
+      if (slug) {
+        // Edit mode
+        await editArticle(slug, payload);
+        toast.success('Article updated!');
+      } else {
+        // Create mode
+        await createArticle(payload);
+        toast.success('Article created!');
+      }
+      navigate('/admin/articles');
+    } catch (err) {
+      toast.error('Failed to save article');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Generate slug from title
@@ -118,12 +167,15 @@ const AdminArticleEditor = () => {
     }
   };
 
-  if (loading) {
+  if (loading || fetchingArticle) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
+  }
+  if (fetchError) {
+    return <div className="text-center text-red-500 mt-10">{fetchError}</div>;
   }
 
   return (
@@ -143,23 +195,22 @@ const AdminArticleEditor = () => {
                 Cancel
               </Button>
               <Button 
+                type="button"
+                variant="secondary"
+                disabled={submitting}
                 onClick={() => {
                   form.setValue("status", "DRAFT");
                   form.handleSubmit(onSubmit)();
                 }}
-                variant="secondary"
               >
-                <Save className="mr-2 h-4 w-4" />
-                Save Draft
+                {submitting ? 'Saving...' : 'Save Draft'}
               </Button>
               <Button 
-                onClick={() => {
-                  form.setValue("status", "PUBLISHED");
-                  form.handleSubmit(onSubmit)();
-                }}
+                type="submit"
+                disabled={submitting}
+                onClick={() => form.setValue('status', 'PUBLISHED')}
               >
-                <Send className="mr-2 h-4 w-4" />
-                Publish
+                {submitting ? 'Publishing...' : 'Publish'}
               </Button>
             </div>
           </div>

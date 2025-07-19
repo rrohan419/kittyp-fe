@@ -27,6 +27,7 @@ const Articles: React.FC = () => {
         body: {
           name: null,
           isRandom: null,
+          articleStatus: null
         },
       });
   

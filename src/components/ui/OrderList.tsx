@@ -34,8 +34,8 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
         queryFn: () => fetchFilteredOrders(page, 10, filters),
         placeholderData: (previousData) => previousData,
     });
-    const userUuid = useAppSelector((state) => state.cartReducer.user?.uuid);
-    const user = useAppSelector((state) => state.cartReducer.user);
+    const userUuid = useAppSelector((state) => state.authReducer.user?.uuid);
+    const user = useAppSelector((state) => state.authReducer.user);
     const [loadingInvoiceForOrder, setLoadingInvoiceForOrder] = useState<string | null>(null);
     const [processingPayment, setProcessingPayment] = useState<string | null>(null);
     const [isPaymentVerifying, setIsPaymentVerifying] = useState(false);
@@ -53,8 +53,10 @@ export const OrderList: React.FC<OrderListProps> = ({ page, filters, setPage }) 
         PAYMENT_PENDING: "bg-orange-100 text-orange-800",
         PAYMENT_TIMEOUT: "bg-red-100 text-red-700",
         PAYMENT_CANCELLED: "bg-red-100 text-red-700",
-        DEFAULT: "bg-gray-100 text-gray-600",
-    };
+        IN_TRANSIT: "bg-indigo-100 text-indigo-800",
+        UNKNOWN: "bg-gray-200 text-gray-700",
+        DEFAULT: "bg-muted text-muted-foreground",
+      };
 
     const handleViewInvoice = async (orderNumber: string, e: React.MouseEvent) => {
         e.stopPropagation();

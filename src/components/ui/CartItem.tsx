@@ -57,11 +57,12 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
           description: "",
           status: "active",
           category: "",
-          attribute: {
+          attributes: {
             color: "",
             size: "",
             material: ""
-          }
+          },
+          sku: ""
         }));
       }
     } catch (error) {

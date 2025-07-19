@@ -77,7 +77,7 @@ export default function Checkout() {
                     setSelectedShippingAddressId(fetchedAddresses[0].uuid);
                     setSelectedBillingAddressId(fetchedAddresses[0].uuid);
                 }
-                    console.log("db saved address", addresses);
+                    // console.log("db saved address", addresses);
                 } catch (error) {
                     toast.error("Failed to load saved addresses");
                 } finally {
@@ -145,7 +145,7 @@ export default function Checkout() {
     // const handleAddressCreated = (newAddress: Address) => {
     //     setAddresses(prev => [...prev, newAddress]);
      const handleAddressCreated = (newAddress: AddressModel) => {
-        console.log("New address created:", newAddress);
+        // console.log("New address created:", newAddress);
         setSavedAddresses(prev => [...prev, newAddress]);
         setSelectedShippingAddressId(newAddress.uuid || "");
         if (sameAsShipping) {

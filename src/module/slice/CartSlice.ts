@@ -84,7 +84,7 @@ export const initializeUserAndCart = createAsyncThunk(
   'cart/initializeUserAndCart',
   async (_, { dispatch, getState }) => {
     try {
-      console.log('CartSlice - Starting cart initialization');
+      // console.log('CartSlice - Starting cart initialization');
       
       // Get the current state to check for guest cart items
       const state = getState() as { cartReducer: CartState };
@@ -95,11 +95,11 @@ export const initializeUserAndCart = createAsyncThunk(
       const userData = authState.authReducer.user;
       
       if (!userData) {
-        console.log('CartSlice - No user data from AuthSlice');
+        // console.log('CartSlice - No user data from AuthSlice');
         return null;
       }
 
-      console.log('CartSlice - User data from AuthSlice:', !!userData);
+      // console.log('CartSlice - User data from AuthSlice:', !!userData);
       
       // Set user in cart state
       dispatch(setUser(userData));
@@ -115,7 +115,7 @@ export const initializeUserAndCart = createAsyncThunk(
 
       // If no guest items, just fetch the backend cart
       const response = await getCartByUser(userData.uuid);
-      console.log('CartSlice - Cart data fetched:', !!response);
+      // console.log('CartSlice - Cart data fetched:', !!response);
       dispatch(setCart(response.data));
 
       return userData;

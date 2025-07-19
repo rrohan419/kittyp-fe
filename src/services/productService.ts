@@ -1,6 +1,5 @@
 import axiosInstance from "@/config/axionInstance";
-import { CurrencyType } from "./cartService";
-
+import { ApiSuccessResponse, CurrencyType } from "./cartService";
 
 export interface Product {
     name: string;
@@ -10,9 +9,10 @@ export interface Product {
     price: number;
     productImageUrls: string[];
     category: string;
-    attribute: Attributes;
+    attributes: Attributes;
     currency: CurrencyType;
     stockQuantity: number;
+    sku: string;
 }
 export interface Attributes {
     color: string;
@@ -26,10 +26,11 @@ export type ProductFilterRequest = {
     category: string | null;
     minPrice: number | null;
     maxPrice: number | null;
-    status: string | null;
+    status: string[] | null;
     isRandom: boolean | null;
 }
-type FetchProducts = {
+
+export type FetchProducts = {
     page: number;
     size: number;
     body: ProductFilterRequest;
@@ -81,6 +82,7 @@ enum ProductStatus {
     INACTIVE,
     OUT_OF_STOCK
 }
+
 export const fetchFilteredProducts = async ({ page, size, body }: FetchProducts): Promise<ProductApiResponse> => {
     const response = await axiosInstance.post(`/product/all?page=${page}&size=${size}`, body);
     return response.data;
@@ -98,5 +100,15 @@ export const addProduct = async (data: ProductDto): Promise<WrappedProductRespon
 
 export const fetchProductCount = async( isActive : Boolean): Promise<WrappedProductCountResponse> => {
     const response = await axiosInstance.get(`admin/product/count?isActive=${isActive}`);
+    return response.data;
+};
+
+export const deleteProductAdmin = async(productUuid: string): Promise<ApiSuccessResponse<string>> => {
+    const response = await axiosInstance.delete(`admin/product/${productUuid}`);
+    return response.data;
+}
+
+export const updateProductAdmin = async (productUuid: string, data: ProductDto): Promise<WrappedProductResponse> => {
+    const response = await axiosInstance.put(`admin/product/update?productUuid=${productUuid}`, data);
     return response.data;
 };

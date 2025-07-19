@@ -12,7 +12,6 @@ import { LoadingState } from '@/components/ui/LoadingState';
 
 const ArticlePage = () => {
   const { slug } = useParams<{ slug?: string }>();
-  console.log("slug:", slug);
   const navigate = useNavigate();
 
   // State to store the article and comments

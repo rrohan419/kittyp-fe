@@ -28,25 +28,29 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { initializeAdminDashboard } from '@/module/slice/AdminSlice';
 import { initializeUser } from '@/services/authService';
 import { fetchArticles, ArticleSearchRequest } from '@/services/articleService';
 import { ArticleApiResponse, ArticleList } from '@/pages/Interface/PagesInterface';
+import { fetchFilteredOrders, Order } from '@/services/orderService';
+import { formatCurrency } from '@/services/cartService';
+import { getStatusColor, getStatusDisplay } from './AdminOrders';
 
 const AdminDashboard = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isCheckingRole, setIsCheckingRole] = useState(true);
   const [articles, setArticles] = useState<ArticleList[]>([]);
   const [isLoadingArticles, setIsLoadingArticles] = useState(false);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   
   // Get state from Redux store
   const { productCount, isDashboardLoading, totalOrderCount } = useAppSelector((state) => state.adminReducer);
-  const user = useAppSelector((state) => state.cartReducer.user);
+  const user = useAppSelector((state) => state.authReducer.user);
 
   // Fetch articles
   const loadArticles = async () => {
@@ -54,7 +58,8 @@ const AdminDashboard = () => {
     try {
       const searchRequest: ArticleSearchRequest = {
         name: null,
-        isRandom: null
+        isRandom: null,
+        articleStatus: null
       };
       const response = await fetchArticles({
         page: 1,
@@ -66,6 +71,23 @@ const AdminDashboard = () => {
       console.error('Error fetching articles:', error);
     } finally {
       setIsLoadingArticles(false);
+    }
+  };
+
+  const loadRecentOrders = async () => {
+    setIsLoadingOrders(true);
+    try {
+      const response = await fetchFilteredOrders(1, 6, {
+        userUuid: null,
+        orderNumber: null,
+        orderStatus: 'SUCCESSFULL',
+        searchText: null,
+      });
+      setOrders(response.data.models || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setIsLoadingOrders(false);
     }
   };
 
@@ -84,10 +106,13 @@ const AdminDashboard = () => {
 
         await dispatch(initializeAdminDashboard());
         await loadArticles();
+        await loadRecentOrders();
 
         const roles = user?.roles || [];
         const isAdmin = Array.isArray(roles) && roles.includes('ROLE_ADMIN');
         setUserRole(isAdmin ? 'ROLE_ADMIN' : null);
+
+        
       } catch (error) {
         console.error('Error initializing admin dashboard:', error);
       } finally {
@@ -119,26 +144,6 @@ const AdminDashboard = () => {
     { title: 'Articles', value: articles.length.toString(), icon: FileText, color: 'bg-amber-100 text-amber-700', route: '/admin/articles' },
   ];
 
-  const recentOrders = [
-    { id: '#ORD-7895', customer: 'Sarah Johnson', date: '2023-04-15', status: 'Completed', amount: '$125.00' },
-    { id: '#ORD-7896', customer: 'Michael Chen', date: '2023-04-15', status: 'Processing', amount: '$89.99' },
-    { id: '#ORD-7897', customer: 'Emma Williams', date: '2023-04-14', status: 'Shipped', amount: '$245.50' },
-    { id: '#ORD-7898', customer: 'James Brown', date: '2023-04-14', status: 'Completed', amount: '$65.25' },
-    { id: '#ORD-7899', customer: 'Olivia Davis', date: '2023-04-13', status: 'Processing', amount: '$189.00' },
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'processing':
-        return 'bg-blue-100 text-blue-800';
-      case 'shipped':
-        return 'bg-purple-100 text-purple-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -272,20 +277,20 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentOrders.map((order) => (
-                    <div key={`admin-dash-order-id-${order.id}`} className="flex items-center justify-between">
+                  {orders.map((order) => (
+                    <div key={`admin-dash-order-id-${order.orderNumber}`} className="flex items-center justify-between">
                       <div className="space-y-1">
-                        <p className="text-sm font-medium">{order.customer}</p>
+                        <p className="text-sm font-medium">{order.billingAddress.name}</p>
                         <div className="flex items-center text-xs text-muted-foreground">
-                          <span>{order.id}</span>
+                          <span>{order.orderNumber}</span>
                           <span className="mx-1">•</span>
-                          <span>{order.date}</span>
+                          <span>{new Date(order.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
-                        <span className="text-sm font-medium">{order.amount}</span>
+                        <span className="text-sm font-medium">{formatCurrency(order.totalAmount, order.currency)}</span>
                         <span className={cn("px-2 py-1 text-xs rounded-full", getStatusColor(order.status))}>
-                          {order.status}
+                        {getStatusDisplay(order.status)}
                         </span>
                       </div>
                     </div>

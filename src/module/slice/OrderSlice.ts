@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { fetchFilteredOrders, OrderFilterRequest, Order, OrderApiResponse } from '@/services/orderService';
+import { fetchFilteredOrders, OrderFilterRequest, Order, OrderApiResponse, fetchSuccessfullOrderCount } from '@/services/orderService';
 
 interface OrderState {
   totalOrderCount: number;
@@ -27,16 +27,11 @@ const initialState: OrderState = {
 
 export const fetchTotalOrderCount = createAsyncThunk(
   'order/fetchTotalCount',
-  async (userUuid: string) => {
+  async () => {
     try {
-      const filters: OrderFilterRequest = {
-        userUuid,
-        orderNumber: null,
-        orderStatus: null
-      };
-      
-      const response = await fetchFilteredOrders(1, 1, filters);
-      return response.data.totalElements;
+            
+      const response = await fetchSuccessfullOrderCount();
+      return response.data;
     } catch (error) {
       console.error('Error fetching total order count:', error);
       throw error;

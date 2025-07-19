@@ -44,8 +44,11 @@ const STATUS_COLORS: Record<string, string> = {
     PAYMENT_PENDING: "bg-orange-100 text-orange-800",
     PAYMENT_TIMEOUT: "bg-red-100 text-red-700",
     PAYMENT_CANCELLED: "bg-red-100 text-red-700",
+    IN_TRANSIT: "bg-indigo-100 text-indigo-800",
+    UNKNOWN: "bg-gray-200 text-gray-700",
     DEFAULT: "bg-muted text-muted-foreground",
-};
+  };
+  
 
 const STATUS_MESSAGES: Record<string, { message: string; icon: JSX.Element }> = {
     CREATED: {
