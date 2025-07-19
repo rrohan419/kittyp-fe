@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Heart, ShoppingCart, X, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FavoriteProduct } from '@/services/favoritesService';
+import { formatCurrency } from '@/services/cartService';
 
 interface FavoriteProductCardProps {
   product: FavoriteProduct;
@@ -62,7 +63,8 @@ export function FavoriteProductCard({ product, onToggleFavorite, className }: Fa
             <div className="space-y-1">
               <div className="flex items-baseline gap-1">
                 <span className="text-lg font-bold text-foreground">
-                  {product.currency} {product.price.toFixed(2)}
+                {formatCurrency
+                (product.price, product.currency)}
                 </span>
               </div>
             </div>

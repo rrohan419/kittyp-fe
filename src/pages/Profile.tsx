@@ -13,6 +13,7 @@ import { validateAndSetUser } from '@/module/slice/AuthSlice';
 import { useOrderCount } from '@/hooks/useOrderCount';
 import FavoritesSection from '@/components/ui/FavoritesSection';
 import { findAllSavedAddress } from '@/services/addressService';
+import PetDetailsForm from '@/components/ui/PetDetailsForm';
 
 const Profile: React.FC = () => {
   const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
@@ -36,7 +37,7 @@ const Profile: React.FC = () => {
     const fetchAddresses = async () => {
       if (user?.uuid) {
         const addresses = await findAllSavedAddress(user.uuid);
-        console.log("db saved address", addresses);
+        // console.log("db saved address", addresses);
       }
     };
     fetchAddresses();
@@ -54,7 +55,7 @@ const Profile: React.FC = () => {
   }
 
   // Get the active tab from location state
-  const defaultTab = location.state || 'favorites';
+  const defaultTab = location.state || 'pets';
 
   return (
     <>
@@ -73,12 +74,17 @@ const Profile: React.FC = () => {
             />
 
             <div className="space-y-8">
-              <Tabs defaultValue={defaultTab} className="w-full animate-fade-in">
-                <TabsList className="mb-6 w-full grid grid-cols-3 bg-accent text-accent-foreground">
+            <Tabs defaultValue={defaultTab} className="w-full animate-fade-in">
+            <TabsList className="mb-6 w-full grid grid-cols-4 bg-accent text-accent-foreground">
+                <TabsTrigger value="pets">My Pets</TabsTrigger>
                   <TabsTrigger value="favorites">Favorites</TabsTrigger>
                   <TabsTrigger value="orders">Orders</TabsTrigger>
                   <TabsTrigger value="details">Account</TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="pets" className="animate-fade-in">
+                  <PetDetailsForm />
+                </TabsContent>
 
                 <TabsContent value="favorites" className="animate-fade-in">
                   <FavoritesSection />

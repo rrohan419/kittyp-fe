@@ -41,6 +41,21 @@ export interface WrappedPasswordResetResponse {
   data: boolean;
 }
 
+export interface PetProfile {
+  uuid: string;
+  name: string;
+  profilePicture: string;
+  breed: string;
+  age: string;
+  weight: string;
+  activityLevel: string;
+  gender: string;
+  currentFoodBrand: string;
+  healthConditions: string;
+  allergies: string;
+  isNeutered: boolean;
+}
+
 export interface UserProfile {
   id: number;
   email: string;
@@ -53,6 +68,7 @@ export interface UserProfile {
   uuid: string;
   createdAt: string;
   accessToken: string;
+  ownerPets: PetProfile[];
 }
 
 export const signup = async (data: SignupData) => {
@@ -118,8 +134,8 @@ export const login = async (data: AuthData): Promise<{ token, roles }> => {
     // Step 2: Store token and roles
     localStorage.setItem('access_token', token);
     localStorage.setItem('roles', JSON.stringify(roles));
-    console.log("user -> -> -> ->", loginResponse);
-    console.log("user -> -> -> ->", { token, roles });
+    // console.log("user -> -> -> ->", loginResponse);
+    // console.log("user -> -> -> ->", { token, roles });
 
     return { token, roles };
   } catch (error: any) {

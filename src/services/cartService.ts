@@ -159,7 +159,7 @@ export const formatCurrency = (
 
 export const createCart = async (orderPayLoad: OrderPayload): Promise<OrderApiResponse> => {
   const response = await axiosInstance.post(`/order/create`, orderPayLoad);
-  console.log( "currenct    ",response.data.data.currency);
+  // console.log( "currenct    ",response.data.data.currency);
   return response.data;
 };
 
@@ -190,7 +190,7 @@ export const callRazorpayCreateOrder = async (razorPayOrderRequestPayload : Razo
 
 export const callRazorpayVerifyPayment = async (razorPayVerifyRequestPayload : RazorpayVerifyRequestPayLoad) : Promise<PaymentVerifyApiResponse> => {
   const response = await axiosInstance.post(`/razorpay/verify-payment`, razorPayVerifyRequestPayload);
-  console.log("verify res", response);
+  // console.log("verify res", response);
   return response.data;
 }
 

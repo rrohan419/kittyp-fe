@@ -19,7 +19,7 @@ const SitemapXml = () => {
           const xml = await response.text();
           setXmlContent(xml);
         } else {
-          console.log('API returned non-XML content, using fallback');
+          // console.log('API returned non-XML content, using fallback');
           // Fallback to generated sitemap if API fails or returns wrong content type
           generateFallbackSitemap();
         }

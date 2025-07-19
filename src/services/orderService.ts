@@ -1,5 +1,5 @@
 import axiosInstance from "@/config/axionInstance";
-import { Taxes } from "./cartService";
+import { ApiSuccessResponse, CurrencyType, Taxes } from "./cartService";
 import { UserProfile } from "./authService";
 
 export interface OrderAddress {
@@ -17,7 +17,7 @@ export interface OrderProduct {
   name: string;
   description: string;
   price: number;
-  currency: string;
+  currency: CurrencyType;
   status: string;
   productImageUrls: string[];
   category: string;
@@ -45,7 +45,7 @@ export interface Order {
   totalAmount: number;
   subTotal: number;
   taxes: Taxes | null;
-  currency: string;
+  currency: CurrencyType;
   status: string;
   shippingAddress: OrderAddress | null;
   billingAddress: OrderAddress | null;
@@ -57,6 +57,7 @@ export interface OrderFilterRequest {
   userUuid: string | null;
   orderNumber: string | null;
   orderStatus: string | null;
+  searchText: string | null;
 }
 
 export interface OrderApiResponse {
@@ -88,12 +89,12 @@ export const fetchFilteredOrders = async (
   filters: OrderFilterRequest
 ): Promise<OrderApiResponse> => {
   try {
-    console.log(`Fetching orders with page=${page}, size=${size}, filters:`, filters);
+    // console.log(`Fetching orders with page=${page}, size=${size}, filters:`, filters);
     const response = await axiosInstance.post(
       `/order/filter?page=${page}&size=${size}`,
       filters
     );
-    console.log("Order API response:", response.data);
+    // console.log("Order API response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error fetching orders:", error);
@@ -119,4 +120,16 @@ export const fetchOrderInvoice = async (
     console.error("Error fetching invoice:", error);
     throw error;
   }
+};
+
+export const updateOrderStatus = async (orderNumber: string, orderStatus: string): Promise<OrderSingleApiResponse> => {
+  const response = await axiosInstance.post(`/order/update/status`, {'orderNumber' : orderNumber, 'orderStatus' : orderStatus});
+
+  return response.data;
+}
+
+
+export const fetchSuccessfullOrderCount = async (): Promise<ApiSuccessResponse<number>> => {
+  const response = await axiosInstance.get(`/order/count`);
+  return response.data;
 };

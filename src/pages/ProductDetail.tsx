@@ -224,26 +224,26 @@ const ProductDetail = () => {
               </div>
             </div>
 
-            {product.attribute && (
+            {product.attributes && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-foreground">Specifications</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  {product.attribute.color && (
+                  {product.attributes.color && (
                     <div>
                       <p className="text-sm text-muted-foreground">Color</p>
-                      <p className="font-medium text-foreground">{product.attribute.color}</p>
+                      <p className="font-medium text-foreground">{product.attributes.color}</p>
                     </div>
                   )}
-                  {product.attribute.size && (
+                  {product.attributes.size && (
                     <div>
                       <p className="text-sm text-muted-foreground">Size</p>
-                      <p className="font-medium text-foreground">{product.attribute.size}</p>
+                      <p className="font-medium text-foreground">{product.attributes.size}</p>
                     </div>
                   )}
-                  {product.attribute.material && (
+                  {product.attributes.material && (
                     <div>
                       <p className="text-sm text-muted-foreground">Material</p>
-                      <p className="font-medium text-foreground">{product.attribute.material}</p>
+                      <p className="font-medium text-foreground">{product.attributes.material}</p>
                     </div>
                   )}
                 </div>

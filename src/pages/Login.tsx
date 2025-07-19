@@ -69,7 +69,7 @@ const Login = () => {
       setLoading(false);
     }
 
-    console.log('Login attempted with:', { email });
+    // console.log('Login attempted with:', { email });
   };
 
 

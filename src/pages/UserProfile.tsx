@@ -18,7 +18,7 @@ const UserProfile: React.FC = () => {
 
   const handleSave = () => {
     setIsEditing(false);
-    console.log("Profile Saved:", profile);
+    // console.log("Profile Saved:", profile);
   };
 
   const handleCancel = () => {

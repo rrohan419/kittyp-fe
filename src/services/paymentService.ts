@@ -94,7 +94,7 @@ export const handleCheckout = (
         description: "Test Transaction",
         order_id: data.id,
         handler: async function (razorpayOrderResponse: RazorpayOrderResponse) {
-          console.log("Payment successful", razorpayOrderResponse);
+          // console.log("Payment successful", razorpayOrderResponse);
 
           try {
             const razorpayVerifyResponse = await callRazorpayVerifyPayment({
@@ -103,7 +103,7 @@ export const handleCheckout = (
               signature: razorpayOrderResponse.razorpay_signature,
             });
 
-            console.log("Verification response:", razorpayVerifyResponse);
+            // console.log("Verification response:", razorpayVerifyResponse);
 
             // If we get here, verification was successful
             resolve(razorpayOrderResponse);

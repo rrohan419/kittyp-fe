@@ -42,6 +42,7 @@ interface WrappedArticleResponse {
   export type ArticleSearchRequest = {
     name: string | null;
     isRandom: boolean | null;
+    articleStatus: string | null;
   };
   
    type FetchArticles = {
@@ -61,5 +62,38 @@ interface WrappedArticleResponse {
 
   export const fetchArticleBySlug = async ({ slug }: FetchArticleBySlug): Promise<WrappedArticleResponse> => {
     const response = await axiosInstance.get(`/article/${slug}`);
+    return response.data;
+  };
+
+  export type CreateArticleRequest = {
+    title: string;
+    slug: string;
+    excerpt: string;
+    content: string;
+    coverImage: string;
+    category: string;
+    tags: string[];
+    readTime: number;
+    author: Author;
+  };
+
+  export type EditArticleRequest = {
+    title?: string;
+    excerpt?: string;
+    content?: string;
+    coverImage?: string;
+    category?: string;
+    tags?: string[];
+    readTime?: number;
+    author?: Author;
+  };
+
+  export const createArticle = async (body: CreateArticleRequest): Promise<WrappedArticleResponse> => {
+    const response = await axiosInstance.post('/article', body);
+    return response.data;
+  };
+
+  export const editArticle = async (slug: string, body: EditArticleRequest): Promise<WrappedArticleResponse> => {
+    const response = await axiosInstance.patch(`/article?slug=${slug}`, body);
     return response.data;
   };

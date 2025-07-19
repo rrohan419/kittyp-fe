@@ -9,7 +9,7 @@ export const useOrderCount = (userUuid?: string) => {
 
   useEffect(() => {
     if (userUuid) {
-      dispatch(fetchTotalOrderCount(userUuid));
+      dispatch(fetchTotalOrderCount());
     }
 
     // Cleanup when component unmounts
@@ -20,7 +20,7 @@ export const useOrderCount = (userUuid?: string) => {
 
   const refreshOrderCount = () => {
     if (userUuid) {
-      dispatch(fetchTotalOrderCount(userUuid));
+      dispatch(fetchTotalOrderCount());
     }
   };
 
