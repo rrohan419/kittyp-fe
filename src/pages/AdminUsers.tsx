@@ -46,6 +46,7 @@ const AdminUsers = () => {
     phoneCountryCode: '',
     phoneNumber: '',
   });
+  const currentUser = useAppSelector((state) => state.authReducer.user);
 
   const loadUsers = async (page: number = currentPage) => {
     try {
@@ -207,100 +208,111 @@ const AdminUsers = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map((user) => (
-                      <TableRow key={user.uuid}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{user.firstName} {user.lastName}</div>
-                            <div className="text-sm text-muted-foreground flex items-center">
-                              <Mail className="h-3 w-3 mr-1" />
-                              {user.email}
+                    {filteredUsers.map((user) => {
+
+                      const isCurrentUser = currentUser.email === user.email;
+                      return (
+                        <TableRow key={user.uuid}
+                        className={`transition-colors ${
+                          isCurrentUser
+                            ? 'opacity-50 cursor-not-allowed relative group'
+                            : 'hover:bg-muted cursor-pointer'
+                        }`}
+                        title={isCurrentUser ? "You can't take action on yourself" : ''}
+                        >
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{user.firstName} {user.lastName}</div>
+                              <div className="text-sm text-muted-foreground flex items-center">
+                                <Mail className="h-3 w-3 mr-1" />
+                                {user.email}
+                              </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {user.phoneCountryCode && user.phoneNumber ? (
+                          </TableCell>
+                          <TableCell>
+                            {user.phoneCountryCode && user.phoneNumber ? (
+                              <div className="text-sm flex items-center">
+                                <Phone className="h-3 w-3 mr-1" />
+                                {user.phoneCountryCode} {user.phoneNumber}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              {user.roles.map((role) => (
+                                <Badge key={role} variant="secondary" className="text-xs">
+                                  {role}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={user.enabled ? "default" : "destructive"}>
+                              {user.enabled ? "Active" : "Inactive"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
                             <div className="text-sm flex items-center">
-                              <Phone className="h-3 w-3 mr-1" />
-                              {user.phoneCountryCode} {user.phoneNumber}
+                              <Calendar className="h-3 w-3 mr-1" />
+                              {new Date(user.createdAt).toLocaleDateString()}
                             </div>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            {user.roles.map((role) => (
-                              <Badge key={role} variant="secondary" className="text-xs">
-                                {role}
-                              </Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={user.enabled ? "default" : "destructive"}>
-                            {user.enabled ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm flex items-center">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {new Date(user.createdAt).toLocaleDateString()}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="hover:bg-blue-100 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                              onClick={() => { setEditUser(user); setEditDialogOpen(true); }}
-                            >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Edit
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={isUpdating === user.uuid}
-                                  className={user.enabled ?
-                                    "hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400" :
-                                    "hover:bg-green-100 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400"
-                                  }
-                                >
-                                  {isUpdating === user.uuid ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <>
-                                      {user.enabled ? "Disable" : "Enable"}
-                                    </>
-                                  )}
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Confirm User Status Change</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to {user.enabled ? 'disable' : 'enable'} <strong>{user.firstName} {user.lastName}</strong> ({user.email})?
-                                    {user.enabled ? ' This will prevent them from accessing the system.' : ' This will allow them to access the system.'}
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleStatusUpdate(user.uuid, user.enabled)}
-                                    className={user.enabled ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="hover:bg-blue-100 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                                onClick={() => { setEditUser(user); setEditDialogOpen(true); }}
+                                disabled= {isCurrentUser}
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Edit
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={(isUpdating === user.uuid) || isCurrentUser}
+                                    className={user.enabled ?
+                                      "hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400" :
+                                      "hover:bg-green-100 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400"
+                                    }
                                   >
-                                    {user.enabled ? 'Disable User' : 'Enable User'}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
-                        {/* <TableCell>
+                                    {isUpdating === user.uuid ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <>
+                                        {user.enabled ? "Disable" : "Enable"}
+                                      </>
+                                    )}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Confirm User Status Change</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to {user.enabled ? 'disable' : 'enable'} <strong>{user.firstName} {user.lastName}</strong> ({user.email})?
+                                      {user.enabled ? ' This will prevent them from accessing the system.' : ' This will allow them to access the system.'}
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleStatusUpdate(user.uuid, user.enabled)}
+                                      className={user.enabled ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
+                                    >
+                                      {user.enabled ? 'Disable User' : 'Enable User'}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                          {/* <TableCell>
                           <div className="flex gap-2">
                             <Button variant="outline" size="sm">Edit</Button>
 
@@ -327,8 +339,9 @@ const AdminUsers = () => {
                           </div>
                         </TableCell> */}
 
-                      </TableRow>
-                    ))}
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

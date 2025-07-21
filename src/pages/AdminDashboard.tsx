@@ -49,7 +49,7 @@ const AdminDashboard = () => {
   const dispatch = useAppDispatch();
   
   // Get state from Redux store
-  const { productCount, isDashboardLoading, totalOrderCount } = useAppSelector((state) => state.adminReducer);
+  const { productCount, isDashboardLoading, totalOrderCount, totalArticleCount, totalUserCount } = useAppSelector((state) => state.adminReducer);
   const user = useAppSelector((state) => state.authReducer.user);
 
   // Fetch articles
@@ -138,10 +138,10 @@ const AdminDashboard = () => {
   }
 
   const stats = [
-    { title: 'Total Users', value: '2,420', icon: Users, color: 'bg-blue-100 text-blue-700', route: '/admin/users' },
-    { title: 'Orders', value: totalOrderCount.toString(), icon: ShoppingCart, color: 'bg-green-100 text-green-700', route: '/admin/orders' },
-    { title: 'Products', value: productCount.toString(), icon: Package, color: 'bg-purple-100 text-purple-700', route: '/admin/products' },
-    { title: 'Articles', value: articles.length.toString(), icon: FileText, color: 'bg-amber-100 text-amber-700', route: '/admin/articles' },
+    { title: 'Total Users', value: totalUserCount, icon: Users, color: 'bg-blue-100 text-blue-700', route: '/admin/users' },
+    { title: 'Orders', value: totalOrderCount, icon: ShoppingCart, color: 'bg-green-100 text-green-700', route: '/admin/orders' },
+    { title: 'Products', value: productCount, icon: Package, color: 'bg-purple-100 text-purple-700', route: '/admin/products' },
+    { title: 'Articles', value: totalArticleCount, icon: FileText, color: 'bg-amber-100 text-amber-700', route: '/admin/articles' },
   ];
 
 

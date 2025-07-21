@@ -72,4 +72,17 @@ export const authSlice = createSlice({
 });
 
 export const { setUser, clearUser, setLoading, setError } = authSlice.actions;
+
+// Add async thunk to update user profile
+export const updateUserProfile = createAsyncThunk(
+  'auth/updateUserProfile',
+  async (updatedUser: UserProfile, { dispatch }) => {
+    try {
+      dispatch(setUser(updatedUser));
+      return updatedUser;
+    } catch (error) {
+      throw error;
+    }
+  }
+);
 export default authSlice.reducer; 

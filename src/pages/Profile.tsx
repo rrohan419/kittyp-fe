@@ -71,6 +71,8 @@ const Profile: React.FC = () => {
                   : "-"
               }
               ordersCount={ordersLoading ? null : totalOrderCount}
+              profilePictureUrl={user.profilePictureUrl}
+              userUuid={user.uuid}
             />
 
             <div className="space-y-8">

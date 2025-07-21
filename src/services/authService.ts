@@ -54,6 +54,7 @@ export interface PetProfile {
   healthConditions: string;
   allergies: string;
   isNeutered: boolean;
+  createdAt: string
 }
 
 export interface UserProfile {
@@ -68,6 +69,7 @@ export interface UserProfile {
   uuid: string;
   createdAt: string;
   accessToken: string;
+  profilePictureUrl: string;
   ownerPets: PetProfile[];
 }
 

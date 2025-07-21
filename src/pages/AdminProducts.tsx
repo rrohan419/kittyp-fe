@@ -19,13 +19,7 @@ import { addProduct, Product, updateProductAdmin } from '@/services/productServi
 import { toast } from 'sonner';
 import { formatCurrency } from '@/services/cartService';
 
-const uploadImageToS3 = async (file: File): Promise<string> => {
-  // TODO: Implement this with your backend API
-  // Example: const formData = new FormData(); formData.append('file', file);
-  // const res = await fetch('/api/upload', { method: 'POST', body: formData });
-  // const data = await res.json(); return data.url;
-  return new Promise((resolve) => setTimeout(() => resolve('https://placehold.co/200x200'), 1000));
-};
+import { uploadProductImages } from '@/services/fileUploadService';
 
 const AdminProducts = () => {
   const dispatch = useDispatch();
@@ -439,8 +433,12 @@ const AdminProducts = () => {
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      const url = await uploadImageToS3(file);
-                      setValue('productImageUrls.0', url, { shouldValidate: true });
+                      try {
+                        const urls = await uploadProductImages([file]);
+                        setValue('productImageUrls.0', urls[0], { shouldValidate: true });
+                      } catch (error) {
+                        console.error('Upload failed:', error);
+                      }
                     }
                   }}
                 />
