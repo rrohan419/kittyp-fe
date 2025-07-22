@@ -143,7 +143,7 @@ export const router = createBrowserRouter(
           element: <PageTransition><AdminArticleEditor /></PageTransition>,
         },
         {
-          path: "admin/articles/edit/:id",
+          path: "admin/articles/edit/:slug",
           element: <PageTransition><AdminArticleEditor /></PageTransition>,
         },
         {
