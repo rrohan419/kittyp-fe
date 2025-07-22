@@ -94,6 +94,6 @@ interface WrappedArticleResponse {
   };
 
   export const editArticle = async (slug: string, body: EditArticleRequest): Promise<WrappedArticleResponse> => {
-    const response = await axiosInstance.patch(`/article/${slug}`, body);
+    const response = await axiosInstance.patch(`/admin/article/edit/${slug}`, body);
     return response.data;
   };
