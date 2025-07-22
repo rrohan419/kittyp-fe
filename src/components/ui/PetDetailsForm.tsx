@@ -9,9 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Heart, Trash2, Save, Edit, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Camera, Upload } from "lucide-react";
 import { PetProfile } from "@/services/authService";
 import { addPet, deletePet, editPet, fetchUserPets, AddPet, UpdatePet } from "@/services/UserService";
+import { PetPhotoUpload } from './PetPhotoUpload';
 
 const PetDetailsForm: React.FC = () => {
     const [pets, setPets] = useState<PetProfile[]>([]);
@@ -20,8 +20,7 @@ const PetDetailsForm: React.FC = () => {
     const [editingPetId, setEditingPetId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
-    
+
     const [petForm, setPetForm] = useState<Omit<AddPet, 'isNeutered'> & { isNeutered: string }>({
         name: '',
         profilePicture: '',
@@ -75,20 +74,7 @@ const PetDetailsForm: React.FC = () => {
         setEditingPetId(null);
     };
 
-    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files && event.target.files[0]) {
-            const file = event.target.files[0];
-            const reader = new FileReader();
-
-            reader.onload = (e) => {
-                if (e.target?.result) {
-                    setPetForm({ ...petForm, profilePicture: e.target.result as string });
-                }
-            };
-
-            reader.readAsDataURL(file);
-        }
-    };
+    // Remove old handleImageUpload and fileInputRef logic
 
     const handleAddPet = async () => {
         if (!petForm.name) {
@@ -104,11 +90,11 @@ const PetDetailsForm: React.FC = () => {
                 ...petForm,
                 isNeutered: petForm.isNeutered === 'yes'
             };
-            
+
             const newPet = await addPet(petDto);
             setPets([...pets, newPet]);
             resetForm();
-            
+
             toast.success("Pet Added Successfully", {
                 description: `${newPet.name} has been added to your profile.`
             });
@@ -137,11 +123,11 @@ const PetDetailsForm: React.FC = () => {
                 ...petForm,
                 isNeutered: petForm.isNeutered === 'yes'
             };
-            
+
             const updatedPet = await editPet(updatePetDto);
             setPets(pets.map(pet => pet.uuid === editingPetId ? updatedPet : pet));
             resetForm();
-            
+
             toast.success("Pet Updated Successfully", {
                 description: `${updatedPet.name} has been updated.`
             });
@@ -296,34 +282,18 @@ const PetDetailsForm: React.FC = () => {
                     </CardHeader>
                     <CardContent className="space-y-4">
 
-                        {/* Pet Profile Picture */}
+                        {/* Pet Profile Picture Upload */}
                         <div className="flex flex-col items-center space-y-4 py-4">
-                            <Label className="text-sm font-medium">Pet Profile Picture</Label>
-                            <div className="relative group">
-                                <Avatar className="w-24 h-24 border-2 border-primary/20 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                    {petForm.profilePicture ? (
-                                        <AvatarImage src={petForm.profilePicture} alt="Pet preview" className="object-cover" />
-                                    ) : (
-                                        <AvatarFallback className="bg-primary/10 text-primary">
-                                            <Upload className="h-8 w-8" />
-                                        </AvatarFallback>
-                                    )}
-                                </Avatar>
-                                <div
-                                    className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center cursor-pointer"
-                                    onClick={() => fileInputRef.current?.click()}
-                                >
-                                    <Camera className="h-6 w-6 text-white" />
-                                </div>
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={handleImageUpload}
-                                    accept="image/*"
-                                    className="hidden"
-                                />
-                            </div>
-                            <p className="text-xs text-muted-foreground text-center">Click to upload a photo of your pet</p>
+                          <PetPhotoUpload
+                            currentPhotos={petForm.profilePicture ? [petForm.profilePicture] : []}
+                            petUuid={isEditingPet ? editingPetId || undefined : undefined}
+                            onUploadComplete={(urls) => {
+                              // For single profile picture, use the first url
+                              setPetForm({ ...petForm, profilePicture: urls[0] || '' });
+                            }}
+                            petName={petForm.name}
+                            maxPhotos={1}
+                          />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -442,8 +412,8 @@ const PetDetailsForm: React.FC = () => {
                         </div>
 
                         <div className="flex gap-2 pt-4">
-                            <Button 
-                                onClick={isEditingPet ? handleEditPet : handleAddPet} 
+                            <Button
+                                onClick={isEditingPet ? handleEditPet : handleAddPet}
                                 className="flex items-center gap-2"
                                 disabled={saving}
                             >

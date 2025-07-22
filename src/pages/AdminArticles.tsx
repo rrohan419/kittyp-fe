@@ -37,6 +37,7 @@ const AdminArticles = () => {
         body: {
           name: null,
           isRandom: null,
+          articleStatus: null
         },
       });
       setArticles(response.data.models);

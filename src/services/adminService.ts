@@ -1,5 +1,6 @@
 import axiosInstance from "@/config/axionInstance";
 import { UserProfile } from "./authService";
+import { ApiSuccessResponse } from "./cartService";
 
 interface PaginationModel<T> {
   models: T[];
@@ -23,6 +24,13 @@ interface WrappedUserResponse {
   data: UserProfile;
   timestamp: string;
   status: number;
+}
+
+interface AdminDashboardData {
+  totalOrders: number;
+  productCount: number;
+  usersCount : number;
+  articleCount : number;
 }
 
 export const fetchAllUsers = async (pageNumber: number = 1, pageSize: number = 10): Promise<PaginationModel<UserProfile>> => {
@@ -55,3 +63,10 @@ export const updateUser = async (userUuid: string, userData: Partial<UserProfile
   );
   return response.data.data;
 }; 
+
+export const fetchAdminDashboardData = async (): Promise<AdminDashboardData> => {
+  const response = await axiosInstance.get<ApiSuccessResponse<AdminDashboardData>>(
+    `/admin/dashboard-summary`
+  );
+  return response.data.data;
+};

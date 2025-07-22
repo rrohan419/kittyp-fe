@@ -25,6 +25,7 @@ export interface UserUpdateDto {
   lastName: string;
   phoneNumber: string;
   phoneCountryCode: string;
+  profilePictureUrl?: string;
 }
 
 export interface AddPet {
@@ -89,6 +90,24 @@ export const deletePet = async (uuid: string): Promise<PetProfile> => {
 export const editPet = async (updatePetDto: UpdatePet): Promise<PetProfile> => {
   const { uuid, ...petData } = updatePetDto;
   const response = await axiosInstance.put<WrappedResponse<PetProfile>>(`/pet?uuid=${uuid}`, petData);
+  return response.data.data;
+};
+
+export const updateUserProfilePicture = async (userUuid: string, profilePictureUrl: string): Promise<UserProfile> => {
+  const userResponse = await axiosInstance.patch<WrappedUserResponse>(
+    `/user/profile-picture?userUuid=${userUuid}`,
+    { profilePictureUrl }
+  );
+  const user = userResponse.data.data;
+  localStorage.setItem('user', JSON.stringify(user));
+  return user;
+};
+
+export const updatePetPhotos = async (petUuid: string, photos: string[]): Promise<PetProfile> => {
+  const response = await axiosInstance.patch<WrappedResponse<PetProfile>>(
+    `/pet/photos?uuid=${petUuid}`,
+    { photos }
+  );
   return response.data.data;
 };
 

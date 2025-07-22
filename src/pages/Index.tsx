@@ -9,12 +9,21 @@ import { ArticleSearchRequest, fetchArticles } from '@/services/articleService';
 import { cn } from '@/lib/utils';
 
 const productDto: ProductFilterRequest = { isRandom: true, category: null, maxPrice: null, minPrice: null, name: null, status: null };
-const articleDto: ArticleSearchRequest = {isRandom: true, name: null, articleStatus: 'PUBLISHED'};
+const articleDto: ArticleSearchRequest = { isRandom: true, name: null, articleStatus: 'PUBLISHED' };
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [featuredArticle, setFeaturedArticle] = useState([]);
+  const [favoriteProductIds, setFavoriteProductIds] = useState<string[]>([]);
+
+  const handleToggleFavorite = (uuid: string) => {
+    setFavoriteProductIds((prev) =>
+      prev.includes(uuid) ? prev.filter(id => id !== uuid) : [...prev, uuid]
+    );
+  };
+
+
 
   useEffect(() => {
     const loadFeaturedProducts = async () => {
@@ -33,7 +42,7 @@ const Index = () => {
       }
     };
 
-    const blogPosts = async () =>{
+    const blogPosts = async () => {
       setIsLoading(true);
       try {
         const response = await fetchArticles({
@@ -45,7 +54,7 @@ const Index = () => {
         setFeaturedArticle(response.data.models);
       } catch (error) {
         console.error('Error loading articles:', error);
-      } finally{
+      } finally {
         setIsLoading(false);
       }
     };
@@ -89,6 +98,8 @@ const Index = () => {
                 product={product}
                 index={index}
                 className="animate-fade-up"
+                isFavorite={favoriteProductIds.includes(product.uuid)}
+                onToggleFavorite={() => handleToggleFavorite(product.uuid)}
               />
             ))}
           </div>

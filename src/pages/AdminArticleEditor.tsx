@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
@@ -33,13 +33,21 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-// import { Article, Author } from '@/types/article';
-import { FileText, Save, Send } from 'lucide-react';
-import RichTextEditor from '@/components/admin/RichTextEditor';
-import { Article, Author } from './Interface/articles';
+import { FileText, Save, Send, Upload, FileInput } from 'lucide-react';
+import BlogEditor from '@/components/BlogEditor';
 import { createArticle, editArticle, fetchArticleBySlug } from '@/services/articleService';
+import { uploadFiles } from '@/services/fileService';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogClose
+  } from "@/components/ui/dialog";
 
-// Define the form schema
 const articleFormSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters" }),
   slug: z.string().min(5, { message: "Slug must be at least 5 characters" }),
@@ -47,7 +55,7 @@ const articleFormSchema = z.object({
   content: z.string().min(50, { message: "Content must be at least 50 characters" }),
   coverImage: z.string().url({ message: "Cover image must be a valid URL" }),
   category: z.string().min(2, { message: "Category is required" }),
-  tags: z.string().transform(val => val.split(',').map(tag => tag.trim())),
+  tags: z.string(),
   readTime: z.coerce.number().min(1, { message: "Read time must be at least 1 minute" }),
   status: z.enum(["DRAFT", "PUBLISHED"])
 });
@@ -67,8 +75,12 @@ const AdminArticleEditor = () => {
   const [submitting, setSubmitting] = useState(false);
   const [fetchingArticle, setFetchingArticle] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [htmlToImport, setHtmlToImport] = useState("");
   const navigate = useNavigate();
-  const { slug } = useParams();
+  const { slug } = useParams<{ slug: string }>();
+  console.log('--------------------------------->   ',slug)
+  const coverImageFileRef = useRef<HTMLInputElement>(null);
+
 
   useEffect(() => {
     const roles = JSON.parse(localStorage.getItem('roles') || '[]');
@@ -77,7 +89,21 @@ const AdminArticleEditor = () => {
     setLoading(false);
   }, []);
 
-  // Fetch article for edit mode
+  const form = useForm<ArticleFormValues>({
+    resolver: zodResolver(articleFormSchema),
+    defaultValues: {
+      title: "",
+      slug: "",
+      excerpt: "",
+      content: "",
+      coverImage: "",
+      category: "",
+      tags: "",
+      readTime: 5,
+      status: "DRAFT"
+    },
+  });
+
   useEffect(() => {
     if (slug) {
       setFetchingArticle(true);
@@ -91,39 +117,37 @@ const AdminArticleEditor = () => {
             content: data.content,
             coverImage: data.coverImage,
             category: data.category,
-            tags: data.tags,
+            tags: data.tags.join(','),
             readTime: data.readTime,
-            status: 'DRAFT', // Always default to DRAFT for editing
+            status: 'DRAFT',
           });
         })
         .catch(() => setFetchError('Failed to load article'))
         .finally(() => setFetchingArticle(false));
     }
-    // eslint-disable-next-line
   }, [slug]);
 
-  // Redirect non-admin users
   if (!loading && userRole !== 'ROLE_ADMIN') {
     return <Navigate to="/" replace />;
   }
 
-  // Setup form with default values
-  const form = useForm<ArticleFormValues>({
-    resolver: zodResolver(articleFormSchema),
-    defaultValues: {
-      title: "",
-      slug: "",
-      excerpt: "",
-      content: "",
-      coverImage: "",
-      category: "",
-      tags: [],
-      readTime: 5,
-      status: "DRAFT"
-    },
-  });
+  const handleCoverImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+        try {
+            const response = await uploadFiles(Array.from(files));
+            const imageUrl = response.data[0];
+            if (imageUrl) {
+                form.setValue("coverImage", imageUrl, { shouldValidate: true });
+                toast.success("Cover image uploaded!");
+            }
+        } catch (error) {
+            toast.error("Error uploading cover image.");
+            console.error('Error uploading file:', error);
+        }
+    }
+  };
 
-  // Handle form submission
   const onSubmit = async (values: ArticleFormValues) => {
     setSubmitting(true);
     try {
@@ -134,16 +158,15 @@ const AdminArticleEditor = () => {
         content: values.content,
         coverImage: values.coverImage,
         category: values.category,
-        tags: Array.isArray(values.tags) ? values.tags : [],
+        tags: values.tags.split(',').map(tag => tag.trim()),
         readTime: values.readTime,
         author: DEFAULT_AUTHOR,
+        status: values.status
       };
       if (slug) {
-        // Edit mode
         await editArticle(slug, payload);
         toast.success('Article updated!');
       } else {
-        // Create mode
         await createArticle(payload);
         toast.success('Article created!');
       }
@@ -155,7 +178,6 @@ const AdminArticleEditor = () => {
     }
   };
 
-  // Generate slug from title
   const generateSlug = () => {
     const title = form.getValues("title");
     if (title) {
@@ -208,7 +230,10 @@ const AdminArticleEditor = () => {
               <Button 
                 type="submit"
                 disabled={submitting}
-                onClick={() => form.setValue('status', 'PUBLISHED')}
+                onClick={() => {
+                    form.setValue('status', 'PUBLISHED');
+                    form.handleSubmit(onSubmit)();
+                }}
               >
                 {submitting ? 'Publishing...' : 'Publish'}
               </Button>
@@ -295,9 +320,30 @@ const AdminArticleEditor = () => {
                       name="coverImage"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Cover Image URL</FormLabel>
+                          <FormLabel>Cover Image</FormLabel>
                           <FormControl>
-                            <Input placeholder="https://example.com/image.jpg" {...field} />
+                            <div>
+                                <Input
+                                    type="file"
+                                    ref={coverImageFileRef}
+                                    onChange={handleCoverImageUpload}
+                                    className="hidden"
+                                    accept="image/*"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => coverImageFileRef.current?.click()}
+                                >
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    Upload Image
+                                </Button>
+                                {field.value && (
+                                    <div className="mt-4">
+                                        <img src={field.value} alt="Cover preview" className="rounded-md object-cover h-48 w-full" />
+                                    </div>
+                                )}
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -343,7 +389,7 @@ const AdminArticleEditor = () => {
                           <FormControl>
                             <Input 
                               placeholder="eco-friendly, cats, sustainability" 
-                              {...field} 
+                              {...field}
                             />
                           </FormControl>
                           <p className="text-xs text-muted-foreground">
@@ -376,9 +422,44 @@ const AdminArticleEditor = () => {
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Article Content</CardTitle>
-                  <CardDescription>Write your article content in HTML format</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>Article Content</CardTitle>
+                        <CardDescription>Write your article using the rich text editor</CardDescription>
+                    </div>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button type="button" variant="outline"><FileInput className="mr-2 h-4 w-4" /> Import HTML</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Import HTML</DialogTitle>
+                                <DialogDescription>
+                                    Paste your HTML content below. This will replace the current editor content.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <Textarea
+                                placeholder="<p>Your HTML content here...</p>"
+                                value={htmlToImport}
+                                onChange={(e) => setHtmlToImport(e.target.value)}
+                                className="min-h-[250px] font-mono"
+                            />
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button type="button" variant="secondary">Cancel</Button>
+                                </DialogClose>
+                                <DialogClose asChild>
+                                    <Button type="button" onClick={() => {
+                                        form.setValue('content', htmlToImport, { shouldValidate: true });
+                                        setHtmlToImport('');
+                                        toast.success("HTML content imported successfully!");
+                                    }}>
+                                        Import
+                                    </Button>
+                                </DialogClose>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </CardHeader>
                 <CardContent>
                   <FormField
@@ -387,8 +468,9 @@ const AdminArticleEditor = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormControl>
-                          <RichTextEditor 
-                            value={field.value} 
+                          <BlogEditor 
+                            key={slug || 'new-article'}
+                            content={field.value} 
                             onChange={field.onChange} 
                           />
                         </FormControl>

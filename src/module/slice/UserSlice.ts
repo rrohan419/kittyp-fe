@@ -15,6 +15,7 @@ const initialState: UserProfile = {
     accessToken: '',
     roles: [],
     ownerPets: [],
+    profilePictureUrl: ''
 }
 
 export const userSlice = createSlice({
@@ -34,6 +35,7 @@ export const userSlice = createSlice({
                 state.uuid = action.payload.uuid;
                 state.createdAt = action.payload.createdAt;
                 state.ownerPets = action.payload.ownerPets;
+                state.profilePictureUrl = action.payload.profilePictureUrl;
             }
         },
         resetUserData: (state) => {

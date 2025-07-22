@@ -211,7 +211,15 @@ export function AnimatedRoutes() {
           }
         />
         <Route
-          path="/admin/articles/edit/:id"
+          path="/admin/articles/edit/:slug"
+          element={
+            <PageTransition key={location.pathname}>
+              <AdminArticleEditor />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/admin/articles/:slug"
           element={
             <PageTransition key={location.pathname}>
               <AdminArticleEditor />
