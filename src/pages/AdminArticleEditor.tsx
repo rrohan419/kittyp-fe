@@ -76,6 +76,8 @@ const AdminArticleEditor = () => {
   const [fetchingArticle, setFetchingArticle] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [htmlToImport, setHtmlToImport] = useState("");
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   console.log('--------------------------------->   ',slug)
@@ -121,11 +123,35 @@ const AdminArticleEditor = () => {
             readTime: data.readTime,
             status: 'DRAFT',
           });
+          setHasUnsavedChanges(false);
         })
         .catch(() => setFetchError('Failed to load article'))
         .finally(() => setFetchingArticle(false));
     }
   }, [slug]);
+
+  // Track form changes for unsaved changes warning
+  useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+      if (type === 'change' && name) {
+        setHasUnsavedChanges(true);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
+  // Warn user before leaving with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   if (!loading && userRole !== 'ROLE_ADMIN') {
     return <Navigate to="/" replace />;
@@ -151,28 +177,45 @@ const AdminArticleEditor = () => {
   const onSubmit = async (values: ArticleFormValues) => {
     setSubmitting(true);
     try {
+      // Validate content length
+      if (values.content.length < 50) {
+        toast.error('Article content must be at least 50 characters long');
+        setSubmitting(false);
+        return;
+      }
+
+      // Clean up tags
+      const cleanedTags = values.tags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0);
+
       const payload = {
-        title: values.title,
-        slug: values.slug,
-        excerpt: values.excerpt,
+        title: values.title.trim(),
+        slug: values.slug.trim(),
+        excerpt: values.excerpt.trim(),
         content: values.content,
         coverImage: values.coverImage,
         category: values.category,
-        tags: values.tags.split(',').map(tag => tag.trim()),
+        tags: cleanedTags,
         readTime: values.readTime,
         author: DEFAULT_AUTHOR,
         status: values.status
       };
+
       if (slug) {
         await editArticle(slug, payload);
-        toast.success('Article updated!');
+        toast.success('Article updated successfully!');
       } else {
         await createArticle(payload);
-        toast.success('Article created!');
+        toast.success('Article created successfully!');
       }
+      setHasUnsavedChanges(false);
       navigate('/admin/articles');
-    } catch (err) {
-      toast.error('Failed to save article');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to save article';
+      toast.error(errorMessage);
+      console.error('Article save error:', err);
     } finally {
       setSubmitting(false);
     }
@@ -208,11 +251,24 @@ const AdminArticleEditor = () => {
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Article Editor</h1>
               <p className="text-muted-foreground">Create and publish articles for your blog</p>
+              {hasUnsavedChanges && (
+                <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
+                  ⚠️ You have unsaved changes
+                </p>
+              )}
             </div>
             <div className="flex space-x-2">
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/admin')}
+                onClick={() => {
+                  if (hasUnsavedChanges) {
+                    if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
+                      navigate('/admin');
+                    }
+                  } else {
+                    navigate('/admin');
+                  }
+                }}
               >
                 Cancel
               </Button>
@@ -427,36 +483,68 @@ const AdminArticleEditor = () => {
                         <CardTitle>Article Content</CardTitle>
                         <CardDescription>Write your article using the rich text editor</CardDescription>
                     </div>
-                    <Dialog>
+                    <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
                         <DialogTrigger asChild>
                             <Button type="button" variant="outline"><FileInput className="mr-2 h-4 w-4" /> Import HTML</Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] flex flex-col">
                             <DialogHeader>
-                                <DialogTitle>Import HTML</DialogTitle>
+                                <DialogTitle>Import HTML Content</DialogTitle>
                                 <DialogDescription>
                                     Paste your HTML content below. This will replace the current editor content.
                                 </DialogDescription>
                             </DialogHeader>
-                            <Textarea
-                                placeholder="<p>Your HTML content here...</p>"
-                                value={htmlToImport}
-                                onChange={(e) => setHtmlToImport(e.target.value)}
-                                className="min-h-[250px] font-mono"
-                            />
-                            <DialogFooter>
-                                <DialogClose asChild>
-                                    <Button type="button" variant="secondary">Cancel</Button>
-                                </DialogClose>
-                                <DialogClose asChild>
-                                    <Button type="button" onClick={() => {
-                                        form.setValue('content', htmlToImport, { shouldValidate: true });
+                            <div className="flex-1 min-h-0 flex flex-col space-y-4 overflow-y-auto">
+                                <div className="flex-1 min-h-0">
+                                    <Label htmlFor="html-content" className="text-sm font-medium">
+                                        HTML Content
+                                    </Label>
+                                    <Textarea
+                                        id="html-content"
+                                        placeholder="<p>Your HTML content here...</p>"
+                                        value={htmlToImport}
+                                        onChange={(e) => setHtmlToImport(e.target.value)}
+                                        className="min-h-[200px] max-h-[400px] font-mono text-xs sm:text-sm resize-none"
+                                    />
+                                </div>
+                                {htmlToImport && (
+                                    <div className="flex-shrink-0">
+                                        <Label className="text-sm font-medium">Content Length: {htmlToImport.length} characters</Label>
+                                    </div>
+                                )}
+                            </div>
+                            <DialogFooter className="flex-shrink-0">
+                                <Button 
+                                    type="button" 
+                                    variant="secondary" 
+                                    onClick={() => {
                                         setHtmlToImport('');
-                                        toast.success("HTML content imported successfully!");
-                                    }}>
-                                        Import
-                                    </Button>
-                                </DialogClose>
+                                        setImportDialogOpen(false);
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    onClick={() => {
+                                        if (!htmlToImport.trim()) {
+                                            toast.error("Please enter HTML content to import");
+                                            return;
+                                        }
+                                        
+                                        try {
+                                            form.setValue('content', htmlToImport, { shouldValidate: true });
+                                            setHtmlToImport('');
+                                            setImportDialogOpen(false);
+                                            toast.success("HTML content imported successfully!");
+                                        } catch (error) {
+                                            toast.error("Invalid HTML content. Please check your HTML syntax.");
+                                            console.error('HTML import error:', error);
+                                        }
+                                    }}
+                                >
+                                    Import Content
+                                </Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
@@ -474,7 +562,17 @@ const AdminArticleEditor = () => {
                             onChange={field.onChange} 
                           />
                         </FormControl>
-                        <FormMessage />
+                        <div className="flex justify-between items-center mt-2 text-sm text-muted-foreground">
+                          <FormMessage />
+                          <span>
+                            {field.value.length} characters
+                            {field.value.length < 50 && (
+                              <span className="text-red-500 ml-2">
+                                (Minimum 50 characters required)
+                              </span>
+                            )}
+                          </span>
+                        </div>
                       </FormItem>
                     )}
                   />

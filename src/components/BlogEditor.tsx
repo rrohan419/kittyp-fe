@@ -1,6 +1,6 @@
 // File: src/components/BlogEditor.tsx
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -37,6 +37,13 @@ export default function BlogEditor({ content, onChange }: { content: string; onC
       onChange(editor.getHTML());
     },
   });
+
+  // Update editor content when the content prop changes
+  useEffect(() => {
+    if (editor && content !== editor.getHTML()) {
+      editor.commands.setContent(content);
+    }
+  }, [content, editor]);
 
   return (
     <div className="border rounded">
