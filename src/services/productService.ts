@@ -98,7 +98,7 @@ export const addProduct = async (data: ProductDto): Promise<WrappedProductRespon
     return response.data;
 };
 
-export const fetchProductCount = async( isActive : Boolean): Promise<WrappedProductCountResponse> => {
+export const fetchProductCount = async( isActive : boolean): Promise<WrappedProductCountResponse> => {
     const response = await axiosInstance.get(`admin/product/count?isActive=${isActive}`);
     return response.data;
 };

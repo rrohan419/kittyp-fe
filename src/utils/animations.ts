@@ -1,11 +1,15 @@
 
+
+const easeOutExpo: [number, number, number, number] = [0.19, 1, 0.22, 1];
+
+
 export const fadeIn = {
   hidden: { opacity: 0 },
   visible: { 
     opacity: 1,
     transition: {
       duration: 0.6,
-      ease: [0.19, 1, 0.22, 1]
+      ease: easeOutExpo
     }
   }
 };
@@ -17,10 +21,11 @@ export const fadeUp = {
     y: 0,
     transition: {
       duration: 0.6,
-      ease: [0.19, 1, 0.22, 1]
+      ease: easeOutExpo
     }
   }
 };
+
 
 export const staggerContainer = (staggerChildren: number, delayChildren: number = 0) => ({
   hidden: {},
@@ -40,7 +45,7 @@ export const slideInRight = (delay: number = 0) => ({
     transition: {
       delay,
       duration: 0.5,
-      ease: [0.19, 1, 0.22, 1]
+      ease: easeOutExpo
     }
   }
 });
@@ -53,7 +58,7 @@ export const slideInLeft = (delay: number = 0) => ({
     transition: {
       delay,
       duration: 0.5,
-      ease: [0.19, 1, 0.22, 1]
+      ease: easeOutExpo
     }
   }
 });
@@ -65,7 +70,7 @@ export const blurIn = {
     filter: 'blur(0px)',
     transition: {
       duration: 0.8,
-      ease: [0.19, 1, 0.22, 1]
+      ease: easeOutExpo
     }
   }
 };
@@ -77,7 +82,7 @@ export const scaleUp = {
     opacity: 1,
     transition: {
       duration: 0.5,
-      ease: [0.19, 1, 0.22, 1]
+      ease: easeOutExpo
     }
   }
 };
@@ -88,7 +93,7 @@ export const imageReveal = {
     clipPath: 'inset(0 0 0 0)',
     transition: {
       duration: 0.8,
-      ease: [0.19, 1, 0.22, 1]
+      ease: easeOutExpo
     }
   }
 };
