@@ -13,7 +13,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Brain, Stethoscope, Heart, Sparkles, ArrowRight, Cat, Scale, Activity, CheckCircle, Clock, Utensils, Apple, Zap, Shield, User, Plus, PawPrint, MessageCircle, Send, Bot, Wand2, Star, Crown, Gift, AlertTriangle, MapPin, Download, FileText } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { fadeIn, fadeUp, staggerContainer, scaleUp } from '@/utils/animations';
-import { downloadNutritionPlan, downloadNutritionPlanAsJSON } from '@/utils/downloadUtils';
+// import { downloadNutritionPlan, downloadNutritionPlanAsJSON } from '@/utils/downloadUtils';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/module/store/store';
 import { PetProfile } from '@/services/authService';
@@ -1586,7 +1586,7 @@ export default function AIAssistant() {
                                       )}
                                       
                                       {/* Show download option if there are recommendations for other pets */}
-                                      {(() => {
+                                      {/* {(() => {
                                         const otherPetsWithRecommendations = savedPets.filter(pet => 
                                           pet.uuid !== selectedPetId && 
                                           recommendations && (
@@ -1627,7 +1627,7 @@ export default function AIAssistant() {
                                           );
                                         }
                                         return null;
-                                      })()}
+                                      })()} */}
                                     </>
                                 )}
                               </div>
