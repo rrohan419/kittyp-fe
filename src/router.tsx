@@ -31,6 +31,16 @@ import AdminArticles from './pages/AdminArticles';
 import AdminOrders from './pages/AdminOrders';
 import AdminProducts from './pages/AdminProducts';
 import AdminUsers from './pages/AdminUsers';
+import AIAssistant from './pages/AIAssistant';
+// import { VetDashboardPage } from './components/vet/VetDashboardPage';
+// import VetRegistration from './pages/VetRegistration';
+// import VetVerification from './pages/VetVerification';
+// import VetBooking from './pages/VetBooking';
+// import BookingManagement from './pages/BookingManagement';
+// import BookingSuccess from './pages/BookingSuccess';
+// import VetConsultationLanding from './pages/VetConsultationLanding';
+// import VetOnboarding from './pages/VetOnboarding';
+// import VetAvailabilitySetup from './pages/VetAvailabilitySetup';
 
 export const router = createBrowserRouter(
   [
@@ -58,6 +68,46 @@ export const router = createBrowserRouter(
           path: "articles",
           element: <PageTransition><Articles /></PageTransition>,
         },
+        // {
+        //   path: "vet",
+        //   element: <PageTransition><VetConsultationLanding /></PageTransition>,
+        // },
+        // {
+        //   path: "vet-dashboard",
+        //   element: <PageTransition><VetDashboardPage /></PageTransition>,
+        // },
+        // {
+        //   path: "vet/registration",
+        //   element: <PageTransition><VetRegistration /></PageTransition>,
+        // },
+        // {
+        //   path: "vet/onboarding",
+        //   element: <PageTransition><VetOnboarding /></PageTransition>,
+        // },
+        // {
+        //   path: "vet/availability",
+        //   element: <PageTransition><VetAvailabilitySetup /></PageTransition>,
+        // },
+        // {
+        //   path: "vet/verification",
+        //   element: <PageTransition><VetVerification /></PageTransition>,
+        // },
+        // {
+        //   path: "vet/booking",
+        //   element: <PageTransition><VetBooking /></PageTransition>,
+        // },
+        // {
+        //   path: "vet/booking/:vetId",
+        //   element: <PageTransition><VetBooking /></PageTransition>,
+        // },
+        // {
+        //   path: "bookings",
+        //   element: <PageTransition><BookingManagement /></PageTransition>,
+        // },
+        // {
+        //   path: "booking/success",
+        //   element: <PageTransition><BookingSuccess /></PageTransition>,
+        // },
         {
           path: "article/:slug",
           element: <PageTransition><ArticleDetail /></PageTransition>,
@@ -85,6 +135,9 @@ export const router = createBrowserRouter(
         {
           path: "checkout",
           element: <PageTransition><Checkout /></PageTransition>,
+        },{
+          path: "ai-assistant",
+          element: <PageTransition><AIAssistant /></PageTransition>,
         },
         {
           path: "orders",
