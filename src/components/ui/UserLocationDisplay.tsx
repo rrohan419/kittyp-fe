@@ -61,46 +61,58 @@ const UserLocationDisplay: React.FC<UserLocationDisplayProps> = ({
     }
   }, [isGeolocationSupported]);
 
-  // Get current location
+  // Get current location with fallback
   const getCurrentLocation = useCallback(async (): Promise<LocationData | null> => {
     if (!isGeolocationSupported) {
       throw new Error('Geolocation is not supported in this browser');
     }
 
     return new Promise((resolve, reject) => {
-      const options = {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000 // Cache for 1 minute
+      const tryGetLocation = (highAccuracy: boolean) => {
+        const options = {
+          enableHighAccuracy: highAccuracy,
+          timeout: highAccuracy ? 30000 : 15000, // 30s for high accuracy, 15s for low
+          maximumAge: 60000 // Cache for 1 minute
+        };
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const locationData: LocationData = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+              timestamp: position.timestamp
+            };
+            resolve(locationData);
+          },
+          (error) => {
+            if (error.code === error.TIMEOUT && highAccuracy) {
+              // Try again with lower accuracy if high accuracy times out
+              console.log('High accuracy timeout, trying with lower accuracy...');
+              tryGetLocation(false);
+              return;
+            }
+            
+            let errorMessage = 'Failed to get location';
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                errorMessage = 'Location permission denied';
+                break;
+              case error.POSITION_UNAVAILABLE:
+                errorMessage = 'Location information unavailable';
+                break;
+              case error.TIMEOUT:
+                errorMessage = 'Location request timed out. Please try again or check your GPS settings.';
+                break;
+            }
+            reject(new Error(errorMessage));
+          },
+          options
+        );
       };
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const locationData: LocationData = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            timestamp: position.timestamp
-          };
-          resolve(locationData);
-        },
-        (error) => {
-          let errorMessage = 'Failed to get location';
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage = 'Location permission denied';
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMessage = 'Location information unavailable';
-              break;
-            case error.TIMEOUT:
-              errorMessage = 'Location request timed out';
-              break;
-          }
-          reject(new Error(errorMessage));
-        },
-        options
-      );
+      // Start with high accuracy
+      tryGetLocation(true);
     });
   }, [isGeolocationSupported]);
 
