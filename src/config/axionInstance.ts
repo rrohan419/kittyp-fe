@@ -20,7 +20,7 @@ export const createInstanceAndInjectStore: CreateInstanceAndInjectStoreFunction 
 
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: `${API_BASE_URL}`, // Your API base URL here
-  timeout: 10000, // Timeout after 10 seconds
+  timeout: 45000, // Timeout after 45 seconds
 });
 
 

@@ -24,6 +24,7 @@ const PetDetailsForm: React.FC = () => {
     const [petForm, setPetForm] = useState<Omit<AddPet, 'isNeutered'> & { isNeutered: string }>({
         name: '',
         profilePicture: '',
+        type: '',
         breed: '',
         age: '',
         weight: '',
@@ -59,6 +60,7 @@ const PetDetailsForm: React.FC = () => {
         setPetForm({
             name: '',
             profilePicture: '',
+            type: '',
             breed: '',
             age: '',
             weight: '',
@@ -160,6 +162,7 @@ const PetDetailsForm: React.FC = () => {
         setPetForm({
             name: pet.name,
             profilePicture: pet.profilePicture,
+            type: pet.type,
             breed: pet.breed,
             age: pet.age,
             weight: pet.weight,
@@ -284,16 +287,16 @@ const PetDetailsForm: React.FC = () => {
 
                         {/* Pet Profile Picture Upload */}
                         <div className="flex flex-col items-center space-y-4 py-4">
-                          <PetPhotoUpload
-                            currentPhotos={petForm.profilePicture ? [petForm.profilePicture] : []}
-                            petUuid={isEditingPet ? editingPetId || undefined : undefined}
-                            onUploadComplete={(urls) => {
-                              // For single profile picture, use the first url
-                              setPetForm({ ...petForm, profilePicture: urls[0] || '' });
-                            }}
-                            petName={petForm.name}
-                            maxPhotos={1}
-                          />
+                            <PetPhotoUpload
+                                currentPhotos={petForm.profilePicture ? [petForm.profilePicture] : []}
+                                petUuid={isEditingPet ? editingPetId || undefined : undefined}
+                                onUploadComplete={(urls) => {
+                                    // For single profile picture, use the first url
+                                    setPetForm({ ...petForm, profilePicture: urls[0] || '' });
+                                }}
+                                petName={petForm.name}
+                                maxPhotos={1}
+                            />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -305,6 +308,24 @@ const PetDetailsForm: React.FC = () => {
                                     onChange={(e) => setPetForm({ ...petForm, name: e.target.value })}
                                     placeholder="Enter pet name"
                                 />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="petType" className="text-primary font-medium">Pet Type</Label>
+                                <Select
+                                    value={petForm.type}
+                                    onValueChange={(value) => setPetForm(prev => ({ ...prev, type: value }))}
+                                >
+                                    <SelectTrigger className="border-primary/20 focus:border-primary">
+                                        <SelectValue placeholder="Select pet type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="cat">🐱 Cat</SelectItem>
+                                        <SelectItem value="dog">🐶 Dog</SelectItem>
+                                        <SelectItem value="bird">🐦 Bird</SelectItem>
+                                        <SelectItem value="rabbit">🐰 Rabbit</SelectItem>
+                                        <SelectItem value="other">🐾 Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div className="space-y-2">

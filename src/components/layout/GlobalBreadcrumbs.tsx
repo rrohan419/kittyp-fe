@@ -139,7 +139,7 @@ export function GlobalBreadcrumbs() {
       }
 
       // Normal breadcrumb handling
-      let config = breadcrumbConfig[currentPath];
+      const config = breadcrumbConfig[currentPath];
       breadcrumbs.push({
         label: config?.label || pathname.charAt(0).toUpperCase() + pathname.slice(1).replace(/-/g, ' '),
         path: currentPath,

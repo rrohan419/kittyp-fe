@@ -182,7 +182,7 @@ export function AddressForm({ onAddressCreated, onCancel }: AddressFormProps) {
           <SelectContent>
             <SelectItem value="HOME">Home</SelectItem>
             <SelectItem value="WORK">Work</SelectItem>
-            <SelectItem value="OTHER">Other</SelectItem>
+            <SelectItem value="OTHERS">Others</SelectItem>
           </SelectContent>
         </Select>
       </div>
