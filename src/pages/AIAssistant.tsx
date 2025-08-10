@@ -16,6 +16,7 @@ import { fadeIn, fadeUp, staggerContainer, scaleUp } from '@/utils/animations';
 // import { downloadNutritionPlan, downloadNutritionPlanAsJSON } from '@/utils/downloadUtils';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/module/store/store';
+import { useNavigate } from 'react-router-dom';
 import { PetProfile } from '@/services/authService';
 import {
   generateNutritionRecommendation,
@@ -204,6 +205,10 @@ const VetTriageTab: React.FC<{ savedPets: any[] }> = ({ savedPets }) => {
   };
 
   const handleStartChat = () => {
+    if (dailyChatCount >= DAILY_FREE_LIMIT && !isPremium) {
+      return; // Will show upgrade prompt
+    }
+
     if (dailyChatCount >= DAILY_FREE_LIMIT && !isPremium) {
       return; // Will show upgrade prompt
     }
@@ -509,8 +514,10 @@ export default function AIAssistant() {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   const [isSwitchingPet, setIsSwitchingPet] = useState(false);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const { addItem } = useCart();
   const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
+  const navigate = useNavigate();
 
   // Use real user pets data
   const savedPets = user?.ownerPets || [];
@@ -593,7 +600,7 @@ export default function AIAssistant() {
 
   const handleGenerateNutritionRecommendation = async (manualPetData?: PetProfile) => {
     if (!user?.uuid) {
-      toast.error('Please ensure you are logged in');
+      setShowAuthPrompt(true);
       return;
     }
 
@@ -691,8 +698,8 @@ export default function AIAssistant() {
     );
   }
 
-  // Redirect if not authenticated
-  if (!isAuthenticated || !user) {
+  // Show authentication prompt if user is not authenticated and tries to access features
+  if (showAuthPrompt) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-8">
@@ -706,17 +713,28 @@ export default function AIAssistant() {
             <p className="text-muted-foreground mb-6">
               Please log in to access our AI-powered pet care features
             </p>
-            <Button
-              onClick={() => window.location.href = '/login'}
-              className="bg-primary hover:bg-primary/90 text-white px-8 py-3"
-            >
-              Login to Continue
-            </Button>
+            <div className="space-y-3">
+              <Button
+                onClick={() => window.location.href = '/login'}
+                className="bg-primary hover:bg-primary/90 text-white px-8 py-3 w-full"
+              >
+                Login to Continue
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowAuthPrompt(false)}
+                className="w-full"
+              >
+                Go Back
+              </Button>
+            </div>
           </motion.div>
         </div>
       </div>
     );
   }
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 relative overflow-hidden">
@@ -821,6 +839,10 @@ export default function AIAssistant() {
                   className={`group relative overflow-hidden ${feature.comingSoon ? 'cursor-not-allowed' : 'cursor-pointer'} border-0 shadow-lg hover:shadow-2xl transition-all duration-500 bg-card/50 backdrop-blur-sm ${feature.comingSoon ? 'opacity-60' : ''}`}
                   onClick={() => {
                     if (!feature.comingSoon) {
+                      if (!isAuthenticated || !user) {
+                        setShowAuthPrompt(true);
+                        return;
+                      }
                       setSelectedFeature(feature.id);
                       setShowWelcome(false);
                     }
@@ -902,6 +924,10 @@ export default function AIAssistant() {
                           onClick={(e) => {
                             e.stopPropagation();
                             if (!feature.comingSoon) {
+                              if (!isAuthenticated || !user) {
+                                setShowAuthPrompt(true);
+                                return;
+                              }
                               setSelectedFeature(feature.id);
                               setShowWelcome(false);
                             }
