@@ -34,6 +34,7 @@ export function Navbar() {
   const { user, isAuthenticated: authIsAuthenticated, loading: authLoading } = useSelector((state: RootState) => state.authReducer);
   const isAuthenticated = authIsAuthenticated && !isLoggingOut;
   const userRole = user?.roles?.includes('ROLE_ADMIN') ? 'ROLE_ADMIN' : null;
+  // const isVet = user?.roles?.includes('VET') || false;
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
@@ -46,7 +47,7 @@ export function Navbar() {
       }
     };
 
-    console.log('isAuthenticated:', isAuthenticated);
+    // console.log('isAuthenticated:', isAuthenticated);
 
     window.addEventListener('scroll', handleScroll);
     handleScroll(); // Initial check
@@ -96,6 +97,8 @@ export function Navbar() {
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'Products', path: '/products' },
+    // { name: 'Vet Consultation', path: '/vet' },
+    { name: 'AI Assistant', path: '/ai-assistant' },
     { name: 'How to Use', path: '/how-to-use' },
     { name: 'Articles', path: '/articles' },
     { name: 'Contact', path: '/contact' },
@@ -303,6 +306,54 @@ export function Navbar() {
                         Profile
                       </Link>
                     </li>
+                    {/* <li>
+                      <Link
+                        to="/bookings"
+                        className="block text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center"
+                        style={{ textShadow: 'none' }}
+                        onClick={closeMenu}
+                      >
+                        <Package size={18} className="mr-2" />
+                        My Bookings
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        to="/orders"
+                        className="block text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center"
+                        style={{ textShadow: 'none' }}
+                        onClick={closeMenu}
+                      >
+                        <Package size={18} className="mr-2" />
+                        My Orders
+                      </Link>
+                    </li>
+                    {isVet && (
+                      <li>
+                        <Link
+                          to="/vet-dashboard"
+                          className="block text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center"
+                          style={{ textShadow: 'none' }}
+                          onClick={closeMenu}
+                        >
+                          <LayoutDashboard size={18} className="mr-2" />
+                          Vet Dashboard
+                        </Link>
+                      </li>
+                    )}
+                    {!isVet && (
+                      <li>
+                        <Link
+                          to="/vet/onboarding"
+                          className="block text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center"
+                          style={{ textShadow: 'none' }}
+                          onClick={closeMenu}
+                        >
+                          <User2Icon size={18} className="mr-2" />
+                          Become a Vet
+                        </Link>
+                      </li>
+                    )} */}
                     <li>
                       <button
                         onClick={() => {
