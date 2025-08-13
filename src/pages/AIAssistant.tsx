@@ -742,8 +742,7 @@ export default function AIAssistant() {
         <title>Free AI Pet Nutritionist – Kittyp | Pet Health & Diet Advice</title>
         <meta
           name="description"
-          content="Get free AI-powered pet nutrition advice for cats & dogs. Improve pet health with expert diet plans in seconds."
-        />
+          content="Get free AI-powered pet nutrition advice for cats & dogs. Improve pet health with expert diet plans in seconds." />
         <link rel="canonical" href="https://www.kittyp.in/ai-pet-nutritionist" />
       <meta name="keywords" content="free pet nutritionist, AI pet nutritionist, pet health advice, cat diet plan, dog diet plan, pet nutrition India"/>
       <meta property="og:title" content="Free AI Pet Nutritionist – Kittyp" />
