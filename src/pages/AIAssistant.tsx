@@ -544,7 +544,7 @@ export default function AIAssistant() {
   //       // Show confirmation dialog
   //       const currentPet = savedPets.find(pet => pet.uuid === selectedPetId);
   //       const previousPet = savedPets.find(pet => pet.uuid !== selectedPetId);
-        
+
   //       if (currentPet && previousPet) {
   //         const confirmed = window.confirm(
   //           `You're switching from ${previousPet.name} to ${currentPet.name}.\n\n` +
@@ -552,7 +552,7 @@ export default function AIAssistant() {
   //           `Would you like to download the current plan before switching?\n\n` +
   //           `Click OK to download, Cancel to switch without downloading.`
   //         );
-          
+
   //         if (confirmed) {
   //           // Download the plan for the previous pet
   //           downloadNutritionPlan(recommendations, previousPet.name);
@@ -739,360 +739,393 @@ export default function AIAssistant() {
 
   return (
     <>
-    <Helmet>
+      <Helmet>
         <title>Free AI Pet Nutritionist – Kittyp | Pet Health & Diet Advice</title>
         <meta
           name="description"
           content="Get free AI-powered pet nutrition advice for cats & dogs. Improve pet health with expert diet plans in seconds." />
         <link rel="canonical" href="https://www.kittyp.in/ai-pet-nutritionist" />
-      <meta name="keywords" content="free pet nutritionist, AI pet nutritionist, pet health advice, cat diet plan, dog diet plan, pet nutrition India"/>
-      <meta property="og:title" content="Free AI Pet Nutritionist – Kittyp" />
-      <meta property="og:description" content="Get instant, AI-powered diet advice for cats and dogs, tailored to your pet's health needs." />
-      <meta property="og:url" content="https://www.kittyp.in/ai-pet-nutritionist" />
-      <meta property="og:type" content="website" />
-      <meta property="og:image" content="https://kittyp-site-images.s3.ap-south-1.amazonaws.com/Gemini_Generated_Image_l2csvvl2csvvl2cs.png" />
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="Free AI Pet Nutritionist – Kittyp" />
-      <meta name="twitter:description" content="Get instant, AI-powered diet advice for cats and dogs, tailored to your pet's health needs." />
-      <meta name="twitter:image" content="https://kittyp-site-images.s3.ap-south-1.amazonaws.com/Gemini_Generated_Image_l2csvvl2csvvl2cs.png" />
+        <meta name="keywords" content="free pet nutritionist, AI pet nutritionist, pet health advice, cat diet plan, dog diet plan, pet nutrition India" />
+        <meta property="og:title" content="Free AI Pet Nutritionist – Kittyp" />
+        <meta property="og:description" content="Get instant, AI-powered diet advice for cats and dogs, tailored to your pet's health needs." />
+        <meta property="og:url" content="https://www.kittyp.in/ai-pet-nutritionist" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://kittyp-site-images.s3.ap-south-1.amazonaws.com/Gemini_Generated_Image_l2csvvl2csvvl2cs.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Free AI Pet Nutritionist – Kittyp" />
+        <meta name="twitter:description" content="Get instant, AI-powered diet advice for cats and dogs, tailored to your pet's health needs." />
+        <meta name="twitter:image" content="https://kittyp-site-images.s3.ap-south-1.amazonaws.com/Gemini_Generated_Image_l2csvvl2csvvl2cs.png" />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Is Kittyp's AI pet nutritionist free?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes, it’s completely free to use. You can get instant, tailored diet advice for your pet without any cost."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can the AI nutritionist help both cats and dogs?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Absolutely! Kittyp works for all breeds, sizes, and ages of cats and dogs and other pets.."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is this a replacement for a vet?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No — the AI provides guidance based on general best practices, but you should consult a vet for medical concerns."
+                }
+              }
+            ]
+          })}
+        </script>
+
 
       </Helmet>
-    
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 relative overflow-hidden">
-      <FloatingParticles />
-      <Navbar />
 
-      <motion.div
-        className="container mx-auto px-4 py-8 relative z-10"
-        initial="hidden"
-        animate="visible"
-        variants={staggerContainer(0.1)}
-      >
-        {/* Hero Section */}
-        <AnimatePresence>
-          {showWelcome && (
-            <motion.div
-              className="text-center mb-16 relative"
-              variants={fadeUp}
-              exit={{ opacity: 0, y: -20 }}
-            >
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 relative overflow-hidden">
+        <FloatingParticles />
+        <Navbar />
+
+        <motion.div
+          className="container mx-auto px-4 py-8 relative z-10"
+          initial="hidden"
+          animate="visible"
+          variants={staggerContainer(0.1)}
+        >
+          {/* Hero Section */}
+          <AnimatePresence>
+            {showWelcome && (
               <motion.div
-                className="absolute inset-0 -z-10"
-                animate={{
-                  background: [
-                    "radial-gradient(circle at 20% 50%, hsl(var(--primary) / 0.1) 0%, transparent 50%)",
-                    "radial-gradient(circle at 80% 50%, hsl(var(--primary) / 0.1) 0%, transparent 50%)",
-                    "radial-gradient(circle at 40% 50%, hsl(var(--primary) / 0.1) 0%, transparent 50%)"
-                  ]
-                }}
-                transition={{ duration: 8, repeat: Infinity, repeatType: "reverse" }}
-              />
-
-              <motion.div
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-primary/10 rounded-full mb-6"
-                variants={scaleUp}
-              >
-                <Sparkles className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">AI-Powered Pet Care</span>
-                <Badge variant="secondary" className="text-xs">New</Badge>
-              </motion.div>
-
-              <motion.h1
-                className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent"
+                className="text-center mb-16 relative"
                 variants={fadeUp}
+                exit={{ opacity: 0, y: -20 }}
               >
-                Meet Your Pet's
-                <br />
-                <motion.span
-                  animate={{
-                    backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-                  }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                  style={{ backgroundSize: "200% 200%" }}
-                  className="bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text"
-                >
-                  AI Assistant
-                </motion.span>
-              </motion.h1>
-
-              <motion.p
-                className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8"
-                variants={fadeUp}
-              >
-                Revolutionary AI technology that understands your pet's unique needs.
-                Get personalized nutrition plans, instant health assessments, and expert guidance.
-              </motion.p>
-
-              <motion.div
-                className="flex flex-wrap justify-center gap-4 mb-8"
-                variants={fadeUp}
-              >
-                <div className="flex items-center space-x-2 px-4 py-2 bg-primary/10 rounded-full">
-                  <Star className="h-4 w-4 text-primary" />
-                  <span className="text-sm text-primary">1k+ Happy Pets</span>
-                </div>
-                <div className="flex items-center space-x-2 px-4 py-2 bg-primary/10 rounded-full">
-                  <Shield className="h-4 w-4 text-primary" />
-                  <span className="text-sm text-primary">Vet Approved</span>
-                </div>
-                <div className="flex items-center space-x-2 px-4 py-2 bg-primary/10 rounded-full">
-                  <Zap className="h-4 w-4 text-primary" />
-                  <span className="text-sm text-primary">Instant Results</span>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {!selectedFeature ? (
-          <motion.div
-            className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto"
-            variants={staggerContainer(0.2)}
-          >
-            {features.map((feature, index) => (
-              <motion.div
-                key={feature.id}
-                variants={fadeUp}
-                whileHover={{ scale: 1.02, y: -5 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              >
-                <Card
-                  className={`group relative overflow-hidden ${feature.comingSoon ? 'cursor-not-allowed' : 'cursor-pointer'} border-0 shadow-lg hover:shadow-2xl transition-all duration-500 bg-card/50 backdrop-blur-sm ${feature.comingSoon ? 'opacity-60' : ''}`}
-                  onClick={() => {
-                    if (!feature.comingSoon) {
-                      if (!isAuthenticated || !user) {
-                        setShowAuthPrompt(true);
-                        return;
-                      }
-                      setSelectedFeature(feature.id);
-                      setShowWelcome(false);
-                    }
-                  }}
-                >
-                  {/* Animated background gradient */}
-                  <motion.div
-                    className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}
-                    animate={{
-                      background: [
-                        `linear-gradient(45deg, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.1))`,
-                        `linear-gradient(225deg, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.1))`,
-                        `linear-gradient(45deg, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.1))`
-                      ]
-                    }}
-                    transition={{ duration: 4, repeat: Infinity }}
-                  />
-
-                  <CardHeader className="relative pb-4">
-                    <div className="flex items-start space-x-4">
-                      <motion.div
-                        className={`p-4 rounded-2xl bg-gradient-to-br ${feature.gradient} text-white shadow-lg`}
-                        whileHover={{ rotate: [0, -10, 10, 0] }}
-                        transition={{ duration: 0.5 }}
-                      >
-                        <feature.icon className="h-8 w-8" />
-                      </motion.div>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <CardTitle className="text-2xl group-hover:text-primary transition-colors duration-300">
-                            {feature.title}
-                          </CardTitle>
-                          {feature.comingSoon && (
-                            <Badge variant="secondary" className="bg-muted text-muted-foreground">
-                              Coming Soon
-                            </Badge>
-                          )}
-                        </div>
-                        <CardDescription className="text-base leading-relaxed">
-                          {feature.description}
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="relative pt-0">
-                    {/* Benefits grid */}
-                    <div className="grid grid-cols-2 gap-3 mb-6">
-                      {feature.benefits.map((benefit, benefitIndex) => (
-                        <motion.div
-                          key={benefitIndex}
-                          className={`flex items-center space-x-2 text-sm p-2 rounded-lg transition-colors ${feature.comingSoon ? 'bg-muted/20 text-muted-foreground' : 'bg-muted/30 hover:bg-muted/50'}`}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: benefitIndex * 0.1 }}
-                        >
-                          <CheckCircle className={`h-4 w-4 ${feature.comingSoon ? 'text-muted-foreground' : 'text-primary'}`} />
-                          <span>{benefit}</span>
-                        </motion.div>
-                      ))}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between pt-4 border-t border-muted/30">
-                      <div className="flex items-center space-x-3">
-                        <Badge variant="secondary" className={`${feature.comingSoon ? 'bg-muted/10 text-muted-foreground' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}>
-                          <Bot className="h-3 w-3 mr-1" />
-                          {feature.comingSoon ? 'Coming Soon' : 'AI Powered'}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">{feature.stats}</span>
-                      </div>
-
-                      <motion.div
-                        whileHover={{ scale: feature.comingSoon ? 1 : 1.05 }}
-                        whileTap={{ scale: feature.comingSoon ? 1 : 0.95 }}
-                      >
-                        <Button
-                          className={`bg-gradient-to-r ${feature.gradient} border-0 text-white shadow-lg hover:shadow-xl transition-all duration-300 ${feature.comingSoon ? 'cursor-not-allowed opacity-60' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!feature.comingSoon) {
-                              if (!isAuthenticated || !user) {
-                                setShowAuthPrompt(true);
-                                return;
-                              }
-                              setSelectedFeature(feature.id);
-                              setShowWelcome(false);
-                            }
-                          }}
-                          disabled={feature.comingSoon}
-                        >
-                          {feature.comingSoon ? (
-                            <>
-                              <Clock className="h-4 w-4 mr-2" />
-                              Coming Soon
-                            </>
-                          ) : (
-                            <>
-                              Start Now
-                              <motion.div
-                                animate={{ x: [0, 5, 0] }}
-                                transition={{ duration: 1.5, repeat: Infinity }}
-                              >
-                                <ArrowRight className="ml-2 h-4 w-4" />
-                              </motion.div>
-                            </>
-                          )}
-                        </Button>
-                      </motion.div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </motion.div>
-        ) : (
-          <motion.div
-            className="max-w-5xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            {/* Header with back button */}
-            <motion.div
-              className="flex items-center mb-8 p-6 bg-card/50 backdrop-blur-sm rounded-xl border shadow-sm"
-              variants={fadeUp}
-            >
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setSelectedFeature(null);
-                  setShowWelcome(true);
-                }}
-                className="mr-4 hover:bg-primary/10"
-              >
-                <ArrowRight className="h-4 w-4 rotate-180 mr-2" />
-                Back to Features
-              </Button>
-
-              <div className="flex items-center space-x-3">
-                {(() => {
-                  const feature = features.find(f => f.id === selectedFeature);
-                  return feature ? (
-                    <>
-                      <div className={`p-2 rounded-lg bg-gradient-to-br ${feature.gradient} text-white`}>
-                        <feature.icon className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h2 className="text-2xl font-bold">{feature.title}</h2>
-                        <p className="text-sm text-muted-foreground">{feature.description}</p>
-                      </div>
-                    </>
-                  ) : null;
-                })()}
-              </div>
-            </motion.div>
-
-            {/* Feature content */}
-            <motion.div variants={fadeUp}>
-              {selectedFeature === 'nutrition' && (
-                <PetSelectionComponent
-                  selectedPetId={selectedPetId}
-                  setSelectedPetId={setSelectedPetId}
-                  savedPets={savedPets}
-                  user={user}
-                  onGenerateRecommendation={handleGenerateNutritionRecommendation}
-                  isGenerating={isGenerating}
-                  recommendations={recommendations}
-                />
-              )}
-
-              {selectedFeature === 'vet-triage' && (
-                <VetTriageTab savedPets={savedPets} />
-              )}
-            </motion.div>
-
-            {/* Location Prompt */}
-            <AnimatePresence>
-              {showLocationPrompt && (
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="mt-6"
-                >
-                  <UserLocationDisplay
-                    onLocationUpdate={handleLocationUpdate}
-                    onPermissionGranted={handleLocationPermissionGranted}
-                    onPermissionDenied={handleLocationPermissionDenied}
-                    className="max-w-2xl mx-auto"
-                  />
+                  className="absolute inset-0 -z-10"
+                  animate={{
+                    background: [
+                      "radial-gradient(circle at 20% 50%, hsl(var(--primary) / 0.1) 0%, transparent 50%)",
+                      "radial-gradient(circle at 80% 50%, hsl(var(--primary) / 0.1) 0%, transparent 50%)",
+                      "radial-gradient(circle at 40% 50%, hsl(var(--primary) / 0.1) 0%, transparent 50%)"
+                    ]
+                  }}
+                  transition={{ duration: 8, repeat: Infinity, repeatType: "reverse" }}
+                />
 
-                  {/* <LocationPromptPopup
+                <motion.div
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-primary/10 rounded-full mb-6"
+                  variants={scaleUp}
+                >
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">AI-Powered Pet Care</span>
+                  <Badge variant="secondary" className="text-xs">New</Badge>
+                </motion.div>
+
+                <motion.h1
+                  className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent"
+                  variants={fadeUp}
+                >
+                  Meet Your Pet's
+                  <br />
+                  <motion.span
+                    animate={{
+                      backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+                    }}
+                    transition={{ duration: 3, repeat: Infinity }}
+                    style={{ backgroundSize: "200% 200%" }}
+                    className="bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text"
+                  >
+                    AI Assistant
+                  </motion.span>
+                </motion.h1>
+
+                <motion.p
+                  className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8"
+                  variants={fadeUp}
+                >
+                  Revolutionary AI technology that understands your pet's unique needs.
+                  Get personalized nutrition plans, instant health assessments, and expert guidance.
+                </motion.p>
+
+                <motion.div
+                  className="flex flex-wrap justify-center gap-4 mb-8"
+                  variants={fadeUp}
+                >
+                  <div className="flex items-center space-x-2 px-4 py-2 bg-primary/10 rounded-full">
+                    <Star className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-primary">1k+ Happy Pets</span>
+                  </div>
+                  <div className="flex items-center space-x-2 px-4 py-2 bg-primary/10 rounded-full">
+                    <Shield className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-primary">Vet Approved</span>
+                  </div>
+                  <div className="flex items-center space-x-2 px-4 py-2 bg-primary/10 rounded-full">
+                    <Zap className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-primary">Instant Results</span>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {!selectedFeature ? (
+            <motion.div
+              className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto"
+              variants={staggerContainer(0.2)}
+            >
+              {features.map((feature, index) => (
+                <motion.div
+                  key={feature.id}
+                  variants={fadeUp}
+                  whileHover={{ scale: 1.02, y: -5 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <Card
+                    className={`group relative overflow-hidden ${feature.comingSoon ? 'cursor-not-allowed' : 'cursor-pointer'} border-0 shadow-lg hover:shadow-2xl transition-all duration-500 bg-card/50 backdrop-blur-sm ${feature.comingSoon ? 'opacity-60' : ''}`}
+                    onClick={() => {
+                      if (!feature.comingSoon) {
+                        if (!isAuthenticated || !user) {
+                          setShowAuthPrompt(true);
+                          return;
+                        }
+                        setSelectedFeature(feature.id);
+                        setShowWelcome(false);
+                      }
+                    }}
+                  >
+                    {/* Animated background gradient */}
+                    <motion.div
+                      className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}
+                      animate={{
+                        background: [
+                          `linear-gradient(45deg, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.1))`,
+                          `linear-gradient(225deg, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.1))`,
+                          `linear-gradient(45deg, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.1))`
+                        ]
+                      }}
+                      transition={{ duration: 4, repeat: Infinity }}
+                    />
+
+                    <CardHeader className="relative pb-4">
+                      <div className="flex items-start space-x-4">
+                        <motion.div
+                          className={`p-4 rounded-2xl bg-gradient-to-br ${feature.gradient} text-white shadow-lg`}
+                          whileHover={{ rotate: [0, -10, 10, 0] }}
+                          transition={{ duration: 0.5 }}
+                        >
+                          <feature.icon className="h-8 w-8" />
+                        </motion.div>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <CardTitle className="text-2xl group-hover:text-primary transition-colors duration-300">
+                              {feature.title}
+                            </CardTitle>
+                            {feature.comingSoon && (
+                              <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                                Coming Soon
+                              </Badge>
+                            )}
+                          </div>
+                          <CardDescription className="text-base leading-relaxed">
+                            {feature.description}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="relative pt-0">
+                      {/* Benefits grid */}
+                      <div className="grid grid-cols-2 gap-3 mb-6">
+                        {feature.benefits.map((benefit, benefitIndex) => (
+                          <motion.div
+                            key={benefitIndex}
+                            className={`flex items-center space-x-2 text-sm p-2 rounded-lg transition-colors ${feature.comingSoon ? 'bg-muted/20 text-muted-foreground' : 'bg-muted/30 hover:bg-muted/50'}`}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: benefitIndex * 0.1 }}
+                          >
+                            <CheckCircle className={`h-4 w-4 ${feature.comingSoon ? 'text-muted-foreground' : 'text-primary'}`} />
+                            <span>{benefit}</span>
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      {/* Footer */}
+                      <div className="flex items-center justify-between pt-4 border-t border-muted/30">
+                        <div className="flex items-center space-x-3">
+                          <Badge variant="secondary" className={`${feature.comingSoon ? 'bg-muted/10 text-muted-foreground' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}>
+                            <Bot className="h-3 w-3 mr-1" />
+                            {feature.comingSoon ? 'Coming Soon' : 'AI Powered'}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">{feature.stats}</span>
+                        </div>
+
+                        <motion.div
+                          whileHover={{ scale: feature.comingSoon ? 1 : 1.05 }}
+                          whileTap={{ scale: feature.comingSoon ? 1 : 0.95 }}
+                        >
+                          <Button
+                            className={`bg-gradient-to-r ${feature.gradient} border-0 text-white shadow-lg hover:shadow-xl transition-all duration-300 ${feature.comingSoon ? 'cursor-not-allowed opacity-60' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!feature.comingSoon) {
+                                if (!isAuthenticated || !user) {
+                                  setShowAuthPrompt(true);
+                                  return;
+                                }
+                                setSelectedFeature(feature.id);
+                                setShowWelcome(false);
+                              }
+                            }}
+                            disabled={feature.comingSoon}
+                          >
+                            {feature.comingSoon ? (
+                              <>
+                                <Clock className="h-4 w-4 mr-2" />
+                                Coming Soon
+                              </>
+                            ) : (
+                              <>
+                                Start Now
+                                <motion.div
+                                  animate={{ x: [0, 5, 0] }}
+                                  transition={{ duration: 1.5, repeat: Infinity }}
+                                >
+                                  <ArrowRight className="ml-2 h-4 w-4" />
+                                </motion.div>
+                              </>
+                            )}
+                          </Button>
+                        </motion.div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            <motion.div
+              className="max-w-5xl mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              {/* Header with back button */}
+              <motion.div
+                className="flex items-center mb-8 p-6 bg-card/50 backdrop-blur-sm rounded-xl border shadow-sm"
+                variants={fadeUp}
+              >
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setSelectedFeature(null);
+                    setShowWelcome(true);
+                  }}
+                  className="mr-4 hover:bg-primary/10"
+                >
+                  <ArrowRight className="h-4 w-4 rotate-180 mr-2" />
+                  Back to Features
+                </Button>
+
+                <div className="flex items-center space-x-3">
+                  {(() => {
+                    const feature = features.find(f => f.id === selectedFeature);
+                    return feature ? (
+                      <>
+                        <div className={`p-2 rounded-lg bg-gradient-to-br ${feature.gradient} text-white`}>
+                          <feature.icon className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h2 className="text-2xl font-bold">{feature.title}</h2>
+                          <p className="text-sm text-muted-foreground">{feature.description}</p>
+                        </div>
+                      </>
+                    ) : null;
+                  })()}
+                </div>
+              </motion.div>
+
+              {/* Feature content */}
+              <motion.div variants={fadeUp}>
+                {selectedFeature === 'nutrition' && (
+                  <PetSelectionComponent
+                    selectedPetId={selectedPetId}
+                    setSelectedPetId={setSelectedPetId}
+                    savedPets={savedPets}
+                    user={user}
+                    onGenerateRecommendation={handleGenerateNutritionRecommendation}
+                    isGenerating={isGenerating}
+                    recommendations={recommendations}
+                  />
+                )}
+
+                {selectedFeature === 'vet-triage' && (
+                  <VetTriageTab savedPets={savedPets} />
+                )}
+              </motion.div>
+
+              {/* Location Prompt */}
+              <AnimatePresence>
+                {showLocationPrompt && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="mt-6"
+                  >
+                    <UserLocationDisplay
+                      onLocationUpdate={handleLocationUpdate}
+                      onPermissionGranted={handleLocationPermissionGranted}
+                      onPermissionDenied={handleLocationPermissionDenied}
+                      className="max-w-2xl mx-auto"
+                    />
+
+                    {/* <LocationPromptPopup
                     showLocationPrompt={showLocationPrompt}
                     setShowLocationPrompt={setShowLocationPrompt}
                     handleLocationUpdate={handleLocationUpdate}
                     handleLocationPermissionGranted={handleLocationPermissionGranted}
                     handleLocationPermissionDenied={handleLocationPermissionDenied}
                   /> */}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-            {/* Results */}
-            <AnimatePresence>
-              {recommendations && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <Card className="mt-8 border-0 shadow-xl bg-gradient-to-br from-card/80 to-card/60 backdrop-blur-sm">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center space-x-2">
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                          >
-                            <Sparkles className="h-5 w-5 text-primary" />
-                          </motion.div>
-                          <span>AI Recommendations</span>
-                          <Badge variant="secondary" className="bg-primary/10 text-primary">
-                            Personalized
-                          </Badge>
-                        </CardTitle>
-                        {/* <div className="flex items-center space-x-2">
+              {/* Results */}
+              <AnimatePresence>
+                {recommendations && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <Card className="mt-8 border-0 shadow-xl bg-gradient-to-br from-card/80 to-card/60 backdrop-blur-sm">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="flex items-center space-x-2">
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                            >
+                              <Sparkles className="h-5 w-5 text-primary" />
+                            </motion.div>
+                            <span>AI Recommendations</span>
+                            <Badge variant="secondary" className="bg-primary/10 text-primary">
+                              Personalized
+                            </Badge>
+                          </CardTitle>
+                          {/* <div className="flex items-center space-x-2">
                           <Button
                             variant="outline"
                             size="sm"
@@ -1122,42 +1155,42 @@ export default function AIAssistant() {
                             JSON
                           </Button>
                         </div> */}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      
-                      {/* Check if we have any meaningful data */}
-                      {(() => {
-                        const hasAnyData = (
-                          (recommendations.petProfileSummary && Object.keys(recommendations.petProfileSummary).some(key => recommendations.petProfileSummary[key])) ||
-                          (recommendations.dailyFeedingPlan && recommendations.dailyFeedingPlan.meals && recommendations.dailyFeedingPlan.meals.length > 0) ||
-                          (recommendations.specialConsiderations && recommendations.specialConsiderations.length > 0) ||
-                          (recommendations.recommendedProducts && recommendations.recommendedProducts.length > 0) ||
-                          (recommendations.longTermWellnessTips && recommendations.longTermWellnessTips.length > 0) ||
-                          (recommendations.environmentalImpact && (
-                            recommendations.environmentalImpact.climateConsiderations ||
-                            recommendations.environmentalImpact.hydrationNeeds ||
-                            recommendations.environmentalImpact.energyNeedsAdjustment
-                          ))
-                        );
-                        
-                        if (!hasAnyData) {
-                          const selectedPet = savedPets.find(pet => pet.uuid === selectedPetId);
-                          return (
-                            <div className="text-center py-8">
-                              <div className="text-muted-foreground mb-4">
-                                {isSwitchingPet ? (
-                                  <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    className="flex flex-col items-center"
-                                  >
-                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-                                    <p>Switching to {selectedPet?.name || 'selected pet'}...</p>
-                                    <p className="text-sm text-primary/70">Clearing previous recommendations</p>
-                                  </motion.div>
-                                ) : (
-                                                                      <>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+
+                        {/* Check if we have any meaningful data */}
+                        {(() => {
+                          const hasAnyData = (
+                            (recommendations.petProfileSummary && Object.keys(recommendations.petProfileSummary).some(key => recommendations.petProfileSummary[key])) ||
+                            (recommendations.dailyFeedingPlan && recommendations.dailyFeedingPlan.meals && recommendations.dailyFeedingPlan.meals.length > 0) ||
+                            (recommendations.specialConsiderations && recommendations.specialConsiderations.length > 0) ||
+                            (recommendations.recommendedProducts && recommendations.recommendedProducts.length > 0) ||
+                            (recommendations.longTermWellnessTips && recommendations.longTermWellnessTips.length > 0) ||
+                            (recommendations.environmentalImpact && (
+                              recommendations.environmentalImpact.climateConsiderations ||
+                              recommendations.environmentalImpact.hydrationNeeds ||
+                              recommendations.environmentalImpact.energyNeedsAdjustment
+                            ))
+                          );
+
+                          if (!hasAnyData) {
+                            const selectedPet = savedPets.find(pet => pet.uuid === selectedPetId);
+                            return (
+                              <div className="text-center py-8">
+                                <div className="text-muted-foreground mb-4">
+                                  {isSwitchingPet ? (
+                                    <motion.div
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      className="flex flex-col items-center"
+                                    >
+                                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                                      <p>Switching to {selectedPet?.name || 'selected pet'}...</p>
+                                      <p className="text-sm text-primary/70">Clearing previous recommendations</p>
+                                    </motion.div>
+                                  ) : (
+                                    <>
                                       <Utensils className="h-12 w-12 mx-auto mb-4 opacity-50" />
                                       <p>No nutrition recommendations available for {selectedPet?.name || 'this pet'} yet.</p>
                                       <p className="text-sm">Click "Generate Recommendation" to create a personalized nutrition plan.</p>
@@ -1168,7 +1201,7 @@ export default function AIAssistant() {
                                           </p>
                                         </div>
                                       )}
-                                      
+
                                       {/* Show download option if there are recommendations for other pets */}
                                       {/* {(() => {
                                         const otherPetsWithRecommendations = savedPets.filter(pet => 
@@ -1213,176 +1246,176 @@ export default function AIAssistant() {
                                         return null;
                                       })()} */}
                                     </>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        }
-                        return (
-                        <motion.div 
-                          className="space-y-6"
-                          variants={staggerContainer(0.1, 0.1)}
-                          initial="hidden"
-                          animate="visible"
-                        >
-
-                          {/* Pet Profile Summary */}
-                          {recommendations?.petProfileSummary && Object.keys(recommendations.petProfileSummary).length > 0 && (
-                            <motion.div variants={fadeUp} className="bg-gradient-to-r from-primary/5 to-secondary/5 p-6 rounded-xl border">
-                              <h4 className="font-semibold mb-4 flex items-center space-x-2">
-                                <PawPrint className="h-4 w-4 text-primary" />
-                                <span>Pet Profile Summary</span>
-                              </h4>
-                              <div className="grid md:grid-cols-3 gap-4 text-sm">
-                                <div><strong>Name:</strong> {recommendations.petProfileSummary.name || 'N/A'}</div>
-                                <div><strong>Type:</strong> {recommendations.petProfileSummary.type || 'N/A'}</div>
-                                <div><strong>Breed:</strong> {recommendations.petProfileSummary.breed || 'N/A'}</div>
-                                <div><strong>Age:</strong> {recommendations.petProfileSummary.age || 'N/A'}</div>
-                                <div><strong>Weight:</strong> {recommendations.petProfileSummary.weight || 'N/A'}</div>
-                                <div><strong>Activity:</strong> {recommendations.petProfileSummary.activityLevel || 'N/A'}</div>
-                              </div>
-                            </motion.div>
-                          )}
-
-                          {recommendations?.dailyFeedingPlan && recommendations.dailyFeedingPlan.meals && recommendations.dailyFeedingPlan.meals.length > 0 && (
-                            <motion.div variants={fadeUp}>
-                              <h4 className="font-semibold mb-4 flex items-center space-x-2">
-                                <Utensils className="h-4 w-4 text-primary" />
-                                <span>Daily Feeding Plan</span>
-                                <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                                  {recommendations.dailyFeedingPlan.caloriesPerDay} cal/day
-                                </Badge>
-                              </h4>
-                              <div className="grid gap-4">
-                                {recommendations.dailyFeedingPlan.meals.map((meal: any, index: number) => (
-                                  <motion.div
-                                    key={index}
-                                    className="p-4 border rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 hover:shadow-md transition-all duration-300"
-                                    variants={scaleUp}
-                                    >
-                                    <div className="flex justify-between items-start mb-2">
-                                      <h5 className="font-medium text-primary">{meal.time}</h5>
-                                      <Badge variant="outline" className="text-xs">
-                                        {meal.portionSizeGrams}g
-                                      </Badge>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground mb-2">{meal.foodType}</p>
-                                    <p className="text-xs text-muted-foreground">{meal.notes}</p>
-                                  </motion.div>
-                                ))}
-                              </div>
-
-                              {/* Supplements */}
-                              {recommendations?.dailyFeedingPlan.supplements && (
-                                <div className="mt-4">
-                                  <h5 className="font-medium mb-2 text-secondary-foreground">Supplements</h5>
-                                  {recommendations.dailyFeedingPlan.supplements.map((supplement: any, index: number) => (
-                                    <div key={index} className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border">
-                                      <div className="font-medium text-blue-700 dark:text-blue-300">{supplement.name}</div>
-                                      <div className="text-sm text-blue-600 dark:text-blue-400 mb-1">{supplement.purpose}</div>
-                                      <div className="text-xs text-blue-500 dark:text-blue-500">{supplement.dosage}</div>
-                                    </div>
-                                  ))}
+                                  )}
                                 </div>
+                              </div>
+                            );
+                          }
+                          return (
+                            <motion.div
+                              className="space-y-6"
+                              variants={staggerContainer(0.1, 0.1)}
+                              initial="hidden"
+                              animate="visible"
+                            >
+
+                              {/* Pet Profile Summary */}
+                              {recommendations?.petProfileSummary && Object.keys(recommendations.petProfileSummary).length > 0 && (
+                                <motion.div variants={fadeUp} className="bg-gradient-to-r from-primary/5 to-secondary/5 p-6 rounded-xl border">
+                                  <h4 className="font-semibold mb-4 flex items-center space-x-2">
+                                    <PawPrint className="h-4 w-4 text-primary" />
+                                    <span>Pet Profile Summary</span>
+                                  </h4>
+                                  <div className="grid md:grid-cols-3 gap-4 text-sm">
+                                    <div><strong>Name:</strong> {recommendations.petProfileSummary.name || 'N/A'}</div>
+                                    <div><strong>Type:</strong> {recommendations.petProfileSummary.type || 'N/A'}</div>
+                                    <div><strong>Breed:</strong> {recommendations.petProfileSummary.breed || 'N/A'}</div>
+                                    <div><strong>Age:</strong> {recommendations.petProfileSummary.age || 'N/A'}</div>
+                                    <div><strong>Weight:</strong> {recommendations.petProfileSummary.weight || 'N/A'}</div>
+                                    <div><strong>Activity:</strong> {recommendations.petProfileSummary.activityLevel || 'N/A'}</div>
+                                  </div>
+                                </motion.div>
                               )}
-                            </motion.div>
-                          )}
 
-                          {/* Environmental Impact */}
-                          {recommendations?.environmentalImpact && 
-                           (recommendations.environmentalImpact.climateConsiderations || 
-                            recommendations.environmentalImpact.hydrationNeeds || 
-                            recommendations.environmentalImpact.energyNeedsAdjustment) && (
-                            <motion.div variants={fadeUp} className="bg-green-50 dark:bg-green-950/20 p-6 rounded-xl border border-green-200 dark:border-green-800">
-                              <h4 className="font-semibold mb-4 flex items-center space-x-2 text-green-700 dark:text-green-300">
-                                <Activity className="h-4 w-4" />
-                                <span>Environmental Considerations</span>
-                              </h4>
-                              <div className="space-y-3 text-sm">
-                                {recommendations.environmentalImpact.climateConsiderations && (
-                                  <div>
-                                    <strong className="text-green-600 dark:text-green-400">Climate:</strong>
-                                    <p className="text-green-700 dark:text-green-300 mt-1">{recommendations.environmentalImpact.climateConsiderations}</p>
-                                  </div>
-                                )}
-                                {recommendations.environmentalImpact.hydrationNeeds && (
-                                  <div>
-                                    <strong className="text-green-600 dark:text-green-400">Hydration:</strong>
-                                    <p className="text-green-700 dark:text-green-300 mt-1">{recommendations.environmentalImpact.hydrationNeeds}</p>
-                                  </div>
-                                )}
-                                {recommendations.environmentalImpact.energyNeedsAdjustment && (
-                                  <div>
-                                    <strong className="text-green-600 dark:text-green-400">Energy Needs:</strong>
-                                    <p className="text-green-700 dark:text-green-300 mt-1">{recommendations.environmentalImpact.energyNeedsAdjustment}</p>
-                                  </div>
-                                )}
-                              </div>
-                            </motion.div>
-                          )}
-
-                          {/* Special Considerations */}
-                          {recommendations?.specialConsiderations && recommendations.specialConsiderations.length > 0 && (
-                            <motion.div variants={fadeUp}>
-                              <h4 className="font-semibold mb-4 flex items-center space-x-2">
-                                <AlertTriangle className="h-4 w-4 text-orange-500" />
-                                <span>Special Considerations</span>
-                              </h4>
-                              <div className="grid gap-3">
-                                {recommendations.specialConsiderations.map((consideration: any, index: number) => (
-                                  <div key={index} className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                                    <h5 className="font-medium text-orange-700 dark:text-orange-300 mb-2">{consideration.condition || 'General'}</h5>
-                                    <p className="text-sm text-orange-600 dark:text-orange-400">{consideration.recommendation || 'No specific recommendation available'}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            </motion.div>
-                          )}
-
-                          {/* Long-term Wellness Tips */}
-                          {recommendations?.longTermWellnessTips && recommendations.longTermWellnessTips.length > 0 && (
-                            <motion.div variants={fadeUp}>
-                              <h4 className="font-semibold mb-4 flex items-center space-x-2">
-                                <Heart className="h-4 w-4 text-pink-500" />
-                                <span>Long-term Wellness Tips</span>
-                              </h4>
-                              <div className="grid gap-2">
-                                {recommendations.longTermWellnessTips.map((tip: string, index: number) => (
-                                  <div key={index} className="flex items-start space-x-2 p-2">
-                                    <CheckCircle className="h-4 w-4 text-green-500 mt-1 flex-shrink-0" />
-                                    <p className="text-sm" dangerouslySetInnerHTML={{ __html: (tip || 'No tip available').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
-                                  </div>
-                                ))}
-                              </div>
-                            </motion.div>
-                          )}
-
-                          {/* Recommended Products */}
-                          {recommendations?.recommendedProducts && recommendations.recommendedProducts.length > 0 && (
-                            
-                            <motion.div variants={fadeUp}>
-                              <h4 className="font-semibold mb-4 flex items-center space-x-2">
-                                <Gift className="h-4 w-4 text-primary" />
-                                <span>Recommended Products</span>
-                              </h4>
-                              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {recommendations?.recommendedProducts.map((product: RecommendedProduct, index: number) => (
-                                  <motion.div
-                                    key={index}
-                                    variants={scaleUp}
-                                    whileHover={{ scale: 1.02, y: -5 }}
-                                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                                  >
-                                    <Card className="hover:shadow-lg transition-all duration-300 border-0 bg-gradient-to-br from-card to-muted/20">
-                                      <CardContent className="p-4">
-                                      <div className="flex items-center mb-2">
-                                          <Badge variant="outline" className="text-xs mr-2 capitalize">
-                                            {product.category}
+                              {recommendations?.dailyFeedingPlan && recommendations.dailyFeedingPlan.meals && recommendations.dailyFeedingPlan.meals.length > 0 && (
+                                <motion.div variants={fadeUp}>
+                                  <h4 className="font-semibold mb-4 flex items-center space-x-2">
+                                    <Utensils className="h-4 w-4 text-primary" />
+                                    <span>Daily Feeding Plan</span>
+                                    <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                                      {recommendations.dailyFeedingPlan.caloriesPerDay} cal/day
+                                    </Badge>
+                                  </h4>
+                                  <div className="grid gap-4">
+                                    {recommendations.dailyFeedingPlan.meals.map((meal: any, index: number) => (
+                                      <motion.div
+                                        key={index}
+                                        className="p-4 border rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 hover:shadow-md transition-all duration-300"
+                                        variants={scaleUp}
+                                      >
+                                        <div className="flex justify-between items-start mb-2">
+                                          <h5 className="font-medium text-primary">{meal.time}</h5>
+                                          <Badge variant="outline" className="text-xs">
+                                            {meal.portionSizeGrams}g
                                           </Badge>
                                         </div>
-                                        <h5 className="font-medium mb-2">{product.productName}</h5>
-                                        <p className="text-sm text-muted-foreground mb-3">{product.purpose}</p>
-                                        {/* <div className="mt-auto flex justify-end">
+                                        <p className="text-sm text-muted-foreground mb-2">{meal.foodType}</p>
+                                        <p className="text-xs text-muted-foreground">{meal.notes}</p>
+                                      </motion.div>
+                                    ))}
+                                  </div>
+
+                                  {/* Supplements */}
+                                  {recommendations?.dailyFeedingPlan.supplements && (
+                                    <div className="mt-4">
+                                      <h5 className="font-medium mb-2 text-secondary-foreground">Supplements</h5>
+                                      {recommendations.dailyFeedingPlan.supplements.map((supplement: any, index: number) => (
+                                        <div key={index} className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border">
+                                          <div className="font-medium text-blue-700 dark:text-blue-300">{supplement.name}</div>
+                                          <div className="text-sm text-blue-600 dark:text-blue-400 mb-1">{supplement.purpose}</div>
+                                          <div className="text-xs text-blue-500 dark:text-blue-500">{supplement.dosage}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </motion.div>
+                              )}
+
+                              {/* Environmental Impact */}
+                              {recommendations?.environmentalImpact &&
+                                (recommendations.environmentalImpact.climateConsiderations ||
+                                  recommendations.environmentalImpact.hydrationNeeds ||
+                                  recommendations.environmentalImpact.energyNeedsAdjustment) && (
+                                  <motion.div variants={fadeUp} className="bg-green-50 dark:bg-green-950/20 p-6 rounded-xl border border-green-200 dark:border-green-800">
+                                    <h4 className="font-semibold mb-4 flex items-center space-x-2 text-green-700 dark:text-green-300">
+                                      <Activity className="h-4 w-4" />
+                                      <span>Environmental Considerations</span>
+                                    </h4>
+                                    <div className="space-y-3 text-sm">
+                                      {recommendations.environmentalImpact.climateConsiderations && (
+                                        <div>
+                                          <strong className="text-green-600 dark:text-green-400">Climate:</strong>
+                                          <p className="text-green-700 dark:text-green-300 mt-1">{recommendations.environmentalImpact.climateConsiderations}</p>
+                                        </div>
+                                      )}
+                                      {recommendations.environmentalImpact.hydrationNeeds && (
+                                        <div>
+                                          <strong className="text-green-600 dark:text-green-400">Hydration:</strong>
+                                          <p className="text-green-700 dark:text-green-300 mt-1">{recommendations.environmentalImpact.hydrationNeeds}</p>
+                                        </div>
+                                      )}
+                                      {recommendations.environmentalImpact.energyNeedsAdjustment && (
+                                        <div>
+                                          <strong className="text-green-600 dark:text-green-400">Energy Needs:</strong>
+                                          <p className="text-green-700 dark:text-green-300 mt-1">{recommendations.environmentalImpact.energyNeedsAdjustment}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </motion.div>
+                                )}
+
+                              {/* Special Considerations */}
+                              {recommendations?.specialConsiderations && recommendations.specialConsiderations.length > 0 && (
+                                <motion.div variants={fadeUp}>
+                                  <h4 className="font-semibold mb-4 flex items-center space-x-2">
+                                    <AlertTriangle className="h-4 w-4 text-orange-500" />
+                                    <span>Special Considerations</span>
+                                  </h4>
+                                  <div className="grid gap-3">
+                                    {recommendations.specialConsiderations.map((consideration: any, index: number) => (
+                                      <div key={index} className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                                        <h5 className="font-medium text-orange-700 dark:text-orange-300 mb-2">{consideration.condition || 'General'}</h5>
+                                        <p className="text-sm text-orange-600 dark:text-orange-400">{consideration.recommendation || 'No specific recommendation available'}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </motion.div>
+                              )}
+
+                              {/* Long-term Wellness Tips */}
+                              {recommendations?.longTermWellnessTips && recommendations.longTermWellnessTips.length > 0 && (
+                                <motion.div variants={fadeUp}>
+                                  <h4 className="font-semibold mb-4 flex items-center space-x-2">
+                                    <Heart className="h-4 w-4 text-pink-500" />
+                                    <span>Long-term Wellness Tips</span>
+                                  </h4>
+                                  <div className="grid gap-2">
+                                    {recommendations.longTermWellnessTips.map((tip: string, index: number) => (
+                                      <div key={index} className="flex items-start space-x-2 p-2">
+                                        <CheckCircle className="h-4 w-4 text-green-500 mt-1 flex-shrink-0" />
+                                        <p className="text-sm" dangerouslySetInnerHTML={{ __html: (tip || 'No tip available').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </motion.div>
+                              )}
+
+                              {/* Recommended Products */}
+                              {recommendations?.recommendedProducts && recommendations.recommendedProducts.length > 0 && (
+
+                                <motion.div variants={fadeUp}>
+                                  <h4 className="font-semibold mb-4 flex items-center space-x-2">
+                                    <Gift className="h-4 w-4 text-primary" />
+                                    <span>Recommended Products</span>
+                                  </h4>
+                                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {recommendations?.recommendedProducts.map((product: RecommendedProduct, index: number) => (
+                                      <motion.div
+                                        key={index}
+                                        variants={scaleUp}
+                                        whileHover={{ scale: 1.02, y: -5 }}
+                                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                      >
+                                        <Card className="hover:shadow-lg transition-all duration-300 border-0 bg-gradient-to-br from-card to-muted/20">
+                                          <CardContent className="p-4">
+                                            <div className="flex items-center mb-2">
+                                              <Badge variant="outline" className="text-xs mr-2 capitalize">
+                                                {product.category}
+                                              </Badge>
+                                            </div>
+                                            <h5 className="font-medium mb-2">{product.productName}</h5>
+                                            <p className="text-sm text-muted-foreground mb-3">{product.purpose}</p>
+                                            {/* <div className="mt-auto flex justify-end">
                                           <Button
                                             size="sm"
                                             className="bg-primary hover:bg-primary/90"
@@ -1391,40 +1424,40 @@ export default function AIAssistant() {
                                             Search
                                           </Button>
                                         </div> */}
-                                      </CardContent>
-                                    </Card>
-                                  </motion.div>
-                                ))}
-                                </div>
-                            </motion.div>
-                          )}
+                                          </CardContent>
+                                        </Card>
+                                      </motion.div>
+                                    ))}
+                                  </div>
+                                </motion.div>
+                              )}
 
-                          {/* Veterinary Disclaimer */}
-                          {recommendations?.vetAdviceDisclaimer && (
-                            <motion.div variants={fadeUp} className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                              <div className="flex items-start space-x-2">
-                                <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-                                <div>
-                                  <h5 className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">Important Notice</h5>
-                                  <p className="text-sm text-yellow-700 dark:text-yellow-300">{recommendations.vetAdviceDisclaimer}</p>
-                                </div>
-                              </div>
+                              {/* Veterinary Disclaimer */}
+                              {recommendations?.vetAdviceDisclaimer && (
+                                <motion.div variants={fadeUp} className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                                  <div className="flex items-start space-x-2">
+                                    <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                      <h5 className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">Important Notice</h5>
+                                      <p className="text-sm text-yellow-700 dark:text-yellow-300">{recommendations.vetAdviceDisclaimer}</p>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              )}
                             </motion.div>
-                          )}
-                        </motion.div>
-                      );
-                      })()}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </motion.div>
+                          );
+                        })()}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </motion.div>
 
-      <Footer />
-    </div>
-      </>
+        <Footer />
+      </div>
+    </>
   );
 }
