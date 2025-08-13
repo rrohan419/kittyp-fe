@@ -737,7 +737,7 @@ export default function AIAssistant() {
 
 
   return (
-
+    <>
     <Head>
         <title>Free AI Pet Nutritionist – Kittyp | Pet Health & Diet Advice</title>
         <meta
@@ -1424,5 +1424,6 @@ export default function AIAssistant() {
 
       <Footer />
     </div>
+      </>
   );
 }
