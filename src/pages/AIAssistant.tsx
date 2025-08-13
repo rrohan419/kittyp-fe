@@ -18,6 +18,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/module/store/store';
 import { useNavigate } from 'react-router-dom';
 import { PetProfile } from '@/services/authService';
+import { Helmet } from 'react-helmet';
 import {
   generateNutritionRecommendation,
   generateVetTriageAssessment,
@@ -738,7 +739,7 @@ export default function AIAssistant() {
 
   return (
     <>
-{/*     <Head>
+    <Helmet>
         <title>Free AI Pet Nutritionist – Kittyp | Pet Health & Diet Advice</title>
         <meta
           name="description"
@@ -755,7 +756,7 @@ export default function AIAssistant() {
       <meta name="twitter:description" content="Get instant, AI-powered diet advice for cats and dogs, tailored to your pet's health needs." />
       <meta name="twitter:image" content="https://kittyp-site-images.s3.ap-south-1.amazonaws.com/Gemini_Generated_Image_l2csvvl2csvvl2cs.png" />
 
-      </Head> */}
+      </Helmet>
     
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 relative overflow-hidden">
       <FloatingParticles />
