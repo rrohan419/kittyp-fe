@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navbar } from '@/components/layout/Navbar';
-import Head from 'next/head';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -739,7 +738,7 @@ export default function AIAssistant() {
 
   return (
     <>
-    <Head>
+{/*     <Head>
         <title>Free AI Pet Nutritionist – Kittyp | Pet Health & Diet Advice</title>
         <meta
           name="description"
@@ -756,7 +755,7 @@ export default function AIAssistant() {
       <meta name="twitter:description" content="Get instant, AI-powered diet advice for cats and dogs, tailored to your pet's health needs." />
       <meta name="twitter:image" content="https://kittyp-site-images.s3.ap-south-1.amazonaws.com/Gemini_Generated_Image_l2csvvl2csvvl2cs.png" />
 
-      </Head>
+      </Head> */}
     
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 relative overflow-hidden">
       <FloatingParticles />
