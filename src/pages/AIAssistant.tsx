@@ -737,6 +737,27 @@ export default function AIAssistant() {
 
 
   return (
+
+    <Head>
+        <title>Free AI Pet Nutritionist – Kittyp | Pet Health & Diet Advice</title>
+        <meta
+          name="description"
+          content="Get free AI-powered pet nutrition advice for cats & dogs. Improve pet health with expert diet plans in seconds."
+        />
+        <link rel="canonical" href="https://www.kittyp.in/ai-pet-nutritionist" />
+      <meta name="keywords" content="free pet nutritionist, AI pet nutritionist, pet health advice, cat diet plan, dog diet plan, pet nutrition India"/>
+      <meta property="og:title" content="Free AI Pet Nutritionist – Kittyp" />
+      <meta property="og:description" content="Get instant, AI-powered diet advice for cats and dogs, tailored to your pet's health needs." />
+      <meta property="og:url" content="https://www.kittyp.in/ai-pet-nutritionist" />
+      <meta property="og:type" content="website" />
+      <meta property="og:image" content="https://kittyp-site-images.s3.ap-south-1.amazonaws.com/Gemini_Generated_Image_l2csvvl2csvvl2cs.png" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content="Free AI Pet Nutritionist – Kittyp" />
+      <meta name="twitter:description" content="Get instant, AI-powered diet advice for cats and dogs, tailored to your pet's health needs." />
+      <meta name="twitter:image" content="https://kittyp-site-images.s3.ap-south-1.amazonaws.com/Gemini_Generated_Image_l2csvvl2csvvl2cs.png" />
+
+      </Head>
+    
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 relative overflow-hidden">
       <FloatingParticles />
       <Navbar />
