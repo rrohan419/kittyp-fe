@@ -9,12 +9,14 @@ import orderReducer from '../slice/OrderSlice';
 import adminProductReducer from '../slice/AdminProductSlice';
 import { persistReducer, persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
-import { userSlice } from '../slice/UserSlice';
+import schedularReducer from '../slice/SchedulingSlice';
+import vetReducer from '../slice/VetSlice';
+
 
 const persistConfig = {
     key: 'root',
     storage,
-    whitelist: ['cartReducer', 'authReducer', 'favoritesReducer', 'user'] // Only persist cart, auth, favorites and user state
+    whitelist: ['cartReducer', 'authReducer', 'favoritesReducer'] // Removed 'user' since it's now part of authReducer
 };
 
 const rootReducer = combineReducers({
@@ -25,8 +27,9 @@ const rootReducer = combineReducers({
     authReducer,
     favoritesReducer,
     orderReducer,
-    user: userSlice.reducer,
-    adminProducts: adminProductReducer
+    schedular: schedularReducer,
+    adminProducts: adminProductReducer,
+    vet: vetReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

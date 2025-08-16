@@ -54,8 +54,10 @@ const Profile: React.FC = () => {
     return null;
   }
 
-  // Get the active tab from location state
-  const defaultTab = location.state || 'pets';
+  // Get the active tab from location state or URL params
+  const urlParams = new URLSearchParams(location.search);
+  const tabParam = urlParams.get('tab');
+  const defaultTab = tabParam || location.state || 'pets';
 
   return (
     <>
@@ -76,7 +78,11 @@ const Profile: React.FC = () => {
             />
 
             <div className="space-y-8">
-            <Tabs defaultValue={defaultTab} className="w-full animate-fade-in">
+            <Tabs value={defaultTab} onValueChange={(value) => {
+              // Update URL when tab changes
+              const newUrl = `/profile?tab=${value}`;
+              navigate(newUrl, { replace: true });
+            }} className="w-full animate-fade-in">
             <TabsList className="mb-6 w-full grid grid-cols-4 bg-accent text-accent-foreground">
                 <TabsTrigger value="pets">My Pets</TabsTrigger>
                   <TabsTrigger value="favorites">Favorites</TabsTrigger>
