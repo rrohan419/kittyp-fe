@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { useOrder } from './OrderContext';
 import { fetchUserDetail } from '@/services/UserService';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
-import { setUserAccessToken, setUserData } from '@/module/slice/UserSlice';
+import { setUser } from '@/module/slice/AuthSlice';
 
 export interface CartItem extends Product {
   quantity: number;

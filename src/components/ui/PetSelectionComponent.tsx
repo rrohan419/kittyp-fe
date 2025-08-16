@@ -4,21 +4,22 @@ import { staggerContainer, fadeUp, scaleUp } from "@/utils/animations";
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, PawPrint, Plus, CheckCircle, Sparkles, Wand2, ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./card";
 import { Input } from "./input";
 import { Textarea } from "./textarea";
+import { useSelector } from "react-redux";
+import { RootState } from "@/module/store/store";
 
 interface PetSelectionProps {
     selectedPetId: string | null;
     setSelectedPetId: (id: string | null) => void;
-    savedPets: PetProfile[];
-    user: any;
+    // savedPets: PetProfile[];
+    // user: any;
     onGenerateRecommendation: (manualPetData?: PetProfile) => void;
     isGenerating: boolean;
     recommendations: PetCarePlan;
@@ -27,8 +28,8 @@ interface PetSelectionProps {
 export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
     selectedPetId,
     setSelectedPetId,
-    savedPets,
-    user,
+    // savedPets,
+    // user,
     onGenerateRecommendation,
     isGenerating,
     recommendations
@@ -50,7 +51,19 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
       isNeutered: true,
       createdAt: '',
     });
-  
+    const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
+    const savedPets = user?.ownerPets || [];
+
+    // Clear selectedPetId if the selected pet no longer exists
+    useEffect(() => {
+      if (selectedPetId && selectedPetId !== 'manual-entry') {
+        const petExists = savedPets.some(pet => pet.uuid === selectedPetId);
+        if (!petExists) {
+          setSelectedPetId(null);
+        }
+      }
+    }, [savedPets, selectedPetId, setSelectedPetId]);
+
     const selectedPet = savedPets.find(pet => pet.uuid === selectedPetId) ||
       (useManualEntry ? { ...manualPetData, id: 'manual' } : null);
   
@@ -119,7 +132,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                     <p className="text-sm mb-6">Add your pet's profile to get personalized recommendations</p>
                     {user ? (
                       <Button asChild variant="outline" size="lg" className="mr-4">
-                        <a href="/my-pets">
+                        <a href="/profile?tab=pets">
                           <Plus className="h-4 w-4 mr-2" />
                           Add Pet Profile
                         </a>
@@ -172,7 +185,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                                   </Badge>
                                   {pet.weight && (
                                     <Badge variant="outline" className="text-xs border-primary/20 text-primary">
-                                      {pet.weight}kg
+                                      {pet.weight}
                                     </Badge>
                                   )}
                                 </div>

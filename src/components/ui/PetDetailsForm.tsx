@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,15 +12,24 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PetProfile } from "@/services/authService";
 import { addPet, deletePet, editPet, fetchUserPets, AddPet, UpdatePet } from "@/services/UserService";
 import { PetPhotoUpload } from './PetPhotoUpload';
+import { addPetToUser, removePetFromUser, updatePetInUser, setPetsLoading, setSaving } from '@/module/slice/AuthSlice';
+import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 
-const PetDetailsForm: React.FC = () => {
-    const [pets, setPets] = useState<PetProfile[]>([]);
+interface PetDetailsFormProps {
+    onPetAdded?: () => void;
+}
+
+export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) => {
+    const dispatch = useAppDispatch();
+    const { user, petsLoading, saving } = useAppSelector((state) => state.authReducer);
+    const pets = user?.ownerPets || [];
+    const formRef = useRef<HTMLDivElement>(null);
+    
+    // Local state for form management
     const [isAddingPet, setIsAddingPet] = useState(false);
     const [isEditingPet, setIsEditingPet] = useState(false);
     const [editingPetId, setEditingPetId] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-
+    
     const [petForm, setPetForm] = useState<Omit<AddPet, 'isNeutered'> & { isNeutered: string }>({
         name: '',
         profilePicture: '',
@@ -43,17 +52,27 @@ const PetDetailsForm: React.FC = () => {
 
     const loadPets = async () => {
         try {
-            setLoading(true);
+            dispatch(setPetsLoading(true));
             const userPets = await fetchUserPets();
-            setPets(userPets);
+            // Pets are now managed through authReducer, no need to manually set them
         } catch (error) {
             console.error('Error loading pets:', error);
             toast.error("Failed to load pets", {
                 description: "Please try again later."
             });
         } finally {
-            setLoading(false);
+            dispatch(setPetsLoading(false));
         }
+    };
+
+    const scrollToForm = () => {
+        setIsAddingPet(true);
+        setTimeout(() => {
+            formRef.current?.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+        }, 100);
     };
 
     const resetForm = () => {
@@ -76,8 +95,6 @@ const PetDetailsForm: React.FC = () => {
         setEditingPetId(null);
     };
 
-    // Remove old handleImageUpload and fileInputRef logic
-
     const handleAddPet = async () => {
         if (!petForm.name) {
             toast.warning("Missing Information", {
@@ -87,26 +104,22 @@ const PetDetailsForm: React.FC = () => {
         }
 
         try {
-            setSaving(true);
+            dispatch(setSaving(true));
             const petDto: AddPet = {
                 ...petForm,
                 isNeutered: petForm.isNeutered === 'yes'
             };
 
-            const newPet = await addPet(petDto);
-            setPets([...pets, newPet]);
+            await dispatch(addPetToUser({petDto})).unwrap();
             resetForm();
-
-            toast.success("Pet Added Successfully", {
-                description: `${newPet.name} has been added to your profile.`
-            });
+            onPetAdded?.();
         } catch (error) {
             console.error('Error adding pet:', error);
             toast.error("Failed to add pet", {
                 description: "Please try again later."
             });
         } finally {
-            setSaving(false);
+            dispatch(setSaving(false));
         }
     };
 
@@ -119,42 +132,29 @@ const PetDetailsForm: React.FC = () => {
         }
 
         try {
-            setSaving(true);
+            dispatch(setSaving(true));
             const updatePetDto: UpdatePet = {
                 uuid: editingPetId,
                 ...petForm,
                 isNeutered: petForm.isNeutered === 'yes'
             };
 
-            const updatedPet = await editPet(updatePetDto);
-            setPets(pets.map(pet => pet.uuid === editingPetId ? updatedPet : pet));
+            await dispatch(updatePetInUser(updatePetDto)).unwrap();
             resetForm();
-
-            toast.success("Pet Updated Successfully", {
-                description: `${updatedPet.name} has been updated.`
-            });
         } catch (error) {
             console.error('Error updating pet:', error);
-            toast.error("Failed to update pet", {
-                description: "Please try again later."
-            });
+            // Error handling is already done in the async thunk
         } finally {
-            setSaving(false);
+            dispatch(setSaving(false));
         }
     };
 
     const handleDeletePet = async (petId: string) => {
         try {
-            await deletePet(petId);
-            setPets(pets.filter(pet => pet.uuid !== petId));
-            toast.success("Pet Removed", {
-                description: "Pet has been removed from your profile."
-            });
+            dispatch(removePetFromUser(petId));
         } catch (error) {
             console.error('Error deleting pet:', error);
-            toast.error("Failed to remove pet", {
-                description: "Please try again later."
-            });
+            // Error handling is already done in the async thunk
         }
     };
 
@@ -178,7 +178,7 @@ const PetDetailsForm: React.FC = () => {
         setIsAddingPet(false);
     };
 
-    if (loading) {
+    if (petsLoading) {
         return (
             <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -195,7 +195,7 @@ const PetDetailsForm: React.FC = () => {
                     <p className="text-muted-foreground">Add your pet details for personalized AI recommendations</p>
                 </div>
                 <Button
-                    onClick={() => setIsAddingPet(true)}
+                    onClick={scrollToForm}
                     className="flex items-center gap-2"
                     disabled={isEditingPet}
                 >
@@ -206,7 +206,8 @@ const PetDetailsForm: React.FC = () => {
 
             {/* Existing Pets */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {pets.map((pet) => (
+                {Array.isArray(pets) && pets.length > 0 ? (
+                pets?.map((pet) => (
                     <Card key={pet.uuid} className="relative group hover:shadow-md transition-shadow">
                         <CardHeader className="pb-3">
                             <div className="flex items-start justify-between">
@@ -259,12 +260,24 @@ const PetDetailsForm: React.FC = () => {
                             )}
                         </CardContent>
                     </Card>
-                ))}
+                ))) : (
+                    <div className="text-center py-12">
+                        <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No pets added yet</h3>
+                        <p className="text-muted-foreground mb-4">
+                            Add your pet's details to get personalized nutrition recommendations and AI health insights
+                        </p>
+                        <Button onClick={scrollToForm} className="flex items-center gap-2 mx-auto">
+                            <PlusCircle className="h-4 w-4" />
+                            Add Your First Pet
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {/* Add/Edit Pet Form */}
             {(isAddingPet || isEditingPet) && (
-                <Card className="animate-fade-in">
+                <Card ref={formRef} className="animate-fade-in">
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <div>
@@ -457,7 +470,7 @@ const PetDetailsForm: React.FC = () => {
                 </Card>
             )}
 
-            {pets.length === 0 && !isAddingPet && !isEditingPet && (
+            {/* {pets?.length === 0 && !isAddingPet && !isEditingPet && (
                 <Card className="text-center py-12">
                     <CardContent>
                         <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -471,7 +484,7 @@ const PetDetailsForm: React.FC = () => {
                         </Button>
                     </CardContent>
                 </Card>
-            )}
+            )} */}
         </div>
     );
 };
