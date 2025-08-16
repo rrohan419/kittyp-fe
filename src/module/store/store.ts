@@ -1,16 +1,16 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
-import cartReducer, { CartState } from '../slice/CartSlice';
+import cartReducer from '../slice/CartSlice';
 import dummyReducer from '../slice/DummySlice';
 import adminReducer from '../slice/AdminSlice';
 import productReducer from '../slice/ProductSlice';
-import authReducer, { AuthState } from '../slice/AuthSlice';
+import authReducer from '../slice/AuthSlice';
 import favoritesReducer from '../slice/FavoritesSlice';
 import orderReducer from '../slice/OrderSlice';
 import adminProductReducer from '../slice/AdminProductSlice';
 import { persistReducer, persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
-import schedularReducer from '../slice/SchedulingSlice';
-import vetReducer from '../slice/VetSlice';
+// import schedularReducer from '../slice/SchedulingSlice';
+// import vetReducer from '../slice/VetSlice';
 
 
 const persistConfig = {
@@ -27,9 +27,9 @@ const rootReducer = combineReducers({
     authReducer,
     favoritesReducer,
     orderReducer,
-    schedular: schedularReducer,
+    // schedular: schedularReducer,
     adminProducts: adminProductReducer,
-    vet: vetReducer,
+    // vet: vetReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
