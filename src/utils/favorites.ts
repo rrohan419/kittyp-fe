@@ -18,10 +18,8 @@ export const handleToggleFavorite = async (
   try {
     if (favorites.some(item => item.uuid === product.uuid)) {
       await dispatch(removeFromFavoritesThunk({ userUuid, productUuid: product.uuid })).unwrap();
-      toast.success("Removed from favorites");
     } else {
       await dispatch(addToFavoritesThunk({ userUuid, product, category: product.category })).unwrap();
-      toast.success("Added to favorites");
     }
   } catch (error) {
     console.error("Error toggling favorite:", error);

@@ -24,12 +24,12 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
     const { user, petsLoading, saving } = useAppSelector((state) => state.authReducer);
     const pets = user?.ownerPets || [];
     const formRef = useRef<HTMLDivElement>(null);
-    
+
     // Local state for form management
     const [isAddingPet, setIsAddingPet] = useState(false);
     const [isEditingPet, setIsEditingPet] = useState(false);
     const [editingPetId, setEditingPetId] = useState<string | null>(null);
-    
+
     const [petForm, setPetForm] = useState<Omit<AddPet, 'isNeutered'> & { isNeutered: string }>({
         name: '',
         profilePicture: '',
@@ -68,9 +68,9 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
     const scrollToForm = () => {
         setIsAddingPet(true);
         setTimeout(() => {
-            formRef.current?.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'start' 
+            formRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
             });
         }, 100);
     };
@@ -110,7 +110,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                 isNeutered: petForm.isNeutered === 'yes'
             };
 
-            await dispatch(addPetToUser({petDto})).unwrap();
+            await dispatch(addPetToUser({ petDto })).unwrap();
             resetForm();
             onPetAdded?.();
         } catch (error) {
@@ -207,60 +207,63 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
             {/* Existing Pets */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {Array.isArray(pets) && pets.length > 0 ? (
-                pets?.map((pet) => (
-                    <Card key={pet.uuid} className="relative group hover:shadow-md transition-shadow">
-                        <CardHeader className="pb-3">
-                            <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-3">
-                                    <Avatar className="w-12 h-12 border-2 border-primary/20">
-                                        {pet.profilePicture ? (
-                                            <AvatarImage src={pet.profilePicture} alt={pet.name} className="object-cover" />
-                                        ) : (
-                                            <AvatarFallback className="bg-primary/10 text-primary">
-                                                <Heart className="h-6 w-6" />
-                                            </AvatarFallback>
-                                        )}
-                                    </Avatar>
-                                    <div>
-                                        <CardTitle className="text-lg">{pet.name}</CardTitle>
-                                        <CardDescription>{pet.breed || 'Mixed breed'}</CardDescription>
+                    pets?.map((pet) => (
+                        <Card key={pet.uuid} className="relative group hover:shadow-md transition-shadow">
+                            <CardHeader className="pb-3">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="w-12 h-12 border-2 border-primary/20">
+                                            {pet.profilePicture ? (
+                                                <AvatarImage src={pet.profilePicture} alt={pet.name} className="object-cover" />
+                                            ) : (
+                                                <AvatarFallback className="bg-primary/10 text-primary">
+                                                    <Heart className="h-6 w-6" />
+                                                </AvatarFallback>
+                                            )}
+                                        </Avatar>
+                                        <div>
+                                            <CardTitle className="text-lg">{pet.name}</CardTitle>
+                                            <CardDescription>{pet.breed || 'Mixed breed'}</CardDescription>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                startEditing(pet);
+                                                scrollToForm();
+                                            }}
+                                            className="text-primary hover:text-primary"
+                                        >
+                                            <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleDeletePet(pet.uuid)}
+                                            className="text-destructive hover:text-destructive"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
                                     </div>
                                 </div>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => startEditing(pet)}
-                                        className="text-primary hover:text-primary"
-                                    >
-                                        <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleDeletePet(pet.uuid)}
-                                        className="text-destructive hover:text-destructive"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                <div className="flex flex-wrap gap-2">
+                                    {pet.age && <Badge variant="secondary">{pet.age} old</Badge>}
+                                    {pet.weight && <Badge variant="secondary">{pet.weight}</Badge>}
+                                    {pet.activityLevel && <Badge variant="outline">{pet.activityLevel} activity</Badge>}
+                                    {pet.isNeutered && <Badge variant="outline">Neutered</Badge>}
                                 </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            <div className="flex flex-wrap gap-2">
-                                {pet.age && <Badge variant="secondary">{pet.age} old</Badge>}
-                                {pet.weight && <Badge variant="secondary">{pet.weight}</Badge>}
-                                {pet.activityLevel && <Badge variant="outline">{pet.activityLevel} activity</Badge>}
-                                {pet.isNeutered && <Badge variant="outline">Neutered</Badge>}
-                            </div>
-                            {pet.healthConditions && (
-                                <p className="text-sm text-muted-foreground">
-                                    Health: {pet.healthConditions}
-                                </p>
-                            )}
-                        </CardContent>
-                    </Card>
-                ))) : (
+                                {pet.healthConditions && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Health: {pet.healthConditions}
+                                    </p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    ))) : (
                     <div className="text-center py-12">
                         <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <h3 className="text-lg font-semibold mb-2">No pets added yet</h3>
@@ -320,10 +323,11 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                     value={petForm.name}
                                     onChange={(e) => setPetForm({ ...petForm, name: e.target.value })}
                                     placeholder="Enter pet name"
+                                    className="border-primary/20 focus:border-primary"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="petType" className="text-primary font-medium">Pet Type</Label>
+                                <Label htmlFor="petType">Pet Type</Label>
                                 <Select
                                     value={petForm.type}
                                     onValueChange={(value) => setPetForm(prev => ({ ...prev, type: value }))}
@@ -348,6 +352,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                     value={petForm.breed}
                                     onChange={(e) => setPetForm({ ...petForm, breed: e.target.value })}
                                     placeholder="e.g., Persian, Golden Retriever"
+                                    className="border-primary/20 focus:border-primary"
                                 />
                             </div>
 
@@ -358,23 +363,36 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                     value={petForm.age}
                                     onChange={(e) => setPetForm({ ...petForm, age: e.target.value })}
                                     placeholder="e.g., 2 years, 6 months"
+                                    className="border-primary/20 focus:border-primary"
                                 />
                             </div>
 
-                            <div className="space-y-2">
+                            {/* <div className="space-y-2">
                                 <Label htmlFor="weight">Weight</Label>
                                 <Input
                                     id="weight"
                                     value={petForm.weight}
                                     onChange={(e) => setPetForm({ ...petForm, weight: e.target.value })}
                                     placeholder="e.g., 5 kg, 12 lbs"
+                                    className="border-primary/20 focus:border-primary"
+                                />
+                            </div> */}
+                            <div>
+                                <Label htmlFor="weight">Weight (kg)</Label>
+                                <Input
+                                    id="weight"
+                                    type="number"
+                                    value={petForm.weight}
+                                    onChange={(e) => setPetForm({ ...petForm, weight: e.target.value })}
+                                    placeholder="Weight in kg"
+                                    className="border-primary/20 focus:border-primary"
                                 />
                             </div>
 
                             <div className="space-y-2">
                                 <Label htmlFor="activityLevel">Activity Level</Label>
                                 <Select value={petForm.activityLevel} onValueChange={(value) => setPetForm({ ...petForm, activityLevel: value })}>
-                                    <SelectTrigger>
+                                    <SelectTrigger className="border-primary/20 focus:border-primary">
                                         <SelectValue placeholder="Select activity level" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -389,7 +407,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                             <div className="space-y-2">
                                 <Label htmlFor="gender">Gender</Label>
                                 <Select value={petForm.gender} onValueChange={(value) => setPetForm({ ...petForm, gender: value })}>
-                                    <SelectTrigger>
+                                    <SelectTrigger className="border-primary/20 focus:border-primary">
                                         <SelectValue placeholder="Select gender" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -402,7 +420,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                             <div className="space-y-2">
                                 <Label htmlFor="isNeutered">Neutered/Spayed</Label>
                                 <Select value={petForm.isNeutered} onValueChange={(value) => setPetForm({ ...petForm, isNeutered: value })}>
-                                    <SelectTrigger>
+                                    <SelectTrigger className="border-primary/20 focus:border-primary">
                                         <SelectValue placeholder="Select status" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -420,6 +438,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                 value={petForm.currentFoodBrand}
                                 onChange={(e) => setPetForm({ ...petForm, currentFoodBrand: e.target.value })}
                                 placeholder="What food brand does your pet currently eat?"
+                                className="border-primary/20 focus:border-primary"
                             />
                         </div>
 
@@ -431,6 +450,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                 onChange={(e) => setPetForm({ ...petForm, healthConditions: e.target.value })}
                                 placeholder="Any known health conditions, medications, or special needs"
                                 rows={3}
+                                className="border-primary/20 focus:border-primary"
                             />
                         </div>
 
@@ -442,6 +462,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                 onChange={(e) => setPetForm({ ...petForm, allergies: e.target.value })}
                                 placeholder="Any known food allergies or sensitivities"
                                 rows={2}
+                                className="border-primary/20 focus:border-primary"
                             />
                         </div>
 

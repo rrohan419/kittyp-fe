@@ -517,6 +517,14 @@ export default function AIAssistant() {
   const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
   const navigate = useNavigate();
 
+  const locationSectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showLocationPrompt) {
+      locationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [showLocationPrompt]);
+
   // Use real user pets data
   const savedPets = user?.ownerPets || [];
 
@@ -668,6 +676,7 @@ export default function AIAssistant() {
     setLocation(locationData);
     setShowLocationPrompt(false);
     toast.success('Location updated! You can now generate nutrition recommendations.');
+    
   };
 
   // Handle location permission granted
@@ -1079,6 +1088,7 @@ export default function AIAssistant() {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
                     className="mt-6"
+                    ref={locationSectionRef}
                   >
                     <UserLocationDisplay
                       onLocationUpdate={handleLocationUpdate}
