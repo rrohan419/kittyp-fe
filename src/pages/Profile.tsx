@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import ProfileHeader from '@/components/ui/ProfileHeader';
 // import FavoritesSection from '@/components/ui/FavoritesSection';
 import OrderHistory from '@/components/ui/OrderHistory';
@@ -54,8 +54,25 @@ const Profile: React.FC = () => {
     return null;
   }
 
-  // Get the active tab from location state
-  const defaultTab = location.state || 'pets';
+  // Get the active tab from location state or URL params
+  const urlParams = new URLSearchParams(location.search);
+  const tabParam = urlParams.get('tab');
+  const defaultTab = tabParam || location.state || 'pets';
+  
+  // State to track the current tab
+  const [currentTab, setCurrentTab] = useState(defaultTab);
+
+  // Handle tab changes and URL synchronization
+  useEffect(() => {
+    setCurrentTab(defaultTab);
+  }, [defaultTab]);
+
+  const handleTabChange = (value: string) => {
+    setCurrentTab(value);
+    // Update URL when tab changes
+    const newUrl = `/profile?tab=${value}`;
+    navigate(newUrl, { replace: true });
+  };
 
   return (
     <>
@@ -76,7 +93,7 @@ const Profile: React.FC = () => {
             />
 
             <div className="space-y-8">
-            <Tabs defaultValue={defaultTab} className="w-full animate-fade-in">
+            <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full animate-fade-in">
             <TabsList className="mb-6 w-full grid grid-cols-4 bg-accent text-accent-foreground">
                 <TabsTrigger value="pets">My Pets</TabsTrigger>
                   <TabsTrigger value="favorites">Favorites</TabsTrigger>

@@ -5,9 +5,6 @@ import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Brain, Stethoscope, Heart, Sparkles, ArrowRight, Cat, Scale, Activity, CheckCircle, Clock, Utensils, Apple, Zap, Shield, User, Plus, PawPrint, MessageCircle, Send, Bot, Wand2, Star, Crown, Gift, AlertTriangle, MapPin, Download, FileText } from 'lucide-react';
@@ -520,6 +517,14 @@ export default function AIAssistant() {
   const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
   const navigate = useNavigate();
 
+  const locationSectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showLocationPrompt) {
+      locationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [showLocationPrompt]);
+
   // Use real user pets data
   const savedPets = user?.ownerPets || [];
 
@@ -671,6 +676,7 @@ export default function AIAssistant() {
     setLocation(locationData);
     setShowLocationPrompt(false);
     toast.success('Location updated! You can now generate nutrition recommendations.');
+    
   };
 
   // Handle location permission granted
@@ -743,7 +749,7 @@ export default function AIAssistant() {
         <title>Free AI Pet Nutritionist – Kittyp | Pet Health & Diet Advice</title>
         <meta
           name="description"
-          content="Get free AI-powered pet nutrition advice for cats & dogs. Improve pet health with expert diet plans in seconds." />
+          content="Get free AI-powered pet nutrition advice for your pet. Improve pet health with expert diet plans in seconds." />
         <link rel="canonical" href="https://www.kittyp.in/ai-pet-nutritionist" />
         <meta name="keywords" content="free pet nutritionist, AI pet nutritionist, pet health advice, cat diet plan, dog diet plan, pet nutrition India" />
         <meta property="og:title" content="Free AI Pet Nutritionist – Kittyp" />
@@ -1060,8 +1066,8 @@ export default function AIAssistant() {
                   <PetSelectionComponent
                     selectedPetId={selectedPetId}
                     setSelectedPetId={setSelectedPetId}
-                    savedPets={savedPets}
-                    user={user}
+                    // savedPets={savedPets}
+                    // user={user}
                     onGenerateRecommendation={handleGenerateNutritionRecommendation}
                     isGenerating={isGenerating}
                     recommendations={recommendations}
@@ -1082,6 +1088,7 @@ export default function AIAssistant() {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
                     className="mt-6"
+                    ref={locationSectionRef}
                   >
                     <UserLocationDisplay
                       onLocationUpdate={handleLocationUpdate}

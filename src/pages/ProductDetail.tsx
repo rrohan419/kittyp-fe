@@ -63,7 +63,6 @@ const ProductDetail = () => {
   
       setIsAddingToCart(true);
       await dispatch(addToCartFromProduct(product)).unwrap();
-      toast.success("Added to cart successfully");
     } catch (error) {
       console.error("Error adding to cart:", error);
       toast.error("Failed to add to cart");

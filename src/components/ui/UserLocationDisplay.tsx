@@ -127,7 +127,6 @@ const UserLocationDisplay: React.FC<UserLocationDisplayProps> = ({
       setPermissionStatus('granted');
       onLocationUpdate?.(locationData);
       onPermissionGranted?.();
-      toast.success('Location access granted!');
     } catch (error: any) {
       setError(error.message);
       setPermissionStatus('denied');
