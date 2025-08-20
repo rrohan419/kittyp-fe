@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { fetchFilteredProducts, ProductFilterRequest } from '@/services/productService';
 import { ArticleSearchRequest, fetchArticles } from '@/services/articleService';
 import { cn } from '@/lib/utils';
+import { Helmet } from 'react-helmet';
 
 const productDto: ProductFilterRequest = { isRandom: true, category: null, maxPrice: null, minPrice: null, name: null, status: null };
 const articleDto: ArticleSearchRequest = { isRandom: true, name: null, articleStatus: 'PUBLISHED' };
@@ -65,11 +66,48 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Kittyp — Pet Care, Nutritionist Advice, and Premium Cat Litter</title>
+        <meta name="description" content="Comprehensive pet care with AI-powered nutritionist insights, premium pine wood cat litter, and trusted wellness guidance." />
+        <meta name="keywords" content="pet care, pet nutritionist, cat nutrition, feline health, eco-friendly cat litter, pine wood litter, cat wellness, dog wellness, pet wellness" />
+        <link rel="canonical" href="https://kittyp.in/" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Kittyp — Pet Care & AI Nutritionist" />
+        <meta property="og:description" content="AI-powered pet nutrition advice, premium cat litter, and wellness guidance." />
+        <meta property="og:url" content="https://kittyp.in/" />
+        <meta property="og:image" content="https://kittyp.in/og-image.jpg" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Kittyp — Pet Care & AI Nutritionist" />
+        <meta name="twitter:description" content="AI-powered pet nutrition advice, premium cat litter, and wellness guidance." />
+        <meta name="twitter:image" content="https://kittyp.in/og-image.jpg" />
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebSite',
+          name: 'Kittyp',
+          url: 'https://kittyp.in/',
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: 'https://kittyp.in/search?q={search_term_string}',
+            'query-input': 'required name=search_term_string'
+          }
+        })}</script>
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Organization',
+          name: 'Kittyp',
+          url: 'https://kittyp.in/',
+          description: 'Pet care and nutritionist advice with premium products for cats.',
+          sameAs: [
+            'https://www.facebook.com/kittyp',
+            'https://www.instagram.com/kittyp'
+          ]
+        })}</script>
+      </Helmet>
       <main className="pt-8">
         <Hero />
 
         {/* Featured Products */}
-        <section className="py-16 md:py-24 container mx-auto px-4 sm:px-6 lg:px-8">
+        {/* <section className="py-16 md:py-24 container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12">
             <div className="max-w-lg">
               <span className="text-sm font-medium text-primary">
@@ -103,10 +141,10 @@ const Index = () => {
               />
             ))}
           </div>
-        </section>
+        </section> */}
 
         {/* Features */}
-        <section className="py-16 md:py-24 container mx-auto px-4 sm:px-6 lg:px-8">
+        {/* <section className="py-16 md:py-24 container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <span className="text-sm font-medium text-primary">
               Why Choose Us
@@ -162,6 +200,65 @@ const Index = () => {
               </div>
             ))}
           </div>
+        </section> */}
+
+        {/* Features */}
+        <section className="py-16 md:py-24 container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <span className="text-sm font-medium text-primary">
+              Why Choose Kittyp
+            </span>
+            <h2 className="mt-2 text-3xl font-bold text-foreground">
+              Complete Pet Care Solutions
+            </h2>
+            <p className="mt-4 text-muted-foreground">
+              We combine premium products with AI-powered recommendations — creating comprehensive care solutions for your beloved pets.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                title: 'Premium Pine Wood Litter',
+                description: 'Our flagship product: superior pine wood litter with exceptional odor control and eco-friendly materials.',
+                icon: (
+                  <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )
+              },
+              {
+                title: 'AI-Powered Recommendations',
+                description: 'Get personalized nutrition plans and health insights powered by advanced AI technology.',
+                icon: (
+                  <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                )
+              },
+              {
+                title: 'Complete Pet Wellness',
+                description: 'Comprehensive care solutions including nutrition guidance, health monitoring, and premium products.',
+                icon: (
+                  <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                )
+              }
+            ].map((feature, index) => (
+              <div 
+                key={feature.title}
+                className="flex flex-col items-center text-center bg-card p-8 rounded-2xl shadow-sm"
+                style={{ animationDelay: `${index * 100 + 300}ms` }}
+              >
+                <div className="p-3 bg-accent rounded-full mb-6">
+                  {feature.icon}
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-3">{feature.title}</h3>
+                <p className="text-muted-foreground">{feature.description}</p>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* Featured Blog Posts */}
@@ -173,10 +270,10 @@ const Index = () => {
                   From Our Blog
                 </span>
                 <h2 className="mt-2 text-3xl font-bold text-foreground">
-                  Cat Care Articles
+                  Pet Care Articles
                 </h2>
                 <p className="mt-4 text-muted-foreground">
-                  Learn about eco-friendly cat care, health tips, and how to reduce your pet's environmental impact.
+                  Learn about eco-friendly pet care, health tips, and how to reduce your pet's environmental impact.
                 </p>
               </div>
               <Link
@@ -235,10 +332,10 @@ const Index = () => {
                   Join Our Community
                 </span>
                 <h2 className="text-3xl font-bold text-foreground">
-                  Subscribe for cat care tips
+                  Subscribe for pet care tips
                 </h2>
                 <p className="text-muted-foreground max-w-md">
-                  Get the latest eco-friendly cat care tips, special offers, and updates on new products delivered to your inbox.
+                  Get the latest eco-friendly pet care tips, special offers, and updates on new products delivered to your inbox.
                 </p>
 
                 <form className="flex flex-col sm:flex-row gap-3 max-w-md">
