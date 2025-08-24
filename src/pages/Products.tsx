@@ -81,7 +81,7 @@ const Products: React.FC = () => {
       category: null,
       minPrice: null,
       maxPrice: null,
-      status: null,
+      status: ['ACTIVE', 'OUT_OF_STOCK'],
       isRandom: false,
     });
   };
