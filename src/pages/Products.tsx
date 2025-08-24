@@ -413,11 +413,21 @@ const Products: React.FC = () => {
                   <PackageSearch size={48} className="text-muted-foreground mb-4" />
                   <h3 className="text-xl font-medium mb-2">No products found</h3>
                   <p className="text-muted-foreground mb-6">
-                    Try adjusting your search or filter criteria
+                    {(() => {
+                      const hasFilters = selectedCategory !== 'All' || selectedPriceRange || searchQuery;
+                      return hasFilters 
+                        ? "Try adjusting your search or filter criteria"
+                        : "We're currently out of products. Please check back later!";
+                    })()}
                   </p>
-                  <Button onClick={clearFilters} variant="default">
-                    Clear all filters
-                  </Button>
+                  {(() => {
+                    const hasFilters = selectedCategory !== 'All' || selectedPriceRange || searchQuery;
+                    return hasFilters && (
+                      <Button onClick={clearFilters} variant="default">
+                        Clear all filters
+                      </Button>
+                    );
+                  })()}
                 </div>
               )}
             </div>
