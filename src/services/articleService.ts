@@ -74,7 +74,7 @@ interface WrappedArticleResponse {
     category: string;
     tags: string[];
     readTime: number;
-    author: Author;
+    authorId: number;
   };
 
   export type EditArticleRequest = {
@@ -85,7 +85,6 @@ interface WrappedArticleResponse {
     category?: string;
     tags?: string[];
     readTime?: number;
-    author?: Author;
   };
 
   export const createArticle = async (body: CreateArticleRequest): Promise<WrappedArticleResponse> => {

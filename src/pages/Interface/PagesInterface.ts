@@ -10,7 +10,13 @@ export interface LoginResponse {
   }
   
   export interface Author {
-    id: number;
+    id: string;
+    name: string;
+    avatar: string;
+    role: string;
+  }
+
+  export interface SaveAuthor{
     name: string;
     avatar: string;
     role: string;
@@ -58,6 +64,20 @@ export interface LoginResponse {
       isFirst: boolean;
       isLast: boolean;
       models: OrderResponseData[];
+    };
+    timestamp: string;
+    status: number;
+  }
+
+  export interface AuthorApiResponse {
+    success: boolean;
+    message: string;
+    data: {
+      totalPages: number;
+      totalElements: number;
+      isFirst: boolean;
+      isLast: boolean;
+      models: Author[];
     };
     timestamp: string;
     status: number;
