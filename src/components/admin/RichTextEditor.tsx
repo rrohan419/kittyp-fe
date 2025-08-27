@@ -47,7 +47,39 @@ const RichTextEditor = ({ value, onChange }: RichTextEditorProps) => {
   
   const insertHeading = (level: number) => {
     const tag = `h${level}`;
-    insertTag(tag);
+    
+    // Get the textarea element
+    const textarea = document.querySelector('textarea.rich-editor') as HTMLTextAreaElement;
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = value.substring(start, end);
+    
+    // If no text is selected, insert a placeholder heading
+    if (!selectedText.trim()) {
+      const newText = `<${tag}>Heading ${level}</${tag}>`;
+      onChange(value.substring(0, start) + newText + value.substring(end));
+      
+      // Set cursor position after insertion
+      setTimeout(() => {
+        textarea.focus();
+        textarea.selectionStart = start + tag.length + 2;
+        textarea.selectionEnd = start + tag.length + 2 + `Heading ${level}`.length;
+      }, 0);
+      return;
+    }
+    
+    // For selected text, wrap it in heading tags
+    const newText = `<${tag}>${selectedText}</${tag}>`;
+    onChange(value.substring(0, start) + newText + value.substring(end));
+    
+    // After updating, set the selection back
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = start + tag.length + 2;
+      textarea.selectionEnd = start + tag.length + 2 + selectedText.length;
+    }, 0);
   };
 
   const insertList = (ordered: boolean) => {

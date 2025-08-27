@@ -35,6 +35,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { FileText, Save, Send, Upload, FileInput } from 'lucide-react';
 import BlogEditor from '@/components/BlogEditor';
+import RichContentViewer from '@/components/RichContentViewer';
 import { createArticle, editArticle, fetchArticleBySlug } from '@/services/articleService';
 import { uploadFiles } from '@/services/fileService';
 import {
@@ -80,7 +81,6 @@ const AdminArticleEditor = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
-  console.log('--------------------------------->   ',slug)
   const coverImageFileRef = useRef<HTMLInputElement>(null);
 
 
@@ -550,32 +550,45 @@ const AdminArticleEditor = () => {
                     </Dialog>
                 </CardHeader>
                 <CardContent>
-                  <FormField
-                    control={form.control}
-                    name="content"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <BlogEditor 
-                            key={slug || 'new-article'}
-                            content={field.value} 
-                            onChange={field.onChange} 
-                          />
-                        </FormControl>
-                        <div className="flex justify-between items-center mt-2 text-sm text-muted-foreground">
-                          <FormMessage />
-                          <span>
-                            {field.value.length} characters
-                            {field.value.length < 50 && (
-                              <span className="text-red-500 ml-2">
-                                (Minimum 50 characters required)
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <FormField
+                        control={form.control}
+                        name="content"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <BlogEditor 
+                                key={slug || 'new-article'}
+                                content={field.value} 
+                                onChange={field.onChange} 
+                              />
+                            </FormControl>
+                            <div className="flex justify-between items-center mt-2 text-sm text-muted-foreground">
+                              <FormMessage />
+                              <span>
+                                {field.value.length} characters
+                                {field.value.length < 50 && (
+                                  <span className="text-red-500 ml-2">
+                                    (Minimum 50 characters required)
+                                  </span>
+                                )}
                               </span>
-                            )}
-                          </span>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-medium text-muted-foreground">Live Preview</h3>
+                        <span className="text-xs text-muted-foreground">What readers will see</span>
+                      </div>
+                      <div className="border rounded p-4 bg-white dark:bg-gray-900">
+                        <RichContentViewer html={form.watch('content') || ''} />
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </form>
