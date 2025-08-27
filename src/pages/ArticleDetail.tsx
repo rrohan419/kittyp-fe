@@ -9,6 +9,7 @@ import { formatDistance } from 'date-fns';
 import { ArrowLeft, Calendar, Clock, Heart, MessageSquare, Share2, Tag, ThumbsUp } from 'lucide-react';
 import { fetchArticleBySlug } from '@/services/articleService';
 import { LoadingState } from '@/components/ui/LoadingState';
+import RichContentViewer from '@/components/RichContentViewer';
 
 const ArticlePage = () => {
   const { slug } = useParams<{ slug?: string }>();
@@ -165,10 +166,7 @@ const ArticlePage = () => {
             </div>
 
             {/* Article Content */}
-            <div
-              className="prose prose-lg max-w-none mb-12"
-              dangerouslySetInnerHTML={{ __html: article.content }}
-            />
+            <RichContentViewer html={article.content} className="mb-12" />
 
             {/* Article Footer */}
             <footer className="mb-12">

@@ -1,3 +1,4 @@
+/* Ensure spacing between adjacent blocks */
 .tiptap {
   > * + * {
     margin-top: 0.75em;
@@ -8,6 +9,7 @@
     padding: 0 1rem;
   }
 
+  /* Explicit heading sizes for clear visual hierarchy */
   h1,
   h2,
   h3,
@@ -15,7 +17,15 @@
   h5,
   h6 {
     line-height: 1.1;
+    font-weight: 700;
   }
+
+  h1 { font-size: 2.25rem; margin-top: 1.25em; margin-bottom: 0.5em; }
+  h2 { font-size: 1.875rem; margin-top: 1.2em; margin-bottom: 0.5em; }
+  h3 { font-size: 1.5rem; margin-top: 1.1em; margin-bottom: 0.5em; }
+  h4 { font-size: 1.25rem; margin-top: 1em; margin-bottom: 0.5em; }
+  h5 { font-size: 1.125rem; margin-top: 0.9em; margin-bottom: 0.5em; }
+  h6 { font-size: 1rem; margin-top: 0.8em; margin-bottom: 0.5em; }
 
   code {
     background-color: rgba(#616161, 0.1);
@@ -49,15 +59,234 @@
 
   hr {
     border: none;
-    border-top: 2px solid rgba(#0d0d0d, 0.1);
+    border-top: 2px solid rgba(0, 0, 0, 0.2);
+    margin: 1.5rem 0;
+    height: 1px;
+    background: transparent;
+  }
+
+  /* Resizable image styles */
+  .image-node-view {
+    display: inline-block;
+    position: relative;
     margin: 1rem 0;
+  }
+
+  .image-node-view img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  .image-node-view.selected {
+    outline: 2px solid #3b82f6;
+    border-radius: 0.5rem;
+  }
+
+  /* Resize handles */
+  .resize-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #3b82f6;
+    border: 2px solid white;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.2s ease;
+  }
+
+  .resize-handle:hover {
+    background: #2563eb;
+    transform: scale(1.2);
+  }
+
+  .resize-handle.top-left {
+    top: -6px;
+    left: -6px;
+    cursor: nw-resize;
+  }
+
+  .resize-handle.top-right {
+    top: -6px;
+    right: -6px;
+    cursor: ne-resize;
+  }
+
+  .resize-handle.bottom-left {
+    bottom: -6px;
+    left: -6px;
+    cursor: sw-resize;
+  }
+
+  .resize-handle.bottom-right {
+    bottom: -6px;
+    right: -6px;
+    cursor: se-resize;
+  }
+
+  /* Link styles */
+  a {
+    color: #3b82f6;
+    text-decoration: underline;
+    transition: color 0.2s ease;
+  }
+
+  a:hover {
+    color: #2563eb;
+  }
+
+  /* Highlight styles */
+  mark {
+    background-color: #fef3c7;
+    color: #92400e;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+  }
+
+  /* Dark mode adjustments */
+  .dark & {
+    blockquote {
+      border-left-color: rgba(255, 255, 255, 0.1);
+    }
+
+    hr {
+      border-top-color: rgba(255, 255, 255, 0.3);
+    }
+
+    mark {
+      background-color: #451a03;
+      color: #fef3c7;
+    }
+
+    a {
+      color: #60a5fa;
+    }
+
+    a:hover {
+      color: #93c5fd;
+    }
   }
 }
 
-.ProseMirror p.is-editor-empty:first-child::before {
+/* Placeholder text style */
+.tiptap p.is-editor-empty:first-child::before {
+  color: #adb5bd;
   content: attr(data-placeholder);
   float: left;
-  color: #adb5bd;
-  pointer-events: none;
   height: 0;
+  pointer-events: none;
+}
+
+/* Focus styles */
+.tiptap:focus {
+  outline: none;
+}
+
+/* Selection styles */
+.tiptap ::selection {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+/* Drag and drop styles */
+.tiptap .ProseMirror-dropcursor {
+  background-color: #3b82f6;
+  height: 2px;
+  margin: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1000;
+}
+
+/* Code block styles */
+.tiptap pre {
+  background: #1f2937;
+  color: #f9fafb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.tiptap code {
+  background: #374151;
+  color: #f3f4f6;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-family: 'JetBrainsMono', 'Monaco', 'Consolas', monospace;
+}
+
+/* List styles */
+.tiptap ul,
+.tiptap ol {
+  padding-left: 1.5rem;
+  margin: 1rem 0;
+}
+
+.tiptap li {
+  margin: 0.5rem 0;
+}
+
+.tiptap ul li {
+  list-style-type: disc;
+}
+
+.tiptap ol li {
+  list-style-type: decimal;
+}
+
+/* Blockquote styles */
+.tiptap blockquote {
+  border-left: 4px solid #3b82f6;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  font-style: italic;
+  color: #6b7280;
+}
+
+/* Horizontal Rule styles */
+.tiptap hr {
+  border: none;
+  border-top: 3px solid #d1d5db;
+  margin: 2rem 0;
+  height: 1px;
+  background: transparent;
+  opacity: 0.8;
+}
+
+.dark .tiptap hr {
+  border-top-color: #4b5563;
+  opacity: 0.6;
+}
+
+/* Table styles */
+.tiptap table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  width: 100%;
+}
+
+.tiptap th,
+.tiptap td {
+  border: 1px solid #d1d5db;
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.tiptap th {
+  background-color: #f9fafb;
+  font-weight: 600;
+}
+
+/* Dark mode table styles */
+.dark .tiptap th {
+  background-color: #374151;
+  border-color: #4b5563;
+}
+
+.dark .tiptap td {
+  border-color: #4b5563;
 } 
