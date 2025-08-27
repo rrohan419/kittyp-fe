@@ -69,7 +69,7 @@ const Articles: React.FC = () => {
           </header>
 
           <div className="space-y-10">
-            {articles.map((article, index) => (
+            {articles?.map((article, index) => (
               <Card key={`${article.slug}-${index}`} className="overflow-hidden transition-all duration-300 hover:shadow-lg">
                 <div className="flex flex-col md:flex-row">
                   <div className="md:w-1/3 h-60 md:h-auto relative">

@@ -39,6 +39,8 @@ export interface LoginResponse {
     category: string;
     coverImage : string;
     status: ArticleStatus;
+    commentCount: number;
+    likeCount: number;
   }
   
   export interface ArticleApiResponse {
