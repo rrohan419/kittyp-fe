@@ -55,7 +55,7 @@ const AdminArticles = () => {
   // Convert articles data to match admin format with status
   const adminArticles = articles.map(article => ({
     ...article,
-    status: article.status as ArticleStatus, // Since these are all published articles
+    status: article.status as ArticleStatus,
     authorName: article.author.name,
     tagsText: article.tags.join(', ')
   }));
