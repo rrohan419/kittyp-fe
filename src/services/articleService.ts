@@ -144,7 +144,7 @@ export const fetchArticleComments = async (
     size
   }: { articleId: number; page: number; size: number }
 ): Promise<WrappedPaginationResponse<ArticleComment>> => {
-  const response = await axiosInstance.get(`/comments`, {
+  const response = await axiosInstance.get(`/article/comments`, {
     params: { page, size, articleId }
   });
   return response.data;
