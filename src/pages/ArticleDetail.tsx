@@ -7,9 +7,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { formatDistance } from 'date-fns';
 import { ArrowLeft, Calendar, Clock, Heart, MessageSquare, Share2, Tag, ThumbsUp } from 'lucide-react';
-import { ArticleComment, ArticleData, fetchArticleBySlug, fetchArticleComments, addLikeForArticle } from '@/services/articleService';
+import { ArticleComment, ArticleData, fetchArticleBySlug, fetchArticleComments, addLikeForArticle, removeLikeForArticle, isLikedByUser } from '@/services/articleService';
 import { LoadingState } from '@/components/ui/LoadingState';
 import RichContentViewer from '@/components/RichContentViewer';
+
+import { useSelector } from 'react-redux';
+import { RootState } from '@/module/store/store';
 
 const ArticlePage = () => {
   const { slug } = useParams<{ slug?: string }>();
@@ -25,8 +28,8 @@ const ArticlePage = () => {
   const [showToast, setShowToast] = useState(false);
   const [animatingOut, setAnimatingOut] = useState(false);
   // Article like state
-  const [articleLiked, setArticleLiked] = useState<boolean>(false);
   const [isLiking, setIsLiking] = useState<boolean>(false);
+  const [isLiked, setIsLiked] = useState<boolean>(false);
   // Comments pagination/infinite scroll (restored)
   const [showComments, setShowComments] = useState<boolean>(false);
   const [commentsPage, setCommentsPage] = useState<number>(0);
@@ -44,13 +47,27 @@ const ArticlePage = () => {
     isLoadingCommentsRef.current = isLoadingComments;
   }, [isLoadingComments]);
 
+  const { isAuthenticated } = useSelector((state: RootState) => state.authReducer);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await fetchArticleBySlug({ slug });
-        setArticle(response.data);
-        setAllComments([]); // Adjust if the response structure differs
+        const baseArticle = response.data;
+        setArticle(baseArticle);
+        setAllComments([]);
         setLoading(false);
+
+        // If user is authenticated, check like status from dedicated endpoint
+        if (baseArticle?.id && isAuthenticated) {
+          try {
+            const likeRes = await isLikedByUser(baseArticle.id);
+            const liked = Boolean((likeRes as any)?.data);
+            setIsLiked(liked);
+          } catch {
+            // ignore like status errors
+          }
+        }
       } catch (err) {
         setError('Failed to fetch article');
         setLoading(false);
@@ -60,16 +77,27 @@ const ArticlePage = () => {
     if (slug) {
       fetchData();
     }
-  }, [slug]);
+  }, [slug, isAuthenticated]);
 
   const handleArticleLike = async () => {
-    if (!article?.id || isLiking || articleLiked) return;
+    if (!article?.id || isLiking) return;
     try {
       setIsLiking(true);
-      const res = await addLikeForArticle(article.id);
-      const newCount = (res as any)?.data ?? ((article.likeCount || 0) + 1);
-      setArticle(prev => (prev ? { ...prev, likeCount: newCount } : prev));
-      setArticleLiked(true);
+      const isCurrentlyLiked = isLiked;
+      
+      let res;
+      if (isCurrentlyLiked) {
+        res = await removeLikeForArticle(article.id);
+      } else {
+        res = await addLikeForArticle(article.id);
+      }
+      
+      const newCount = (res as any)?.data ?? (isCurrentlyLiked ? (article.likeCount || 0) - 1 : (article.likeCount || 0) + 1);
+      setArticle(prev => (prev ? { 
+        ...prev, 
+        likeCount: newCount
+      } : prev));
+      setIsLiked(!isCurrentlyLiked);
     } catch (e) {
       // no-op: optionally surface a toast/error
     } finally {
@@ -313,9 +341,9 @@ const ArticlePage = () => {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <Button variant="ghost" size="sm" className="flex items-center" onClick={handleArticleLike} disabled={isLiking || articleLiked}>
-                    <Heart size={18} className={`mr-2 ${articleLiked ? 'fill-primary text-primary' : ''}`} />
-                    {articleLiked ? 'Liked' : 'Like'}{typeof article.likeCount === 'number' ? ` (${article.likeCount})` : ''}
+                  <Button variant="ghost" size="sm" className="flex items-center" onClick={handleArticleLike} disabled={isLiking}>
+                                        <Heart size={18} className={`mr-2 ${isLiked ? 'fill-primary text-primary' : ''}`} />
+                    {isLiked ? 'Liked' : 'Like'}{typeof article.likeCount === 'number' ? ` (${article.likeCount})` : ''}
                   </Button>
                   <Button variant="ghost" size="sm" className="flex items-center" onClick={handleShare}>
                     <Share2 size={18} className="mr-2" />
@@ -410,7 +438,7 @@ const ArticlePage = () => {
 
                       <p className="text-sm mb-4">{comment.content}</p>
 
-                      <div className="flex items-center justify-end">
+                      {/* <div className="flex items-center justify-end">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -421,7 +449,7 @@ const ArticlePage = () => {
                           <ThumbsUp size={16} className={`mr-1 ${comment.liked ? 'fill-primary text-primary' : ''}`} />
                           {comment.likes}
                         </Button>
-                      </div>
+                      </div> */}
                     </div>
                   ))}
 
