@@ -159,3 +159,18 @@ export const addLikeForArticle = async (articleId: number): Promise<ApiSuccessRe
   const response = await axiosInstance.post(`like/add/${articleId}`);
   return response.data;
 }
+
+export const removeLikeForArticle = async (articleId: number): Promise<ApiSuccessResponse<number>> => {
+  const response = await axiosInstance.patch(`like/remove/${articleId}`);
+  return response.data;
+}
+
+export const likeComment = async (commentId: number): Promise<ApiSuccessResponse<number>> => {
+  const response = await axiosInstance.post(`like/comment/${commentId}`);
+  return response.data;
+}
+
+export const isLikedByUser = async (articleId: number): Promise<ApiSuccessResponse<Boolean>> => {
+  const response = await axiosInstance.post(`like/user/${articleId}`);
+  return response.data;
+}
