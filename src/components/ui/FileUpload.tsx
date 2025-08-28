@@ -159,7 +159,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const renderDragDropArea = () => (
     <div
       className={cn(
-        'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
+        'border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer',
         isDragOver 
           ? 'border-primary bg-primary/5' 
           : 'border-muted-foreground/25 hover:border-primary/50',
@@ -168,6 +168,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onClick={() => !disabled && !isUploading && fileInputRef.current?.click()}
     >
       <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
       <p className="text-sm text-muted-foreground mb-2">{placeholder}</p>

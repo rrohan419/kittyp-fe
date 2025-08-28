@@ -1,9 +1,5 @@
-export interface Author {
-    id: string;
-    name: string;
-    avatar: string;
-    role: string;
-  }
+import { Author } from "./PagesInterface";
+
   
   export interface Comment {
     id: string;

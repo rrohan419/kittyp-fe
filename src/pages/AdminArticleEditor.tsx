@@ -39,15 +39,17 @@ import RichContentViewer from '@/components/RichContentViewer';
 import { createArticle, editArticle, fetchArticleBySlug } from '@/services/articleService';
 import { uploadFiles } from '@/services/fileService';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-    DialogClose
-  } from "@/components/ui/dialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from "@/components/ui/dialog";
+import { AuthorSelector } from '@/components/admin/AuthorSelector';
+import { Author } from '@/pages/Interface/PagesInterface';
 
 const articleFormSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters" }),
@@ -82,6 +84,12 @@ const AdminArticleEditor = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const coverImageFileRef = useRef<HTMLInputElement>(null);
+  const [selectedAuthor, setSelectedAuthor] = useState<Author | null>(null);
+
+  // Debug: Log when selectedAuthor changes
+  useEffect(() => {
+    console.log('Selected author changed:', selectedAuthor);
+  }, [selectedAuthor]);
 
 
   useEffect(() => {
@@ -123,6 +131,15 @@ const AdminArticleEditor = () => {
             readTime: data.readTime,
             status: 'DRAFT',
           });
+          // Set the author from the fetched article
+          if (data.author) {
+            setSelectedAuthor({
+              id: data.author.id.toString(),
+              name: data.author.name,
+              avatar: data.author.avatar,
+              role: data.author.role
+            });
+          }
           setHasUnsavedChanges(false);
         })
         .catch(() => setFetchError('Failed to load article'))
@@ -160,17 +177,17 @@ const AdminArticleEditor = () => {
   const handleCoverImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-        try {
-            const response = await uploadFiles(Array.from(files));
-            const imageUrl = response.data[0];
-            if (imageUrl) {
-                form.setValue("coverImage", imageUrl, { shouldValidate: true });
-                toast.success("Cover image uploaded!");
-            }
-        } catch (error) {
-            toast.error("Error uploading cover image.");
-            console.error('Error uploading file:', error);
+      try {
+        const response = await uploadFiles(Array.from(files));
+        const imageUrl = response.data[0];
+        if (imageUrl) {
+          form.setValue("coverImage", imageUrl, { shouldValidate: true });
+          toast.success("Cover image uploaded!");
         }
+      } catch (error) {
+        toast.error("Error uploading cover image.");
+        console.error('Error uploading file:', error);
+      }
     }
   };
 
@@ -184,12 +201,22 @@ const AdminArticleEditor = () => {
         return;
       }
 
+      // Validate author selection
+      if (!selectedAuthor) {
+        toast.error('Please select an author for the article');
+        setSubmitting(false);
+        return;
+      }
+
       // Clean up tags
       const cleanedTags = values.tags
         .split(',')
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0);
 
+      // Use selected author
+      const authorToUse = selectedAuthor;
+      
       const payload = {
         title: values.title.trim(),
         slug: values.slug.trim(),
@@ -199,12 +226,22 @@ const AdminArticleEditor = () => {
         category: values.category,
         tags: cleanedTags,
         readTime: values.readTime,
-        author: DEFAULT_AUTHOR,
+        authorId: parseInt(authorToUse.id.toString()),
         status: values.status
       };
 
       if (slug) {
-        await editArticle(slug, payload);
+        // For edit, we need to use the author object, not authorId
+        const editPayload = {
+          title: payload.title,
+          excerpt: payload.excerpt,
+          content: payload.content,
+          coverImage: payload.coverImage,
+          category: payload.category,
+          tags: payload.tags,
+          readTime: payload.readTime,
+        };
+        await editArticle(slug, editPayload);
         toast.success('Article updated successfully!');
       } else {
         await createArticle(payload);
@@ -244,7 +281,7 @@ const AdminArticleEditor = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">      
+    <div className="min-h-screen flex flex-col">
       <main className="flex-1 pt-24 pb-16 bg-gray-50 dark:bg-gray-900">
         <div className="container px-4 md:px-6">
           <div className="flex items-center justify-between mb-8">
@@ -258,8 +295,8 @@ const AdminArticleEditor = () => {
               )}
             </div>
             <div className="flex space-x-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   if (hasUnsavedChanges) {
                     if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
@@ -272,7 +309,7 @@ const AdminArticleEditor = () => {
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 type="button"
                 variant="secondary"
                 disabled={submitting}
@@ -283,12 +320,12 @@ const AdminArticleEditor = () => {
               >
                 {submitting ? 'Saving...' : 'Save Draft'}
               </Button>
-              <Button 
+              <Button
                 type="submit"
                 disabled={submitting}
                 onClick={() => {
-                    form.setValue('status', 'PUBLISHED');
-                    form.handleSubmit(onSubmit)();
+                  form.setValue('status', 'PUBLISHED');
+                  form.handleSubmit(onSubmit)();
                 }}
               >
                 {submitting ? 'Publishing...' : 'Publish'}
@@ -312,9 +349,9 @@ const AdminArticleEditor = () => {
                         <FormItem>
                           <FormLabel>Title</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Enter article title" 
-                              {...field} 
+                            <Input
+                              placeholder="Enter article title"
+                              {...field}
                               onBlur={() => {
                                 if (!form.getValues('slug')) {
                                   generateSlug();
@@ -326,7 +363,7 @@ const AdminArticleEditor = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="slug"
@@ -337,9 +374,9 @@ const AdminArticleEditor = () => {
                             <FormControl>
                               <Input placeholder="article-url-slug" {...field} />
                             </FormControl>
-                            <Button 
-                              type="button" 
-                              variant="outline" 
+                            <Button
+                              type="button"
+                              variant="outline"
                               onClick={generateSlug}
                               className="whitespace-nowrap"
                             >
@@ -351,7 +388,13 @@ const AdminArticleEditor = () => {
                       )}
                     />
                   </div>
-                  
+                  <div>
+                  <AuthorSelector
+                        selectedAuthor={selectedAuthor}
+                        onAuthorChange={setSelectedAuthor}
+                        disabled={!!slug} // Disable when editing (slug exists)
+                      />
+                  </div>
                   <FormField
                     control={form.control}
                     name="excerpt"
@@ -359,17 +402,17 @@ const AdminArticleEditor = () => {
                       <FormItem>
                         <FormLabel>Excerpt</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Brief summary of the article" 
-                            className="resize-none" 
-                            {...field} 
+                          <Textarea
+                            placeholder="Brief summary of the article"
+                            className="resize-none"
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                       control={form.control}
@@ -379,41 +422,41 @@ const AdminArticleEditor = () => {
                           <FormLabel>Cover Image</FormLabel>
                           <FormControl>
                             <div>
-                                <Input
-                                    type="file"
-                                    ref={coverImageFileRef}
-                                    onChange={handleCoverImageUpload}
-                                    className="hidden"
-                                    accept="image/*"
-                                />
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => coverImageFileRef.current?.click()}
-                                >
-                                    <Upload className="mr-2 h-4 w-4" />
-                                    Upload Image
-                                </Button>
-                                {field.value && (
-                                    <div className="mt-4">
-                                        <img src={field.value} alt="Cover preview" className="rounded-md object-cover h-48 w-full" />
-                                    </div>
-                                )}
+                              <Input
+                                type="file"
+                                ref={coverImageFileRef}
+                                onChange={handleCoverImageUpload}
+                                className="hidden"
+                                accept="image/*"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => coverImageFileRef.current?.click()}
+                              >
+                                <Upload className="mr-2 h-4 w-4" />
+                                Upload Image
+                              </Button>
+                              {field.value && (
+                                <div className="mt-4">
+                                  <img src={field.value} alt="Cover preview" className="rounded-md object-cover h-48 w-full" />
+                                </div>
+                              )}
                             </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="category"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Category</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
+                          <Select
+                            onValueChange={field.onChange}
                             defaultValue={field.value}
                           >
                             <FormControl>
@@ -434,7 +477,7 @@ const AdminArticleEditor = () => {
                       )}
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                       control={form.control}
@@ -443,8 +486,8 @@ const AdminArticleEditor = () => {
                         <FormItem>
                           <FormLabel>Tags</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="eco-friendly, cats, sustainability" 
+                            <Input
+                              placeholder="eco-friendly, cats, sustainability"
                               {...field}
                             />
                           </FormControl>
@@ -455,7 +498,7 @@ const AdminArticleEditor = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="readTime"
@@ -463,10 +506,10 @@ const AdminArticleEditor = () => {
                         <FormItem>
                           <FormLabel>Read Time (minutes)</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="number" 
-                              min="1" 
-                              {...field} 
+                            <Input
+                              type="number"
+                              min="1"
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
@@ -479,75 +522,75 @@ const AdminArticleEditor = () => {
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle>Article Content</CardTitle>
-                        <CardDescription>Write your article using the rich text editor</CardDescription>
-                    </div>
-                    <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button type="button" variant="outline"><FileInput className="mr-2 h-4 w-4" /> Import HTML</Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] flex flex-col">
-                            <DialogHeader>
-                                <DialogTitle>Import HTML Content</DialogTitle>
-                                <DialogDescription>
-                                    Paste your HTML content below. This will replace the current editor content.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="flex-1 min-h-0 flex flex-col space-y-4 overflow-y-auto">
-                                <div className="flex-1 min-h-0">
-                                    <Label htmlFor="html-content" className="text-sm font-medium">
-                                        HTML Content
-                                    </Label>
-                                    <Textarea
-                                        id="html-content"
-                                        placeholder="<p>Your HTML content here...</p>"
-                                        value={htmlToImport}
-                                        onChange={(e) => setHtmlToImport(e.target.value)}
-                                        className="min-h-[200px] max-h-[400px] font-mono text-xs sm:text-sm resize-none"
-                                    />
-                                </div>
-                                {htmlToImport && (
-                                    <div className="flex-shrink-0">
-                                        <Label className="text-sm font-medium">Content Length: {htmlToImport.length} characters</Label>
-                                    </div>
-                                )}
-                            </div>
-                            <DialogFooter className="flex-shrink-0">
-                                <Button 
-                                    type="button" 
-                                    variant="secondary" 
-                                    onClick={() => {
-                                        setHtmlToImport('');
-                                        setImportDialogOpen(false);
-                                    }}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button 
-                                    type="button" 
-                                    onClick={() => {
-                                        if (!htmlToImport.trim()) {
-                                            toast.error("Please enter HTML content to import");
-                                            return;
-                                        }
-                                        
-                                        try {
-                                            form.setValue('content', htmlToImport, { shouldValidate: true });
-                                            setHtmlToImport('');
-                                            setImportDialogOpen(false);
-                                            toast.success("HTML content imported successfully!");
-                                        } catch (error) {
-                                            toast.error("Invalid HTML content. Please check your HTML syntax.");
-                                            console.error('HTML import error:', error);
-                                        }
-                                    }}
-                                >
-                                    Import Content
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                  <div>
+                    <CardTitle>Article Content</CardTitle>
+                    <CardDescription>Write your article using the rich text editor</CardDescription>
+                  </div>
+                  <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button type="button" variant="outline"><FileInput className="mr-2 h-4 w-4" /> Import HTML</Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] flex flex-col">
+                      <DialogHeader>
+                        <DialogTitle>Import HTML Content</DialogTitle>
+                        <DialogDescription>
+                          Paste your HTML content below. This will replace the current editor content.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="flex-1 min-h-0 flex flex-col space-y-4 overflow-y-auto">
+                        <div className="flex-1 min-h-0">
+                          <Label htmlFor="html-content" className="text-sm font-medium">
+                            HTML Content
+                          </Label>
+                          <Textarea
+                            id="html-content"
+                            placeholder="<p>Your HTML content here...</p>"
+                            value={htmlToImport}
+                            onChange={(e) => setHtmlToImport(e.target.value)}
+                            className="min-h-[200px] max-h-[400px] font-mono text-xs sm:text-sm resize-none"
+                          />
+                        </div>
+                        {htmlToImport && (
+                          <div className="flex-shrink-0">
+                            <Label className="text-sm font-medium">Content Length: {htmlToImport.length} characters</Label>
+                          </div>
+                        )}
+                      </div>
+                      <DialogFooter className="flex-shrink-0">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            setHtmlToImport('');
+                            setImportDialogOpen(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            if (!htmlToImport.trim()) {
+                              toast.error("Please enter HTML content to import");
+                              return;
+                            }
+
+                            try {
+                              form.setValue('content', htmlToImport, { shouldValidate: true });
+                              setHtmlToImport('');
+                              setImportDialogOpen(false);
+                              toast.success("HTML content imported successfully!");
+                            } catch (error) {
+                              toast.error("Invalid HTML content. Please check your HTML syntax.");
+                              console.error('HTML import error:', error);
+                            }
+                          }}
+                        >
+                          Import Content
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -558,10 +601,10 @@ const AdminArticleEditor = () => {
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
-                              <BlogEditor 
+                              <BlogEditor
                                 key={slug || 'new-article'}
-                                content={field.value} 
-                                onChange={field.onChange} 
+                                content={field.value}
+                                onChange={field.onChange}
                               />
                             </FormControl>
                             <div className="flex justify-between items-center mt-2 text-sm text-muted-foreground">
