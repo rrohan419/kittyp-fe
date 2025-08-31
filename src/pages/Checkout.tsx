@@ -32,7 +32,8 @@ import { loadRazorpayScript, handlePayment, RazorpayOptions, handlePaymentTimeou
 
 export default function Checkout() {
     const dispatch = useDispatch<AppDispatch>();
-    const { items, totalAmount, user } = useSelector((state: RootState) => state.cartReducer);
+    const { items, totalAmount } = useSelector((state: RootState) => state.cartReducer);
+    const { user } = useSelector((state: RootState) => state.authReducer)
     const navigate = useNavigate();
     const { colorScheme, resolvedMode } = useTheme();
 

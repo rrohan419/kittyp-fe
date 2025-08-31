@@ -28,8 +28,9 @@ export function AddressCard({ address, isSelected, onSelect, onDelete, id, showD
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-start flex-1">
+            <RadioGroup>
             <RadioGroupItem id={id} value={address.uuid || ""} className="mt-1 mr-3" checked={isSelected} />
-            
+            </RadioGroup>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <Label htmlFor={id} className="font-medium cursor-pointer">

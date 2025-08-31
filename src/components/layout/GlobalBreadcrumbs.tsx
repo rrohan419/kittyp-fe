@@ -9,6 +9,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { useAppSelector } from '@/module/store/hooks';
 
 interface BreadcrumbConfig {
   [key: string]: {
@@ -62,6 +63,7 @@ export function GlobalBreadcrumbs() {
   const location = useLocation();
   const params = useParams();
   const pathnames = location.pathname.split('/').filter((x) => x);
+  const { currentProduct: product } = useAppSelector((state) => state.productReducer);
 
   // Don't show breadcrumbs on home page
   if (location.pathname === '/') {
@@ -125,7 +127,7 @@ export function GlobalBreadcrumbs() {
         });
         
         // Add the product name
-        const productName = decodeURIComponent(pathnames[index + 1]);
+        const productName = product?.name || decodeURIComponent(pathnames[index + 1]);
         currentPath += `/${pathnames[index + 1]}`;
         breadcrumbs.push({
           label: productName,

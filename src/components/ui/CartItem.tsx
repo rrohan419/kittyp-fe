@@ -25,7 +25,7 @@ interface LoadingState {
 
 export function CartItem({ uuid, name, price, image, quantity, className, currency }: CartItemProps) {
   const dispatch = useDispatch<AppDispatch>();
-  const user = useSelector((state: RootState) => state.cartReducer.user);
+  const user = useSelector((state: RootState) => state.authReducer.user);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [loadingStates, setLoadingStates] = useState<LoadingState>({
     increment: false,
