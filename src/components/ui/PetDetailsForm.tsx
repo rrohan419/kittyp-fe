@@ -264,7 +264,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                             </CardContent>
                         </Card>
                     ))) : (
-                    <div className="text-center py-12">
+                    <div className="text-center py-12 col-span-full">
                         <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <h3 className="text-lg font-semibold mb-2">No pets added yet</h3>
                         <p className="text-muted-foreground mb-4">

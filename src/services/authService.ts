@@ -2,10 +2,9 @@ import { LoginResponse } from "@/pages/Interface/PagesInterface";
 import { API_BASE_URL } from "../config/env";
 import axiosInstance from "../config/axionInstance"
 import { store } from '@/module/store/store';
-import { setUser } from '@/module/slice/CartSlice';
+import { setUser } from '@/module/slice/AuthSlice';
 import { fetchUserDetail } from "./UserService";
 import { TokenResponse } from "@react-oauth/google";
-// import { fetchUserProfile } from './userService';
 
 interface SignupData {
   firstName: string;
