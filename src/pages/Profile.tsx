@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ProfileHeader from '@/components/ui/ProfileHeader';
-// import FavoritesSection from '@/components/ui/FavoritesSection';
 import OrderHistory from '@/components/ui/OrderHistory';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Footer } from '@/components/layout/Footer';
@@ -14,6 +13,8 @@ import { useOrderCount } from '@/hooks/useOrderCount';
 import FavoritesSection from '@/components/ui/FavoritesSection';
 import { findAllSavedAddress } from '@/services/addressService';
 import PetDetailsForm from '@/components/ui/PetDetailsForm';
+import { Button } from '@/components/ui/button';
+import { AddressModal } from '@/components/ui/AddressModal';
 
 const Profile: React.FC = () => {
   const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
@@ -21,6 +22,7 @@ const Profile: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
+  const [addressModalOpen, setAddressModalOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
@@ -58,7 +60,8 @@ const Profile: React.FC = () => {
   const urlParams = new URLSearchParams(location.search);
   const tabParam = urlParams.get('tab');
   const defaultTab = tabParam || location.state || 'pets';
-  
+  const tabsRef = useRef<HTMLDivElement | null>(null);
+
   // State to track the current tab
   const [currentTab, setCurrentTab] = useState(defaultTab);
 
@@ -80,19 +83,11 @@ const Profile: React.FC = () => {
         <div className="space-y-8 py-6 md:py-12">
           <div className="space-y-8 py-8 md:py-12">
             <ProfileHeader
-              firstName={user.firstName}
-              lastName={user.lastName}
-              memberSince={
-                user.createdAt
-                  ? format(new Date(user.createdAt), "do MMMM yyyy")
-                  : "-"
-              }
+              onOrdersClick={() => handleTabChange("orders")}
               ordersCount={ordersLoading ? null : totalOrderCount}
-              profilePictureUrl={user.profilePictureUrl}
-              userUuid={user.uuid}
             />
 
-            <div className="space-y-8">
+            <div className="space-y-8" ref={tabsRef}>
             <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full animate-fade-in">
             <TabsList className="mb-6 w-full grid grid-cols-4 bg-accent text-accent-foreground">
                 <TabsTrigger value="pets">My Pets</TabsTrigger>
@@ -132,10 +127,21 @@ const Profile: React.FC = () => {
                             ? `${user.phoneCountryCode} ${user.phoneNumber}`
                             : 'Not provided'}</p>
                         </div>
-                        <div>
+                        {/* <div>
                           <p className="text-sm text-muted-foreground mb-1">Address</p>
                           <p className="font-medium">123 Main Street, Apt 4B<br />New York, NY 10001</p>
-                        </div>
+                        </div> */}
+                        <div>
+                <p className="text-sm text-muted-foreground mb-1">Address</p>
+                <Button
+                  variant="outline"
+                  className="font-medium"
+                  onClick={() => setAddressModalOpen(true)}
+                >
+                  View Addresses
+                </Button>
+                <AddressModal open={addressModalOpen} onClose={() => setAddressModalOpen(false)} />
+              </div>
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Member Since</p>
                           <p className="font-medium">{

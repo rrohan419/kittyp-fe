@@ -29,7 +29,6 @@ export type CartItemResponse = BaseCartItemResponse & {
 
 export interface CartState {
   items: CartItemResponse[];
-  user?: UserProfile;
   cartUuid: string;
   totalAmount: number;
   loading: boolean;
@@ -46,7 +45,6 @@ const initialState: CartState = {
   totalAmount: 0,
   loading: false,
   error: null,
-  user: undefined,
   isGuestCart: true,
   isSyncing: false
 };
@@ -70,8 +68,8 @@ export const selectCartLoading = createSelector(
 );
 
 export const selectCartUser = createSelector(
-  selectCartState,
-  (cart) => cart.user
+  (state: RootState) => state.authReducer.user,
+  (user) => user
 );
 
 export const selectCartSyncStatus = createSelector(
@@ -101,8 +99,7 @@ export const initializeUserAndCart = createAsyncThunk(
 
       // console.log('CartSlice - User data from AuthSlice:', !!userData);
       
-      // Set user in cart state
-      dispatch(setUser(userData));
+      // User is now managed by AuthSlice, no need to set in cart state
 
       // If there are guest items, start background sync
       if (hasGuestItems) {
@@ -234,13 +231,12 @@ export const addToCartFromProduct = createAsyncThunk(
       }
 
       // For logged-in users
-      let userUuid = state.cartReducer.user?.uuid;
+      const authState = getState() as { authReducer: { user: UserProfile | null } };
+      let userUuid = authState.authReducer.user?.uuid;
 
       // Only fetch user data if needed
       if (!userUuid) {
         const userData = await fetchUserDetail();
-        localStorage.setItem('user', JSON.stringify(userData));
-        dispatch(setUser(userData));
         userUuid = userData.uuid;
       }
 
@@ -471,11 +467,7 @@ export const cartSlice = createSlice({
   name: "cart",
   initialState,
   reducers: {
-    setUser(state, action: PayloadAction<UserProfile>) {
-      state.user = action.payload;
-      state.isGuestCart = false;
-      state.error = null;
-    },
+
     setCart(state, action: PayloadAction<CartResponse>) {
       state.items = action.payload.items || [];
       state.cartUuid = action.payload.uuid;
@@ -492,7 +484,6 @@ export const cartSlice = createSlice({
       state.isCartLoading = false;
       state.loading = false;
       state.error = null;
-      state.user = undefined;
       state.isGuestCart = true;
     },
     clearCart(state) {
@@ -620,7 +611,6 @@ export const cartSlice = createSlice({
 });
 
 export const {
-  setUser,
   setCart,
   clearCart,
   resetCart,

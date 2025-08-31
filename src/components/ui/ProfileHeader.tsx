@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { UserRound, Heart, Bookmark, Camera } from "lucide-react";
@@ -14,30 +14,27 @@ import EditProfileForm from './EditProfileForm';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ProfilePictureUpload } from './ProfilePictureUpload';
 import { updateUserProfilePicture } from '@/services/UserService';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/module/store/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/module/store/store';
 import { updateUserProfile } from '@/module/slice/AuthSlice';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 
 interface ProfileHeaderProps {
-  firstName: string;
-  lastName: string;
-  memberSince: string;
   ordersCount: number;
-  profilePictureUrl?: string;
-  userUuid: string;
+  onOrdersClick?: () => void;
+
 }
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({
-  firstName,
-  lastName,
-  memberSince,
-  ordersCount,
-  profilePictureUrl,
-  userUuid
+  onOrdersClick,
+  ordersCount
 }) => {
+
   const isMobile = useIsMobile();
   const dispatch = useDispatch<AppDispatch>();
+  const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
+  const [open, setOpen] = useState(false);
   return (
     <div className="animate-fade-in glass-effect rounded-xl shadow-md transition-default">
       <div className="container-padding py-8">
@@ -45,11 +42,11 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           <div className="relative flex-shrink-0 group">
             <div className="flex justify-center">
               <ProfilePictureUpload
-                currentImageUrl={profilePictureUrl}
+                currentImageUrl={user.profilePictureUrl}
                 onUploadComplete={async (url) => {
                   try {
                     // Update user profile with new image URL
-                    const updatedUser = await updateUserProfilePicture(userUuid, url);
+                    const updatedUser = await updateUserProfilePicture(user.uuid, url);
                     // Update Redux store
                     dispatch(updateUserProfile(updatedUser));
                     toast.success('Profile picture updated successfully!');
@@ -59,10 +56,10 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                   }
                 }}
                 onUploadError={(error) => {
-                  console.error('Profile picture upload failed:', error);
+                  // console.error('Profile picture upload failed:', error);
                   toast.error('Profile picture upload failed');
                 }}
-                userName={`${firstName} ${lastName}`}
+                userName={`${user.firstName} ${user.lastName}`}
                 showName={true}
                 size="lg"
               />
@@ -70,12 +67,15 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           </div>
           <div className="flex-grow text-center lg:text-left space-y-4">
             <div className="space-y-1">
-              <h1 className="text-2xl font-bold text-balance">{firstName} {lastName}</h1>
-              <p className="text-muted-foreground">Member since {memberSince}</p>
+              <h1 className="text-2xl font-bold text-balance">{user.firstName} {user.lastName}</h1>
+              <p className="text-muted-foreground">Member since {user.createdAt
+                ? format(new Date(user.createdAt), "do MMMM yyyy")
+                : "-"}</p>
             </div>
 
             <div className="flex flex-wrap gap-6 justify-center lg:justify-start text-sm">
-              <span className="inline-flex items-center gap-2 hover-lift">
+              <span className="inline-flex items-center gap-2 hover-lift cursor-pointer"
+                onClick={onOrdersClick}>
                 <div className="p-2 rounded-full bg-accent">
                   <Bookmark className="h-4 w-4 text-primary" />
                 </div>
@@ -85,7 +85,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           </div>
 
           <div>
-            <Sheet>
+            <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button
                   variant="outline"
@@ -99,7 +99,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                   <SheetTitle className="text-xl font-semibold">Edit Profile</SheetTitle>
                 </SheetHeader>
                 <div className="mt-8">
-                  <EditProfileForm />
+                  <EditProfileForm onSuccess={() => setOpen(false)} />
                 </div>
               </SheetContent>
             </Sheet>

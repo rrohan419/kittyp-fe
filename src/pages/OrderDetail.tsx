@@ -103,8 +103,7 @@ const STATUS_MESSAGES: Record<string, { message: string; icon: JSX.Element }> = 
 
 export default function OrderDetail() {
     const { orderId } = useParams<{ orderId: string }>();
-    const navigate = useNavigate();
-    const user = useAppSelector((state) => state.cartReducer.user);
+    const user = useAppSelector((state) => state.authReducer.user);
     const [processingPayment, setProcessingPayment] = useState(false);
     const [isPaymentVerifying, setIsPaymentVerifying] = useState(false);
 

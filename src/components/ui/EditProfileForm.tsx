@@ -24,7 +24,7 @@ import { updateUserDetails } from '@/services/UserService';
 import { useNavigate } from 'react-router-dom';
 import Loading from './loading';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
-import { setUser } from '@/module/slice/CartSlice';
+import { setUser } from '@/module/slice/AuthSlice';
 import { toast } from 'sonner';
 
 const formSchema = z.object({
@@ -48,9 +48,9 @@ const countryCodeOptions = [
   { value: "+86", label: "+86 (China)" },
 ];
 
-const EditProfileForm = () => {
+const EditProfileForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const dispatch = useAppDispatch();
-  const user = useAppSelector((state) => state.cartReducer.user);
+  const user = useAppSelector((state) => state.authReducer.user);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -62,7 +62,7 @@ const EditProfileForm = () => {
       email: "",
       phoneCountryCode: "+1",
       phoneNumber: "",
-      address: "",
+      // address: "",
       birthday: "",
     },
   });
@@ -76,7 +76,7 @@ const EditProfileForm = () => {
         email: user.email || "",
         phoneCountryCode: user.phoneCountryCode || "+1",
         phoneNumber: user.phoneNumber || "",
-        address: "",
+        // address: "",
         birthday: "",
       });
     }
@@ -99,9 +99,10 @@ const EditProfileForm = () => {
       });
 
       dispatch(setUser(userDetail));
-      localStorage.setItem("user", JSON.stringify(userDetail));
-      toast.success("Profile updated successfully");
-      navigate('/profile');
+      // toast.success("Profile updated successfully");
+      // navigate('/profile');
+
+      onSuccess?.(); 
     } catch (error) {
       console.error("Failed to update profile:", error);
       toast.error("Failed to update profile. Please try again.");
