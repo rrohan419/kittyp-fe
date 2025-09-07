@@ -240,7 +240,7 @@ const AdminArticleEditor = () => {
           category: payload.category,
           tags: payload.tags,
           readTime: payload.readTime,
-          tatus: payload.status,
+          status: payload.status,
         };
         await editArticle(slug, editPayload);
         toast.success('Article updated successfully!');
