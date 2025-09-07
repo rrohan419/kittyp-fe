@@ -321,7 +321,7 @@ const AdminArticleEditor = () => {
                 {submitting ? 'Saving...' : 'Save Draft'}
               </Button>
               <Button
-                type="submit"
+                type="button"
                 disabled={submitting}
                 onClick={() => {
                   form.setValue('status', 'PUBLISHED');
