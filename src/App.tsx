@@ -13,6 +13,7 @@ import { ScrollToTop } from "./utils/ScrollToTop";
 import { AuthInitializer } from "./components/auth/AuthInitializer";
 import { CartInitializer } from "./components/cart/CartInitializer";
 import { PWAInstaller } from "./components/PWAInstaller";
+import { FCMInitializer } from "./components/fcm/FCMInitializer";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,6 +34,7 @@ function App() {
             <CartProvider>
               <AuthInitializer>
                 <CartInitializer>
+                  <FCMInitializer />
                   <div className={cn(
                     "min-h-screen bg-background transition-opacity duration-200",
                     isLoading && "opacity-75"
