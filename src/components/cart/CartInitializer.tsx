@@ -6,7 +6,7 @@ import { initializeUserAndCart } from '@/module/slice/CartSlice';
 export function CartInitializer({ children }: PropsWithChildren) {
   const dispatch = useDispatch<AppDispatch>();
   const { user: authUser, isAuthenticated } = useSelector((state: RootState) => state.authReducer);
-  const { user: cartUser } = useSelector((state: RootState) => state.cartReducer);
+  const { user: cartUser } = useSelector((state: RootState) => state.authReducer);
   const initRef = useRef(false);
 
   useEffect(() => {

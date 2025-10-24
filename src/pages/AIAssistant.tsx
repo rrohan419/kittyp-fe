@@ -8,12 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Brain, Stethoscope, Heart, Sparkles, ArrowRight, Cat, Scale, Activity, CheckCircle, Clock, Utensils, Apple, Zap, Shield, User, Plus, PawPrint, MessageCircle, Send, Bot, Wand2, Star, Crown, Gift, AlertTriangle, MapPin, Download, FileText } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
+// Removed useCart import - using Redux instead
 import { fadeIn, fadeUp, staggerContainer, scaleUp } from '@/utils/animations';
 // import { downloadNutritionPlan, downloadNutritionPlanAsJSON } from '@/utils/downloadUtils';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/module/store/store';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '@/module/store/store';
 import { useNavigate } from 'react-router-dom';
+import { addItemToCart } from '@/module/slice/CartSlice';
 import { PetProfile } from '@/services/authService';
 import { Helmet } from 'react-helmet';
 import {
@@ -513,7 +514,7 @@ export default function AIAssistant() {
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   const [isSwitchingPet, setIsSwitchingPet] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
-  const { addItem } = useCart();
+  const dispatch = useDispatch<AppDispatch>();
   const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
   const navigate = useNavigate();
 

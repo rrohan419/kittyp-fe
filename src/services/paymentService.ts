@@ -1,6 +1,6 @@
 import { callRazorpayCreateOrder, callRazorpayVerifyPayment, CurrencyType, Taxes } from "./cartService";
 import { UserProfile } from "./authService";
-import { useOrder } from "@/context/OrderContext";
+// Removed useOrder import - using Redux instead
 import axiosInstance from "@/config/axionInstance";
 import { store } from "@/module/store/store";
 import { initializeUserAndCart } from "@/module/slice/CartSlice";

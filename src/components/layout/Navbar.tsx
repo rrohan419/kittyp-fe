@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, LogIn, UserPlus, LogOut, CheckCircle, LayoutDashboard, Package, User2Icon } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
 import { cn } from '@/lib/utils';
 import {
   Dialog,

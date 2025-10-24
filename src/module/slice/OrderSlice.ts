@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { fetchFilteredOrders, OrderFilterRequest, Order, OrderApiResponse, fetchSuccessfullOrderCount } from '@/services/orderService';
+import { Taxes } from '@/services/cartService';
 
 interface OrderState {
   totalOrderCount: number;
@@ -11,6 +12,9 @@ interface OrderState {
   isLoading: boolean;
   isLoadingOrders: boolean;
   error: string | null;
+  taxes: Taxes;
+  totalValue: number;
+  shippingCost: number;
 }
 
 const initialState: OrderState = {
@@ -23,6 +27,9 @@ const initialState: OrderState = {
   isLoading: false,
   isLoadingOrders: false,
   error: null,
+  taxes: { shippingCharges: 0, otherTax: 0, serviceCharge: 0 },
+  totalValue: 0,
+  shippingCost: 0,
 };
 
 export const fetchTotalOrderCount = createAsyncThunk(
@@ -88,6 +95,15 @@ const orderSlice = createSlice({
         order.status = status;
       }
     },
+    setTaxes: (state, action) => {
+      state.taxes = { ...state.taxes, ...action.payload };
+    },
+    setTotalValue: (state, action) => {
+      state.totalValue = action.payload;
+    },
+    setShippingCost: (state, action) => {
+      state.shippingCost = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -134,6 +150,9 @@ export const {
   clearOrders, 
   setOrderCount, 
   setCurrentPage, 
-  updateOrderStatus 
+  updateOrderStatus,
+  setTaxes,
+  setTotalValue,
+  setShippingCost
 } = orderSlice.actions;
 export default orderSlice.reducer; 

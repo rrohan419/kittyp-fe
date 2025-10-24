@@ -116,3 +116,19 @@ export const fetchUserPets = async (): Promise<PetProfile[]> => {
   const response = await axiosInstance.get<WrappedResponse<PetProfile[]>>('/pet/user');
   return response.data.data;
 };
+
+export const saveUserFcmToken = async (fcmToken: string): Promise<UserProfile> => {
+  console.log('📤 Saving FCM token to backend:', fcmToken);
+  console.log('📤 Making API call to:', `/user/${fcmToken}`);
+  
+  const userResponse = await axiosInstance.patch<WrappedUserResponse>(`/user/${fcmToken}`);
+  const user = userResponse.data.data;
+  
+  console.log('✅ FCM token saved successfully to backend');
+  console.log('✅ Updated user data:', user);
+
+  // Store updated user data
+  localStorage.setItem('user', JSON.stringify(user));
+
+  return user;
+};
