@@ -71,6 +71,7 @@ export interface UserProfile {
   accessToken: string;
   profilePictureUrl: string;
   ownerPets: PetProfile[];
+  fcmToken: string;
 }
 
 export const signup = async (data: SignupData) => {

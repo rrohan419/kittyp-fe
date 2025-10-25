@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getCurrentUser, validateToken } from '@/services/authService';
 import { UserProfile, PetProfile } from '@/services/authService';
-import { addPet, AddPet, deletePet, editPet, UpdatePet, fetchUserDetail } from '@/services/UserService';
+import { addPet, AddPet, deletePet, editPet, UpdatePet, fetchUserDetail, saveUserFcmToken } from '@/services/UserService';
 import { toast } from 'sonner';
 
 export interface AuthState {
@@ -96,6 +96,25 @@ export const updatePetInUser = createAsyncThunk(
   }
 );
 
+export const addFcmTokenToUser = createAsyncThunk(
+  'auth/user/fcm-token',
+  async (fcmToken: string, { dispatch }) => {
+    try {
+      console.log('🔄 AuthSlice: Starting FCM token update...');
+      const updatedUser = await saveUserFcmToken(fcmToken);
+      
+      console.log('🔄 AuthSlice: Dispatching setUser with updated user...');
+      dispatch(setUser(updatedUser));
+      
+      console.log('✅ AuthSlice: FCM token update completed successfully');
+    } catch (err) {
+      console.error('❌ AuthSlice: FCM token update failed:', err);
+      toast.error("Failed to update FCM token.");
+      throw err;
+    }
+  }
+);
+
 export const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -147,6 +166,11 @@ export const authSlice = createSlice({
         state.petsLoading = false;
       }
     },
+    setUserFcmToken: (state, action) => {
+      if (state.user) {
+        state.user.fcmToken = action.payload;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -193,7 +217,16 @@ export const authSlice = createSlice({
       })
       .addCase(updatePetInUser.rejected, (state) => {
         state.saving = false;
-      });
+      })
+      .addCase(addFcmTokenToUser.pending, (state) => {
+        state.saving = true;
+      })
+      .addCase(addFcmTokenToUser.fulfilled, (state) => {
+        state.saving = false;
+      })
+      .addCase(addFcmTokenToUser.rejected, (state) => {
+        state.saving = false;
+      })
   },
 });
 
@@ -207,7 +240,8 @@ export const {
   addUserPet,
   removeUserPet,
   updateUserPet,
-  setUserPets
+  setUserPets,
+  setUserFcmToken
 } = authSlice.actions;
 
 // Add async thunk to update user profile

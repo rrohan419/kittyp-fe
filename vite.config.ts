@@ -2,65 +2,51 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
-import { VitePWA } from 'vite-plugin-pwa'
+import { VitePWA } from "vite-plugin-pwa";
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
   },
+  build: {
+    sourcemap: false,
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          firebase: ['firebase/app', 'firebase/messaging'],
+        },
+      },
+    },
+  },
   plugins: [
     react(),
-    mode === 'development' && componentTagger(),
+    mode === "development" && componentTagger(),
     VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'robots.txt', 'sitemap.xml'],
-      injectRegister: 'auto',
-      strategies: 'generateSW',
-      filename: 'sw.js',
-      manifest: {
-        name: 'Kittyp - Eco-Friendly Pet Products',
-        short_name: 'Kittyp',
-        description: 'Pure by Nature, Trusted by You. Kittyp by Tenjiku Naturals offers clean, sustainable pine wood cat litter—natural, chemical-free, and ultra-absorbent.',
-        start_url: '/',
-        display: 'standalone',
-        background_color: '#ffffff',
-        theme_color: '#995af2',
-        orientation: 'portrait',
-        scope: '/',
-        icons: [
-          {
-            src: '/android-chrome-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any maskable'
-          },
-          {
-            src: '/android-chrome-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          },
-          {
-            src: '/apple-touch-icon.png',
-            sizes: '180x180',
-            type: 'image/png',
-            purpose: 'any'
-          }
-        ],
-        categories: ['shopping', 'lifestyle', 'pets'],
-        lang: 'en',
-        dir: 'ltr',
-        prefer_related_applications: false,
-        related_applications: [],
-        edge_side_panel: {
-          preferred_width: 400
-        }
-      },
+      registerType: "autoUpdate",
+      includeAssets: ["favicon.svg", "robots.txt", "sitemap.xml"],
+      strategies: "generateSW",
+      filename: "sw.js",
+      manifestFilename: "manifest.json",
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        sourcemap: false,
+        cleanupOutdatedCaches: true,
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        maximumFileSizeToCacheInBytes: 5000000,
         runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/api\.kittyp\.in\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 5 * 60, // 5 minutes
+              },
+            },
+          },
           {
             urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,
             handler: 'CacheFirst',
@@ -73,23 +59,66 @@ export default defineConfig(({ mode }) => ({
             },
           },
           {
-            urlPattern: /^https:\/\/api\.kittyp\.in\/.*/i,
-            handler: 'NetworkFirst',
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
+            handler: 'CacheFirst',
             options: {
-              cacheName: 'api-cache',
+              cacheName: 'images',
               expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 5 * 60, // 5 minutes
+                maxEntries: 60,
+                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
               },
             },
-          }
-        ]
+          },
+        ],
+      },
+      
+      manifest: {
+        name: "Kittyp - Eco-Friendly Pet Products",
+        short_name: "Kittyp",
+        description:
+          "Pure by Nature, Trusted by You",
+        start_url: "/",
+        display: "standalone",
+        background_color: "#ffffff",
+        theme_color: "#995af2",
+        orientation: "portrait",
+        scope: "/",
+        icons: [
+          {
+            src: "/android-chrome-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any maskable",
+          },
+          {
+            src: "/android-chrome-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any maskable",
+          },
+          {
+            src: "/apple-touch-icon.png",
+            sizes: "180x180",
+            type: "image/png",
+            purpose: "any",
+          },
+        ],
+        categories: ["shopping", "lifestyle", "pets"],
+        lang: "en",
+        dir: "ltr",
+        prefer_related_applications: false,
+        related_applications: [],
+        edge_side_panel: {
+          preferred_width: 400,
+        },
       },
       devOptions: {
-        enabled: true,
-        type: 'module'
-      }
-    })
+        enabled: mode === "development",
+        type: "module",
+        navigateFallback: 'index.html'
+      },
+    }),
+    
   ].filter(Boolean),
   resolve: {
     alias: {
@@ -97,4 +126,3 @@ export default defineConfig(({ mode }) => ({
     },
   },
 }));
-

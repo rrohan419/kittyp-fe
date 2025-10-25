@@ -5,8 +5,10 @@ import { Label } from "@/components/ui/label";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ShippingMethod } from "@/services/cartService";
 import { getShippingMethods, ShippingMethodInfo } from "@/services/shippingService";
-import { useOrder } from "@/context/OrderContext";
 import { cn } from "@/lib/utils";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/module/store/store";
+import { setTaxes } from "@/module/slice/OrderSlice";
 
 interface ShippingMethodSelectorProps {
   selectedMethod: ShippingMethod | "";
@@ -16,7 +18,7 @@ interface ShippingMethodSelectorProps {
 export function ShippingMethodSelector({ selectedMethod, onMethodChange }: ShippingMethodSelectorProps) {
   const [shippingMethods, setShippingMethods] = useState<ShippingMethodInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const {setTaxes} = useOrder();
+  const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
     async function fetchShippingMethods() {
@@ -27,7 +29,7 @@ export function ShippingMethodSelector({ selectedMethod, onMethodChange }: Shipp
         if (!selectedMethod && methods.length > 0) {
           const first = methods[0];
           onMethodChange(first.id, first.price);
-          setTaxes(prev => ({ ...prev, shipping: first.price }));
+          dispatch(setTaxes({ shipping: first.price }));
         }
       } catch (error) {
         console.error("Failed to fetch shipping methods:", error);
@@ -41,7 +43,7 @@ export function ShippingMethodSelector({ selectedMethod, onMethodChange }: Shipp
 
   const handleChange = (id: ShippingMethod, price: number) => {
     onMethodChange(id, price);
-    setTaxes(prev => ({ ...prev, shipping: price })); 
+    dispatch(setTaxes({ shipping: price })); 
   };
 
   if (isLoading) {
