@@ -8,10 +8,20 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    
+  },
+  build: {
+    sourcemap: false,
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          firebase: ['firebase/app', 'firebase/messaging'],
+        },
+      },
+    },
   },
   plugins: [
-    
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
@@ -25,9 +35,11 @@ export default defineConfig(({ mode }) => ({
         globDirectory: "dist",
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         swDest: "sw.js",
+        maximumFileSizeToCacheInBytes: 5000000,
       },
       workbox: {
-        sourcemap: true
+        sourcemap: false,
+        cleanupOutdatedCaches: true,
       },
       
       manifest: {
@@ -71,7 +83,7 @@ export default defineConfig(({ mode }) => ({
         },
       },
       devOptions: {
-        enabled: true,
+        enabled: mode === "development",
         type: "module",
         navigateFallback: 'index.html'
       },
