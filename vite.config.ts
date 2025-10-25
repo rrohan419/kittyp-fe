@@ -20,7 +20,6 @@ export default defineConfig(({ mode }) => ({
       injectRegister: null,
       strategies: "injectManifest",
       filename: "sw.js",
-      srcDir: "src",
       manifestFilename: "manifest.json",
       injectManifest: {
         swSrc: "src/sw.ts",
