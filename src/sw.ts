@@ -52,16 +52,8 @@ interface ExtendableEvent extends Event {
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
 
-// Firebase configuration for service worker
-const getFirebaseConfig = () => ({
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "",
-});
+// Use shared Firebase configuration (same as main app)
+import { getFirebaseConfig } from './config/firebase.shared';
 
 // Initialize Firebase in service worker
 const initializeFirebase = async () => {
@@ -118,7 +110,6 @@ const initializeFirebase = async () => {
 initializeFirebase();
 
 // Debug: Log manifest information
-console.log('🔧 Service Worker Manifest:', self.__WB_MANIFEST);
 console.log('🔧 Service Worker Environment:', import.meta.env.MODE);
 
 // Allow offline navigation with fallback
@@ -129,27 +120,11 @@ if (import.meta.env.DEV) {
 
 // Register navigation route with fallback
 try {
-  // Try to use createHandlerBoundToURL if index.html is precached
-  if (self.__WB_MANIFEST && self.__WB_MANIFEST.some((entry: any) => entry.url === 'index.html')) {
-    registerRoute(new NavigationRoute(
-      createHandlerBoundToURL('index.html'),
-      { allowlist },
-    ));
-  } else {
-    // Fallback: use NetworkFirst strategy for navigation requests
-    registerRoute(
-      ({ request }) => request.mode === 'navigate',
-      new NetworkFirst({
-        cacheName: 'pages',
-        plugins: [
-          new ExpirationPlugin({
-            maxEntries: 32,
-            maxAgeSeconds: 24 * 60 * 60, // 24 hours
-          }),
-        ],
-      })
-    );
-  }
+  // Use createHandlerBoundToURL for navigation
+  registerRoute(new NavigationRoute(
+    createHandlerBoundToURL('index.html'),
+    { allowlist },
+  ));
 } catch (error) {
   console.warn('Navigation route registration failed, using fallback:', error);
   // Ultimate fallback: simple network-first for navigation
