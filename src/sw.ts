@@ -110,7 +110,6 @@ const initializeFirebase = async () => {
 initializeFirebase();
 
 // Debug: Log manifest information
-console.log('🔧 Service Worker Manifest:', self.__WB_MANIFEST);
 console.log('🔧 Service Worker Environment:', import.meta.env.MODE);
 
 // Allow offline navigation with fallback
@@ -121,27 +120,11 @@ if (import.meta.env.DEV) {
 
 // Register navigation route with fallback
 try {
-  // Try to use createHandlerBoundToURL if index.html is precached
-  if (self.__WB_MANIFEST && self.__WB_MANIFEST.some((entry: any) => entry.url === 'index.html')) {
-    registerRoute(new NavigationRoute(
-      createHandlerBoundToURL('index.html'),
-      { allowlist },
-    ));
-  } else {
-    // Fallback: use NetworkFirst strategy for navigation requests
-    registerRoute(
-      ({ request }) => request.mode === 'navigate',
-      new NetworkFirst({
-        cacheName: 'pages',
-        plugins: [
-          new ExpirationPlugin({
-            maxEntries: 32,
-            maxAgeSeconds: 24 * 60 * 60, // 24 hours
-          }),
-        ],
-      })
-    );
-  }
+  // Use createHandlerBoundToURL for navigation
+  registerRoute(new NavigationRoute(
+    createHandlerBoundToURL('index.html'),
+    { allowlist },
+  ));
 } catch (error) {
   console.warn('Navigation route registration failed, using fallback:', error);
   // Ultimate fallback: simple network-first for navigation
