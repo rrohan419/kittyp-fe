@@ -27,19 +27,49 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "robots.txt", "sitemap.xml"],
-      strategies: "injectManifest",
+      strategies: "generateSW",
       filename: "sw.js",
       manifestFilename: "manifest.json",
-      injectManifest: {
-        swSrc: "./src/sw.ts",
-        globDirectory: "dist",
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        swDest: "sw.js",
-        maximumFileSizeToCacheInBytes: 5000000,
-      },
       workbox: {
         sourcemap: false,
         cleanupOutdatedCaches: true,
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        maximumFileSizeToCacheInBytes: 5000000,
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/api\.kittyp\.in\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 5 * 60, // 5 minutes
+              },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'unsplash-images',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+              },
+            },
+          },
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'images',
+              expiration: {
+                maxEntries: 60,
+                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+              },
+            },
+          },
+        ],
       },
       
       manifest: {
