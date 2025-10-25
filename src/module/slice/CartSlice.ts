@@ -1,6 +1,6 @@
 import { UserProfile } from "@/services/authService";
-import { 
-  CurrencyType, 
+import {
+  CurrencyType,
   ApiSuccessResponse,
   getCartByUser,
   addToCart as addToCartService,
@@ -82,8 +82,7 @@ export const initializeUserAndCart = createAsyncThunk(
   'cart/initializeUserAndCart',
   async (_, { dispatch, getState }) => {
     try {
-      // console.log('CartSlice - Starting cart initialization');
-      
+
       // Get the current state to check for guest cart items
       const state = getState() as { cartReducer: CartState };
       const hasGuestItems = state.cartReducer.items.length > 0 && state.cartReducer.isGuestCart;
@@ -91,28 +90,24 @@ export const initializeUserAndCart = createAsyncThunk(
       // Get user from AuthSlice
       const authState = getState() as { authReducer: { user: UserProfile } };
       const userData = authState.authReducer.user;
-      
+
       if (!userData) {
-        // console.log('CartSlice - No user data from AuthSlice');
         return null;
       }
 
-      // console.log('CartSlice - User data from AuthSlice:', !!userData);
-      
       // User is now managed by AuthSlice, no need to set in cart state
 
       // If there are guest items, start background sync
       if (hasGuestItems) {
         // Start background sync without waiting
         dispatch(backgroundSyncCarts());
-        
+
         // Return early with just the user data
         return userData;
       }
 
       // If no guest items, just fetch the backend cart
       const response = await getCartByUser(userData.uuid);
-      // console.log('CartSlice - Cart data fetched:', !!response);
       dispatch(setCart(response.data));
 
       return userData;
@@ -241,11 +236,11 @@ export const addToCartFromProduct = createAsyncThunk(
       }
 
       // Add to cart
-      const response = await addToCartService(userUuid!, { 
-        productUuid: product.uuid, 
-        quantity: 1 
+      const response = await addToCartService(userUuid!, {
+        productUuid: product.uuid,
+        quantity: 1
       });
-      
+
       dispatch(setCart(response.data));
       toast.success(`${product.name} added to cart`);
     } catch (err) {
@@ -262,7 +257,7 @@ export const syncGuestCartWithUser = createAsyncThunk(
   async (guestItems: CartItemResponse[], { dispatch, rejectWithValue }) => {
     try {
       const cartService = new CartService();
-      
+
       // Add each guest cart item to the user's cart
       for (const item of guestItems) {
         await cartService.addToCart({
@@ -305,7 +300,7 @@ export const syncCartsAfterLogin = createAsyncThunk(
     try {
       const state = getState() as { cartReducer: CartState };
       const guestCartItems = state.cartReducer.items;
-      
+
       // First, fetch the user's existing cart from backend
       const userData = await fetchUserDetail();
       const backendCartResponse = await getCartByUser(userData.uuid);
@@ -318,7 +313,7 @@ export const syncCartsAfterLogin = createAsyncThunk(
             // Fetch current product data to check availability
             const productResponse = await fetchProductByUuid(item.productUuid);
             const product = productResponse.data;
-            
+
             // Check if product exists and is active
             if (!product || product.stockQuantity === undefined) {
               toast.error(`${item.productName} is no longer available`);
@@ -341,7 +336,7 @@ export const syncCartsAfterLogin = createAsyncThunk(
 
             // Calculate the quantity we can actually add
             const quantityToAdd = Math.min(item.quantity, remainingStock);
-            
+
             if (quantityToAdd < item.quantity) {
               toast.warning(
                 `Only added ${quantityToAdd} units of ${item.productName} (${remainingStock} available)`
@@ -359,7 +354,7 @@ export const syncCartsAfterLogin = createAsyncThunk(
             toast.error(`Failed to sync ${item.productName}`);
           }
         }
-        
+
         // Fetch the final merged cart
         const finalCartResponse = await getCartByUser(userData.uuid);
         dispatch(setCart(finalCartResponse.data));
@@ -385,7 +380,7 @@ export const backgroundSyncCarts = createAsyncThunk(
     try {
       const state = getState() as { cartReducer: CartState };
       const guestCartItems = state.cartReducer.items;
-      
+
       // First, fetch the user's existing cart from backend
       const userData = await fetchUserDetail();
       const backendCartResponse = await getCartByUser(userData.uuid);
@@ -404,7 +399,7 @@ export const backgroundSyncCarts = createAsyncThunk(
             // Fetch current product data to check availability
             const productResponse = await fetchProductByUuid(item.productUuid);
             const product = productResponse.data;
-            
+
             if (!product || product.stockQuantity === undefined) {
               failedItems++;
               continue;
@@ -424,7 +419,7 @@ export const backgroundSyncCarts = createAsyncThunk(
 
             // Calculate the quantity we can actually add
             const quantityToAdd = Math.min(item.quantity, remainingStock);
-            
+
             if (quantityToAdd > 0) {
               await addToCartService(userData.uuid, {
                 productUuid: item.productUuid,
@@ -437,7 +432,7 @@ export const backgroundSyncCarts = createAsyncThunk(
             failedItems++;
           }
         }
-        
+
         // Fetch the final merged cart
         const finalCartResponse = await getCartByUser(userData.uuid);
         dispatch(setCart(finalCartResponse.data));
@@ -498,7 +493,7 @@ export const cartSlice = createSlice({
     },
     addToCart(state, action: PayloadAction<Product>) {
       const existingItem = state.items.find(item => item.productUuid === action.payload.uuid);
-      
+
       // Check if adding would exceed available stock
       if (existingItem) {
         if (existingItem.quantity < action.payload.stockQuantity) {
@@ -520,7 +515,7 @@ export const cartSlice = createSlice({
       }
       state.totalAmount = state.items.reduce((total, item) => total + item.totalPrice, 0);
     },
-    updateCartQuantity(state, action: PayloadAction<{uuid: string, quantity: number}>) {
+    updateCartQuantity(state, action: PayloadAction<{ uuid: string, quantity: number }>) {
       const existingItem = state.items.find(item => item.productUuid === action.payload.uuid);
       if (existingItem) {
         existingItem.quantity = action.payload.quantity;

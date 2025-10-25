@@ -39,14 +39,12 @@ export function AuthorSelector({ selectedAuthor, onAuthorChange, disabled = fals
     setIsLoading(true);
     try {
       const response = await fetchAuthors({ page: 0, size: 100 });
-      console.log('Authors API response:', response);
       if (response.success) {
         // Ensure all author IDs are strings
         const authorsWithStringIds = response.data.models.map(author => ({
           ...author,
           id: author.id.toString()
         }));
-        console.log('Processed authors:', authorsWithStringIds);
         setAuthors(authorsWithStringIds);
       } else {
         toast.error("Failed to load authors");
@@ -102,10 +100,7 @@ export function AuthorSelector({ selectedAuthor, onAuthorChange, disabled = fals
         <Select
           value={selectedAuthor?.id || ''}
           onValueChange={(value) => {
-            console.log('AuthorSelector onValueChange called with:', value);
-            console.log('Available authors:', authors);
             const author = authors.find(a => a.id === value);
-            console.log('Found author:', author);
             onAuthorChange(author || null);
           }}
           disabled={isLoading || disabled}

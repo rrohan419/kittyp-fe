@@ -23,12 +23,3 @@ export const getServiceWorkerConfig = () => {
     measurementId: undefined
   };
 };
-
-// Log configuration in development
-if (import.meta.env.DEV) {
-  console.log('🔧 Firebase Config:', {
-    environment: import.meta.env.MODE,
-    projectId: firebaseConfig.projectId,
-    authDomain: firebaseConfig.authDomain
-  });
-}

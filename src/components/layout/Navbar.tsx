@@ -46,8 +46,6 @@ export function Navbar() {
       }
     };
 
-    // console.log('isAuthenticated:', isAuthenticated);
-
     window.addEventListener('scroll', handleScroll);
     handleScroll(); // Initial check
     return () => window.removeEventListener('scroll', handleScroll);

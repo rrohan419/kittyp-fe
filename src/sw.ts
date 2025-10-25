@@ -59,20 +59,14 @@ import { getFirebaseConfig } from './config/firebase.shared';
 const initializeFirebase = async () => {
   try {
     const firebaseConfig = getFirebaseConfig();
-    console.log('🔧 Service Worker Firebase Config:', firebaseConfig.projectId);
     
     const firebaseApp = initializeApp(firebaseConfig);
     const messaging = getMessaging(firebaseApp);
-    
-    console.log('✅ Firebase initialized in unified service worker');
-    
     // Handle background messages
     self.addEventListener('push', (event: PushEvent) => {
-      console.log('📱 Push event received:', event);
       
       if (event.data) {
         const payload = event.data.json();
-        console.log('📱 Background message received:', payload);
         
         const notificationTitle = payload.notification?.title || "Kittyp Notification";
         const notificationOptions = {
@@ -108,9 +102,6 @@ const initializeFirebase = async () => {
 
 // Initialize Firebase when service worker starts
 initializeFirebase();
-
-// Debug: Log manifest information
-console.log('🔧 Service Worker Environment:', import.meta.env.MODE);
 
 // Allow offline navigation with fallback
 let allowlist;
@@ -184,7 +175,6 @@ registerRoute(
 
 // Handle notification clicks
 self.addEventListener('notificationclick', (event: NotificationClickEvent) => {
-  console.log('🔔 Notification clicked:', event);
   event.notification.close();
   
   if (event.action === 'open' || !event.action) {
@@ -214,12 +204,10 @@ self.addEventListener('message', (event: MessageEvent) => {
 
 // Activate event
 self.addEventListener('activate', (event: ExtendableEvent) => {
-  console.log('🔧 Unified Service Worker activated');
   event.waitUntil(Promise.resolve(clientsClaim()));
 });
 
 // Install event
 self.addEventListener('install', (event: ExtendableEvent) => {
-  console.log('🔧 Unified Service Worker installed');
   self.skipWaiting();
 });

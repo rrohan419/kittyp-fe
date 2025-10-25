@@ -138,10 +138,8 @@ export function PWAInstaller() {
   const handleInstallClick = useCallback(async () => {
     if (state.deferredPrompt) {
       try {
-        console.log('PWA: Triggering install prompt');
         state.deferredPrompt.prompt();
         const choiceResult = await state.deferredPrompt.userChoice;
-        console.log('PWA: User choice:', choiceResult.outcome);
         
         if (choiceResult.outcome === 'accepted') {
           saveUserPreferences({ installAttempts: state.installAttempts + 1 });
@@ -250,15 +248,16 @@ export function PWAInstaller() {
     // Listen for beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      console.log('PWA: beforeinstallprompt event fired');
+      
+      // Always capture the event, regardless of user preferences
+      setState(prev => ({ 
+        ...prev, 
+        deferredPrompt: e as BeforeInstallPromptEvent,
+        canInstall: true 
+      }));
       
       // Only show if user hasn't permanently dismissed and app isn't installed
       if (!state.userDismissed && !isAppInstalled()) {
-        setState(prev => ({ 
-          ...prev, 
-          deferredPrompt: e as BeforeInstallPromptEvent,
-          canInstall: true 
-        }));
         setShowInstallPrompt(true);
         installPromptShownRef.current = true;
       }
@@ -266,7 +265,6 @@ export function PWAInstaller() {
 
     // Listen for appinstalled event
     const handleAppInstalled = () => {
-      console.log('PWA: App installed successfully');
       setState(prev => ({ 
         ...prev, 
         isInstalled: true,
@@ -278,13 +276,11 @@ export function PWAInstaller() {
 
     // Listen for online/offline status
     const handleOnline = () => {
-      console.log('PWA: Back online');
       setState(prev => ({ ...prev, isOnline: true }));
       setShowOfflineAlert(false);
     };
     
     const handleOffline = () => {
-      console.log('PWA: Went offline');
       setState(prev => ({ ...prev, isOnline: false }));
       setShowOfflineAlert(true);
     };
@@ -318,7 +314,6 @@ export function PWAInstaller() {
           !state.userDismissed &&
           supportsManualInstall && 
           !supportsInstall) {
-        console.log('PWA: No install prompt detected, showing manual install');
         setShowManualInstall(true);
       }
     }, 3000);

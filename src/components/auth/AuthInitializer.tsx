@@ -13,21 +13,14 @@ export function AuthInitializer({ children }: PropsWithChildren) {
     const initAuth = async () => {
       try {
         const accessToken = localStorage.getItem('access_token');
-        // console.log('AuthInitializer - Checking conditions:', {
-        //   hasAccessToken: !!accessToken,
-        //   isAuthenticated,
-        //   loading,
-        //   isInitialized: initRef.current
-        // });
+       
         
         // Initialize if we have a token and haven't initialized yet
         if (accessToken && !initRef.current && !isAuthenticated && !loading) {
-          // console.log('AuthInitializer - Starting authentication');
           initRef.current = true;
           
           // Validate token and set user
           await dispatch(validateAndSetUser()).unwrap();
-          // console.log('AuthInitializer - Authentication complete');
         }
       } catch (error) {
         console.error('Auth initialization failed:', error);

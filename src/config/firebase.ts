@@ -17,7 +17,6 @@ export function getFirebaseApp(): FirebaseApp {
 
   try {
     firebaseApp = initializeApp(firebaseConfig);
-    console.log('✅ Firebase initialized successfully:', firebaseConfig.projectId);
     return firebaseApp;
   } catch (error) {
     console.error('❌ Firebase initialization failed:', error);
