@@ -31,13 +31,16 @@ export default defineConfig(({ mode }) => ({
       injectRegister: "auto",
       strategies: "injectManifest",
       srcDir: "src",
-      filename: "sw.js",
+      filename: "sw.ts",
       manifestFilename: "manifest.webmanifest",
       injectManifest: {
         swSrc: "src/sw.ts",
         globDirectory: "dist",
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globPatterns: ["**/*.{ts,js,css,html,ico,png,svg,woff2}"],
       },
+      // workbox: {
+      //   sourcemap: true
+      // },
       devOptions: {
         enabled: true,
         type: "module",
