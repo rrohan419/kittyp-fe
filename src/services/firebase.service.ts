@@ -89,18 +89,8 @@ export class FirebaseService {
         return { token: this.fcmToken };
       }
 
-      // Check if user already has an FCM token in Redux store
-      const state = store.getState();
-      const currentUser = state.authReducer.user;
-      
-      if (currentUser?.fcmToken) {
-        console.log('✅ User already has FCM token in store, using existing token');
-        this.fcmToken = currentUser.fcmToken;
-        return { token: currentUser.fcmToken };
-      }
 
       // User doesn't have a token, request permission and get new token
-      console.log('🔐 User doesn\'t have FCM token, requesting permission...');
       const token = await requestFcmPermissionAndToken();
       if (token) {
         this.fcmToken = token;
@@ -151,20 +141,6 @@ export class FirebaseService {
    */
   public async sendTokenToBackend(token: string): Promise<boolean> {
     try {
-      // Get current user state from Redux store
-      const state = store.getState();
-      const currentUser = state.authReducer.user;
-      
-      console.log('🔍 Checking FCM token status:');
-      console.log('  - Current user FCM token:', currentUser?.fcmToken);
-      console.log('  - New token:', token);
-      console.log('  - Tokens match:', currentUser?.fcmToken === token);
-      
-      // Check if user already has the same FCM token
-      if (currentUser?.fcmToken === token) {
-        console.log('✅ User already has this FCM token, skipping save');
-        return true;
-      }
 
       // Only save if token is different or user doesn't have a token
       console.log('📤 Saving new FCM token to backend:', token);

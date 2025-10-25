@@ -31,42 +31,11 @@ export function FCMInitializer() {
           throw new Error('Failed to initialize Firebase service');
         }
 
-        // Check if user already has an FCM token in Redux store
-        if (user.fcmToken) {
-          console.log('✅ User already has FCM token, initializing with existing token:', user.fcmToken);
-          
-          // Initialize FCM with existing token (no permission request)
-          const tokenResult = await firebaseService.initializeWithExistingToken();
-          setFcmToken(tokenResult.token);
-          
-          if (tokenResult.token) {
-            // Subscribe to foreground messages with existing token
-            const subscribed = await firebaseService.subscribeToForegroundMessages(({ title, body }) => {
-              console.log('📱 Foreground notification received');
-              toast(title, { 
-                description: body,
-                duration: 5000,
-              });
-            });
-            
-            if (!subscribed) {
-              console.warn('⚠️ Failed to subscribe to foreground messages');
-            }
-            
-            setIsInitialized(true);
-            return;
-          } else {
-            console.warn('⚠️ Failed to initialize with existing token:', tokenResult.error);
-            setError(tokenResult.error || 'Failed to initialize with existing token');
-          }
-        }
 
         // User doesn't have FCM token, request permission and get new token
-        console.log('🔐 User doesn\'t have FCM token, requesting permission...');
-        console.log('🔍 User FCM token status:', user.fcmToken ? 'Has token' : 'No token');
-        
+      
         // Delay notification permission request by 3 seconds
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         
         // Get FCM token (this will request permission if needed)
         const tokenResult = await firebaseService.getFCMToken();
