@@ -17,14 +17,14 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "robots.txt", "sitemap.xml"],
-      injectRegister: null,
       strategies: "injectManifest",
       filename: "sw.js",
       manifestFilename: "manifest.json",
       injectManifest: {
-        swSrc: "src/sw.ts",
+        swSrc: "./src/sw.ts",
         globDirectory: "dist",
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        swDest: "sw.js",
       },
       workbox: {
         sourcemap: true
