@@ -45,21 +45,17 @@ export class FirebaseService {
    */
   public async initialize(): Promise<boolean> {
     if (this.isInitialized) {
-      console.log('✅ Firebase service already initialized');
       return true;
     }
 
     try {
-      console.log('🚀 Initializing Firebase service...');
       
       // Initialize Firebase app
       const app = getFirebaseApp();
-      console.log('✅ Firebase app initialized:', app.name);
 
       // Initialize FCM
       const messaging = await getFirebaseMessaging();
       if (messaging) {
-        console.log('✅ Firebase messaging initialized');
         this.isInitialized = true;
         return true;
       } else {
@@ -94,7 +90,6 @@ export class FirebaseService {
       const token = await requestFcmPermissionAndToken();
       if (token) {
         this.fcmToken = token;
-        console.log('✅ FCM token obtained:', token);
         return { token };
       } else {
         return { token: null, error: 'Failed to get FCM token' };
@@ -128,7 +123,6 @@ export class FirebaseService {
         });
       });
 
-      console.log('✅ Subscribed to foreground messages');
       return true;
     } catch (error) {
       console.error('❌ Failed to subscribe to foreground messages:', error);
@@ -142,15 +136,11 @@ export class FirebaseService {
   public async sendTokenToBackend(token: string): Promise<boolean> {
     try {
 
-      // Only save if token is different or user doesn't have a token
-      console.log('📤 Saving new FCM token to backend:', token);
-      console.log('📤 Dispatching addFcmTokenToUser action...');
       
       // Dispatch the Redux action
       const dispatch = store.dispatch as AppDispatch;
       await dispatch(addFcmTokenToUser(token));
       
-      console.log('✅ FCM token saved successfully to backend');
       return true;
     } catch (error) {
       console.error('❌ Failed to send token to backend:', error);
@@ -213,7 +203,6 @@ export class FirebaseService {
       const existingToken = this.getExistingToken();
       if (existingToken) {
         this.fcmToken = existingToken;
-        console.log('✅ FCM initialized with existing token:', existingToken);
         return { token: existingToken };
       }
 
@@ -229,7 +218,6 @@ export class FirebaseService {
    */
   public resetToken(): void {
     this.fcmToken = null;
-    console.log('🔄 FCM token reset');
   }
 }
 

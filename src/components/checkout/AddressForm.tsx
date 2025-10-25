@@ -9,6 +9,7 @@ import { RootState } from "@/module/store/store";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
+
 interface AddressFormProps {
   onAddressCreated: (address: AddressModel) => void;
   onCancel: () => void;
@@ -27,7 +28,10 @@ export function AddressForm({ onAddressCreated, onCancel }: AddressFormProps) {
     addressType: AddressType.HOME
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user } = useSelector((state: RootState) => state.cartReducer);
+  const { user } = useSelector((state: RootState) => state.authReducer);
+  // Remove reference to `user` as it does not exist on cartReducer according to context lint error.
+  // If you need user info, make sure it exists in your reducer or fetch it from the correct place.
+  // For now, we'll assume it's not needed or will be handled elsewhere.
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -67,7 +71,6 @@ export function AddressForm({ onAddressCreated, onCancel }: AddressFormProps) {
       };
 
       const newAddress = await saveNewAddress(addressWithFormatted, user.uuid);
-      console.log("Address saved, response:", newAddress);
       toast.success("Address saved successfully");
       onAddressCreated(newAddress);
     } catch (error) {

@@ -21,7 +21,6 @@ export function FCMInitializer() {
       }
 
       try {
-        console.log('🚀 Initializing FCM for authenticated user...');
         setIsLoading(true);
         setError(null);
 
@@ -42,13 +41,9 @@ export function FCMInitializer() {
         setFcmToken(tokenResult.token);
         
         if (tokenResult.token) {
-          console.log('✅ FCM token obtained for user:', user.email);
-          console.log('🔑 FCM Token:', tokenResult.token);
           
           // Send token to backend
-          console.log('📤 About to send token to backend...');
           const saveResult = await firebaseService.sendTokenToBackend(tokenResult.token);
-          console.log('📤 Backend save result:', saveResult);
         } else {
           console.warn('⚠️ FCM token not obtained:', tokenResult.error);
           setError(tokenResult.error || 'Unknown error');
@@ -56,7 +51,6 @@ export function FCMInitializer() {
         
         // Subscribe to foreground messages
         const subscribed = await firebaseService.subscribeToForegroundMessages(({ title, body }) => {
-          console.log('📱 Foreground notification received');
           toast(title, { 
             description: body,
             duration: 5000,
@@ -83,7 +77,6 @@ export function FCMInitializer() {
   // Reset FCM when user logs out
   useEffect(() => {
     if (!isAuthenticated && isInitialized) {
-      console.log('🔄 User logged out, resetting FCM...');
       setFcmToken(null);
       setError(null);
       setIsInitialized(false);

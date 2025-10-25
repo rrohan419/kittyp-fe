@@ -38,11 +38,6 @@ export function CartSidebar() {
   };
 
   const handleCheckout = () => {
-    // Debug log to check user state
-    // console.log('Checkout clicked:', {
-    //   user,
-    //   accessToken: localStorage.getItem('access_token')
-    // });
 
     const accessToken = localStorage.getItem('access_token');
     

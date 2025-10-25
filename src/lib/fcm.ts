@@ -5,7 +5,6 @@ import { vapidKey } from '@/config/firebase.config';
 // Simple FCM token request with better error handling
 export async function requestFcmPermissionAndToken(): Promise<string | null> {
   try {
-    console.log('🔔 Starting FCM setup...');
     
     // Check if service worker is supported
     if (!('serviceWorker' in navigator)) {
@@ -22,7 +21,6 @@ export async function requestFcmPermissionAndToken(): Promise<string | null> {
     // Request notification permission
     let permission = Notification.permission;
     if (permission === 'default') {
-      console.log('🔔 Requesting notification permission...');
       permission = await Notification.requestPermission();
     }
 
@@ -31,17 +29,14 @@ export async function requestFcmPermissionAndToken(): Promise<string | null> {
       return null;
     }
 
-    console.log('✅ Notification permission granted');
 
     // Manually register the service worker (as per Stack Overflow approach)
     let registration;
     try {
-      console.log('🔧 Manually registering service worker...');
       registration = await navigator.serviceWorker.register(
         import.meta.env.MODE === 'production' ? '/sw.js' : '/dev-sw.js?dev-sw',
         { type: import.meta.env.MODE === 'production' ? 'classic' : 'module' }
       );
-      console.log('✅ Service worker registered successfully:', registration);
     } catch (swError) {
       console.error('❌ Service worker registration failed:', swError);
       return null;
@@ -66,22 +61,18 @@ export async function requestFcmPermissionAndToken(): Promise<string | null> {
       // Only add vapidKey if it's available
       if (vapidKey) {
         tokenOptions.vapidKey = vapidKey;
-        console.log('🔑 Using VAPID key for FCM token');
       } else {
         console.warn('⚠️ No VAPID key provided - FCM may not work properly');
         console.warn('Please configure VAPID key in firebase.config.ts');
       }
       const permission = Notification.permission;
-      console.log('🔑 Notification permission:', permission);
       
 
       const token = await getToken(messaging, tokenOptions);
       
       if (token) {
-        console.log('🎉 FCM Token obtained:', token);
         return token;
       } else {
-        console.warn('No FCM token received');
         return null;
       }
     } catch (error) {
@@ -114,7 +105,6 @@ export async function subscribeToForegroundMessages(
     if (!messaging) return () => {};
     
     const unsubscribe = onMessage(messaging, (payload) => {
-      console.log('📱 Foreground message received:', payload);
       const { notification, data } = payload;
       callback({
         title: notification?.title,
