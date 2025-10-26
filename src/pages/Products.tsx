@@ -394,20 +394,33 @@ const Products: React.FC = () => {
                   <p className="text-lg">Loading products...</p>
                 </div>
               ) : products.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {products.map((product, index) => (
-                    <ProductCard
-                      key={`product.grid.product-uuid-${product.uuid}`}
-                      product={product}
-                      index={index}
-                      className="animate-fade-up"
-                      onToggleFavorite={() => handleToggleFavoriteWrapper(product)}
-                      isFavorite={favorites.some(item => item.uuid === product.uuid)}
-                    />
-                  ))}
-                </div>
-              ) : hasMore ? (
-                <div ref={loaderRef} className="py-10">&nbsp;</div>
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {products.map((product, index) => (
+                      <ProductCard
+                        key={`product.grid.product-uuid-${product.uuid}`}
+                        product={product}
+                        index={index}
+                        className="animate-fade-up"
+                        onToggleFavorite={() => handleToggleFavoriteWrapper(product)}
+                        isFavorite={favorites.some(item => item.uuid === product.uuid)}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* Infinite scroll loader */}
+                  {isLoading && page > 1 && (
+                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                      <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin mb-2" />
+                      <p className="text-sm">Loading more products...</p>
+                    </div>
+                  )}
+                  
+                  {/* Intersection observer target */}
+                  {hasMore && !isLoading && (
+                    <div ref={loaderRef} className="py-10">&nbsp;</div>
+                  )}
+                </>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <PackageSearch size={48} className="text-muted-foreground mb-4" />
