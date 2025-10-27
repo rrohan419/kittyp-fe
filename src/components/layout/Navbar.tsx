@@ -56,6 +56,21 @@ export function Navbar() {
     closeMenu();
   }, [location.pathname]);
 
+  // Listen for storage changes (e.g., when auth is cleared by interceptor)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      // Check if token was removed
+      const token = localStorage.getItem('access_token');
+      if (!token && isAuthenticated) {
+        // Token was removed, clear user state
+        dispatch(clearUser());
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [dispatch, isAuthenticated]);
+
   const handleLogout = async () => {
     if (isLoggingOut) return;
 

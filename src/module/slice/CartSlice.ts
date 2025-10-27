@@ -229,10 +229,16 @@ export const addToCartFromProduct = createAsyncThunk(
       const authState = getState() as { authReducer: { user: UserProfile | null } };
       let userUuid = authState.authReducer.user?.uuid;
 
-      // Only fetch user data if needed
+      // If not in auth state, try to get from localStorage without API call
       if (!userUuid) {
-        const userData = await fetchUserDetail();
-        userUuid = userData.uuid;
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          userUuid = userData.uuid;
+        } else {
+          toast.error("User information not found. Please log in again.");
+          return;
+        }
       }
 
       // Add to cart
@@ -301,8 +307,20 @@ export const syncCartsAfterLogin = createAsyncThunk(
       const state = getState() as { cartReducer: CartState };
       const guestCartItems = state.cartReducer.items;
 
-      // First, fetch the user's existing cart from backend
-      const userData = await fetchUserDetail();
+      // Get user from auth state or localStorage
+      const authState = getState() as { authReducer: { user: UserProfile | null } };
+      let userData = authState.authReducer.user;
+
+      if (!userData) {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          userData = JSON.parse(storedUser);
+        } else {
+          throw new Error('User not found');
+        }
+      }
+
+      // Fetch the user's existing cart from backend
       const backendCartResponse = await getCartByUser(userData.uuid);
       const backendCart = backendCartResponse.data;
 
@@ -381,8 +399,20 @@ export const backgroundSyncCarts = createAsyncThunk(
       const state = getState() as { cartReducer: CartState };
       const guestCartItems = state.cartReducer.items;
 
-      // First, fetch the user's existing cart from backend
-      const userData = await fetchUserDetail();
+      // Get user from auth state or localStorage
+      const authState = getState() as { authReducer: { user: UserProfile | null } };
+      let userData = authState.authReducer.user;
+
+      if (!userData) {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          userData = JSON.parse(storedUser);
+        } else {
+          throw new Error('User not found');
+        }
+      }
+
+      // Fetch the user's existing cart from backend
       const backendCartResponse = await getCartByUser(userData.uuid);
       const backendCart = backendCartResponse.data;
 
