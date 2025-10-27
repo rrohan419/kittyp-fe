@@ -3,6 +3,7 @@ import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookmarkX, ArrowRight, Heart } from "lucide-react";
+import { ProductStatus } from '@/services/favoritesService';
 
 interface FavoriteCardProps {
   id: number;
@@ -10,6 +11,7 @@ interface FavoriteCardProps {
   price: string;
   imageUrl: string;
   category: string;
+  status: ProductStatus;
   onRemove: (id: number) => void;
 }
 
@@ -19,6 +21,7 @@ const FavoriteCard: React.FC<FavoriteCardProps> = ({
   price,
   imageUrl,
   category,
+  status,
   onRemove,
 }) => {
   return (
