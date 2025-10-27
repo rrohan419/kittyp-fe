@@ -1,15 +1,18 @@
 import axios, { AxiosInstance } from 'axios';
 import { API_BASE_URL } from "./env";
+import { Store } from '@reduxjs/toolkit';
+import { Persistor } from 'redux-persist';
+import { AppDispatch } from '@/module/store/store';
 
 type CreateInstanceAndInjectStoreFunction = (
-  _store: any,
-  _dispatch: any,
-  _persistor: any
+  _store: Store,
+  _dispatch: AppDispatch,
+  _persistor: Persistor
 ) => void;
 
-let persistor: any;
-let store: any;
-let dispatch: any;
+let persistor: Persistor | undefined;
+let store: Store | undefined;
+let dispatch: AppDispatch | undefined;
 
 export const createInstanceAndInjectStore: CreateInstanceAndInjectStoreFunction =
   (_store, _dispatch, _persistor) => {
@@ -17,6 +20,27 @@ export const createInstanceAndInjectStore: CreateInstanceAndInjectStoreFunction 
     persistor = _persistor;
     dispatch = _dispatch;
   };
+
+// Helper to clear all auth-related data
+const clearAuthData = () => {
+  // Clear localStorage
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('roles');
+
+  // Clear Redux state if available
+  if (dispatch && store) {
+    try {
+      dispatch({ type: 'auth/clearUser' });
+    } catch (error) {
+      console.error('Error clearing auth state:', error);
+    }
+  }
+
+  // Trigger storage event to sync across tabs
+  window.dispatchEvent(new Event('storage'));
+};
 
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: `${API_BASE_URL}`, // Your API base URL here
@@ -47,18 +71,16 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   async (error) => {
-    // Check if error is due to JWT expiration
-    if (error.response && error.response.status === 401) {
-      // Optional: Handle token refresh or redirect to login
-      // Redirect or trigger token refresh (depending on your architecture)
+    // Check if error is due to JWT expiration or forbidden access
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      // Handle token refresh or redirect to login
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        // Optional: clear the invalid token to stop loops
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-
+        // Clear all auth data
+        clearAuthData();
+        
+        // Redirect to login
         window.location.href = '/login';
       }
-
     }
     return Promise.reject(error);
   }

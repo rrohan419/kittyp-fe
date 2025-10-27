@@ -35,14 +35,37 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
 
   const isLoading = Object.values(loadingStates).some(Boolean);
   
+  // Helper function to get user UUID from Redux state or localStorage
+  const getUserUuid = (): string | null => {
+    if (user?.uuid) {
+      return user.uuid;
+    }
+    // Check localStorage if user is not in Redux state
+    const accessToken = localStorage.getItem('access_token');
+    if (accessToken) {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          return userData.uuid || null;
+        } catch (error) {
+          console.error('Error parsing stored user:', error);
+          return null;
+        }
+      }
+    }
+    return null;
+  };
+  
   const handleIncrement = async () => {
     if (loadingStates.increment) return;
     
     try {
       setLoadingStates(prev => ({ ...prev, increment: true }));
-      if (user?.uuid) {
+      const userUuid = getUserUuid();
+      if (userUuid) {
         await dispatch(updateCartItemQuantity({
-          userUuid: user.uuid,
+          userUuid: userUuid,
           productUuid: uuid,
           quantity: quantity + 1
         })).unwrap();
@@ -78,9 +101,10 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
     try {
       setLoadingStates(prev => ({ ...prev, decrement: true }));
       if (quantity > 1) {
-        if (user?.uuid) {
+        const userUuid = getUserUuid();
+        if (userUuid) {
           await dispatch(updateCartItemQuantity({
-            userUuid: user.uuid,
+            userUuid: userUuid,
             productUuid: uuid,
             quantity: quantity - 1
           })).unwrap();
@@ -105,9 +129,10 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
     
     try {
       setLoadingStates(prev => ({ ...prev, remove: true }));
-      if (user?.uuid) {
+      const userUuid = getUserUuid();
+      if (userUuid) {
         await dispatch(removeItemFromCart({
-          userUuid: user.uuid,
+          userUuid: userUuid,
           productUuid: uuid
         })).unwrap();
       } else {
