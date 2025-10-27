@@ -26,7 +26,7 @@ const FavoritesSection: React.FC = () => {
   const loading = useSelector(selectFavoritesLoading);
   const { totalElements, currentPage, totalPages } = useSelector(selectFavoritesPagination);
   const selectedCategory = useSelector(selectFavoritesCategory);
-  const { user } = useSelector((state: RootState) => state.cartReducer);
+  const { user } = useSelector((state: RootState) => state.authReducer);
 
   useEffect(() => {
     if (user?.uuid) {

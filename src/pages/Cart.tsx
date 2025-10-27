@@ -11,7 +11,8 @@ import { clearCartThunk } from "@/module/slice/CartSlice";
 
 export default function Cart() {
   const dispatch = useDispatch<AppDispatch>();
-  const { items, totalAmount, user } = useSelector((state: RootState) => state.cartReducer);
+  const { items, totalAmount } = useSelector((state: RootState) => state.cartReducer);
+  const { user } = useSelector((state: RootState) => state.authReducer);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleClearCart = () => {
