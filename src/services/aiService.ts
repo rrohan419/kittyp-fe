@@ -297,7 +297,7 @@ export const generateNutritionRecommendation = async (
     // Track analytics
     aiAnalytics.track('nutrition_generation_started', userId, petProfile.uuid, {
       petType: petProfile.breed,
-      petAge: petProfile.age,
+      petDob: (petProfile as any).dateOfBirth,
       petWeight: petProfile.weight,
       hasLocation: !!location
     });
