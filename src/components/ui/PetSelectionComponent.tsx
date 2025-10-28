@@ -14,6 +14,7 @@ import { Input } from "./input";
 import { Textarea } from "./textarea";
 import { useSelector } from "react-redux";
 import { RootState } from "@/module/store/store";
+import { calculatePetAgeForDisplay } from "@/services/UserService";
 
 interface PetSelectionProps {
   selectedPetId: string | null;
@@ -41,7 +42,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
     profilePicture: '',
     type: '',
     breed: '',
-    age: '',
+    dateOfBirth: '',
     weight: '',
     activityLevel: 'low',
     gender: 'male',
@@ -180,12 +181,14 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                               <h4 className="font-semibold text-base truncate">{pet.name}</h4>
                               <p className="text-sm text-muted-foreground">{pet.breed}</p>
                               <div className="flex items-center space-x-2 mt-2">
-                                <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">
-                                  {pet.age}
-                                </Badge>
+                                {pet.dateOfBirth && (
+                                  <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">
+                                    {calculatePetAgeForDisplay(pet.dateOfBirth)} old
+                                  </Badge>
+                                )}
                                 {pet.weight && (
                                   <Badge variant="outline" className="text-xs border-primary/20 text-primary">
-                                    {pet.weight}
+                                    {pet.weight} kg
                                   </Badge>
                                 )}
                               </div>
@@ -331,12 +334,13 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                     />
                   </div>
                   <div>
-                    <Label htmlFor="petAge" className="text-primary font-medium">Age</Label>
+                    <Label htmlFor="petDob" className="text-primary font-medium">Date of Birth</Label>
                     <Input
-                      id="petAge"
-                      value={manualPetData.age}
-                      onChange={(e) => setManualPetData(prev => ({ ...prev, age: e.target.value }))}
-                      placeholder="e.g., 2 years"
+                      id="petDob"
+                      type="date"
+                      value={manualPetData.dateOfBirth}
+                      onChange={(e) => setManualPetData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+                      placeholder="YYYY-MM-DD"
                       className="border-primary/20 focus:border-primary"
                     />
                   </div>
@@ -437,7 +441,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                     </div>
                     <p className="text-sm text-primary/80">
                       <strong>{manualPetData.name}</strong> - {manualPetData.breed || 'Mixed breed'} {manualPetData.breed}
-                      {manualPetData.age && `, ${manualPetData.age}`}
+                      {manualPetData.dateOfBirth && `, ${calculatePetAgeForDisplay(manualPetData.dateOfBirth)}`}
                       {manualPetData.weight && `, ${manualPetData.weight}kg`}
                     </p>
                     <br />
@@ -504,7 +508,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                       </div>
                       <div className="bg-secondary/50 p-2 rounded-lg">
                         <span className="text-muted-foreground">Age:</span>
-                        <p className="font-semibold text-primary">{selectedPet.age}</p>
+                        <p className="font-semibold text-primary">{selectedPet.dateOfBirth ? calculatePetAgeForDisplay(selectedPet.dateOfBirth) : 'Not set'}</p>
                       </div>
                       <div className="bg-secondary/50 p-2 rounded-lg">
                         <span className="text-muted-foreground">Weight:</span>
