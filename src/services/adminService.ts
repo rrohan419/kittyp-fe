@@ -2,7 +2,7 @@ import axiosInstance from "@/config/axionInstance";
 import { UserProfile } from "./authService";
 import { ApiSuccessResponse } from "./cartService";
 
-interface PaginationModel<T> {
+export interface PaginationModel<T> {
   models: T[];
   isFirst: boolean;
   isLast: boolean;
@@ -10,7 +10,7 @@ interface PaginationModel<T> {
   totalPages: number;
 }
 
-interface WrappedPaginationResponse<T> {
+export interface WrappedPaginationResponse<T> {
   success: boolean;
   message: string;
   data: PaginationModel<T>;

@@ -56,10 +56,11 @@ const Profile: React.FC = () => {
     return null;
   }
 
-  // Get the active tab from location state or URL params
+  // Get the active tab from URL params or a string state (ignore object states like { from: ... })
   const urlParams = new URLSearchParams(location.search);
   const tabParam = urlParams.get('tab');
-  const defaultTab = tabParam || location.state || 'pets';
+  const stateTab = typeof location.state === 'string' ? location.state : undefined;
+  const defaultTab = (tabParam || stateTab || 'pets');
   const tabsRef = useRef<HTMLDivElement | null>(null);
 
   // State to track the current tab

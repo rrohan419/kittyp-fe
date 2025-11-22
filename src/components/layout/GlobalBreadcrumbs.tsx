@@ -64,6 +64,7 @@ export function GlobalBreadcrumbs() {
   const params = useParams();
   const pathnames = location.pathname.split('/').filter((x) => x);
   const { currentProduct: product } = useAppSelector((state) => state.productReducer);
+  const { user } = useAppSelector((state) => state.authReducer);
 
   // Don't show breadcrumbs on home page
   if (location.pathname === '/') {
@@ -136,6 +137,35 @@ export function GlobalBreadcrumbs() {
           isLast: true,
         });
         
+        skipNext = true;
+        return;
+      }
+
+      // Special handling for pet detail pages
+      if (pathname === 'pet' && index + 1 < pathnames.length) {
+        // Add Profile as the parent
+        breadcrumbs.push({
+          label: 'Profile',
+          path: '/profile',
+          icon: undefined,
+          isLast: false,
+        });
+
+        // Resolve pet name from user pets if available
+        const petUuid = pathnames[index + 1];
+        const ownerPets = (user as any)?.ownerPets as Array<any> | undefined;
+        const petName =
+          ownerPets?.find((p) => p?.uuid === petUuid)?.name ||
+          decodeURIComponent(petUuid);
+
+        currentPath += `/${petUuid}`;
+        breadcrumbs.push({
+          label: petName,
+          path: currentPath,
+          icon: undefined,
+          isLast: true,
+        });
+
         skipNext = true;
         return;
       }

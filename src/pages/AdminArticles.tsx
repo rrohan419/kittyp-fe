@@ -37,7 +37,8 @@ const AdminArticles = () => {
         body: {
           name: null,
           isRandom: null,
-          articleStatus: null
+          articleStatus: null,
+          tags : [],
         },
       });
       setArticles(response.data.models);

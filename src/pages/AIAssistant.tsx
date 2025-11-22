@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Brain, Stethoscope, Heart, Sparkles, ArrowRight, Cat, Scale, Activity, CheckCircle, Clock, Utensils, Apple, Zap, Shield, User, Plus, PawPrint, MessageCircle, Send, Bot, Wand2, Star, Crown, Gift, AlertTriangle, MapPin, Download, FileText } from 'lucide-react';
+import { Brain, Stethoscope, Heart, Sparkles, ArrowRight, Cat, Scale, Activity, CheckCircle, Clock, Utensils, Apple, Zap, Shield, User, Plus, PawPrint, MessageCircle, Send, Bot, Wand2, Star, Crown, Gift, AlertTriangle, MapPin, Download, FileText, ArrowUpRight } from 'lucide-react';
 // Removed useCart import - using Redux instead
 import { fadeIn, fadeUp, staggerContainer, scaleUp } from '@/utils/animations';
 // import { downloadNutritionPlan, downloadNutritionPlanAsJSON } from '@/utils/downloadUtils';
@@ -643,6 +643,7 @@ export default function AIAssistant() {
 
       // Check quota
       const remainingQuota = getRemainingQuota(user.uuid);
+      console.log('Remaining quota:', remainingQuota);
       if (remainingQuota.nutrition <= 0) {
         toast.error('Daily nutrition generation limit reached. Please try again tomorrow or upgrade to premium.');
         return;
@@ -677,7 +678,7 @@ export default function AIAssistant() {
     setLocation(locationData);
     setShowLocationPrompt(false);
     toast.success('Location updated! You can now generate nutrition recommendations.');
-    
+
   };
 
   // Handle location permission granted
@@ -1423,15 +1424,24 @@ export default function AIAssistant() {
                                             </div>
                                             <h5 className="font-medium mb-2">{product.productName}</h5>
                                             <p className="text-sm text-muted-foreground mb-3">{product.purpose}</p>
-                                            {/* <div className="mt-auto flex justify-end">
-                                          <Button
+                                            <div className="mt-auto flex justify-end">
+                                              {/* <Button
                                             size="sm"
                                             className="bg-primary hover:bg-primary/90"
                                             onClick={() => window.open(product.url, '_blank')}
                                           >
-                                            Search
-                                          </Button>
-                                        </div> */}
+                                             <ArrowUpRight className="h-4 w-4" />
+                                          </Button> */}
+                                              <Button
+                                                size="sm"
+                                                className="group bg-primary hover:bg-primary/90 relative overflow-hidden transition-all"
+                                                onClick={() => window.open(product.url, '_blank')}
+                                              >
+                                                <span className="absolute inset-0 bg-gradient-to-r from-primary/40 to-transparent opacity-0 group-hover:opacity-30 transition-opacity duration-300" />
+                                                <ArrowUpRight className="h-4 w-4 relative text-white group-hover:scale-110 transition-transform duration-200" />
+                                              </Button>
+
+                                            </div>
                                           </CardContent>
                                         </Card>
                                       </motion.div>

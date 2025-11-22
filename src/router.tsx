@@ -32,6 +32,7 @@ import AdminOrders from './pages/AdminOrders';
 import AdminProducts from './pages/AdminProducts';
 import AdminUsers from './pages/AdminUsers';
 import AIAssistant from './pages/AIAssistant';
+import PetDetail from './pages/PetDetails';
 // import { VetDashboardPage } from './components/vet/VetDashboardPage';
 // import VetRegistration from './pages/VetRegistration';
 // import VetVerification from './pages/VetVerification';
@@ -67,6 +68,10 @@ export const router = createBrowserRouter(
         {
           path: "articles",
           element: <PageTransition><Articles /></PageTransition>,
+        },
+        {
+          path: "pet/:uuid",
+          element: <PageTransition><PetDetail /></PageTransition>,
         },
         // {
         //   path: "vet",

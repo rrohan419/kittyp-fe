@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { Helmet } from 'react-helmet';
 
 const productDto: ProductFilterRequest = { isRandom: true, category: null, maxPrice: null, minPrice: null, name: null, status: null };
-const articleDto: ArticleSearchRequest = { isRandom: true, name: null, articleStatus: 'PUBLISHED' };
+const articleDto: ArticleSearchRequest = { isRandom: true, name: null, articleStatus: 'PUBLISHED', tags: [] };
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);

@@ -59,7 +59,8 @@ const AdminDashboard = () => {
       const searchRequest: ArticleSearchRequest = {
         name: null,
         isRandom: null,
-        articleStatus: null
+        articleStatus: null,
+        tags : [],
       };
       const response = await fetchArticles({
         page: 1,

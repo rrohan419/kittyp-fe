@@ -12,7 +12,7 @@ import { CacheFirst, NetworkFirst } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { clientsClaim } from 'workbox-core';
 import { initializeApp } from "firebase/app";
-import { getMessaging } from "firebase/messaging/sw";
+import { getMessaging, onBackgroundMessage } from "firebase/messaging/sw";
 
 // Service Worker types
 declare const self: ServiceWorkerGlobalScope & {
@@ -25,13 +25,6 @@ declare const self: ServiceWorkerGlobalScope & {
 };
 
 // Event types for service worker
-interface PushEvent extends Event {
-  data?: {
-    json(): any;
-  };
-  waitUntil(promise: Promise<any>): void;
-}
-
 interface NotificationClickEvent extends Event {
   notification: Notification;
   action?: string;
@@ -62,37 +55,33 @@ const initializeFirebase = async () => {
     
     const firebaseApp = initializeApp(firebaseConfig);
     const messaging = getMessaging(firebaseApp);
-    // Handle background messages
-    self.addEventListener('push', (event: PushEvent) => {
+    
+    // Use Firebase's onBackgroundMessage handler to prevent duplicate notifications
+    // This will handle all background messages and show notifications manually
+    onBackgroundMessage(messaging, (payload) => {
+      const notificationTitle = payload.notification?.title || "Kittyp Notification";
+      const notificationOptions = {
+        body: payload.notification?.body || "You have a new notification",
+        icon: payload.notification?.icon || "/android-chrome-192x192.png",
+        badge: "/android-chrome-192x192.png",
+        image: payload.notification?.image,
+        data: payload.data || {},
+        requireInteraction: true,
+        actions: [
+          {
+            action: 'open',
+            title: 'Open App'
+          },
+          {
+            action: 'close',
+            title: 'Close'
+          }
+        ],
+        tag: 'kittyp-notification',
+        renotify: true
+      };
       
-      if (event.data) {
-        const payload = event.data.json();
-        
-        const notificationTitle = payload.notification?.title || "Kittyp Notification";
-        const notificationOptions = {
-          body: payload.notification?.body || "You have a new notification",
-          icon: payload.notification?.icon || "/android-chrome-192x192.png",
-          badge: "/android-chrome-192x192.png",
-          data: payload.data || {},
-          requireInteraction: true,
-          actions: [
-            {
-              action: 'open',
-              title: 'Open App'
-            },
-            {
-              action: 'close',
-              title: 'Close'
-            }
-          ],
-          tag: 'kittyp-notification',
-          renotify: true
-        };
-        
-        event.waitUntil(
-          self.registration.showNotification(notificationTitle, notificationOptions)
-        );
-      }
+      return self.registration.showNotification(notificationTitle, notificationOptions);
     });
     
   } catch (error) {
@@ -179,16 +168,29 @@ self.addEventListener('notificationclick', (event: NotificationClickEvent) => {
   
   if (event.action === 'open' || !event.action) {
     event.waitUntil(
-      self.clients.matchAll({ type: 'window' }).then((clientList) => {
-        // If app is already open, focus it
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+        // Get navigation path from notification data
+        const notificationData = event.notification.data || {};
+        const navigationPath = notificationData.url || notificationData.path || '/';
+        
+        // Ensure path starts with /
+        const path = navigationPath.startsWith('/') ? navigationPath : `/${navigationPath}`;
+        
+        // If app is already open, focus it and navigate
         for (const client of clientList) {
           if (client.url.includes(self.location.origin) && 'focus' in client) {
+            // Send message to navigate to the specific path
+            client.postMessage({
+              type: 'NAVIGATE',
+              path: path
+            });
             return client.focus();
           }
         }
-        // Otherwise open new window
+        
+        // Otherwise open new window with the navigation path
         if (self.clients.openWindow) {
-          return self.clients.openWindow('/');
+          return self.clients.openWindow(path);
         }
       })
     );

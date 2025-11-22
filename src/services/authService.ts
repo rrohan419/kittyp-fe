@@ -44,9 +44,10 @@ export interface PetProfile {
   uuid: string;
   name: string;
   profilePicture: string;
-  type: string,
+  type: string;
   breed: string;
-  age: string;
+  // age: string;
+  dateOfBirth: string;
   weight: string;
   activityLevel: string;
   gender: string;

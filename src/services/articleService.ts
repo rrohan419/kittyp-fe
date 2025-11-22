@@ -49,6 +49,7 @@ export type ArticleSearchRequest = {
   name: string | null;
   isRandom: boolean | null;
   articleStatus: string | null;
+  tags: string[] | null;
 };
 
 type FetchArticles = {

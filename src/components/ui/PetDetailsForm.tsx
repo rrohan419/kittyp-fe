@@ -10,16 +10,18 @@ import { PlusCircle, Heart, Trash2, Save, Edit, X, Loader2 } from "lucide-react"
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PetProfile } from "@/services/authService";
-import { fetchUserPets, AddPet, UpdatePet, calculatePetAgeForDisplay } from "@/services/UserService";
+import { AddPet, UpdatePet, calculatePetAgeForDisplay } from "@/services/UserService";
 import { PetPhotoUpload } from './PetPhotoUpload';
 import { addPetToUser, removePetFromUser, updatePetInUser, setPetsLoading, setSaving } from '@/module/slice/AuthSlice';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
+import { useNavigate } from 'react-router-dom';
 
 interface PetDetailsFormProps {
     onPetAdded?: () => void;
 }
 
 export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) => {
+    const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const { user, petsLoading, saving } = useAppSelector((state) => state.authReducer);
     const pets = user?.ownerPets || [];
@@ -35,7 +37,6 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
         profilePicture: '',
         type: '',
         breed: '',
-        // age: '',
         dateOfBirth: '',
         weight: '',
         activityLevel: '',
@@ -47,24 +48,24 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
     });
 
     // Fetch pets on component mount
-    useEffect(() => {
-        loadPets();
-    }, []);
+    // useEffect(() => {
+    //     loadPets();
+    // }, []);
 
-    const loadPets = async () => {
-        try {
-            dispatch(setPetsLoading(true));
-            const userPets = await fetchUserPets();
-            // Pets are now managed through authReducer, no need to manually set them
-        } catch (error) {
-            console.error('Error loading pets:', error);
-            toast.error("Failed to load pets", {
-                description: "Please try again later."
-            });
-        } finally {
-            dispatch(setPetsLoading(false));
-        }
-    };
+    // const loadPets = async () => {
+    //     try {
+    //         dispatch(setPetsLoading(true));
+    //         const userPets = await fetchUserPets();
+    //         // Pets are now managed through authReducer, no need to manually set them
+    //     } catch (error) {
+    //         console.error('Error loading pets:', error);
+    //         toast.error("Failed to load pets", {
+    //             description: "Please try again later."
+    //         });
+    //     } finally {
+    //         dispatch(setPetsLoading(false));
+    //     }
+    // };
 
     const scrollToForm = () => {
         setIsAddingPet(true);
@@ -177,19 +178,18 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
 
     const startEditing = (pet: PetProfile) => {
         setPetForm({
-            name: pet.name,
-            profilePicture: pet.profilePicture,
-            type: pet.type,
-            breed: pet.breed,
-            // age: pet.age,
+            name: pet.name || '',
+            profilePicture: pet.profilePicture || '',
+            type: pet.type || '',
+            breed: pet.breed || '',
             weight: extractNumericWeight(pet.weight),
-            activityLevel: pet.activityLevel,
-            gender: pet.gender,
-            currentFoodBrand: pet.currentFoodBrand,
-            healthConditions: pet.healthConditions,
-            allergies: pet.allergies,
+            activityLevel: pet.activityLevel || '',
+            gender: pet.gender || '',
+            currentFoodBrand: pet.currentFoodBrand || '',
+            healthConditions: pet.healthConditions || '',
+            allergies: pet.allergies || '',
             isNeutered: pet.isNeutered ? 'yes' : 'no',
-            dateOfBirth: pet.dateOfBirth,
+            dateOfBirth: pet.dateOfBirth || '',
         });
         setEditingPetId(pet.uuid);
         setIsEditingPet(true);
@@ -226,7 +226,9 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {Array.isArray(pets) && pets.length > 0 ? (
                     pets?.map((pet) => (
-                        <Card key={pet.uuid} className="relative group hover:shadow-md transition-shadow">
+                        <Card key={pet.uuid}
+                            className="relative group hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02]"
+                            onClick={() => navigate(`/pet/${pet.uuid}`)}>
                             <CardHeader className="pb-3">
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
@@ -248,7 +250,8 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                                e.stopPropagation();
                                                 startEditing(pet);
                                                 scrollToForm();
                                             }}
@@ -259,7 +262,10 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => handleDeletePet(pet.uuid)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeletePet(pet.uuid);
+                                            }}
                                             className="text-destructive hover:text-destructive"
                                         >
                                             <Trash2 className="h-4 w-4" />
