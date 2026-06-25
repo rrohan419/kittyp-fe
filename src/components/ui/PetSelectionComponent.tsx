@@ -188,7 +188,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                                 )}
                                 {pet.weight && (
                                   <Badge variant="outline" className="text-xs border-primary/20 text-primary">
-                                    {pet.weight}
+                                    {pet.weight} kg
                                   </Badge>
                                 )}
                               </div>
