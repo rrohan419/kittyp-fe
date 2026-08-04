@@ -71,15 +71,14 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   async (error) => {
-    // Check if error is due to JWT expiration or forbidden access
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-      // Handle token refresh or redirect to login
+    // Only force re-auth on 401. 403 is a permission denial, not an expired session.
+    if (error.response?.status === 401) {
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        // Clear all auth data
         clearAuthData();
-        
-        // Redirect to login
-        window.location.href = '/login';
+        const redirect = encodeURIComponent(
+          window.location.pathname + window.location.search
+        );
+        window.location.href = `/login?redirect=${redirect}`;
       }
     }
     return Promise.reject(error);

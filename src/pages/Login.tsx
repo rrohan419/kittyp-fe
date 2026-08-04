@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,9 +24,11 @@ import { initializeUserAndCart } from '@/module/slice/CartSlice';
 import { AppRole, getPortalPath } from '@/utils/roles';
 import { RoleSelectModal } from '@/components/auth/RoleSelectModal';
 import { isEcommerceEnabled } from '@/config/features';
+import { validateEmail } from '@/utils/validation';
 
 const Login = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const dispatch = useDispatch<AppDispatch>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,7 +42,16 @@ const Login = () => {
     state.cartReducer.items.length > 0 && state.cartReducer.isGuestCart
   );
 
+  const safeRedirect = () => {
+    const redirect = searchParams.get('redirect');
+    if (!redirect || !redirect.startsWith('/') || redirect.startsWith('//')) {
+      return null;
+    }
+    return redirect;
+  };
+
   const finishAuth = (roles: string[] | undefined) => {
+    const redirect = safeRedirect();
     const appRoles = (roles || []).filter((r): r is AppRole => typeof r === 'string');
     if (appRoles.length > 1) {
       setPendingRoles(appRoles);
@@ -48,6 +59,10 @@ const Login = () => {
       return;
     }
     const role = appRoles[0];
+    if (redirect) {
+      navigate(redirect);
+      return;
+    }
     if (role) {
       dispatch(setActiveRole(role));
       navigate(getPortalPath(role));
@@ -58,10 +73,21 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailErr = validateEmail(email);
+    if (emailErr) {
+      setErrorMessage(emailErr);
+      setShowErrorDialog(true);
+      return;
+    }
+    if (!password) {
+      setErrorMessage('Password is required');
+      setShowErrorDialog(true);
+      return;
+    }
     setLoading(true);
 
     try {
-      await login({ email, password });
+      await login({ email: email.trim().toLowerCase(), password });
       const user = await dispatch(validateAndSetUser()).unwrap();
 
       if (isEcommerceEnabled()) {

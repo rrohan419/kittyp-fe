@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -10,6 +10,7 @@ import Typography from '@tiptap/extension-typography';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
+import { sanitizeHtml } from '@/utils/validation';
 
 const lowlight = createLowlight(common);
 
@@ -19,12 +20,19 @@ interface RichContentViewerProps {
 }
 
 const RichContentViewer: React.FC<RichContentViewerProps> = ({ html, className }) => {
+  const safeHtml = useMemo(() => sanitizeHtml(html || ''), [html]);
+
   const editor = useEditor({
     editable: false,
     extensions: [
       StarterKit,
       Image,
-      Link.configure({ openOnClick: true, autolink: true, linkOnPaste: true }),
+      Link.configure({
+        openOnClick: true,
+        autolink: true,
+        linkOnPaste: true,
+        protocols: ['http', 'https', 'mailto'],
+      }),
       Highlight,
       Underline,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
@@ -32,15 +40,15 @@ const RichContentViewer: React.FC<RichContentViewerProps> = ({ html, className }
       Typography,
       TextStyle,
     ],
-    content: html,
+    content: safeHtml,
   });
 
   useEffect(() => {
     if (!editor) return;
-    if (html !== editor.getHTML()) {
-      editor.commands.setContent(html || '');
+    if (safeHtml !== editor.getHTML()) {
+      editor.commands.setContent(safeHtml);
     }
-  }, [html, editor]);
+  }, [safeHtml, editor]);
 
   return (
     <EditorContent
@@ -50,4 +58,4 @@ const RichContentViewer: React.FC<RichContentViewerProps> = ({ html, className }
   );
 };
 
-export default RichContentViewer; 
+export default RichContentViewer;

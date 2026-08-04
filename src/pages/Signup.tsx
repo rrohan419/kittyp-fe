@@ -29,7 +29,7 @@ import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/module/store/store';
 import { validateAndSetUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
-import { ROLES } from '@/utils/roles';
+import { validateEmail, validatePassword } from '@/utils/validation';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -48,17 +48,29 @@ const Signup = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!firstName.trim()) {
+      toast.error('First name is required');
+      return;
+    }
+    const emailErr = validateEmail(email);
+    if (emailErr) {
+      toast.error(emailErr);
+      return;
+    }
+    const passwordErr = validatePassword(password);
+    if (passwordErr) {
+      toast.error(passwordErr);
+      return;
+    }
     if (password !== confirmPassword) {
-      toast.error("Passwords don't match", {
-        description: "Please make sure your passwords match."
-      });
+      toast.error("Passwords don't match");
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await signup({ firstName, lastName, email, password, roles: [ROLES.USER] });
+      const response = await signup({ firstName, lastName, email, password });
 
       if (!response.ok) {
         const errorData = await response.json();
