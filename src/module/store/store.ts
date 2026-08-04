@@ -7,6 +7,7 @@ import authReducer from '../slice/AuthSlice';
 import favoritesReducer from '../slice/FavoritesSlice';
 import orderReducer from '../slice/OrderSlice';
 import adminProductReducer from '../slice/AdminProductSlice';
+import schedulingReducer from '../slice/SchedulingSlice';
 import { persistReducer, persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 // import schedularReducer from '../slice/SchedulingSlice';
@@ -27,9 +28,8 @@ const rootReducer = combineReducers({
     authReducer,
     favoritesReducer,
     orderReducer,
-    // schedular: schedularReducer,
+    scheduling: schedulingReducer,
     adminProducts: adminProductReducer,
-    // vet: vetReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

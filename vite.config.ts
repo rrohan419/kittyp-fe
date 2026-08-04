@@ -37,10 +37,11 @@ export default defineConfig(({ mode }) => ({
         swSrc: "src/sw.ts",
         globDirectory: "dist",
         globPatterns: ["**/*.{ts,js,css,html,ico,png,svg,woff2}"],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
-      // workbox: {
-      //   sourcemap: true
-      // },
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+      },
       devOptions: {
         enabled: true,
         type: "module",

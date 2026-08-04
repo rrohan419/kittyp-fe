@@ -1,8 +1,8 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { VetProfile, TimeSlot, Booking, BookingFilters } from '@/types/scheduling';
+import { VetProfile, TimeSlot, Booking, BookingFilters } from '../../types/scheduling';
 import { schedulingService } from '@/services/schedulingService';
 
-interface SchedulingState {
+export interface SchedulingState {
   vets: VetProfile[];
   availableSlots: TimeSlot[];
   userBookings: Booking[];

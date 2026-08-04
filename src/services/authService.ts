@@ -5,12 +5,14 @@ import { store } from '@/module/store/store';
 import { setUser } from '@/module/slice/AuthSlice';
 import { fetchUserDetail } from "./UserService";
 import { TokenResponse } from "@react-oauth/google";
+import { AppRole } from "@/utils/roles";
 
 interface SignupData {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
+  roles?: AppRole[];
 }
 
 interface AuthData {
@@ -90,6 +92,49 @@ export const signup = async (data: SignupData) => {
     throw error.response?.data || "Signup failed. Please try again.";
   }
 };
+
+export interface SignupDoctorData extends SignupData {
+  phoneNumber: string;
+  licenseNumber?: string;
+  registrationNumber: string;
+  specialization?: string;
+  experience?: number;
+  clinicName?: string;
+  clinicAddress?: string;
+  professionalSummary?: string;
+  degreeCertificateUrl: string;
+  registrationCertificateUrl: string;
+  governmentIdUrl?: string;
+  clinicPhotosUrls?: string;
+  photoUrl?: string;
+}
+
+export interface SignupClinicData extends SignupData {
+  clinicName: string;
+  licenseNumber?: string;
+  address?: string;
+  phone?: string;
+  timezone?: string;
+}
+
+async function postSignup(path: string, data: unknown) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || 'Signup failed. Please try again.');
+  }
+  return response.json();
+}
+
+export const signupDoctor = (data: SignupDoctorData) =>
+  postSignup('/auth/signup/doctor', data);
+
+export const signupClinic = (data: SignupClinicData) =>
+  postSignup('/auth/signup/clinic', data);
 
 export const socialSso = async (tokenResponse: TokenResponse) => {
   try {

@@ -19,8 +19,11 @@ import { login, socialSso } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
-import { validateAndSetUser } from '@/module/slice/AuthSlice';
+import { setActiveRole, validateAndSetUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
+import { AppRole, getPortalPath } from '@/utils/roles';
+import { RoleSelectModal } from '@/components/auth/RoleSelectModal';
+import { isEcommerceEnabled } from '@/config/features';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -31,36 +34,47 @@ const Login = () => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [pendingRoles, setPendingRoles] = useState<AppRole[]>([]);
   const hasGuestCartItems = useSelector((state: RootState) =>
     state.cartReducer.items.length > 0 && state.cartReducer.isGuestCart
   );
-  // const { initializeUserAndCart } = useCart();
+
+  const finishAuth = (roles: string[] | undefined) => {
+    const appRoles = (roles || []).filter((r): r is AppRole => typeof r === 'string');
+    if (appRoles.length > 1) {
+      setPendingRoles(appRoles);
+      setRoleModalOpen(true);
+      return;
+    }
+    const role = appRoles[0];
+    if (role) {
+      dispatch(setActiveRole(role));
+      navigate(getPortalPath(role));
+    } else {
+      navigate('/');
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // First, perform the login
-      const loginResponse = await login({ email, password });
+      await login({ email, password });
+      const user = await dispatch(validateAndSetUser()).unwrap();
 
-      // Validate token and set user in AuthSlice
-      await dispatch(validateAndSetUser()).unwrap();
-
-      // Initialize cart state (this will trigger background sync if needed)
-      await dispatch(initializeUserAndCart()).unwrap();
-
-      // Show a notification about cart syncing if there are guest items
-      if (hasGuestCartItems) {
-        toast.success("Logging you in", {
-          description: "Your cart items will be synced in the background",
-          duration: 3000,
-        });
+      if (isEcommerceEnabled()) {
+        await dispatch(initializeUserAndCart()).unwrap();
+        if (hasGuestCartItems) {
+          toast.success("Logging you in", {
+            description: "Your cart items will be synced in the background",
+            duration: 3000,
+          });
+        }
       }
 
-      // Navigate immediately after login
-      navigate("/");
-
+      finishAuth(user?.roles);
     } catch (error: any) {
       console.error("Signin Error:", error);
       setErrorMessage(error.message || 'Login failed');
@@ -68,8 +82,6 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
-
-    // console.log('Login attempted with:', { email });
   };
 
 
@@ -79,18 +91,17 @@ const Login = () => {
         setLoading(true);
         await socialSso(tokenResponse);
 
-        await dispatch(validateAndSetUser()).unwrap();
+        const user = await dispatch(validateAndSetUser()).unwrap();
 
-        // Initialize cart state (this will trigger background sync if needed)
-        await dispatch(initializeUserAndCart()).unwrap();
+        if (isEcommerceEnabled()) {
+          await dispatch(initializeUserAndCart()).unwrap();
+        }
 
-        // Show success message
         toast.success("Google login successful!", {
           description: "Welcome back!",
         });
 
-        // Navigate to home page
-        navigate("/");
+        finishAuth(user?.roles);
       } catch (error: any) {
         console.error("Google Login Error:", error);
         toast.error("Google Signup Failed", {
@@ -231,6 +242,12 @@ const Login = () => {
       </main>
 
       <ErrorDialog showErrorDialog={showErrorDialog} setShowErrorDialog={setShowErrorDialog} errorMessage={errorMessage} />
+
+      <RoleSelectModal
+        open={roleModalOpen}
+        roles={pendingRoles}
+        onOpenChange={setRoleModalOpen}
+      />
 
       <Footer />
     </div>

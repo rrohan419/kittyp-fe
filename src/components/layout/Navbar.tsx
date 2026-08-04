@@ -19,6 +19,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { ThemeSwitcher } from '../ui/theme-switcher';
 import { UserProfile } from '@/services/authService';
+import { isEcommerceEnabled } from '@/config/features';
+import { AppRole, getPortalHome, getRoleLabel, PORTAL_HOME } from '@/utils/roles';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -30,10 +32,18 @@ export function Navbar() {
   const dispatch = useDispatch<AppDispatch>();
 
   // Get auth state from AuthSlice
-  const { user, isAuthenticated: authIsAuthenticated, loading: authLoading } = useSelector((state: RootState) => state.authReducer);
+  const { user, isAuthenticated: authIsAuthenticated, loading: authLoading, activeRole } = useSelector((state: RootState) => state.authReducer);
   const isAuthenticated = authIsAuthenticated && !isLoggingOut;
   const userRole = user?.roles?.includes('ROLE_ADMIN') ? 'ROLE_ADMIN' : null;
-  // const isVet = user?.roles?.includes('VET') || false;
+  const portalPath =
+    (activeRole && PORTAL_HOME[activeRole]) ||
+    getPortalHome(user?.roles);
+  const portalLabel =
+    activeRole && PORTAL_HOME[activeRole]
+      ? `${getRoleLabel(activeRole as AppRole)} Portal`
+      : portalPath && portalPath !== '/login'
+        ? 'My Portal'
+        : null;
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
@@ -106,17 +116,14 @@ export function Navbar() {
     }
   };
 
+  const ecommerceOn = isEcommerceEnabled();
   const navLinks = [
     { name: 'Home', path: '/' },
-    { name: 'Products', path: '/products' },
-    // { name: 'Vet Consultation', path: '/vet' },
+    ...(ecommerceOn ? [{ name: 'Products', path: '/products' }] : []),
     { name: 'AI Assistant', path: '/ai-assistant' },
     { name: 'How to Use', path: '/how-to-use' },
     { name: 'Articles', path: '/articles' },
     { name: 'Contact', path: '/contact' },
-    // { name: 'Profile', path: '/profile' },
-
-    // { name: 'My Orders', path: '/orders' }
   ];
 
   const isActive = (path: string) => {
@@ -191,13 +198,28 @@ export function Navbar() {
                   </button>
                 </li>
               )}
+              {isAuthenticated && portalLabel && portalPath && portalPath !== '/login' && (
+                <li>
+                  <Link
+                    to={portalPath}
+                    className={cn(
+                      "text-sm font-medium transition-colors flex items-center text-foreground",
+                      isActive(portalPath) ? "text-primary" : "hover:text-primary"
+                    )}
+                    style={{ textShadow: 'none' }}
+                  >
+                    <LayoutDashboard size={16} className="mr-2" />
+                    {portalLabel}
+                  </Link>
+                </li>
+              )}
             </ul>
 
             <div className="flex items-center space-x-4">
               <div className="w-9">
                 <ThemeSwitcher />
               </div>
-              <CartSidebar />
+              {ecommerceOn && <CartSidebar />}
               {isAuthenticated ? (
                 <div className="flex items-center space-x-4">
                   <Link
@@ -248,7 +270,7 @@ export function Navbar() {
             <div className="w-9">
               <ThemeSwitcher />
             </div>
-            <CartSidebar />
+            {ecommerceOn && <CartSidebar />}
             <button
               onClick={toggleMenu}
               className="text-foreground hover:text-primary transition-colors"
@@ -302,6 +324,20 @@ export function Navbar() {
                       <LayoutDashboard size={16} className="mr-2" />
                       Admin Dashboard
                     </button>
+                  </li>
+                )}
+
+                {isAuthenticated && portalLabel && portalPath && portalPath !== '/login' && (
+                  <li>
+                    <Link
+                      to={portalPath}
+                      className="block text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center"
+                      style={{ textShadow: 'none' }}
+                      onClick={closeMenu}
+                    >
+                      <LayoutDashboard size={18} className="mr-2" />
+                      {portalLabel}
+                    </Link>
                   </li>
                 )}
 

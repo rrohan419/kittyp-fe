@@ -29,6 +29,7 @@ import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/module/store/store';
 import { validateAndSetUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
+import { ROLES } from '@/utils/roles';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -57,7 +58,7 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      const response = await signup({ firstName, lastName, email, password });
+      const response = await signup({ firstName, lastName, email, password, roles: [ROLES.USER] });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -134,17 +135,17 @@ const Signup = () => {
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-md mx-auto">
-            <h1 className="text-4xl font-bold mb-8 text-center text-foreground">
+            <h1 className="text-4xl font-bold mb-4 text-center text-foreground">
               Create an Account
             </h1>
             <p className="text-muted-foreground mb-12 text-center">
-              Join kittyp to access eco-friendly cat litter products and exclusive offers.
+              Join kittyp to track your pet's health and wellness.
             </p>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl font-semibold text-center">Sign Up</CardTitle>
-                <CardDescription className="text-center">
+              <CardHeader className="flex flex-col items-center justify-center text-center">
+                <CardTitle className="text-2xl font-semibold">Sign Up</CardTitle>
+                <CardDescription>
                   Create your account to get started
                 </CardDescription>
               </CardHeader>
@@ -274,11 +275,23 @@ const Signup = () => {
                   Sign up with Google
                 </Button>
               </CardContent>
-              <CardFooter className="flex justify-center">
-                <p className="text-sm text-muted-foreground">
+              <CardFooter className="flex flex-col justify-center gap-3">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Already have an account?{" "}
                   <Link to="/login" className="text-primary hover:text-primary/90 font-medium">
                     Sign in
+                  </Link>
+                </p>
+                 <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Are you a veterinarian?{" "}
+                  <Link to="/doctor-signup" className="text-primary hover:text-primary/90 font-medium">
+                    Register as a Doctor
+                  </Link>
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Run a veterinary clinic?{" "}
+                  <Link to="/clinic-signup" className="text-primary hover:text-primary/90 font-medium">
+                    Register your Clinic
                   </Link>
                 </p>
               </CardFooter>
@@ -286,23 +299,6 @@ const Signup = () => {
           </div>
         </div>
       </main>
-
-      {/* Success Dialog */}
-      {/* <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Account Created!</DialogTitle>
-            <DialogDescription>
-              This is a demo signup. In a real application, you would receive a verification email and be redirected to your account.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end">
-            <Button onClick={() => setShowSuccessDialog(false)}>
-              Close
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog> */}
 
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
         <DialogContent className="p-6 max-w-md">

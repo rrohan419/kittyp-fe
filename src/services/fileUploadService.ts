@@ -140,6 +140,53 @@ export const uploadFiles = async (
   }
 };
 
+/** Unauthenticated upload used during doctor signup (before account exists). */
+export const uploadSignupDocuments = async (
+  files: File[],
+  email: string,
+  onProgress?: (progress: UploadProgress) => void
+): Promise<string[]> => {
+  const validation = validateFiles(files, {
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'application/pdf',
+    ],
+    maxFiles: 5,
+  });
+  if (!validation.isValid) {
+    throw new Error(validation.errors.join(', '));
+  }
+
+  const formData = new FormData();
+  files.forEach((file) => formData.append('files', file));
+  formData.append('email', email);
+
+  const response = await axiosInstance.post<FileUploadResponse>(
+    `/upload/signup-documents?email=${encodeURIComponent(email)}`,
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          onProgress({
+            loaded: progressEvent.loaded,
+            total: progressEvent.total,
+            percentage: Math.round((progressEvent.loaded / progressEvent.total) * 100),
+          });
+        }
+      },
+    }
+  );
+
+  if (!response.data.success) {
+    throw new Error(response.data.message || 'Upload failed');
+  }
+  return response.data.data;
+};
+
 // Specialized upload functions for different use cases
 export const uploadProfilePicture = async (
   file: File,

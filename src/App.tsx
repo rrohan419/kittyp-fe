@@ -1,8 +1,8 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Outlet, useNavigation, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { Outlet, useNavigation, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, type ReactNode } from "react";
 import { GlobalBreadcrumbs } from "./components/layout/GlobalBreadcrumbs";
 
 import "@/styles/global.css";
@@ -14,6 +14,28 @@ import { AuthInitializer } from "./components/auth/AuthInitializer";
 import { CartInitializer } from "./components/cart/CartInitializer";
 import { PWAInstaller } from "./components/PWAInstaller";
 import { FCMInitializer } from "./components/notifications/FCMInitializer";
+import { isEcommerceEnabled } from "./config/features";
+
+/** Role portals render their own shell — hide the public marketing chrome. */
+function isPortalRoute(pathname: string): boolean {
+  return (
+    pathname === '/doctor' ||
+    pathname.startsWith('/doctor/') ||
+    pathname === '/clinic' ||
+    pathname.startsWith('/clinic/') ||
+    pathname === '/app' ||
+    pathname.startsWith('/app/') ||
+    pathname === '/admin' ||
+    pathname.startsWith('/admin/')
+  );
+}
+
+function WithOptionalCart({ children }: { children: ReactNode }) {
+  if (!isEcommerceEnabled()) {
+    return <>{children}</>;
+  }
+  return <CartInitializer>{children}</CartInitializer>;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,7 +48,9 @@ const queryClient = new QueryClient({
 function App() {
   const navigation = useNavigation();
   const navigate = useNavigate();
+  const location = useLocation();
   const isLoading = navigation.state === "loading";
+  const inPortal = isPortalRoute(location.pathname);
 
   // Listen for navigation messages from service worker (push notifications)
   useEffect(() => {
@@ -73,18 +97,22 @@ function App() {
       <ThemeProvider>
         <TooltipProvider>
           <AuthInitializer>
-            <CartInitializer>
+            <WithOptionalCart>
               <div className={cn(
                 "min-h-screen bg-background transition-opacity duration-200",
                 isLoading && "opacity-75"
               )}>
-                <div className="fixed top-0 left-0 right-0 z-50">
-                  <Navbar />
-                </div>
-                <main className="pt-16">
-                  <div className="fixed top-16 z-40">
-                    <GlobalBreadcrumbs />
+                {!inPortal && (
+                  <div className="fixed top-0 left-0 right-0 z-50">
+                    <Navbar />
                   </div>
+                )}
+                <main className={cn(!inPortal && "pt-16")}>
+                  {!inPortal && (
+                    <div className="fixed top-16 z-40">
+                      <GlobalBreadcrumbs />
+                    </div>
+                  )}
                   <div className="relative">
                     <Outlet />
                   </div>
@@ -94,7 +122,7 @@ function App() {
                 <PWAInstaller />
                 <FCMInitializer />
               </div>
-            </CartInitializer>
+            </WithOptionalCart>
           </AuthInitializer>
         </TooltipProvider>
       </ThemeProvider>

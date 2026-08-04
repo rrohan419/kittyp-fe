@@ -1,14 +1,19 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { isEcommerceEnabled } from '@/config/features';
 import Index from "@/pages/Index";
 import Products from "@/pages/Products";
 import HowToUse from "@/pages/HowToUse";
 import Articles from "@/pages/Articles";
 import Contact from "@/pages/Contact";
 import Login from "@/pages/Login";
+import SelectRole from "@/pages/SelectRole";
 import Signup from "@/pages/Signup";
 import Profile from "@/pages/Profile";
-import AdminDashboard from "@/pages/AdminDashboard";
 import ProductDetail from "@/pages/ProductDetail";
+import { AdminLayout } from '@/pages/admin/AdminLayout';
+import AdminHome from '@/pages/admin/AdminHome';
+import AdminDoctors from '@/pages/admin/AdminDoctors';
+import AdminOrganizations from '@/pages/admin/AdminOrganizations';
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import MyOrders from "@/pages/MyOrders";
@@ -25,6 +30,7 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import VerifyResetCode from "@/pages/VerifyResetCode";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
+import ComingSoon from "@/components/portal/ComingSoon";
 import App from './App';
 import { PageTransition } from './components/layout/PageTransition';
 import AdminArticles from './pages/AdminArticles';
@@ -32,16 +38,49 @@ import AdminOrders from './pages/AdminOrders';
 import AdminProducts from './pages/AdminProducts';
 import AdminUsers from './pages/AdminUsers';
 import AIAssistant from './pages/AIAssistant';
+import { VetConsultation } from './pages/VetConsultation';
+import { VetDashboardPage } from './pages/VetDashboardPage';
+import { UserBookingsPage } from './pages/UserBookingsPage';
+import { PetManagementPage } from './pages/PetManagementPage';
 import PetDetail from './pages/PetDetails';
-// import { VetDashboardPage } from './components/vet/VetDashboardPage';
-// import VetRegistration from './pages/VetRegistration';
-// import VetVerification from './pages/VetVerification';
-// import VetBooking from './pages/VetBooking';
-// import BookingManagement from './pages/BookingManagement';
-// import BookingSuccess from './pages/BookingSuccess';
-// import VetConsultationLanding from './pages/VetConsultationLanding';
-// import VetOnboarding from './pages/VetOnboarding';
-// import VetAvailabilitySetup from './pages/VetAvailabilitySetup';
+import DoctorSignup from './pages/DoctorSignup';
+import ClinicSignup from './pages/ClinicSignup';
+
+// Doctor Portal
+import { DoctorLayout } from './components/doctor/DoctorLayout';
+import DoctorHome from './pages/DoctorHome';
+import DoctorAppointments from './pages/DoctorAppointments';
+import DoctorAvailability from './pages/DoctorAvailability';
+import DoctorPatients from './pages/DoctorPatients';
+import DoctorMessages from './pages/DoctorMessages';
+import DoctorAnalytics from './pages/DoctorAnalytics';
+import DoctorSettings from './pages/DoctorSettings';
+
+// Clinic Portal
+import { ClinicLayout } from './pages/clinic/ClinicLayout';
+import ClinicHome from './pages/clinic/ClinicHome';
+import ClinicDoctors from './pages/clinic/ClinicDoctors';
+import ClinicAppointments from './pages/clinic/ClinicAppointments';
+import ClinicPatients from './pages/clinic/ClinicPatients';
+import ClinicInventory from './pages/clinic/ClinicInventory';
+import ClinicStaff from './pages/clinic/ClinicStaff';
+import ClinicReports from './pages/clinic/ClinicReports';
+import ClinicSettings from './pages/clinic/ClinicSettings';
+
+// Parent Portal
+import { ParentLayout } from './pages/parent/ParentLayout';
+import ParentHome from './pages/parent/ParentHome';
+import PetDashboardPage from './pages/parent/PetDashboardPage';
+import { RoleGuard } from './components/auth/RoleGuard';
+import { ROLES } from './utils/roles';
+import ClinicRetention from './pages/clinic/ClinicRetention';
+import DoctorBlog from './pages/DoctorBlog';
+import DoctorInvoices from './pages/DoctorInvoices';
+import DoctorNutrition from './pages/DoctorNutrition';
+import ParentHealthPage from './pages/parent/ParentHealthPage';
+
+const ecommerceElement = (element: React.ReactNode) =>
+  isEcommerceEnabled() ? element : <Navigate to="/" replace />;
 
 export const router = createBrowserRouter(
   [
@@ -55,11 +94,11 @@ export const router = createBrowserRouter(
         },
         {
           path: "products",
-          element: <PageTransition><Products /></PageTransition>,
+          element: ecommerceElement(<PageTransition><Products /></PageTransition>),
         },
         {
           path: "product/:uuid",
-          element: <PageTransition><ProductDetail /></PageTransition>,
+          element: ecommerceElement(<PageTransition><ProductDetail /></PageTransition>),
         },
         {
           path: "how-to-use",
@@ -70,49 +109,21 @@ export const router = createBrowserRouter(
           element: <PageTransition><Articles /></PageTransition>,
         },
         {
+          path: "articles/:slug",
+          element: <PageTransition><ArticleDetail /></PageTransition>,
+        },
+        {
+          path: "articles/id/:id",
+          element: <PageTransition><ArticleDetail /></PageTransition>,
+        },
+        {
           path: "pet/:uuid",
           element: <PageTransition><PetDetail /></PageTransition>,
         },
-        // {
-        //   path: "vet",
-        //   element: <PageTransition><VetConsultationLanding /></PageTransition>,
-        // },
-        // {
-        //   path: "vet-dashboard",
-        //   element: <PageTransition><VetDashboardPage /></PageTransition>,
-        // },
-        // {
-        //   path: "vet/registration",
-        //   element: <PageTransition><VetRegistration /></PageTransition>,
-        // },
-        // {
-        //   path: "vet/onboarding",
-        //   element: <PageTransition><VetOnboarding /></PageTransition>,
-        // },
-        // {
-        //   path: "vet/availability",
-        //   element: <PageTransition><VetAvailabilitySetup /></PageTransition>,
-        // },
-        // {
-        //   path: "vet/verification",
-        //   element: <PageTransition><VetVerification /></PageTransition>,
-        // },
-        // {
-        //   path: "vet/booking",
-        //   element: <PageTransition><VetBooking /></PageTransition>,
-        // },
-        // {
-        //   path: "vet/booking/:vetId",
-        //   element: <PageTransition><VetBooking /></PageTransition>,
-        // },
-        // {
-        //   path: "bookings",
-        //   element: <PageTransition><BookingManagement /></PageTransition>,
-        // },
-        // {
-        //   path: "booking/success",
-        //   element: <PageTransition><BookingSuccess /></PageTransition>,
-        // },
+        {
+          path: "pet/:petId",
+          element: <PageTransition><PetDetail /></PageTransition>,
+        },
         {
           path: "article/:slug",
           element: <PageTransition><ArticleDetail /></PageTransition>,
@@ -126,6 +137,10 @@ export const router = createBrowserRouter(
           element: <PageTransition><Login /></PageTransition>,
         },
         {
+          path: "select-role",
+          element: <PageTransition><SelectRole /></PageTransition>,
+        },
+        {
           path: "signup",
           element: <PageTransition><Signup /></PageTransition>,
         },
@@ -135,22 +150,31 @@ export const router = createBrowserRouter(
         },
         {
           path: "cart",
-          element: <PageTransition><Cart /></PageTransition>,
+          element: ecommerceElement(<PageTransition><Cart /></PageTransition>),
         },
         {
           path: "checkout",
-          element: <PageTransition><Checkout /></PageTransition>,
-        },{
+          element: ecommerceElement(<PageTransition><Checkout /></PageTransition>),
+        },
+        {
           path: "ai-assistant",
           element: <PageTransition><AIAssistant /></PageTransition>,
         },
         {
+          path: "doctor-signup",
+          element: <PageTransition><DoctorSignup /></PageTransition>,
+        },
+        {
+          path: "clinic-signup",
+          element: <PageTransition><ClinicSignup /></PageTransition>,
+        },
+        {
           path: "orders",
-          element: <PageTransition><MyOrders /></PageTransition>,
+          element: ecommerceElement(<PageTransition><MyOrders /></PageTransition>),
         },
         {
           path: "orders/:orderId",
-          element: <PageTransition><OrderDetail /></PageTransition>,
+          element: ecommerceElement(<PageTransition><OrderDetail /></PageTransition>),
         },
         {
           path: "about",
@@ -158,7 +182,7 @@ export const router = createBrowserRouter(
         },
         {
           path: "why-eco-litter",
-          element: <PageTransition><WhyEcoLitter /></PageTransition>,
+          element: ecommerceElement(<PageTransition><WhyEcoLitter /></PageTransition>),
         },
         {
           path: "privacy",
@@ -181,36 +205,209 @@ export const router = createBrowserRouter(
           element: <div>User-agent: *<br/>Allow: /<br/>Sitemap: https://www.kittyp.in/sitemap.xml</div>,
         },
         {
-          path: "admin/*",
-          element: <PageTransition><AdminDashboard /></PageTransition>,
+          path: "app",
+          element: (
+            <RoleGuard allowed={ROLES.USER}>
+              <PageTransition><ParentLayout /></PageTransition>
+            </RoleGuard>
+          ),
+          children: [
+            {
+              index: true,
+              element: <PageTransition><ParentHome /></PageTransition>,
+            },
+            {
+              path: "pets",
+              element: <PageTransition><PetManagementPage /></PageTransition>,
+            },
+            {
+              path: "pets/:petId",
+              element: <PageTransition><PetDashboardPage /></PageTransition>,
+            },
+            {
+              path: "nutrition",
+              element: <PageTransition><ComingSoon title="Nutrition Tracker" backTo="/app" /></PageTransition>,
+            },
+            {
+              path: "health",
+              element: <PageTransition><ParentHealthPage /></PageTransition>,
+            },
+            {
+              path: "appointments",
+              element: <PageTransition><UserBookingsPage /></PageTransition>,
+            },
+            {
+              path: "orders",
+              element: ecommerceElement(<PageTransition><MyOrders /></PageTransition>),
+            },
+            {
+              path: "cart",
+              element: ecommerceElement(<PageTransition><Cart /></PageTransition>),
+            },
+            {
+              path: "checkout",
+              element: ecommerceElement(<PageTransition><Checkout /></PageTransition>),
+            },
+            {
+              path: "articles",
+              element: <PageTransition><Articles /></PageTransition>,
+            },
+            {
+              path: "profile",
+              element: <PageTransition><Profile /></PageTransition>,
+            },
+          ],
         },
         {
-          path: "admin/orders",
-          element: <PageTransition><AdminOrders /></PageTransition>,
+          path: "doctor",
+          element: (
+            <RoleGuard allowed={ROLES.DOCTOR}>
+              <PageTransition><DoctorLayout /></PageTransition>
+            </RoleGuard>
+          ),
+          children: [
+            {
+              index: true,
+              element: <PageTransition><DoctorHome /></PageTransition>,
+            },
+            {
+              path: "appointments",
+              element: <PageTransition><DoctorAppointments /></PageTransition>,
+            },
+            {
+              path: "availability",
+              element: <PageTransition><DoctorAvailability /></PageTransition>,
+            },
+            {
+              path: "patients",
+              element: <PageTransition><DoctorPatients /></PageTransition>,
+            },
+            {
+              path: "nutrition",
+              element: <PageTransition><DoctorNutrition /></PageTransition>,
+            },
+            {
+              path: "blog",
+              element: <PageTransition><DoctorBlog /></PageTransition>,
+            },
+            {
+              path: "invoices",
+              element: <PageTransition><DoctorInvoices /></PageTransition>,
+            },
+            {
+              path: "messages",
+              element: <PageTransition><DoctorMessages /></PageTransition>,
+            },
+            {
+              path: "analytics",
+              element: <PageTransition><DoctorAnalytics /></PageTransition>,
+            },
+            {
+              path: "settings",
+              element: <PageTransition><DoctorSettings /></PageTransition>,
+            },
+          ],
         },
         {
-          path: "admin/products",
-          element: <PageTransition><AdminProducts /></PageTransition>,
+          path: "clinic",
+          element: (
+            <RoleGuard allowed={[ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF]}>
+              <PageTransition><ClinicLayout /></PageTransition>
+            </RoleGuard>
+          ),
+          children: [
+            {
+              index: true,
+              element: <PageTransition><ClinicHome /></PageTransition>,
+            },
+            {
+              path: "doctors",
+              element: <PageTransition><ClinicDoctors /></PageTransition>,
+            },
+            {
+              path: "appointments",
+              element: <PageTransition><ClinicAppointments /></PageTransition>,
+            },
+            {
+              path: "patients",
+              element: <PageTransition><ClinicPatients /></PageTransition>,
+            },
+            {
+              path: "retention",
+              element: <PageTransition><ClinicRetention /></PageTransition>,
+            },
+            {
+              path: "inventory",
+              element: <Navigate to="/clinic" replace />,
+            },
+            {
+              path: "staff",
+              element: <PageTransition><ClinicStaff /></PageTransition>,
+            },
+            {
+              path: "reports",
+              element: <PageTransition><ClinicReports /></PageTransition>,
+            },
+            {
+              path: "settings",
+              element: <PageTransition><ClinicSettings /></PageTransition>,
+            },
+          ],
         },
         {
-          path: "admin/users",
-          element: <PageTransition><AdminUsers /></PageTransition>,
+          path: "admin",
+          element: (
+            <RoleGuard allowed={[ROLES.ADMIN, ROLES.MODERATOR]}>
+              <PageTransition><AdminLayout /></PageTransition>
+            </RoleGuard>
+          ),
+          children: [
+            {
+              index: true,
+              element: <PageTransition><AdminHome /></PageTransition>,
+            },
+            {
+              path: "doctors",
+              element: <PageTransition><AdminDoctors /></PageTransition>,
+            },
+            {
+              path: "organizations",
+              element: <PageTransition><AdminOrganizations /></PageTransition>,
+            },
+            {
+              path: "orders",
+              element: ecommerceElement(<PageTransition><AdminOrders /></PageTransition>),
+            },
+            {
+              path: "products",
+              element: ecommerceElement(<PageTransition><AdminProducts /></PageTransition>),
+            },
+            {
+              path: "users",
+              element: <PageTransition><AdminUsers /></PageTransition>,
+            },
+            {
+              path: "articles",
+              element: <PageTransition><AdminArticles /></PageTransition>,
+            },
+            {
+              path: "articles/new",
+              element: <PageTransition><AdminArticleEditor /></PageTransition>,
+            },
+            {
+              path: "articles/edit/:slug",
+              element: <PageTransition><AdminArticleEditor /></PageTransition>,
+            },
+            {
+              path: "settings",
+              element: <PageTransition><ComingSoon title="Admin Settings" backTo="/admin" /></PageTransition>,
+            },
+          ]
         },
-        {
-          path: "admin/articles/new",
-          element: <PageTransition><AdminArticleEditor /></PageTransition>,
-        },
-        {
-          path: "admin/articles/edit/:slug",
-          element: <PageTransition><AdminArticleEditor /></PageTransition>,
-        },
-        {
-          path: "admin/articles",
-          element: <PageTransition><AdminArticles /></PageTransition>,
-        },
+        
         {
           path: "forgot-password",
-          element: <PageTransition><ForgotPassword /></PageTransition>,
+          element: <PageTransition><ForgotPassword /></PageTransition>
         },
         {
           path: "verify-reset-code",

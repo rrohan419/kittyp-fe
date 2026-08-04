@@ -1,8 +1,9 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { getCurrentUser, validateToken } from '@/services/authService';
 import { UserProfile, PetProfile } from '@/services/authService';
 import { addPet, AddPet, deletePet, editPet, UpdatePet, fetchUserDetail, saveUserFcmToken } from '@/services/UserService';
 import { toast } from 'sonner';
+import type { AppRole } from '@/utils/roles';
 
 export interface AuthState {
   user: UserProfile | null;
@@ -11,6 +12,10 @@ export interface AuthState {
   isAuthenticated: boolean;
   petsLoading: boolean;
   saving: boolean;
+  /** Active session role for multi-role users */
+  activeRole: AppRole | null;
+  /** Active clinic context for clinic admins with multiple clinics */
+  activeClinicId: string | null;
 }
 
 const initialState: AuthState = {
@@ -20,6 +25,8 @@ const initialState: AuthState = {
   isAuthenticated: false,
   petsLoading: false,
   saving: false,
+  activeRole: (localStorage.getItem('role') as AppRole | null) || null,
+  activeClinicId: localStorage.getItem('activeClinicId') || null,
 };
 
 // Async thunk to validate token and get user
@@ -125,6 +132,24 @@ export const authSlice = createSlice({
       state.user = null;
       state.isAuthenticated = false;
       state.error = null;
+      state.activeRole = null;
+      state.activeClinicId = null;
+    },
+    setActiveRole: (state, action: PayloadAction<AppRole | null>) => {
+      state.activeRole = action.payload;
+      if (action.payload) {
+        localStorage.setItem('role', action.payload);
+      } else {
+        localStorage.removeItem('role');
+      }
+    },
+    setActiveClinic: (state, action: PayloadAction<string | null>) => {
+      state.activeClinicId = action.payload;
+      if (action.payload) {
+        localStorage.setItem('activeClinicId', action.payload);
+      } else {
+        localStorage.removeItem('activeClinicId');
+      }
     },
     setLoading: (state, action) => {
       state.loading = action.payload;
@@ -229,7 +254,9 @@ export const authSlice = createSlice({
 
 export const { 
   setUser, 
-  clearUser, 
+  clearUser,
+  setActiveRole,
+  setActiveClinic,
   setLoading, 
   setError, 
   setPetsLoading, 
