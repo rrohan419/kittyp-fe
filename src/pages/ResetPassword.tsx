@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { ArrowLeft, Lock, Check, EyeOffIcon, Eye } from 'lucide-react';
 import { resetPassword } from '@/services/authService';
+import { validatePassword } from '@/utils/validation';
 
 const ResetPassword = () => {
     const [password, setPassword] = useState('');
@@ -40,9 +41,10 @@ const ResetPassword = () => {
             return;
         }
 
-        if (password.length < 8) {
-            toast.error("Password too short", {
-                description: "Password must be at least 8 characters long."
+        const passwordError = validatePassword(password);
+        if (passwordError) {
+            toast.error("Invalid password", {
+                description: passwordError
             });
             return;
         }

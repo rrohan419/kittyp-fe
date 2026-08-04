@@ -209,7 +209,7 @@ export const resetPassword = async (code: string, password: string, email: strin
 
 export const initializeUser = async () => {
   try {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = localStorage.getItem('access_token');
     if (!accessToken) {
       return null;
     }
@@ -256,13 +256,7 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
       return null;
     }
 
-    // Validate token first
-    const isValid = await validateToken();
-    if (!isValid) {
-      return null;
-    }
-
-    // If token is valid, fetch user details
+    // Single /user/me fetch — also validates the token
     const userProfile = await fetchUserDetail();
     return userProfile;
   } catch (error) {
