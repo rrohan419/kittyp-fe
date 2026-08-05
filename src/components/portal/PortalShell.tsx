@@ -21,15 +21,24 @@ import {
   LogOut,
   LayoutDashboard,
   Globe,
-  X,
   RefreshCw,
+  Pencil,
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectCartItems } from '@/module/slice/CartSlice';
 import { NavItem, PortalConfig } from '@/config/portal';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { clearUser, setActiveRole } from '@/module/slice/AuthSlice';
-import { AppRole } from '@/utils/roles';
+import { AppRole, ROLES, hasAnyRole } from '@/utils/roles';
+import { ClinicSwitcher } from '@/components/clinic/ClinicSwitcher';
+import { ClinicNotifications } from '@/components/clinic/ClinicNotifications';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import EditProfileForm from '@/components/ui/EditProfileForm';
 
 interface PortalShellProps {
   config: PortalConfig;
@@ -49,9 +58,12 @@ export function PortalShell({ config }: PortalShellProps) {
   const itemCount = cartItems.reduce((sum, it) => sum + (it.quantity || 0), 0);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [headerSearch, setHeaderSearch] = useState('');
   const canSwitchRole = (user?.roles?.length ?? 0) > 1;
+  const showClinicSwitcher = hasAnyRole(user?.roles, [ROLES.DOCTOR, ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF]);
+  const isClinicPortal = config.basePath === '/clinic';
 
-  // Auto-collapse on tablet
   useEffect(() => {
     const handler = () => {
       const w = window.innerWidth;
@@ -62,10 +74,14 @@ export function PortalShell({ config }: PortalShellProps) {
     return () => window.removeEventListener('resize', handler);
   }, []);
 
-  // Close mobile drawer on route change
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setHeaderSearch(params.get('q') || '');
+  }, [location.search]);
 
   const handleLogout = () => {
     localStorage.removeItem('role');
@@ -83,11 +99,17 @@ export function PortalShell({ config }: PortalShellProps) {
     });
   };
 
+  const submitHeaderSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = headerSearch.trim();
+    if (!isClinicPortal) return;
+    navigate(q ? `/clinic/patients?q=${encodeURIComponent(q)}` : '/clinic/patients');
+  };
+
   const Brand = config.brandIcon;
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Desktop Sidebar */}
       <aside
         className={cn(
           'hidden lg:flex fixed left-0 top-0 z-40 h-screen bg-card border-r border-border flex-col transition-all duration-300',
@@ -97,14 +119,12 @@ export function PortalShell({ config }: PortalShellProps) {
         <SidebarInner config={config} collapsed={collapsed} setCollapsed={setCollapsed} onLogout={handleLogout} />
       </aside>
 
-      {/* Mobile Drawer */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="p-0 w-[280px] bg-card">
           <SidebarInner config={config} collapsed={false} setCollapsed={() => {}} onLogout={handleLogout} mobile />
         </SheetContent>
       </Sheet>
 
-      {/* Main column */}
       <div
         className={cn(
           'flex-1 flex flex-col min-w-0 transition-all duration-300',
@@ -112,89 +132,116 @@ export function PortalShell({ config }: PortalShellProps) {
           collapsed && 'lg:ml-[68px]'
         )}
       >
-        {/* Topbar */}
         <header className="sticky top-0 z-30 h-16 bg-background/80 backdrop-blur-md border-b border-border flex items-center gap-3 px-4 lg:px-6">
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="lg:hidden shrink-0"
             onClick={() => setMobileOpen(true)}
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
           </Button>
 
-          {/* Mobile brand */}
-          <div className="lg:hidden flex items-center gap-2">
+          <div className="lg:hidden flex items-center gap-2 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <Brand className="h-4 w-4 text-primary-foreground" />
             </div>
             <span className="font-bold text-foreground">{config.name}</span>
           </div>
 
-          {/* Search */}
-          <div className="hidden md:flex flex-1 max-w-md ml-2">
+          <form onSubmit={submitHeaderSearch} className="hidden md:flex flex-1 min-w-0 mr-2">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search…" className="pl-9 h-9 bg-muted/50 border-0" />
+              <Input
+                value={headerSearch}
+                onChange={(e) => setHeaderSearch(e.target.value)}
+                placeholder={
+                  isClinicPortal ? 'Search clients, pets, phone, microchip…' : 'Search…'
+                }
+                className="pl-9 h-10 bg-muted/50 border-0 shadow-inner focus-visible:ring-primary/30"
+              />
             </div>
-          </div>
+          </form>
 
           <div className="flex-1 md:hidden" />
 
-          {/* Right cluster */}
-          <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-destructive" />
-          </Button>
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {showClinicSwitcher && <ClinicSwitcher />}
+            {isClinicPortal ? (
+              <ClinicNotifications />
+            ) : (
+              <Button variant="ghost" size="icon" className="relative" aria-label="Notifications" disabled>
+                <Bell className="h-5 w-5" />
+              </Button>
+            )}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 rounded-full hover:bg-muted px-1 py-1 transition-colors" aria-label="Profile menu">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-xs font-semibold text-primary">{config.user.initials}</span>
-                </div>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
-                <div className="flex flex-col">
-                  <span className="text-sm">{config.user.name}</span>
-                  <span className="text-[11px] text-muted-foreground font-normal">{config.user.subtitle}</span>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to={config.basePath}>
-                  <LayoutDashboard className="h-4 w-4 mr-2" />
-                  {config.subtitle || 'Dashboard'}
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/">
-                  <Globe className="h-4 w-4 mr-2" />
-                  Public site
-                </Link>
-              </DropdownMenuItem>
-              {canSwitchRole && (
-                <DropdownMenuItem onClick={handleSwitchRole}>
-                  <RefreshCw className="h-4 w-4 mr-2" />Switch role
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center gap-2 rounded-full hover:bg-muted px-1 py-1 transition-colors"
+                  aria-label="Profile menu"
+                >
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-primary/20">
+                    <span className="text-xs font-semibold text-primary">{config.user.initials}</span>
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col">
+                    <span className="text-sm">{config.user.name}</span>
+                    <span className="text-[11px] text-muted-foreground font-normal">{config.user.subtitle}</span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to={config.basePath}>
+                    <LayoutDashboard className="h-4 w-4 mr-2" />
+                    {config.subtitle || 'Dashboard'}
+                  </Link>
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-                <LogOut className="h-4 w-4 mr-2" />Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuItem asChild>
+                  <Link to="/">
+                    <Globe className="h-4 w-4 mr-2" />
+                    Public site
+                  </Link>
+                </DropdownMenuItem>
+                {canSwitchRole && (
+                  <DropdownMenuItem onClick={handleSwitchRole}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Switch role
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => setEditProfileOpen(true)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit profile
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </header>
 
-        {/* Content */}
+        <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
+          <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto sm:rounded-xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold">Edit Profile</DialogTitle>
+            </DialogHeader>
+            <div className="mt-2">
+              <EditProfileForm onSuccess={() => setEditProfileOpen(false)} />
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <main className="flex-1 pb-20 lg:pb-6">
           <Outlet />
         </main>
 
-        {/* Mobile Bottom Tabs */}
         <nav
           className="lg:hidden fixed bottom-0 left-0 right-0 z-30 h-16 bg-background/95 backdrop-blur-md border-t border-border flex items-center justify-around px-1"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
@@ -250,11 +297,10 @@ function SidebarInner({
 
   return (
     <>
-      {/* Logo */}
       <div className="flex items-center justify-between px-4 py-5 border-b border-border">
         {!collapsed && (
           <Link to={config.basePath} className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0 shadow-sm shadow-primary/30">
               <Brand className="h-4 w-4 text-primary-foreground" />
             </div>
             <div className="min-w-0">
@@ -285,7 +331,6 @@ function SidebarInner({
         )}
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
         {config.navItems.map((item) => {
           const Icon = item.icon;
@@ -297,17 +342,25 @@ function SidebarInner({
               key={item.path}
               to={item.path}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group relative min-h-[44px]',
-                active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group relative min-h-[44px]',
+                active
+                  ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
               title={collapsed ? item.label : undefined}
             >
-              <Icon className={cn('h-5 w-5 shrink-0', active && 'text-primary')} />
+              <Icon className={cn('h-5 w-5 shrink-0', active && 'text-primary-foreground')} />
               {!collapsed && (
                 <>
                   <span className="flex-1 truncate">{item.label}</span>
                   {badge && (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-primary/10 text-primary border-0">
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        'h-5 px-1.5 text-[10px] border-0',
+                        active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary/10 text-primary'
+                      )}
+                    >
                       {badge}
                     </Badge>
                   )}
@@ -323,7 +376,6 @@ function SidebarInner({
         })}
       </nav>
 
-      {/* Footer profile + logout */}
       <div className="p-3 border-t border-border">
         {!collapsed && (
           <div className="flex items-center gap-3 px-3 py-2 mb-2">

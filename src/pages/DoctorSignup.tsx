@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { fetchInviteByToken } from '@/services/clinicService';
 import { Footer } from '@/components/layout/Footer';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ import { signupDoctor } from '@/services/authService';
 import { sendSignupOtp, verifySignupOtp, DOCTOR_STATUS_STEPS, statusLabel } from '@/services/doctorVerificationService';
 import { uploadSignupDocuments } from '@/services/fileUploadService';
 import ErrorDialog from '@/components/ui/error-dialog';
+import { digitsOnlyPhone, toE164Phone, validateEmail, validatePassword, validatePhone } from '@/utils/validation';
 
 /** Value must match backend DoctorSpecialization enum names. */
 const specializations = [
@@ -73,6 +75,8 @@ const STEPS = [
 
 const DoctorSignup = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('inviteToken') || '';
   const [step, setStep] = useState(1);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
@@ -93,6 +97,34 @@ const DoctorSignup = () => {
   const [clinicName, setClinicName] = useState('');
   const [clinicAddress, setClinicAddress] = useState('');
   const [bio, setBio] = useState('');
+  const [invitedClinicName, setInvitedClinicName] = useState('');
+
+  useEffect(() => {
+    if (!inviteToken) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const preview = await fetchInviteByToken(inviteToken);
+        if (cancelled) return;
+        if (preview.expired || preview.accepted) {
+          toast.error('This clinic invite is no longer valid');
+          return;
+        }
+        setEmail(preview.email);
+        setInvitedClinicName(preview.clinicName);
+        if (preview.doctorName) {
+          const parts = preview.doctorName.replace(/^Dr\.?\s*/i, '').trim().split(/\s+/);
+          if (parts[0]) setFirstName(parts[0]);
+          if (parts.length > 1) setLastName(parts.slice(1).join(' '));
+        }
+      } catch {
+        toast.error('Could not load clinic invite');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteToken]);
 
   const [degreeFile, setDegreeFile] = useState<File | null>(null);
   const [registrationCertFile, setRegistrationCertFile] = useState<File | null>(null);
@@ -110,12 +142,19 @@ const DoctorSignup = () => {
       toast.error("Passwords don't match");
       return;
     }
-    if (password.length < 8) {
-      toast.warning('Password must be at least 8 characters.');
+    const emailErr = validateEmail(email);
+    if (emailErr) {
+      toast.error(emailErr);
       return;
     }
-    if (!phone.trim()) {
-      toast.error('Phone number is required for OTP verification');
+    const passErr = validatePassword(password);
+    if (passErr) {
+      toast.warning(passErr);
+      return;
+    }
+    const phoneErr = validatePhone(phone, true);
+    if (phoneErr) {
+      toast.error(phoneErr);
       return;
     }
     setStep(2);
@@ -151,12 +190,13 @@ const DoctorSignup = () => {
   const sendPhoneOtp = async () => {
     setOtpSending(true);
     try {
+      const fullPhone = toE164Phone(phone);
       await sendSignupOtp({
         channel: 'PHONE',
-        phone: phone.trim(),
+        phone: fullPhone,
         email: email.trim(),
       });
-      toast.success('Phone OTP sent (delivered to your email)');
+      toast.success('OTP sent to your phone (check your phone, or server logs in local)');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to send phone OTP');
     } finally {
@@ -168,9 +208,10 @@ const DoctorSignup = () => {
     e.preventDefault();
     setLoading(true);
     try {
+      const fullPhone = toE164Phone(phone);
       await verifySignupOtp({
         channel: 'PHONE',
-        phone: phone.trim(),
+        phone: fullPhone,
         email: email.trim(),
         code: phoneOtp.trim(),
       });
@@ -202,7 +243,7 @@ const DoctorSignup = () => {
       toast.error('Degree and registration certificate uploads are required');
       return;
     }
-    if (!clinicAddress.trim()) {
+    if (!inviteToken && !clinicAddress.trim()) {
       toast.error('Clinic address is required for verification');
       return;
     }
@@ -229,18 +270,19 @@ const DoctorSignup = () => {
         lastName,
         email: email.trim(),
         password,
-        phoneNumber: phone.trim(),
+        phoneNumber: digitsOnlyPhone(phone),
         registrationNumber: registrationNumber.trim(),
         licenseNumber: registrationNumber.trim(),
         specialization,
         experience: yearsOfExperience ? Number(yearsOfExperience) : undefined,
-        clinicName: clinicName.trim() || undefined,
-        clinicAddress: clinicAddress.trim(),
+        clinicName: inviteToken ? undefined : clinicName.trim() || undefined,
+        clinicAddress: inviteToken ? undefined : clinicAddress.trim(),
         professionalSummary: bio.trim() || undefined,
         degreeCertificateUrl,
         registrationCertificateUrl,
         governmentIdUrl,
         clinicPhotosUrls,
+        inviteToken: inviteToken || undefined,
       });
 
       setShowSuccessDialog(true);
@@ -269,7 +311,9 @@ const DoctorSignup = () => {
                 Join as a Veterinarian
               </h1>
               <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-                OTP-verified signup with mandatory credentials. Manual review before your Verified badge.
+                {inviteToken && invitedClinicName
+                  ? `Joining ${invitedClinicName} via invitation. OTP-verified signup with mandatory credentials.`
+                  : 'OTP-verified signup with mandatory credentials. Manual review before your Verified badge.'}
               </p>
             </div>
 
@@ -346,8 +390,12 @@ const DoctorSignup = () => {
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
                               required
+                              readOnly={!!inviteToken}
                             />
                           </div>
+                          {inviteToken && (
+                            <p className="text-xs text-muted-foreground">Email is locked to the invitation.</p>
+                          )}
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="phone">Phone Number</Label>
@@ -356,10 +404,12 @@ const DoctorSignup = () => {
                             <Input
                               id="phone"
                               type="tel"
-                              placeholder="+91 555-0000"
+                              inputMode="numeric"
+                              maxLength={10}
+                              placeholder="10-digit phone"
                               className="pl-10"
                               value={phone}
-                              onChange={(e) => setPhone(e.target.value)}
+                              onChange={(e) => setPhone(digitsOnlyPhone(e.target.value))}
                               required
                             />
                           </div>
@@ -456,7 +506,7 @@ const DoctorSignup = () => {
                   <CardHeader>
                     <CardTitle className="text-xl">Verify Phone</CardTitle>
                     <CardDescription>
-                      Phone OTP is delivered to your email for now ({email})
+                      Phone OTP is sent to your phone number
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -556,20 +606,24 @@ const DoctorSignup = () => {
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="clinicName">Clinic / Hospital Name</Label>
+                          <Label htmlFor="clinicName">
+                            {inviteToken ? 'Joining clinic' : 'Clinic / Hospital Name'}
+                          </Label>
                           <div className="relative">
                             <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
                               id="clinicName"
                               placeholder="Happy Paws Clinic"
                               className="pl-10"
-                              value={clinicName}
+                              value={inviteToken ? invitedClinicName : clinicName}
                               onChange={(e) => setClinicName(e.target.value)}
+                              readOnly={!!inviteToken}
                             />
                           </div>
                         </div>
                       </div>
 
+                      {!inviteToken && (
                       <div className="space-y-2">
                         <Label htmlFor="clinicAddress">Clinic Address *</Label>
                         <Input
@@ -580,6 +634,7 @@ const DoctorSignup = () => {
                           required
                         />
                       </div>
+                      )}
 
                       <div className="space-y-2">
                         <Label htmlFor="bio">Professional Bio</Label>

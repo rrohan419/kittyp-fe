@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { ClinicSwitcher } from '@/components/clinic/ClinicSwitcher';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import {
   RetentionAlertModel,
@@ -121,7 +120,6 @@ export default function ClinicRetention() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ClinicSwitcher />
           <Badge variant="secondary" className="w-fit">
             <Bell className="h-3.5 w-3.5 mr-1" />
             {openCount} open

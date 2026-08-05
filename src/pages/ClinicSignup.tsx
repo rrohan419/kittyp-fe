@@ -11,11 +11,21 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { toast } from 'sonner';
 import { Building2, Mail, Phone, MapPin, Award, User, Lock } from 'lucide-react';
 import { signupClinic } from '@/services/authService';
+import { sendSignupOtp, verifySignupOtp } from '@/services/doctorVerificationService';
+import {
+  digitsOnlyPhone,
+  validateEmail,
+  validatePassword,
+  validatePhone,
+} from '@/utils/validation';
 
 const ClinicSignup = () => {
   const navigate = useNavigate();
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [emailOtp, setEmailOtp] = useState('');
   const [form, setForm] = useState({
     clinicName: '',
     license: '',
@@ -26,15 +36,73 @@ const ClinicSignup = () => {
     adminEmail: '',
     adminPhone: '',
     password: '',
+    confirmPassword: '',
     about: '',
   });
 
   const set = (k: keyof typeof form, v: string) => setForm((s) => ({ ...s, [k]: v }));
 
+  const sendEmailOtp = async () => {
+    const emailErr = validateEmail(form.adminEmail);
+    if (emailErr) {
+      toast.error(emailErr);
+      return;
+    }
+    setOtpSending(true);
+    try {
+      await sendSignupOtp({ channel: 'EMAIL', email: form.adminEmail.trim() });
+      toast.success('OTP sent to your email');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send email OTP');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const verifyEmail = async () => {
+    if (!emailOtp.trim()) {
+      toast.error('Enter the email OTP');
+      return;
+    }
+    setLoading(true);
+    try {
+      await verifySignupOtp({ channel: 'EMAIL', email: form.adminEmail.trim(), code: emailOtp.trim() });
+      setEmailVerified(true);
+      toast.success('Email verified');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Invalid email OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.clinicName || !form.adminEmail || !form.password || !form.adminFirstName) {
+    if (!form.clinicName || !form.adminFirstName) {
       toast.error('Please fill in required fields.');
+      return;
+    }
+    const emailErr = validateEmail(form.adminEmail);
+    if (emailErr) {
+      toast.error(emailErr);
+      return;
+    }
+    if (!emailVerified) {
+      toast.error('Verify your email with OTP before submitting');
+      return;
+    }
+    const passErr = validatePassword(form.password);
+    if (passErr) {
+      toast.error(passErr);
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      toast.error("Passwords don't match");
+      return;
+    }
+    const phoneErr = validatePhone(form.adminPhone, false);
+    if (phoneErr) {
+      toast.error(phoneErr);
       return;
     }
     setLoading(true);
@@ -43,12 +111,12 @@ const ClinicSignup = () => {
       await signupClinic({
         firstName: form.adminFirstName,
         lastName: form.adminLastName,
-        email: form.adminEmail,
+        email: form.adminEmail.trim(),
         password: form.password,
         clinicName: form.clinicName,
         licenseNumber: form.license || undefined,
         address: address || undefined,
-        phone: form.adminPhone || undefined,
+        phone: form.adminPhone ? digitsOnlyPhone(form.adminPhone) : undefined,
       });
       setShowSuccess(true);
       toast.success('Clinic registration submitted');
@@ -79,7 +147,9 @@ const ClinicSignup = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-xl">Clinic Application</CardTitle>
-                <CardDescription>Create your clinic admin account. Verification follows within 2 business days.</CardDescription>
+                <CardDescription>
+                  Verify your admin email, then create your clinic account.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -129,24 +199,88 @@ const ClinicSignup = () => {
                         <Input placeholder="Doe" value={form.adminLastName} onChange={(e) => set('adminLastName', e.target.value)} />
                       </div>
                       <div className="space-y-2">
-                        <Label>Phone</Label>
+                        <Label>Phone (10 digits)</Label>
                         <div className="relative">
                           <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input type="tel" className="pl-10" placeholder="+91 555-0100" value={form.adminPhone} onChange={(e) => set('adminPhone', e.target.value)} />
+                          <Input
+                            type="tel"
+                            inputMode="numeric"
+                            maxLength={10}
+                            className="pl-10"
+                            placeholder="9876543210"
+                            value={form.adminPhone}
+                            onChange={(e) => set('adminPhone', digitsOnlyPhone(e.target.value))}
+                          />
                         </div>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2 sm:col-span-2">
                         <Label>Email *</Label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input type="email" className="pl-10" placeholder="admin@clinic.com" value={form.adminEmail} onChange={(e) => set('adminEmail', e.target.value)} required />
+                          <Input
+                            type="email"
+                            className="pl-10"
+                            placeholder="admin@clinic.com"
+                            value={form.adminEmail}
+                            onChange={(e) => {
+                              setEmailVerified(false);
+                              setEmailOtp('');
+                              set('adminEmail', e.target.value);
+                            }}
+                            required
+                            disabled={emailVerified}
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <Button type="button" variant="outline" size="sm" onClick={sendEmailOtp} disabled={otpSending || emailVerified}>
+                            {otpSending ? 'Sending…' : emailVerified ? 'Verified' : 'Send OTP'}
+                          </Button>
+                          {!emailVerified && (
+                            <>
+                              <Input
+                                className="max-w-[140px] h-9"
+                                placeholder="OTP code"
+                                value={emailOtp}
+                                onChange={(e) => setEmailOtp(e.target.value)}
+                              />
+                              <Button type="button" size="sm" onClick={verifyEmail} disabled={loading || !emailOtp.trim()}>
+                                Verify
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                       <div className="space-y-2 sm:col-span-2">
                         <Label>Password *</Label>
                         <div className="relative">
                           <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input type="password" className="pl-10" placeholder="Min 6 characters" value={form.password} onChange={(e) => set('password', e.target.value)} required minLength={6} />
+                          <Input
+                            type="password"
+                            className="pl-10"
+                            placeholder="8+ chars, upper, lower, number, special"
+                            value={form.password}
+                            onChange={(e) => set('password', e.target.value)}
+                            required
+                            minLength={8}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Must be 8–72 characters with uppercase, lowercase, a number, and a special character.
+                        </p>
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label>Confirm Password *</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="password"
+                            className="pl-10"
+                            placeholder="Re-enter password"
+                            value={form.confirmPassword}
+                            onChange={(e) => set('confirmPassword', e.target.value)}
+                            required
+                            minLength={8}
+                          />
                         </div>
                       </div>
                     </div>
@@ -157,7 +291,7 @@ const ClinicSignup = () => {
                     <Textarea rows={4} placeholder="Tell us about your services and team…" value={form.about} onChange={(e) => set('about', e.target.value)} className="resize-none" />
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full" disabled={loading || !emailVerified}>
                     <Building2 className="h-4 w-4 mr-2" />
                     {loading ? 'Submitting…' : 'Submit Application'}
                   </Button>
@@ -187,7 +321,7 @@ const ClinicSignup = () => {
           </DialogHeader>
           <div className="flex justify-center gap-3">
             <Button variant="outline" onClick={() => { setShowSuccess(false); navigate('/'); }}>Back Home</Button>
-            <Button onClick={() => { setShowSuccess(false); navigate('/login'); }}>Sign in</Button>
+            <Button onClick={() => { setShowSuccess(false); navigate('/login?redirect=/clinic'); }}>Sign in</Button>
           </div>
         </DialogContent>
       </Dialog>

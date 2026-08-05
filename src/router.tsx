@@ -45,6 +45,7 @@ import { PetManagementPage } from './pages/PetManagementPage';
 import PetDetail from './pages/PetDetails';
 import DoctorSignup from './pages/DoctorSignup';
 import ClinicSignup from './pages/ClinicSignup';
+import ClinicInviteAccept from './pages/ClinicInviteAccept';
 
 // Doctor Portal
 import { DoctorLayout } from './components/doctor/DoctorLayout';
@@ -52,6 +53,7 @@ import DoctorHome from './pages/DoctorHome';
 import DoctorAppointments from './pages/DoctorAppointments';
 import DoctorAvailability from './pages/DoctorAvailability';
 import DoctorPatients from './pages/DoctorPatients';
+import DoctorCreateClinic from './pages/DoctorCreateClinic';
 import DoctorMessages from './pages/DoctorMessages';
 import DoctorAnalytics from './pages/DoctorAnalytics';
 import DoctorSettings from './pages/DoctorSettings';
@@ -62,6 +64,9 @@ import ClinicHome from './pages/clinic/ClinicHome';
 import ClinicDoctors from './pages/clinic/ClinicDoctors';
 import ClinicAppointments from './pages/clinic/ClinicAppointments';
 import ClinicPatients from './pages/clinic/ClinicPatients';
+import ClinicPatientDashboard from './pages/clinic/ClinicPatientDashboard';
+import ClinicOwnerProfile from './pages/clinic/ClinicOwnerProfile';
+import ClinicCreateClinic from './pages/clinic/ClinicCreateClinic';
 import ClinicInventory from './pages/clinic/ClinicInventory';
 import ClinicStaff from './pages/clinic/ClinicStaff';
 import ClinicReports from './pages/clinic/ClinicReports';
@@ -167,6 +172,10 @@ export const router = createBrowserRouter(
         {
           path: "clinic-signup",
           element: <PageTransition><ClinicSignup /></PageTransition>,
+        },
+        {
+          path: "clinic-invite/accept",
+          element: <PageTransition><ClinicInviteAccept /></PageTransition>,
         },
         {
           path: "orders",
@@ -283,6 +292,10 @@ export const router = createBrowserRouter(
               element: <PageTransition><DoctorPatients /></PageTransition>,
             },
             {
+              path: "clinics/new",
+              element: <PageTransition><DoctorCreateClinic /></PageTransition>,
+            },
+            {
               path: "nutrition",
               element: <PageTransition><DoctorNutrition /></PageTransition>,
             },
@@ -311,7 +324,7 @@ export const router = createBrowserRouter(
         {
           path: "clinic",
           element: (
-            <RoleGuard allowed={[ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF]}>
+            <RoleGuard allowed={[ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF, ROLES.DOCTOR]}>
               <PageTransition><ClinicLayout /></PageTransition>
             </RoleGuard>
           ),
@@ -331,6 +344,22 @@ export const router = createBrowserRouter(
             {
               path: "patients",
               element: <PageTransition><ClinicPatients /></PageTransition>,
+            },
+            {
+              path: "patients/:petUuid",
+              element: <PageTransition><ClinicPatientDashboard /></PageTransition>,
+            },
+            {
+              path: "pets/:petUuid",
+              element: <PageTransition><ClinicPatientDashboard /></PageTransition>,
+            },
+            {
+              path: "owners/:ownerUuid",
+              element: <PageTransition><ClinicOwnerProfile /></PageTransition>,
+            },
+            {
+              path: "clinics/new",
+              element: <PageTransition><ClinicCreateClinic /></PageTransition>,
             },
             {
               path: "retention",

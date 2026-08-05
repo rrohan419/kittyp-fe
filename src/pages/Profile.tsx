@@ -15,6 +15,7 @@ import { findAllSavedAddress } from '@/services/addressService';
 import PetDetailsForm from '@/components/ui/PetDetailsForm';
 import { Button } from '@/components/ui/button';
 import { AddressModal } from '@/components/ui/AddressModal';
+import EditProfileForm from '@/components/ui/EditProfileForm';
 
 const Profile: React.FC = () => {
   const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
@@ -110,46 +111,30 @@ const Profile: React.FC = () => {
                 </TabsContent>
 
                 <TabsContent value="details" className="animate-fade-in">
-                  <div className="bg-card rounded-xl shadow-sm p-6 sm:p-6">
-                    <h2 className="text-2xl font-bold mb-6">Account Details</h2>
-                    <div className="space-y-6">
+                  <div className="bg-card rounded-xl shadow-sm p-6 sm:p-6 space-y-8">
+                    <EditProfileForm initiallyEditing={false} />
+
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-semibold mb-4">Addresses</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                          <p className="text-sm text-muted-foreground mb-1">Full Name</p>
-                          <p className="font-medium">{user.firstName} {user.lastName}</p>
+                          <p className="text-sm text-muted-foreground mb-1">Saved addresses</p>
+                          <Button
+                            variant="outline"
+                            className="font-medium"
+                            onClick={() => setAddressModalOpen(true)}
+                          >
+                            View Addresses
+                          </Button>
+                          <AddressModal open={addressModalOpen} onClose={() => setAddressModalOpen(false)} />
                         </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">Email</p>
-                          <p className="font-medium">{user.email}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">Phone</p>
-                          <p className="font-medium">{user.phoneCountryCode && user.phoneNumber
-                            ? `${user.phoneCountryCode} ${user.phoneNumber}`
-                            : 'Not provided'}</p>
-                        </div>
-                        {/* <div>
-                          <p className="text-sm text-muted-foreground mb-1">Address</p>
-                          <p className="font-medium">123 Main Street, Apt 4B<br />New York, NY 10001</p>
-                        </div> */}
-                        <div>
-                <p className="text-sm text-muted-foreground mb-1">Address</p>
-                <Button
-                  variant="outline"
-                  className="font-medium"
-                  onClick={() => setAddressModalOpen(true)}
-                >
-                  View Addresses
-                </Button>
-                <AddressModal open={addressModalOpen} onClose={() => setAddressModalOpen(false)} />
-              </div>
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Member Since</p>
-                          <p className="font-medium">{
-                            user.createdAt
-                              ? format(new Date(user.createdAt), "do MMMM yyyy")
-                              : "-"
-                          }</p>
+                          <p className="font-medium">
+                            {user.createdAt
+                              ? format(new Date(user.createdAt), 'do MMMM yyyy')
+                              : '-'}
+                          </p>
                         </div>
                       </div>
                     </div>
