@@ -195,7 +195,7 @@ export default function Checkout() {
         }
     };
 
-    const handleShippingMethodChange = (methodId: ShippingMethod, price: number) => {
+    const handleShippingMethodChange = (methodId: ShippingMethod | "", price: number) => {
         setSelectedShippingMethod(methodId);
         setShippingCost(price);
     };
@@ -230,10 +230,7 @@ export default function Checkout() {
             return;
         }
 
-        if (!selectedShippingMethod) {
-            toast.error("Please select a shipping method");
-            return;
-        }
+        // Shipping method is optional
 
         if (!user?.uuid) {
             toast.error("Please login to continue");
@@ -301,7 +298,7 @@ export default function Checkout() {
                     phoneNumber: billingAddress.phoneNumber,
                     user: billingAddress.user
                 },
-                shippingMethod: selectedShippingMethod
+                shippingMethod: selectedShippingMethod || undefined
             };
 
             let orderResponse;
@@ -670,7 +667,7 @@ export default function Checkout() {
                         {/* Shipping Methods */}
                         <Card>
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-xl">Shipping Method</CardTitle>
+                                <CardTitle className="text-xl">Shipping Method <span className="text-sm font-normal text-muted-foreground">(optional)</span></CardTitle>
                             </CardHeader>
 
                             <CardContent>

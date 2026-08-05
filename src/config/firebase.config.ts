@@ -5,11 +5,16 @@
  * and provide a single source of truth for Firebase settings.
  */
 
-import { getFirebaseConfig as getSharedFirebaseConfig, getVapidKey as getSharedVapidKey } from './firebase.shared';
+import {
+  getFirebaseConfig as getSharedFirebaseConfig,
+  getVapidKey as getSharedVapidKey,
+  isFirebaseConfigured as getSharedIsFirebaseConfigured,
+} from './firebase.shared';
 
 // Re-export shared configuration
 export const getFirebaseConfig = getSharedFirebaseConfig;
 export const getVapidKey = getSharedVapidKey;
+export const isFirebaseConfigured = getSharedIsFirebaseConfigured;
 
 export const firebaseConfig = getFirebaseConfig();
 export const vapidKey = getVapidKey();

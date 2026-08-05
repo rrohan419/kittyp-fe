@@ -25,6 +25,7 @@ export interface UserUpdateDto {
   lastName: string;
   phoneNumber: string;
   phoneCountryCode: string;
+  age?: number | null;
   profilePictureUrl?: string;
 }
 
@@ -108,6 +109,25 @@ export const updateUserDetails = async (userUuid: string, userUpdateDto: UserUpd
   return user;
 
 };
+
+export async function sendProfileOtp(body: {
+  channel: 'EMAIL' | 'PHONE';
+  email?: string;
+  phone?: string;
+}) {
+  const res = await axiosInstance.post<WrappedResponse<{ message: string }>>('/user/otp/send', body);
+  return res.data;
+}
+
+export async function verifyProfileOtp(body: {
+  channel: 'EMAIL' | 'PHONE';
+  email?: string;
+  phone?: string;
+  code: string;
+}) {
+  const res = await axiosInstance.post<WrappedResponse<{ verified: boolean }>>('/user/otp/verify', body);
+  return res.data.data;
+}
 
 export const addPet = async (petDto: AddPet): Promise<PetProfile> => {
   const response = await axiosInstance.post<WrappedResponse<PetProfile>>(`/pet`, petDto);

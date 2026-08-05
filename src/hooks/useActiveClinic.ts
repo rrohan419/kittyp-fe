@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { setActiveClinic } from '@/module/slice/AuthSlice';
-import { ClinicModel, fetchMyClinics } from '@/services/clinicService';
+import { ClinicModel, fetchUserClinics } from '@/services/clinicService';
 
 /** Resolves the active clinic uuid + model for clinic portal pages. */
 export function useActiveClinic() {
@@ -12,12 +12,18 @@ export function useActiveClinic() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const refresh = useCallback(async () => {
+    const list = await fetchUserClinics();
+    setClinics(list);
+    return list;
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
-        const list = await fetchMyClinics();
+        const list = await fetchUserClinics();
         if (cancelled) return;
         setClinics(list);
         setError(null);
@@ -46,8 +52,8 @@ export function useActiveClinic() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
 
-  const clinic = clinics.find((c) => c.uuid === activeClinicId) ?? clinics[0] ?? null;
-  const clinicUuid = clinic?.uuid ?? activeClinicId;
+  const clinicUuid = activeClinicId ?? clinics[0]?.uuid ?? null;
+  const clinic = (clinicUuid ? clinics.find((c) => c.uuid === clinicUuid) : null) ?? null;
 
-  return { clinic, clinicUuid, clinics, loading, error };
+  return { clinic, clinicUuid, clinics, loading, error, refresh };
 }

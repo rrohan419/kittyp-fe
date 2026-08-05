@@ -59,12 +59,16 @@ const Login = () => {
       return;
     }
     const role = appRoles[0];
+    if (role) {
+      dispatch(setActiveRole(role));
+    } else {
+      dispatch(setActiveRole(null));
+    }
     if (redirect) {
       navigate(redirect);
       return;
     }
     if (role) {
-      dispatch(setActiveRole(role));
       navigate(getPortalPath(role));
     } else {
       navigate('/');

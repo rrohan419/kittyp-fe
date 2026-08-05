@@ -46,11 +46,16 @@ precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
 
 // Use shared Firebase configuration (same as main app)
-import { getFirebaseConfig } from './config/firebase.shared';
+import { getFirebaseConfig, isFirebaseConfigured } from './config/firebase.shared';
 
 // Initialize Firebase in service worker
 const initializeFirebase = async () => {
   try {
+    if (!isFirebaseConfigured()) {
+      console.warn('⚠️ Firebase skipped in service worker: missing VITE_FIREBASE_* env vars');
+      return;
+    }
+
     const firebaseConfig = getFirebaseConfig();
     
     const firebaseApp = initializeApp(firebaseConfig);

@@ -1,12 +1,12 @@
 /**
  * Enterprise Firebase Service
- * 
+ *
  * Centralized service for all Firebase operations with proper error handling,
  * environment management, and enterprise-grade patterns.
  */
 
 import { getFirebaseApp, getFirebaseMessaging } from '@/config/firebase';
-import { firebaseConfig, vapidKey } from '@/config/firebase.config';
+import { firebaseConfig, vapidKey, isFirebaseConfigured } from '@/config/firebase.config';
 import { requestFcmPermissionAndToken, subscribeToForegroundMessages } from '@/lib/fcm';
 import { addFcmTokenToUser } from '@/module/slice/AuthSlice';
 import { store } from '@/module/store/store';
@@ -22,12 +22,14 @@ export interface NotificationPayload {
 export interface FCMTokenResult {
   token: string | null;
   error?: string;
+  skipped?: boolean;
 }
 
 export class FirebaseService {
   private static instance: FirebaseService;
   private fcmToken: string | null = null;
   private isInitialized = false;
+  private isSkipped = false;
 
   private constructor() {
     // Private constructor for singleton pattern
@@ -41,31 +43,44 @@ export class FirebaseService {
   }
 
   /**
-   * Initialize Firebase service
+   * Initialize Firebase service. Returns false when messaging is unavailable.
+   * When config is missing (typical for local), marks as skipped instead of erroring.
    */
   public async initialize(): Promise<boolean> {
     if (this.isInitialized) {
       return true;
     }
 
-    try {
-      
-      // Initialize Firebase app
-      const app = getFirebaseApp();
+    if (!isFirebaseConfigured()) {
+      this.isSkipped = true;
+      console.warn('⚠️ Firebase skipped: VITE_FIREBASE_* not set for this mode');
+      return false;
+    }
 
-      // Initialize FCM
+    try {
+      const app = getFirebaseApp();
+      if (!app) {
+        this.isSkipped = true;
+        return false;
+      }
+
       const messaging = await getFirebaseMessaging();
       if (messaging) {
         this.isInitialized = true;
         return true;
-      } else {
-        console.warn('⚠️ Firebase messaging not available');
-        return false;
       }
+
+      console.warn('⚠️ Firebase messaging not available in this browser');
+      this.isSkipped = true;
+      return false;
     } catch (error) {
       console.error('❌ Firebase service initialization failed:', error);
       return false;
     }
+  }
+
+  public wasSkipped(): boolean {
+    return this.isSkipped;
   }
 
   /**
@@ -73,27 +88,31 @@ export class FirebaseService {
    */
   public async getFCMToken(): Promise<FCMTokenResult> {
     try {
+      if (this.isSkipped || !isFirebaseConfigured()) {
+        return { token: null, skipped: true, error: 'Firebase not configured' };
+      }
+
       if (!this.isInitialized) {
         const initialized = await this.initialize();
         if (!initialized) {
-          return { token: null, error: 'Firebase not initialized' };
+          return {
+            token: null,
+            skipped: this.isSkipped,
+            error: this.isSkipped ? 'Firebase not configured' : 'Firebase not initialized',
+          };
         }
       }
 
-      // Check if we already have a token in memory
       if (this.fcmToken) {
         return { token: this.fcmToken };
       }
 
-
-      // User doesn't have a token, request permission and get new token
       const token = await requestFcmPermissionAndToken();
       if (token) {
         this.fcmToken = token;
         return { token };
-      } else {
-        return { token: null, error: 'Failed to get FCM token' };
       }
+      return { token: null, error: 'Failed to get FCM token' };
     } catch (error) {
       console.error('❌ FCM token error:', error);
       return { token: null, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -107,6 +126,10 @@ export class FirebaseService {
     callback: (payload: NotificationPayload) => void
   ): Promise<boolean> {
     try {
+      if (this.isSkipped || !isFirebaseConfigured()) {
+        return false;
+      }
+
       if (!this.isInitialized) {
         const initialized = await this.initialize();
         if (!initialized) {
@@ -135,12 +158,8 @@ export class FirebaseService {
    */
   public async sendTokenToBackend(token: string): Promise<boolean> {
     try {
-
-      
-      // Dispatch the Redux action
       const dispatch = store.dispatch as AppDispatch;
       await dispatch(addFcmTokenToUser(token));
-      
       return true;
     } catch (error) {
       console.error('❌ Failed to send token to backend:', error);
@@ -153,11 +172,13 @@ export class FirebaseService {
    */
   public getConfigInfo() {
     return {
-      projectId: firebaseConfig.projectId,
+      projectId: firebaseConfig.projectId || '(not set)',
       authDomain: firebaseConfig.authDomain,
       environment: import.meta.env.MODE,
       hasVapidKey: !!vapidKey,
+      isConfigured: isFirebaseConfigured(),
       isInitialized: this.isInitialized,
+      isSkipped: this.isSkipped,
       hasToken: !!this.fcmToken,
     };
   }
@@ -192,14 +213,21 @@ export class FirebaseService {
    */
   public async initializeWithExistingToken(): Promise<FCMTokenResult> {
     try {
+      if (this.isSkipped || !isFirebaseConfigured()) {
+        return { token: null, skipped: true, error: 'Firebase not configured' };
+      }
+
       if (!this.isInitialized) {
         const initialized = await this.initialize();
         if (!initialized) {
-          return { token: null, error: 'Firebase not initialized' };
+          return {
+            token: null,
+            skipped: this.isSkipped,
+            error: this.isSkipped ? 'Firebase not configured' : 'Firebase not initialized',
+          };
         }
       }
 
-      // Get existing token from store
       const existingToken = this.getExistingToken();
       if (existingToken) {
         this.fcmToken = existingToken;

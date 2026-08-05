@@ -253,7 +253,7 @@ export const clearCart = async (userUuid: string): Promise<ApiSuccessResponse<vo
 export type OrderRequest = {
     billingAddress: AddressModel;
     shippingAddress: AddressModel;
-    shippingMethod: ShippingMethod;
+    shippingMethod?: ShippingMethod | "";
 };
 
 export type OrderResponse = {

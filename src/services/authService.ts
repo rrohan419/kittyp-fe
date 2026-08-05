@@ -69,6 +69,7 @@ export interface UserProfile {
   enabled: boolean;
   phoneCountryCode: string;
   phoneNumber: string;
+  age?: number | null;
   uuid: string;
   createdAt: string;
   accessToken: string;
@@ -107,6 +108,7 @@ export interface SignupDoctorData extends SignupData {
   governmentIdUrl?: string;
   clinicPhotosUrls?: string;
   photoUrl?: string;
+  inviteToken?: string;
 }
 
 export interface SignupClinicData extends SignupData {
@@ -125,7 +127,8 @@ async function postSignup(path: string, data: unknown) {
   });
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || 'Signup failed. Please try again.');
+    const { parseApiErrorMessage } = await import('@/utils/validation');
+    throw new Error(parseApiErrorMessage(text, 'Signup failed. Please try again.'));
   }
   return response.json();
 }
