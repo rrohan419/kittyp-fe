@@ -202,10 +202,6 @@ const DoctorSignup = () => {
       toast.error('Degree and registration certificate uploads are required');
       return;
     }
-    if (!clinicAddress.trim()) {
-      toast.error('Clinic address is required for verification');
-      return;
-    }
 
     setLoading(true);
     try {
@@ -235,7 +231,7 @@ const DoctorSignup = () => {
         specialization,
         experience: yearsOfExperience ? Number(yearsOfExperience) : undefined,
         clinicName: clinicName.trim() || undefined,
-        clinicAddress: clinicAddress.trim(),
+        clinicAddress: clinicAddress.trim() || undefined,
         professionalSummary: bio.trim() || undefined,
         degreeCertificateUrl,
         registrationCertificateUrl,
@@ -556,7 +552,7 @@ const DoctorSignup = () => {
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="clinicName">Clinic / Hospital Name</Label>
+                          <Label htmlFor="clinicName">Clinic / Hospital Name (optional)</Label>
                           <div className="relative">
                             <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
@@ -571,13 +567,12 @@ const DoctorSignup = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="clinicAddress">Clinic Address *</Label>
+                        <Label htmlFor="clinicAddress">Clinic Address (optional)</Label>
                         <Input
                           id="clinicAddress"
-                          placeholder="Full address (must match Google Maps)"
+                          placeholder="Full address if associated with a clinic"
                           value={clinicAddress}
                           onChange={(e) => setClinicAddress(e.target.value)}
-                          required
                         />
                       </div>
 

@@ -42,7 +42,9 @@ export default function DoctorHome() {
   const [profile, setProfile] = useState<DoctorVerificationModel | null>(null);
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
-  const displayName = user?.firstName ? `Dr. ${user.firstName}` : 'Doctor';
+  const displayName = user?.firstName
+    ? `Dr. ${[user.firstName, user.lastName].filter(Boolean).join(' ')}`
+    : 'Doctor';
   const isVerified =
     profile?.status === 'VERIFIED' || profile?.status === 'PUBLISHED';
 
