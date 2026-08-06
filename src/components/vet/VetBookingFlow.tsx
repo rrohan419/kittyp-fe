@@ -125,7 +125,7 @@ export const VetBookingFlow: React.FC<VetBookingFlowProps> = ({
                     <p><strong>Vet:</strong> {selectedVet?.fullName}</p>
                     <p><strong>Date:</strong> {selectedDate && format(selectedDate, 'MMMM d, yyyy')}</p>
                     <p><strong>Time:</strong> {format(new Date(completedBooking.startTime), 'HH:mm')} - {format(new Date(completedBooking.endTime), 'HH:mm')}</p>
-                    <p><strong>Total:</strong> ${completedBooking.price}</p>
+                    <p><strong>Total:</strong> ₹{completedBooking.price.toLocaleString('en-IN')}</p>
                   </div>
                 )}
                 <div className="pt-4">

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Calendar,
   Clock,
-  DollarSign,
+  IndianRupee,
   Users,
   Video,
   TrendingUp,
@@ -42,7 +42,9 @@ export default function DoctorHome() {
   const [profile, setProfile] = useState<DoctorVerificationModel | null>(null);
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
-  const displayName = user?.firstName ? `Dr. ${user.firstName}` : 'Doctor';
+  const displayName = user?.firstName
+    ? `Dr. ${[user.firstName, user.lastName].filter(Boolean).join(' ')}`
+    : 'Doctor';
   const isVerified =
     profile?.status === 'VERIFIED' || profile?.status === 'PUBLISHED';
 
@@ -131,14 +133,14 @@ export default function DoctorHome() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">This Month</p>
-                <p className="text-3xl font-bold text-foreground mt-2">$2,450</p>
+                <p className="text-3xl font-bold text-foreground mt-2">₹24,500</p>
                 <div className="flex items-center gap-1 mt-1">
                   <TrendingUp className="h-3 w-3 text-amber-600" />
                   <p className="text-xs text-amber-600">+12% vs last</p>
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-amber-600" />
+                <IndianRupee className="h-5 w-5 text-amber-600" />
               </div>
             </div>
           </CardContent>
@@ -268,7 +270,7 @@ export default function DoctorHome() {
             </Button>
             <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" asChild>
               <Link to="/doctor/analytics">
-                <DollarSign className="h-5 w-5 text-primary" />
+                <IndianRupee className="h-5 w-5 text-primary" />
                 <span className="text-xs">Earnings Report</span>
               </Link>
             </Button>

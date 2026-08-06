@@ -625,13 +625,12 @@ const DoctorSignup = () => {
 
                       {!inviteToken && (
                       <div className="space-y-2">
-                        <Label htmlFor="clinicAddress">Clinic Address *</Label>
+                        <Label htmlFor="clinicAddress">Clinic Address (optional)</Label>
                         <Input
                           id="clinicAddress"
-                          placeholder="Full address (must match Google Maps)"
+                          placeholder="Full address if associated with a clinic"
                           value={clinicAddress}
                           onChange={(e) => setClinicAddress(e.target.value)}
-                          required
                         />
                       </div>
                       )}

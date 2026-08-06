@@ -67,7 +67,7 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({
         : '17:00',
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       slotDuration: 30,
-      price: 75,
+      price: 499,
       consultationType: 'general',
       isActive: true
     };

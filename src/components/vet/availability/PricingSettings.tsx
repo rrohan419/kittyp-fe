@@ -7,8 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { DollarSign, Percent, Clock, TrendingUp } from 'lucide-react';
+import { IndianRupee, Percent, Clock, TrendingUp } from 'lucide-react';
 import { VetAvailability } from '@/types/scheduling';
+import { formatInr, INR_DEFAULT_PRICES } from '@/services/availabilityService';
 
 interface PricingSettingsProps {
   availability: VetAvailability[];
@@ -20,25 +21,25 @@ const CONSULTATION_TYPES = [
     value: 'general', 
     label: 'General Consultation', 
     description: 'Standard veterinary consultation',
-    basePrice: 75 
+    basePrice: INR_DEFAULT_PRICES.general 
   },
   { 
     value: 'emergency', 
     label: 'Emergency', 
     description: 'Urgent care and emergency consultations',
-    basePrice: 150 
+    basePrice: INR_DEFAULT_PRICES.emergency 
   },
   { 
     value: 'follow-up', 
     label: 'Follow-up', 
     description: 'Follow-up appointments for existing cases',
-    basePrice: 50 
+    basePrice: INR_DEFAULT_PRICES['follow-up'] 
   },
   { 
     value: 'specialist', 
     label: 'Specialist', 
     description: 'Specialized consultations requiring expertise',
-    basePrice: 120 
+    basePrice: INR_DEFAULT_PRICES.specialist 
   },
 ];
 
@@ -47,10 +48,10 @@ export const PricingSettings: React.FC<PricingSettingsProps> = ({
   onChange
 }) => {
   const [globalPricing, setGlobalPricing] = useState({
-    general: 75,
-    emergency: 150,
-    followUp: 50,
-    specialist: 120
+    general: INR_DEFAULT_PRICES.general,
+    emergency: INR_DEFAULT_PRICES.emergency,
+    'follow-up': INR_DEFAULT_PRICES['follow-up'],
+    specialist: INR_DEFAULT_PRICES.specialist,
   });
 
   const updateGlobalPricing = (type: string, price: number) => {
@@ -76,7 +77,7 @@ export const PricingSettings: React.FC<PricingSettingsProps> = ({
         newPrice = Math.round(slot.price + value);
       }
 
-      return { ...slot, price: Math.max(1, newPrice) }; // Minimum price of $1
+      return { ...slot, price: Math.max(1, newPrice) }; // Minimum ₹1
     });
     onChange(updatedAvailability);
   };
@@ -113,8 +114,8 @@ export const PricingSettings: React.FC<PricingSettingsProps> = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Global Pricing Settings
+            <IndianRupee className="h-5 w-5" />
+            Global Pricing Settings (INR)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -123,13 +124,13 @@ export const PricingSettings: React.FC<PricingSettingsProps> = ({
               <div key={type.value} className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="font-medium">{type.label}</Label>
-                  <Badge variant="outline">${type.basePrice} suggested</Badge>
+                  <Badge variant="outline">{formatInr(type.basePrice)} suggested</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">{type.description}</p>
                 <div className="flex gap-2">
                   <Input
                     type="number"
-                    placeholder="Price"
+                    placeholder="Price (INR)"
                     value={globalPricing[type.value as keyof typeof globalPricing]}
                     onChange={(e) => {
                       const newValue = parseInt(e.target.value) || 0;
@@ -187,7 +188,7 @@ export const PricingSettings: React.FC<PricingSettingsProps> = ({
               <div className="flex gap-2">
                 <Input
                   type="number"
-                  placeholder="e.g., 25 for +$25"
+                  placeholder="e.g., 100 for +₹100"
                   id="fixed-change"
                 />
                 <Button
@@ -199,7 +200,7 @@ export const PricingSettings: React.FC<PricingSettingsProps> = ({
                     input.value = '';
                   }}
                 >
-                  Apply $
+                  Apply ₹
                 </Button>
               </div>
             </div>
@@ -227,16 +228,16 @@ export const PricingSettings: React.FC<PricingSettingsProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => applyBulkPriceChange('fixed', 25)}
+                onClick={() => applyBulkPriceChange('fixed', 100)}
               >
-                +$25
+                +₹100
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => applyBulkPriceChange('fixed', -25)}
+                onClick={() => applyBulkPriceChange('fixed', -100)}
               >
-                -$25
+                -₹100
               </Button>
             </div>
           </div>
@@ -263,11 +264,11 @@ export const PricingSettings: React.FC<PricingSettingsProps> = ({
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Average:</span>
-                      <span className="font-medium">${stat.avg}</span>
+                      <span className="font-medium">{formatInr(stat.avg)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Range:</span>
-                      <span className="font-medium">${stat.min} - ${stat.max}</span>
+                      <span className="font-medium">{formatInr(stat.min)} - {formatInr(stat.max)}</span>
                     </div>
                   </div>
                 </div>
@@ -309,7 +310,7 @@ export const PricingSettings: React.FC<PricingSettingsProps> = ({
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">$</span>
+                    <span className="text-sm text-muted-foreground">₹</span>
                     <Input
                       type="number"
                       value={slot.price}

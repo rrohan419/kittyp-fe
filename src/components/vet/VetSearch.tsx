@@ -154,7 +154,7 @@ export const VetSearch: React.FC<VetSearchProps> = ({ onSearch, onFiltersChange 
             {/* Price Range */}
             <div>
               <Label className="mb-4 block">
-                Price Range: ${filters.priceRange?.[0]} - ${filters.priceRange?.[1]}
+                Price Range: ₹{filters.priceRange?.[0]?.toLocaleString('en-IN')} - ₹{filters.priceRange?.[1]?.toLocaleString('en-IN')}
               </Label>
               <Slider
                 value={filters.priceRange || [50, 200]}
