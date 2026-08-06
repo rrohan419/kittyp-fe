@@ -12,7 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Search, Mail, Loader2, UserPlus, Trash2 } from 'lucide-react';
+import { Plus, Search, Mail, Loader2, UserPlus, Trash2, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import {
   ClinicDoctorModel,
@@ -23,8 +24,9 @@ import {
   lookupDoctorByUuid,
   revokeDoctorInvite,
 } from '@/services/clinicService';
+import { statusLabel } from '@/services/doctorVerificationService';
 import { toast } from 'sonner';
-import { validateEmail } from '@/utils/validation';
+import { parseApiErrorMessage, validateEmail } from '@/utils/validation';
 
 export default function ClinicDoctors() {
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
@@ -86,7 +88,11 @@ export default function ClinicDoctors() {
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clinicUuid) return;
+    e.stopPropagation();
+    if (!clinicUuid) {
+      toast.error('Select a clinic first, then try inviting again');
+      return;
+    }
 
     const byId = inviteDoctorId.trim();
     const byEmail = inviteEmail.trim();
@@ -114,15 +120,27 @@ export default function ClinicDoctors() {
 
     setInviting(true);
     try {
-      if (byId) {
-        await inviteDoctor(clinicUuid, {
-          doctorUuid: byId,
-          name: inviteName.trim() || undefined,
-        });
-      } else {
-        await inviteDoctor(clinicUuid, { name: inviteName.trim(), email: byEmail });
-      }
-      toast.success('Invitation sent');
+      const payload = byId
+        ? { doctorUuid: byId, name: inviteName.trim() || undefined }
+        : { name: inviteName.trim(), email: byEmail };
+      const sent = await inviteDoctor(clinicUuid, payload);
+      const acceptPath = sent.token
+        ? `${window.location.origin}/clinic-invite/accept?token=${encodeURIComponent(sent.token)}`
+        : null;
+      toast.success('Invitation sent — the doctor will see it under Notifications on /doctor', {
+        description: acceptPath
+          ? 'Email may be delayed locally — copy the accept link to share manually.'
+          : undefined,
+        action: acceptPath
+          ? {
+              label: 'Copy link',
+              onClick: () => {
+                void navigator.clipboard.writeText(acceptPath);
+                toast.message('Accept link copied');
+              },
+            }
+          : undefined,
+      });
       setInviteOpen(false);
       setInviteName('');
       setInviteEmail('');
@@ -130,10 +148,20 @@ export default function ClinicDoctors() {
       setLookedUp(null);
       await reload();
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Failed to send invite';
-      toast.error(message);
+      const ax = err as { response?: { data?: unknown; status?: number }; message?: string };
+      const raw =
+        typeof ax.response?.data === 'string'
+          ? ax.response.data
+          : ax.response?.data
+            ? JSON.stringify(ax.response.data)
+            : ax.message || '';
+      const message = parseApiErrorMessage(raw, 'Failed to send invite');
+      // Already on roster / self-invite — no invite row is created, so the doctor won't get a notification.
+      if (ax.response?.status === 409 || /already on your clinic roster|cannot invite your own/i.test(message)) {
+        toast.message(message);
+      } else {
+        toast.error(message);
+      }
     } finally {
       setInviting(false);
     }
@@ -274,36 +302,58 @@ export default function ClinicDoctors() {
               .slice(0, 2)
               .toUpperCase();
             return (
-              <Card key={d.doctorUuid || d.userUuid} className="border-0 shadow-sm hover:shadow-md transition-shadow">
-                <CardContent className="p-5">
-                  <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-sm font-bold text-primary">{initials}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-foreground truncate">{d.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{d.specialization || 'General'}</p>
-                    </div>
-                    <Badge
-                      variant="secondary"
-                      className={`${d.isActive === false ? 'bg-muted text-muted-foreground' : 'bg-green-100 text-green-700'} border-0 text-[10px] capitalize shrink-0`}
-                    >
-                      {d.isActive === false ? 'inactive' : 'active'}
-                    </Badge>
-                  </div>
-
-                  {d.email && (
-                    <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-2 truncate">
-                        <Mail className="h-3.5 w-3.5 shrink-0" />
-                        {d.email}
+              <Link
+                key={d.doctorUuid || d.userUuid}
+                to={`/clinic/doctors/${d.doctorUuid}`}
+                className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Card className="border-0 shadow-sm hover:shadow-md transition-shadow h-full">
+                  <CardContent className="p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-bold text-primary">{initials}</span>
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground truncate">{d.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {(d.specialization || 'General').replace(/_/g, ' ')}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
                     </div>
-                  )}
 
-                  {d.role && <p className="mt-3 text-xs text-muted-foreground">Role: {d.role}</p>}
-                </CardContent>
-              </Card>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      <Badge
+                        variant="secondary"
+                        className={`${d.isActive === false ? 'bg-muted text-muted-foreground' : 'bg-green-100 text-green-700'} border-0 text-[10px] capitalize shrink-0`}
+                      >
+                        {d.isActive === false ? 'inactive' : 'active'}
+                      </Badge>
+                      {d.status && (
+                        <Badge variant="outline" className="text-[10px] capitalize">
+                          {statusLabel(d.status as Parameters<typeof statusLabel>[0])}
+                        </Badge>
+                      )}
+                      {d.role && (
+                        <Badge variant="secondary" className="text-[10px] capitalize">
+                          {d.role}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {d.email && (
+                      <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 truncate">
+                          <Mail className="h-3.5 w-3.5 shrink-0" />
+                          {d.email}
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="mt-4 text-xs text-primary font-medium">View documents & patients →</p>
+                  </CardContent>
+                </Card>
+              </Link>
             );
           })}
         </div>
@@ -318,11 +368,17 @@ export default function ClinicDoctors() {
               appointments.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleInvite} className="space-y-4">
+          <form
+            onSubmit={handleInvite}
+            className="space-y-4"
+            noValidate
+          >
             <div className="space-y-2">
               <Label htmlFor="inviteName">Doctor name {inviteDoctorId.trim() ? '' : '*'}</Label>
               <Input
                 id="inviteName"
+                name="doctorName"
+                autoComplete="name"
                 placeholder="Dr. Jane Doe"
                 value={inviteName}
                 onChange={(e) => setInviteName(e.target.value)}
@@ -331,10 +387,12 @@ export default function ClinicDoctors() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="inviteEmail">Doctor email *</Label>
+              <Label htmlFor="inviteEmail">Doctor email {inviteDoctorId.trim() ? '' : '*'}</Label>
               <Input
                 id="inviteEmail"
+                name="email"
                 type="email"
+                autoComplete="email"
                 placeholder="doctor@example.com"
                 value={inviteEmail}
                 onChange={(e) => {
@@ -344,6 +402,7 @@ export default function ClinicDoctors() {
                     setLookedUp(null);
                   }
                 }}
+                required={!inviteDoctorId.trim()}
                 disabled={!!inviteDoctorId.trim()}
               />
             </div>

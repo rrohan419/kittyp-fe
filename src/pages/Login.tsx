@@ -25,6 +25,7 @@ import { AppRole, getPortalPath } from '@/utils/roles';
 import { RoleSelectModal } from '@/components/auth/RoleSelectModal';
 import { isEcommerceEnabled } from '@/config/features';
 import { validateEmail } from '@/utils/validation';
+import { resolvePreferredRole } from '@/utils/workspacePreference';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -54,6 +55,12 @@ const Login = () => {
     const redirect = safeRedirect();
     const appRoles = (roles || []).filter((r): r is AppRole => typeof r === 'string');
     if (appRoles.length > 1) {
+      const preferred = resolvePreferredRole(appRoles);
+      if (preferred) {
+        dispatch(setActiveRole(preferred));
+        navigate(redirect || getPortalPath(preferred));
+        return;
+      }
       setPendingRoles(appRoles);
       setRoleModalOpen(true);
       return;
@@ -161,7 +168,7 @@ const Login = () => {
               Welcome Back
             </h1>
             <p className="text-muted-foreground mb-12 text-center">
-              Sign in to your kittyp account to manage your eco-friendly cat litter orders.
+              Sign in to your kittyp account to manage pets, clinics, and care.
             </p>
 
             <Card>
@@ -172,14 +179,16 @@ const Login = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form method="post" onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="email"
+                        name="username"
                         type="email"
+                        autoComplete="username"
                         placeholder="name@example.com"
                         className="pl-10"
                         value={email}
@@ -200,7 +209,9 @@ const Login = () => {
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="password"
+                        name="password"
                         type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
                         placeholder="••••••••"
                         className="pl-10"
                         value={password}
@@ -261,7 +272,7 @@ const Login = () => {
               <CardFooter className="flex justify-center">
                 <p className="text-sm text-muted-foreground">
                   Don't have an account?{" "}
-                  <Link to="/signup" className="text-primary hover:text-primary/90 font-medium">
+                  <Link to="/signup/parent" className="text-primary hover:text-primary/90 font-medium">
                     Sign up
                   </Link>
                 </p>
@@ -277,6 +288,7 @@ const Login = () => {
         open={roleModalOpen}
         roles={pendingRoles}
         onOpenChange={setRoleModalOpen}
+        redirectTo={safeRedirect()}
       />
 
       <Footer />

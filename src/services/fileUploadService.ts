@@ -144,7 +144,7 @@ export const uploadFiles = async (
 export const uploadSignupDocuments = async (
   files: File[],
   email: string,
-  onProgress?: (progress: UploadProgress) => void
+  _onProgress?: (progress: UploadProgress) => void
 ): Promise<string[]> => {
   const validation = validateFiles(files, {
     maxFileSize: 10 * 1024 * 1024,
@@ -162,29 +162,26 @@ export const uploadSignupDocuments = async (
 
   const formData = new FormData();
   files.forEach((file) => formData.append('files', file));
-  formData.append('email', email);
+  // Email only in the query string — also appending it to multipart makes Spring join
+  // the two values with a comma, which breaks OTP verification key lookup.
 
-  const response = await axiosInstance.post<FileUploadResponse>(
-    `/upload/signup-documents?email=${encodeURIComponent(email)}`,
-    formData,
-    {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (progressEvent) => {
-        if (onProgress && progressEvent.total) {
-          onProgress({
-            loaded: progressEvent.loaded,
-            total: progressEvent.total,
-            percentage: Math.round((progressEvent.loaded / progressEvent.total) * 100),
-          });
-        }
-      },
-    }
+  // Use fetch (not axios) so a business-error status cannot trigger the
+  // global 401 → /login interceptor while the user is still signing up.
+  const { API_BASE_URL } = await import('@/config/env');
+  const { parseApiErrorMessage } = await import('@/utils/validation');
+  const res = await fetch(
+    `${API_BASE_URL}/upload/signup-documents?email=${encodeURIComponent(email)}`,
+    { method: 'POST', body: formData }
   );
-
-  if (!response.data.success) {
-    throw new Error(response.data.message || 'Upload failed');
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(parseApiErrorMessage(text, 'Upload failed'));
   }
-  return response.data.data;
+  const data = JSON.parse(text) as FileUploadResponse;
+  if (!data.success) {
+    throw new Error(data.message || 'Upload failed');
+  }
+  return data.data;
 };
 
 // Specialized upload functions for different use cases

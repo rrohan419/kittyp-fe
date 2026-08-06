@@ -58,6 +58,11 @@ export const getRoleLabel = (role: AppRole): string => {
   }
 };
 
+/** Post-login workspace picker CTA, e.g. "Continue as Doctor". */
+export const getContinueAsLabel = (role: AppRole): string =>
+  `Continue as ${getRoleLabel(role)}`;
+
+
 /** Doctors can edit nutrition plan previews before saving. */
 export const canEditNutritionPlan = (roles?: string[]): boolean =>
   hasRole(roles, ROLES.DOCTOR);

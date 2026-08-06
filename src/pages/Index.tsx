@@ -8,6 +8,7 @@ import { fetchFilteredProducts, ProductFilterRequest } from '@/services/productS
 import { ArticleSearchRequest, fetchArticles } from '@/services/articleService';
 import { cn } from '@/lib/utils';
 import { Helmet } from 'react-helmet';
+import { isEcommerceEnabled } from '@/config/features';
 
 const productDto: ProductFilterRequest = { isRandom: true, category: null, maxPrice: null, minPrice: null, name: null, status: null };
 const articleDto: ArticleSearchRequest = { isRandom: true, name: null, articleStatus: 'PUBLISHED', tags: [] };
@@ -28,6 +29,9 @@ const Index = () => {
 
   useEffect(() => {
     const loadFeaturedProducts = async () => {
+      if (!isEcommerceEnabled()) {
+        return;
+      }
       setIsLoading(true);
       try {
         const response = await fetchFilteredProducts({

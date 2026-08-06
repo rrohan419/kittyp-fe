@@ -21,6 +21,55 @@ export interface ClinicDoctorModel {
   specialization?: string;
   role?: string;
   isActive?: boolean;
+  status?: string;
+  photoUrl?: string;
+}
+
+export interface ClinicDoctorPatientModel {
+  pet: ClinicPetListModel;
+  owner: OwnerSummaryModel;
+  appointmentCount: number;
+  lastAppointment?: string;
+}
+
+export interface ClinicDoctorDetailModel {
+  doctorUuid: string;
+  userUuid: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phoneNumber?: string;
+  specialization?: string;
+  registrationNumber?: string;
+  licenseNumber?: string;
+  bio?: string;
+  photoUrl?: string;
+  experienceYears?: number;
+  role?: string;
+  isActive?: boolean;
+  joinedAt?: string;
+  status?: string;
+  degreeCertificateUrl?: string;
+  registrationCertificateUrl?: string;
+  governmentIdUrl?: string;
+  licenseDocumentUrl?: string;
+  clinicPhotosUrls?: string;
+  emailOtpVerified: boolean;
+  phoneOtpVerified: boolean;
+  checkMobileOtp: boolean;
+  checkEmailOtp: boolean;
+  checkGovernmentId: boolean;
+  checkDegree: boolean;
+  checkRegistrationCertificate: boolean;
+  checkClinicAddress: boolean;
+  checkRegistrationNumber: boolean;
+  checkGoogleMapsMatch: boolean;
+  checkClinicPhotos: boolean;
+  submittedAt?: string;
+  reviewedAt?: string;
+  reviewNotes?: string;
+  patients: ClinicDoctorPatientModel[];
 }
 
 export interface ClinicPatientModel {
@@ -250,6 +299,16 @@ export async function fetchClinicDoctors(clinicUuid: string): Promise<ClinicDoct
   return res.data.data ?? [];
 }
 
+export async function fetchClinicDoctorDetail(
+  clinicUuid: string,
+  doctorUuid: string
+): Promise<ClinicDoctorDetailModel> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ClinicDoctorDetailModel>>(
+    `/clinic/${clinicUuid}/doctors/${doctorUuid}`
+  );
+  return res.data.data;
+}
+
 export interface DoctorInviteModel {
   uuid: string;
   email: string;
@@ -258,6 +317,8 @@ export interface DoctorInviteModel {
   expiresAt: string;
   clinicUuid: string;
   clinicName: string;
+  /** Present only on GET /clinic/my-doctor-invites (doctor inbox). */
+  token?: string | null;
 }
 
 export interface DoctorInvitePreview {
@@ -295,6 +356,12 @@ export async function fetchDoctorInvites(clinicUuid: string): Promise<DoctorInvi
   const res = await axiosInstance.get<ApiSuccessResponse<DoctorInviteModel[]>>(
     `/clinic/${clinicUuid}/doctors/invites`
   );
+  return res.data.data ?? [];
+}
+
+/** Pending clinic invites for the signed-in doctor (includes accept token). */
+export async function fetchMyPendingInvites(): Promise<DoctorInviteModel[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<DoctorInviteModel[]>>('/clinic/my-doctor-invites');
   return res.data.data ?? [];
 }
 

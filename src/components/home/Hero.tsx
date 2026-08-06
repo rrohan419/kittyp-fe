@@ -2,6 +2,7 @@ import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { isEcommerceEnabled } from '@/config/features';
 
 // Animation variants for a staggered fade-in effect
 const containerVariants = {
@@ -24,6 +25,8 @@ const itemVariants = {
 };
 
 export function Hero() {
+  const ecommerceOn = isEcommerceEnabled();
+
   return (
     <section className="relative overflow-hidden bg-background">
       {/* Background blobs for a dynamic, subtle effect */}
@@ -78,7 +81,9 @@ export function Hero() {
               className="text-lg sm:text-xl text-muted-foreground max-w-prose"
               variants={itemVariants}
             >
-              Premium pet care products and AI-powered recommendations. Starting with our signature pine wood litter—exceptional quality that's kind to your pets and our planet.
+              {ecommerceOn
+                ? 'Premium pet care products and AI-powered recommendations. Starting with our signature pine wood litter—exceptional quality that\'s kind to your pets and our planet.'
+                : 'AI-powered pet care, clinic CRM, and veterinarian tools—track health, nutrition, and appointments in one place.'}
             </motion.p>
 
             <motion.div
@@ -90,14 +95,14 @@ export function Hero() {
                 whileTap={{ scale: 0.95 }}
               >
                 <Link
-                  to="/products"
+                  to={ecommerceOn ? '/products' : '/signup/parent'}
                   className={cn(
                     "inline-flex items-center justify-center px-8 py-4 text-base font-semibold rounded-full",
                     "bg-primary text-primary-foreground hover:bg-primary/90",
                     "transition-colors duration-200 shadow-xl"
                   )}
                 >
-                  Shop Now
+                  {ecommerceOn ? 'Shop Now' : 'Get Started'}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </motion.div>

@@ -96,14 +96,16 @@ const ResetPassword = () => {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <form onSubmit={handleSubmit} className="space-y-4">
+                                <form method="post" onSubmit={handleSubmit} className="space-y-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="password">New Password</Label>
                                         <div className="relative">
                                             <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                                             <Input
                                                 id="password"
+                                                name="password"
                                                 type={showPassword ? "text" : "password"}
+                                                autoComplete="new-password"
                                                 placeholder="••••••••"
                                                 className="pl-10"
                                                 value={password}
@@ -128,7 +130,9 @@ const ResetPassword = () => {
                                             <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                                             <Input
                                                 id="confirmPassword"
+                                                name="confirmPassword"
                                                 type={showPassword ? "text" : "password"}
+                                                autoComplete="new-password"
                                                 placeholder="••••••••"
                                                 className="pl-10"
                                                 value={confirmPassword}

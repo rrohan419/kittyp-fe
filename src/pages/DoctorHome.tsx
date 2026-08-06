@@ -11,9 +11,10 @@ import {
   TrendingUp,
   ArrowRight,
   Star,
-  Bell,
   CheckCircle2,
   BadgeCheck,
+  UserPlus,
+  Loader2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -22,7 +23,10 @@ import {
   fetchMyDoctorProfile,
   statusLabel,
 } from '@/services/doctorVerificationService';
+import { DoctorInviteModel, acceptInvite, fetchMyPendingInvites } from '@/services/clinicService';
 import { useAppSelector } from '@/module/store/hooks';
+import { toast } from 'sonner';
+import { parseApiErrorMessage } from '@/utils/validation';
 
 const mockUpcomingAppointments = [
   { id: '1', petName: 'Whiskers', ownerName: 'Sarah M.', time: '10:00 AM', type: 'General Checkup', status: 'confirmed' as const },
@@ -40,6 +44,9 @@ const mockRecentActivity = [
 export default function DoctorHome() {
   const user = useAppSelector((s) => s.authReducer.user);
   const [profile, setProfile] = useState<DoctorVerificationModel | null>(null);
+  const [invites, setInvites] = useState<DoctorInviteModel[]>([]);
+  const [invitesLoading, setInvitesLoading] = useState(true);
+  const [acceptingUuid, setAcceptingUuid] = useState<string | null>(null);
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
   const displayName = user?.firstName
@@ -52,7 +59,44 @@ export default function DoctorHome() {
     void fetchMyDoctorProfile()
       .then(setProfile)
       .catch(() => setProfile(null));
+
+    void (async () => {
+      setInvitesLoading(true);
+      try {
+        const list = await fetchMyPendingInvites();
+        setInvites(list.filter((i) => i.status === 'PENDING'));
+      } catch (err) {
+        console.error('Failed to load clinic invites', err);
+        setInvites([]);
+      } finally {
+        setInvitesLoading(false);
+      }
+    })();
   }, []);
+
+  const handleAccept = async (inv: DoctorInviteModel) => {
+    if (!inv.token) {
+      toast.error('Invite link is missing — ask the clinic to resend');
+      return;
+    }
+    setAcceptingUuid(inv.uuid);
+    try {
+      await acceptInvite(inv.token);
+      toast.success(`Joined ${inv.clinicName}`);
+      setInvites((prev) => prev.filter((i) => i.uuid !== inv.uuid));
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: unknown }; message?: string };
+      const raw =
+        typeof ax.response?.data === 'string'
+          ? ax.response.data
+          : ax.response?.data
+            ? JSON.stringify(ax.response.data)
+            : ax.message || '';
+      toast.error(parseApiErrorMessage(raw, 'Failed to accept invite'));
+    } finally {
+      setAcceptingUuid(null);
+    }
+  };
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
@@ -78,12 +122,6 @@ export default function DoctorHome() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" size="sm" className="relative">
-            <Bell className="h-4 w-4" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] flex items-center justify-center">
-              2
-            </span>
-          </Button>
           <Button size="sm" asChild>
             <Link to="/doctor/appointments">
               <Video className="h-4 w-4 mr-2" />
@@ -92,6 +130,65 @@ export default function DoctorHome() {
           </Button>
         </div>
       </div>
+
+      {(invitesLoading || invites.length > 0) && (
+        <Card className="border-primary/20 shadow-sm bg-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <UserPlus className="h-4 w-4 text-primary" />
+              Clinic invitations
+              {!invitesLoading && invites.length > 0 && (
+                <Badge variant="secondary">{invites.length}</Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {invitesLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Checking for invites…
+              </div>
+            ) : (
+              invites.map((inv) => (
+                <div
+                  key={inv.uuid}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate">{inv.clinicName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Invited as {inv.doctorName || 'doctor'}
+                      {inv.expiresAt ? ` · expires ${inv.expiresAt.slice(0, 10)}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    {inv.token && (
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={`/clinic-invite/accept?token=${encodeURIComponent(inv.token)}`}>
+                          Review
+                        </Link>
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      disabled={acceptingUuid === inv.uuid || !inv.token}
+                      onClick={() => void handleAccept(inv)}
+                    >
+                      {acceptingUuid === inv.uuid ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                          Joining…
+                        </>
+                      ) : (
+                        'Accept'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

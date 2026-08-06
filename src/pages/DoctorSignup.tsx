@@ -289,6 +289,7 @@ const DoctorSignup = () => {
       toast.success('Documents submitted for review');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Signup failed';
+      toast.error(message);
       setErrorMessage(message);
       setShowErrorDialog(true);
     } finally {
@@ -345,7 +346,7 @@ const DoctorSignup = () => {
                     <CardDescription>Create your login credentials</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <form onSubmit={handleStep1} className="space-y-4">
+                    <form method="post" onSubmit={handleStep1} className="space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="firstName">First Name</Label>
@@ -353,6 +354,8 @@ const DoctorSignup = () => {
                             <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
                               id="firstName"
+                              name="firstName"
+                              autoComplete="given-name"
                               placeholder="John"
                               className="pl-10"
                               value={firstName}
@@ -367,6 +370,8 @@ const DoctorSignup = () => {
                             <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
                               id="lastName"
+                              name="lastName"
+                              autoComplete="family-name"
                               placeholder="Doe"
                               className="pl-10"
                               value={lastName}
@@ -384,7 +389,9 @@ const DoctorSignup = () => {
                             <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
                               id="email"
+                              name="email"
                               type="email"
+                              autoComplete="email"
                               placeholder="doctor@example.com"
                               className="pl-10"
                               value={email}
@@ -403,7 +410,9 @@ const DoctorSignup = () => {
                             <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
                               id="phone"
+                              name="phone"
                               type="tel"
+                              autoComplete="tel"
                               inputMode="numeric"
                               maxLength={10}
                               placeholder="10-digit phone"
@@ -423,7 +432,9 @@ const DoctorSignup = () => {
                             <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
                               id="password"
+                              name="password"
                               type="password"
+                              autoComplete="new-password"
                               placeholder="••••••••"
                               className="pl-10"
                               value={password}
@@ -439,7 +450,9 @@ const DoctorSignup = () => {
                             <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
                               id="confirmPassword"
+                              name="confirmPassword"
                               type="password"
+                              autoComplete="new-password"
                               placeholder="••••••••"
                               className="pl-10"
                               value={confirmPassword}
