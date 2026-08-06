@@ -65,6 +65,18 @@ axiosInstance.interceptors.request.use(
   }
 );
 
+const isPublicAuthPath = (pathname: string) => {
+  const p = pathname || '';
+  return (
+    p === '/login' ||
+    p.startsWith('/signup') ||
+    p.startsWith('/doctor-signup') ||
+    p.startsWith('/clinic-signup') ||
+    p.startsWith('/forgot-password') ||
+    p.startsWith('/reset-password')
+  );
+};
+
 // Handle the response (you can add your logic to handle token expiration here)
 axiosInstance.interceptors.response.use(
   (response) => {
@@ -72,8 +84,10 @@ axiosInstance.interceptors.response.use(
   },
   async (error) => {
     // Only force re-auth on 401. 403 is a permission denial, not an expired session.
+    // Never hard-redirect during public auth/signup flows — a 401 there is usually a
+    // business error (e.g. OTP required), not an expired session.
     if (error.response?.status === 401) {
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      if (typeof window !== 'undefined' && !isPublicAuthPath(window.location.pathname)) {
         clearAuthData();
         const redirect = encodeURIComponent(
           window.location.pathname + window.location.search

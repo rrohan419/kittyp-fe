@@ -10,6 +10,7 @@ import { RootState } from '@/module/store/store';
 import { acceptInvite, DoctorInvitePreview, fetchInviteByToken } from '@/services/clinicService';
 import { toast } from 'sonner';
 import { ROLES, hasAnyRole } from '@/utils/roles';
+import { parseApiErrorMessage } from '@/utils/validation';
 
 export default function ClinicInviteAccept() {
   const [params] = useSearchParams();
@@ -45,7 +46,7 @@ export default function ClinicInviteAccept() {
   }, [token]);
 
   const redirectLogin = `/login?redirect=${encodeURIComponent(`/clinic-invite/accept?token=${token}`)}`;
-  const redirectSignup = `/doctor-signup?inviteToken=${encodeURIComponent(token)}`;
+  const redirectSignup = `/signup/doctor?inviteToken=${encodeURIComponent(token)}`;
 
   const handleAccept = async () => {
     if (!token) return;
@@ -53,20 +54,22 @@ export default function ClinicInviteAccept() {
     try {
       await acceptInvite(token);
       toast.success('You joined the clinic');
-      navigate('/clinic/doctors');
+      navigate('/doctor');
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Failed to accept invite';
-      toast.error(message);
+      const ax = err as { response?: { data?: unknown }; message?: string };
+      const raw =
+        typeof ax.response?.data === 'string'
+          ? ax.response.data
+          : ax.response?.data
+            ? JSON.stringify(ax.response.data)
+            : ax.message || '';
+      toast.error(parseApiErrorMessage(raw, 'Failed to accept invite'));
     } finally {
       setAccepting(false);
     }
   };
 
   const isDoctor = hasAnyRole(user?.roles, [ROLES.DOCTOR]);
-  const emailMatches =
-    preview && user?.email ? preview.email.toLowerCase() === user.email.toLowerCase() : false;
 
   return (
     <div className="min-h-screen bg-background">
@@ -117,7 +120,9 @@ export default function ClinicInviteAccept() {
                   )}
 
                   {preview.expired && !preview.accepted && (
-                    <p className="text-sm text-destructive">This invite has expired. Ask the clinic to send a new one.</p>
+                    <p className="text-sm text-destructive">
+                      This invite has expired. Ask the clinic to send a new one.
+                    </p>
                   )}
 
                   {!preview.expired && !preview.accepted && (
@@ -135,25 +140,24 @@ export default function ClinicInviteAccept() {
 
                       {isAuthenticated && !isDoctor && (
                         <p className="text-sm text-muted-foreground">
-                          You are signed in, but this invite requires a doctor account. Sign up as a doctor with{' '}
-                          <strong>{preview.email}</strong>.
+                          You are signed in, but this invite requires a doctor account. Sign up as a doctor with the
+                          invited email ({preview.email}).
                           <Button variant="link" className="px-1" asChild>
                             <Link to={redirectSignup}>Doctor signup</Link>
                           </Button>
                         </p>
                       )}
 
-                      {isAuthenticated && isDoctor && !emailMatches && (
-                        <p className="text-sm text-destructive">
-                          Sign in as <strong>{preview.email}</strong> to accept this invite (currently{' '}
-                          {user?.email}).
-                        </p>
-                      )}
-
-                      {isAuthenticated && isDoctor && emailMatches && (
-                        <Button className="w-full" onClick={handleAccept} disabled={accepting}>
-                          {accepting ? 'Joining…' : 'Accept invitation'}
-                        </Button>
+                      {isAuthenticated && isDoctor && (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">
+                            Accepting as <strong>{user?.email}</strong>. You must be signed in with the invited
+                            email ({preview.email}).
+                          </p>
+                          <Button className="w-full" onClick={handleAccept} disabled={accepting}>
+                            {accepting ? 'Joining…' : 'Accept invitation'}
+                          </Button>
+                        </div>
                       )}
                     </>
                   )}

@@ -9,6 +9,8 @@ interface ImportMetaEnv {
     readonly VITE_GOOGLE_SSO_URL_DEV: string;
     /** Phase 2 storefront. Default off for Phase 1 CRM. */
     readonly VITE_FEATURE_ECOMMERCE?: string;
+    /** Alias for VITE_FEATURE_ECOMMERCE (ENABLE_STORE). */
+    readonly VITE_ENABLE_STORE?: string;
     // Add other environment variables as needed
   }
   

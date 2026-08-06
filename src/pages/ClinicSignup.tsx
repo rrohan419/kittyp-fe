@@ -152,35 +152,35 @@ const ClinicSignup = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form method="post" onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Clinic Name *</Label>
+                      <Label htmlFor="clinicName">Clinic Name *</Label>
                       <div className="relative">
                         <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input className="pl-10" placeholder="Happy Paws Clinic" value={form.clinicName} onChange={(e) => set('clinicName', e.target.value)} required />
+                        <Input id="clinicName" name="clinicName" autoComplete="organization" className="pl-10" placeholder="Happy Paws Clinic" value={form.clinicName} onChange={(e) => set('clinicName', e.target.value)} required />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>License Number</Label>
+                      <Label htmlFor="license">License Number</Label>
                       <div className="relative">
                         <Award className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input className="pl-10" placeholder="VC-XXXX-XXXX" value={form.license} onChange={(e) => set('license', e.target.value)} />
+                        <Input id="license" name="license" className="pl-10" placeholder="VC-XXXX-XXXX" value={form.license} onChange={(e) => set('license', e.target.value)} />
                       </div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2 sm:col-span-2">
-                      <Label>Street Address</Label>
+                      <Label htmlFor="address">Street Address</Label>
                       <div className="relative">
                         <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input className="pl-10" placeholder="123 Pet Street" value={form.address} onChange={(e) => set('address', e.target.value)} />
+                        <Input id="address" name="address" autoComplete="street-address" className="pl-10" placeholder="123 Pet Street" value={form.address} onChange={(e) => set('address', e.target.value)} />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>City</Label>
-                      <Input placeholder="City" value={form.city} onChange={(e) => set('city', e.target.value)} />
+                      <Label htmlFor="city">City</Label>
+                      <Input id="city" name="city" autoComplete="address-level2" placeholder="City" value={form.city} onChange={(e) => set('city', e.target.value)} />
                     </div>
                   </div>
 
@@ -188,22 +188,25 @@ const ClinicSignup = () => {
                     <p className="text-sm font-medium mb-3 mt-3">Admin Account</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>First Name *</Label>
+                        <Label htmlFor="adminFirstName">First Name *</Label>
                         <div className="relative">
                           <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input className="pl-10" placeholder="Jane" value={form.adminFirstName} onChange={(e) => set('adminFirstName', e.target.value)} required />
+                          <Input id="adminFirstName" name="adminFirstName" autoComplete="given-name" className="pl-10" placeholder="Jane" value={form.adminFirstName} onChange={(e) => set('adminFirstName', e.target.value)} required />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label>Last Name</Label>
-                        <Input placeholder="Doe" value={form.adminLastName} onChange={(e) => set('adminLastName', e.target.value)} />
+                        <Label htmlFor="adminLastName">Last Name</Label>
+                        <Input id="adminLastName" name="adminLastName" autoComplete="family-name" placeholder="Doe" value={form.adminLastName} onChange={(e) => set('adminLastName', e.target.value)} />
                       </div>
                       <div className="space-y-2">
-                        <Label>Phone (10 digits)</Label>
+                        <Label htmlFor="adminPhone">Phone (10 digits)</Label>
                         <div className="relative">
                           <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
+                            id="adminPhone"
+                            name="adminPhone"
                             type="tel"
+                            autoComplete="tel"
                             inputMode="numeric"
                             maxLength={10}
                             className="pl-10"
@@ -214,11 +217,14 @@ const ClinicSignup = () => {
                         </div>
                       </div>
                       <div className="space-y-2 sm:col-span-2">
-                        <Label>Email *</Label>
+                        <Label htmlFor="adminEmail">Email *</Label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
+                            id="adminEmail"
+                            name="email"
                             type="email"
+                            autoComplete="email"
                             className="pl-10"
                             placeholder="admin@clinic.com"
                             value={form.adminEmail}
@@ -238,6 +244,8 @@ const ClinicSignup = () => {
                           {!emailVerified && (
                             <>
                               <Input
+                                id="emailOtp"
+                                name="emailOtp"
                                 className="max-w-[140px] h-9"
                                 placeholder="OTP code"
                                 value={emailOtp}
@@ -251,11 +259,14 @@ const ClinicSignup = () => {
                         </div>
                       </div>
                       <div className="space-y-2 sm:col-span-2">
-                        <Label>Password *</Label>
+                        <Label htmlFor="password">Password *</Label>
                         <div className="relative">
                           <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
+                            id="password"
+                            name="password"
                             type="password"
+                            autoComplete="new-password"
                             className="pl-10"
                             placeholder="8+ chars, upper, lower, number, special"
                             value={form.password}
@@ -269,11 +280,14 @@ const ClinicSignup = () => {
                         </p>
                       </div>
                       <div className="space-y-2 sm:col-span-2">
-                        <Label>Confirm Password *</Label>
+                        <Label htmlFor="confirmPassword">Confirm Password *</Label>
                         <div className="relative">
                           <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
+                            id="confirmPassword"
+                            name="confirmPassword"
                             type="password"
+                            autoComplete="new-password"
                             className="pl-10"
                             placeholder="Re-enter password"
                             value={form.confirmPassword}

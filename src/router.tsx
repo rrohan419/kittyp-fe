@@ -62,6 +62,7 @@ import DoctorSettings from './pages/DoctorSettings';
 import { ClinicLayout } from './pages/clinic/ClinicLayout';
 import ClinicHome from './pages/clinic/ClinicHome';
 import ClinicDoctors from './pages/clinic/ClinicDoctors';
+import ClinicDoctorDetail from './pages/clinic/ClinicDoctorDetail';
 import ClinicAppointments from './pages/clinic/ClinicAppointments';
 import ClinicPatients from './pages/clinic/ClinicPatients';
 import ClinicPatientDashboard from './pages/clinic/ClinicPatientDashboard';
@@ -80,9 +81,11 @@ import { RoleGuard } from './components/auth/RoleGuard';
 import { ROLES } from './utils/roles';
 import ClinicRetention from './pages/clinic/ClinicRetention';
 import DoctorBlog from './pages/DoctorBlog';
+import DoctorArticleEditor from './pages/DoctorArticleEditor';
 import DoctorInvoices from './pages/DoctorInvoices';
 import DoctorNutrition from './pages/DoctorNutrition';
 import ParentHealthPage from './pages/parent/ParentHealthPage';
+import PetParentNutritionTracker from './components/nutrition/PetParentNutritionTracker';
 
 const ecommerceElement = (element: React.ReactNode) =>
   isEcommerceEnabled() ? element : <Navigate to="/" replace />;
@@ -147,7 +150,19 @@ export const router = createBrowserRouter(
         },
         {
           path: "signup",
+          element: <Navigate to="/signup/parent" replace />,
+        },
+        {
+          path: "signup/parent",
           element: <PageTransition><Signup /></PageTransition>,
+        },
+        {
+          path: "signup/doctor",
+          element: <PageTransition><DoctorSignup /></PageTransition>,
+        },
+        {
+          path: "signup/clinic-admin",
+          element: <PageTransition><ClinicSignup /></PageTransition>,
         },
         {
           path: "profile",
@@ -167,11 +182,11 @@ export const router = createBrowserRouter(
         },
         {
           path: "doctor-signup",
-          element: <PageTransition><DoctorSignup /></PageTransition>,
+          element: <Navigate to="/signup/doctor" replace />,
         },
         {
           path: "clinic-signup",
-          element: <PageTransition><ClinicSignup /></PageTransition>,
+          element: <Navigate to="/signup/clinic-admin" replace />,
         },
         {
           path: "clinic-invite/accept",
@@ -235,7 +250,7 @@ export const router = createBrowserRouter(
             },
             {
               path: "nutrition",
-              element: <PageTransition><ComingSoon title="Nutrition Tracker" backTo="/app" /></PageTransition>,
+              element: <PageTransition><PetParentNutritionTracker /></PageTransition>,
             },
             {
               path: "health",
@@ -304,6 +319,14 @@ export const router = createBrowserRouter(
               element: <PageTransition><DoctorBlog /></PageTransition>,
             },
             {
+              path: "blog/new",
+              element: <PageTransition><DoctorArticleEditor /></PageTransition>,
+            },
+            {
+              path: "blog/edit/:slug",
+              element: <PageTransition><DoctorArticleEditor /></PageTransition>,
+            },
+            {
               path: "invoices",
               element: <PageTransition><DoctorInvoices /></PageTransition>,
             },
@@ -336,6 +359,10 @@ export const router = createBrowserRouter(
             {
               path: "doctors",
               element: <PageTransition><ClinicDoctors /></PageTransition>,
+            },
+            {
+              path: "doctors/:doctorUuid",
+              element: <PageTransition><ClinicDoctorDetail /></PageTransition>,
             },
             {
               path: "appointments",

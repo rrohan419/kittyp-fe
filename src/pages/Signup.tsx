@@ -162,14 +162,16 @@ const Signup = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSignup} className="space-y-4">
+                <form method="post" onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name</Label>
                     <div className="relative">
                       <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="firstName"
+                        name="firstName"
                         type="text"
+                        autoComplete="given-name"
                         placeholder="John"
                         className="pl-10"
                         value={firstName}
@@ -186,7 +188,9 @@ const Signup = () => {
                       <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="lastName"
+                        name="lastName"
                         type="text"
+                        autoComplete="family-name"
                         placeholder="Doe"
                         className="pl-10"
                         value={lastName}
@@ -202,7 +206,9 @@ const Signup = () => {
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="email"
+                        name="email"
                         type="email"
+                        autoComplete="email"
                         placeholder="name@example.com"
                         className="pl-10"
                         value={email}
@@ -219,7 +225,9 @@ const Signup = () => {
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="password"
+                        name="password"
                         type="password"
+                        autoComplete="new-password"
                         placeholder="••••••••"
                         className="pl-10"
                         value={password}
@@ -236,7 +244,9 @@ const Signup = () => {
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="confirmPassword"
+                        name="confirmPassword"
                         type="password"
+                        autoComplete="new-password"
                         placeholder="••••••••"
                         className="pl-10"
                         value={confirmPassword}
@@ -296,13 +306,13 @@ const Signup = () => {
                 </p>
                  <p className="text-sm text-gray-600 dark:text-gray-400">
                   Are you a veterinarian?{" "}
-                  <Link to="/doctor-signup" className="text-primary hover:text-primary/90 font-medium">
+                  <Link to="/signup/doctor" className="text-primary hover:text-primary/90 font-medium">
                     Register as a Doctor
                   </Link>
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Run a veterinary clinic?{" "}
-                  <Link to="/clinic-signup" className="text-primary hover:text-primary/90 font-medium">
+                  <Link to="/signup/clinic-admin" className="text-primary hover:text-primary/90 font-medium">
                     Register your Clinic
                   </Link>
                 </p>

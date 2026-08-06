@@ -17,7 +17,6 @@ import {
   Menu,
   ChevronLeft,
   Search,
-  Bell,
   LogOut,
   LayoutDashboard,
   Globe,
@@ -31,7 +30,7 @@ import { AppDispatch, RootState } from '@/module/store/store';
 import { clearUser, setActiveRole } from '@/module/slice/AuthSlice';
 import { AppRole, ROLES, hasAnyRole } from '@/utils/roles';
 import { ClinicSwitcher } from '@/components/clinic/ClinicSwitcher';
-import { ClinicNotifications } from '@/components/clinic/ClinicNotifications';
+import { PortalNotifications } from '@/components/portal/PortalNotifications';
 import {
   Dialog,
   DialogContent,
@@ -208,13 +207,7 @@ export function PortalShell({ config }: PortalShellProps) {
 
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
             {showClinicSwitcher && <ClinicSwitcher />}
-            {isClinicPortal ? (
-              <ClinicNotifications />
-            ) : (
-              <Button variant="ghost" size="icon" className="relative" aria-label="Notifications" disabled>
-                <Bell className="h-5 w-5" />
-              </Button>
-            )}
+            <PortalNotifications basePath={config.basePath} />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
