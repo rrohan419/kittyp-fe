@@ -96,7 +96,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
           <p>Vet: {vet.fullName}</p>
           <p>Date: {format(selectedDate, 'MMMM d, yyyy')}</p>
           <p>Time: {formatSlotTime()}</p>
-          <p>Price: ${selectedSlot.price}</p>
+          <p>Price: ₹{selectedSlot.price.toLocaleString('en-IN')}</p>
         </div>
       </CardHeader>
       <CardContent>
@@ -219,7 +219,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
 
             <div className="flex gap-4 pt-4">
               <Button type="submit" className="flex-1" disabled={isSubmitting}>
-                {isSubmitting ? 'Booking...' : `Book Consultation - $${selectedSlot.price}`}
+                {isSubmitting ? 'Booking...' : `Book Consultation - ₹${selectedSlot.price.toLocaleString('en-IN')}`}
               </Button>
               <Button type="button" variant="outline" onClick={onCancel}>
                 Cancel

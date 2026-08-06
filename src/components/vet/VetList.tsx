@@ -53,7 +53,7 @@ export const VetList: React.FC<VetListProps> = ({ vets, onSelectVet }) => {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold text-primary">${vet.consultationPrice}</p>
+                <p className="text-2xl font-bold text-primary">₹{(vet.consultationPrice ?? 0).toLocaleString('en-IN')}</p>
                 <p className="text-sm text-muted-foreground">per consultation</p>
               </div>
             </div>
