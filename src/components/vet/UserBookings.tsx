@@ -109,7 +109,7 @@ export const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
                             {format(new Date(booking.startTime), 'HH:mm')} - {format(new Date(booking.endTime), 'HH:mm')}
                           </span>
                         </div>
-                        <p className="text-sm font-medium mt-2">${booking.price}</p>
+                        <p className="text-sm font-medium mt-2">₹{booking.price.toLocaleString('en-IN')}</p>
                         {booking.notes && (
                           <p className="text-sm text-muted-foreground mt-1">{booking.notes}</p>
                         )}
@@ -199,7 +199,7 @@ export const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">{booking.status}</Badge>
-                      <p className="text-sm font-medium">${booking.price}</p>
+                      <p className="text-sm font-medium">₹{booking.price.toLocaleString('en-IN')}</p>
                     </div>
                   </div>
                 </CardContent>

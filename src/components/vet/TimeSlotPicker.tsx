@@ -90,7 +90,7 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
                   >
                     <span className="font-medium">{formatSlotTime(slot)}</span>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm">${slot.price}</span>
+                      <span className="text-sm">₹{slot.price.toLocaleString('en-IN')}</span>
                       <Badge variant="secondary" className="text-xs">
                         {slot.consultationType}
                       </Badge>

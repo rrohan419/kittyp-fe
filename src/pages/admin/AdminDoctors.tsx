@@ -13,35 +13,31 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Check, ExternalLink, Loader2, Stethoscope } from 'lucide-react';
+import { Building2, Check, ExternalLink, Loader2, Stethoscope } from 'lucide-react';
 import {
+  ChecklistKey,
   DoctorStatus,
   DoctorVerificationModel,
   DOCTOR_STATUS_STEPS,
+  allApplicableChecksPassed,
   fetchAdminDoctors,
+  isChecklistItemApplicable,
   statusLabel,
   updateDoctorChecklist,
   updateDoctorStatus,
 } from '@/services/doctorVerificationService';
 
-const CHECKLIST: {
-  key: keyof DoctorVerificationModel;
-  label: string;
-}[] = [
+const CHECKLIST: { key: ChecklistKey; label: string }[] = [
   { key: 'checkMobileOtp', label: 'Mobile OTP' },
   { key: 'checkEmailOtp', label: 'Email OTP' },
   { key: 'checkGovernmentId', label: 'Government ID' },
   { key: 'checkDegree', label: 'Degree' },
   { key: 'checkRegistrationCertificate', label: 'Registration Certificate' },
-  { key: 'checkClinicAddress', label: 'Clinic Address' },
   { key: 'checkRegistrationNumber', label: 'Registration Number' },
+  { key: 'checkClinicAddress', label: 'Clinic Address' },
   { key: 'checkGoogleMapsMatch', label: 'Google Maps match' },
   { key: 'checkClinicPhotos', label: 'Clinic photos' },
 ];
-
-function allChecksPassed(d: DoctorVerificationModel) {
-  return CHECKLIST.every((c) => Boolean(d[c.key]));
-}
 
 function DocLink({ href, label }: { href?: string; label: string }) {
   if (!href) return <span className="text-xs text-muted-foreground">{label}: —</span>;
@@ -75,6 +71,8 @@ export default function AdminDoctors() {
         setSelected(refreshed ?? list[0] ?? null);
       } else if (list.length) {
         setSelected(list[0]);
+      } else {
+        setSelected(null);
       }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to load doctors');
@@ -88,7 +86,7 @@ export default function AdminDoctors() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
-  const toggleCheck = async (key: keyof DoctorVerificationModel, value: boolean) => {
+  const toggleCheck = async (key: ChecklistKey, value: boolean) => {
     if (!selected) return;
     setSaving(true);
     try {
@@ -105,8 +103,8 @@ export default function AdminDoctors() {
 
   const setStatus = async (status: DoctorStatus) => {
     if (!selected) return;
-    if ((status === 'VERIFIED' || status === 'PUBLISHED') && !allChecksPassed(selected)) {
-      toast.error('All checklist items must be confirmed before Verified / Published');
+    if ((status === 'VERIFIED' || status === 'PUBLISHED') && !allApplicableChecksPassed(selected)) {
+      toast.error('Complete all applicable checklist items before Verified / Published');
       return;
     }
     setSaving(true);
@@ -122,13 +120,17 @@ export default function AdminDoctors() {
     }
   };
 
+  const applicableChecks = selected
+    ? CHECKLIST.filter((c) => isChecklistItemApplicable(selected, c.key))
+    : [];
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Doctor Verification</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Manual review checklist before Verified badge
+            Clinic-affiliated doctors appear first. Optional fields only show when provided.
           </p>
         </div>
         <Select value={filter} onValueChange={(v) => setFilter(v as DoctorStatus | 'ALL')}>
@@ -184,10 +186,23 @@ export default function AdminDoctors() {
                       <p className="text-xs text-muted-foreground truncate">
                         {d.specialization?.replace(/_/g, ' ') ?? '—'} · {d.registrationNumber ?? '—'}
                       </p>
+                      {d.clinicName && (
+                        <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                          <Building2 className="h-3 w-3" />
+                          {d.clinicName}
+                        </p>
+                      )}
                     </div>
-                    <Badge variant="secondary" className="text-[10px] shrink-0">
-                      {statusLabel(d.status)}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {d.clinicPriority && (
+                        <Badge className="text-[10px] bg-amber-500/15 text-amber-700 border-0">
+                          Clinic
+                        </Badge>
+                      )}
+                      <Badge variant="secondary" className="text-[10px]">
+                        {statusLabel(d.status)}
+                      </Badge>
+                    </div>
                   </CardContent>
                 </Card>
               );
@@ -200,6 +215,11 @@ export default function AdminDoctors() {
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Stethoscope className="h-5 w-5 text-primary" />
                   Dr. {selected.firstName} {selected.lastName}
+                  {selected.clinicPriority && (
+                    <Badge className="text-[10px] bg-amber-500/15 text-amber-700 border-0 font-normal">
+                      Clinic priority
+                    </Badge>
+                  )}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
                   {selected.email} · {selected.phoneNumber}
@@ -224,6 +244,10 @@ export default function AdminDoctors() {
                     {selected.registrationNumber || '—'}
                   </p>
                   <p>
+                    <span className="text-muted-foreground">Clinic:</span>{' '}
+                    {selected.clinicName || 'Independent (no clinic)'}
+                  </p>
+                  <p>
                     <span className="text-muted-foreground">Address:</span>{' '}
                     {selected.clinicAddress || '—'}
                   </p>
@@ -233,14 +257,22 @@ export default function AdminDoctors() {
                     label="Registration certificate"
                   />
                   <DocLink href={selected.governmentIdUrl} label="Government ID" />
-                  {selected.clinicPhotosUrls?.split(',').filter(Boolean).map((url, i) => (
-                    <DocLink key={url} href={url} label={`Clinic photo ${i + 1}`} />
-                  ))}
+                  {selected.clinicPhotosUrls
+                    ?.split(',')
+                    .filter(Boolean)
+                    .map((url, i) => (
+                      <DocLink key={url} href={url} label={`Clinic photo ${i + 1}`} />
+                    ))}
                 </div>
 
                 <div className="space-y-3">
                   <p className="text-sm font-medium">Admin Verification Checklist</p>
-                  {CHECKLIST.map((c) => (
+                  {!selected.requiresClinicChecks && (
+                    <p className="text-xs text-muted-foreground">
+                      No clinic association — clinic address, Maps, and photo checks are skipped.
+                    </p>
+                  )}
+                  {applicableChecks.map((c) => (
                     <div key={c.key} className="flex items-center gap-3">
                       <Checkbox
                         id={c.key}
@@ -280,7 +312,7 @@ export default function AdminDoctors() {
                   </Button>
                   <Button
                     size="sm"
-                    disabled={saving || !allChecksPassed(selected)}
+                    disabled={saving || !allApplicableChecksPassed(selected)}
                     onClick={() => void setStatus('VERIFIED')}
                   >
                     Approve Verified

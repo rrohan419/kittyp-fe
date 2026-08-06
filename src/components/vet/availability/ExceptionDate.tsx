@@ -24,27 +24,21 @@ interface ExceptionDate {
 
 interface ExceptionDatesProps {
   vetId: string;
+  exceptions?: ExceptionDate[];
+  onChange?: (exceptions: ExceptionDate[]) => void;
 }
 
-export const ExceptionDates: React.FC<ExceptionDatesProps> = ({ vetId }) => {
-  const [exceptions, setExceptions] = useState<ExceptionDate[]>([
-    {
-      id: '1',
-      date: '2024-12-25',
-      type: 'holiday',
-      title: 'Christmas Day',
-      description: 'Clinic closed for Christmas holiday'
-    },
-    {
-      id: '2',
-      date: '2024-07-30',
-      type: 'reduced-hours',
-      title: 'Half Day',
-      description: 'Available morning only',
-      startTime: '09:00',
-      endTime: '13:00'
-    }
-  ]);
+export const ExceptionDates: React.FC<ExceptionDatesProps> = ({
+  exceptions: controlledExceptions,
+  onChange,
+}) => {
+  const [internalExceptions, setInternalExceptions] = useState<ExceptionDate[]>([]);
+  const exceptions = controlledExceptions ?? internalExceptions;
+  const setExceptions = (updater: ExceptionDate[] | ((prev: ExceptionDate[]) => ExceptionDate[])) => {
+    const next = typeof updater === 'function' ? updater(exceptions) : updater;
+    if (onChange) onChange(next);
+    else setInternalExceptions(next);
+  };
 
   const [newException, setNewException] = useState<Partial<ExceptionDate>>({
     type: 'unavailable',
@@ -101,16 +95,16 @@ export const ExceptionDates: React.FC<ExceptionDatesProps> = ({ vetId }) => {
       endTime: newException.endTime
     };
 
-    setExceptions(prev => [...prev, exception]);
+    setExceptions((prev) => [...prev, exception]);
     setNewException({ type: 'unavailable', title: '', description: '' });
     setSelectedDate(undefined);
 
-    toast.error(`Exception for ${format(selectedDate, 'MMMM d, yyyy')} has been added.`);
+    toast.success(`Exception for ${format(selectedDate, 'MMMM d, yyyy')} added. Save to persist.`);
   };
 
   const removeException = (id: string) => {
-    setExceptions(prev => prev.filter(ex => ex.id !== id));
-    toast.info("The exception date has been removed.");
+    setExceptions((prev) => prev.filter((ex) => ex.id !== id));
+    toast.info('Exception removed. Save to persist.');
   };
 
   const getTypeConfig = (type: string) => {
@@ -153,19 +147,23 @@ export const ExceptionDates: React.FC<ExceptionDatesProps> = ({ vetId }) => {
                       {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Select date'}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 overflow-hidden" align="start">
                     <Calendar
                       mode="single"
                       selected={selectedDate}
                       onSelect={setSelectedDate}
-                      disabled={(date) => date < new Date()}
+                      disabled={(date) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return date < today;
+                      }}
                       modifiers={{
-                        exception: (date) => isDateException(date)
+                        exception: (date) => isDateException(date),
                       }}
-                      modifiersStyles={{
-                        exception: { backgroundColor: '#fef2f2', color: '#dc2626' }
+                      modifiersClassNames={{
+                        exception: 'bg-destructive/15 text-destructive font-medium',
                       }}
-                      className="rounded-md border"
+                      className="rounded-md"
                     />
                   </PopoverContent>
                 </Popover>

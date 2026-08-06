@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -49,6 +49,28 @@ function isActiveLink(currentPath: string, item: NavItem) {
   return currentPath === item.path || currentPath.startsWith(item.path + '/');
 }
 
+function resolvePortalUser(
+  config: PortalConfig,
+  user: RootState['authReducer']['user']
+): PortalConfig['user'] {
+  if (!user?.firstName && !user?.lastName) {
+    return config.user;
+  }
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+  const name =
+    config.basePath === '/doctor' && fullName
+      ? `Dr. ${fullName}`
+      : fullName || config.user.name;
+  const initials =
+    `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() ||
+    config.user.initials;
+  return {
+    name,
+    initials,
+    subtitle: config.user.subtitle,
+  };
+}
+
 export function PortalShell({ config }: PortalShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -61,7 +83,12 @@ export function PortalShell({ config }: PortalShellProps) {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [headerSearch, setHeaderSearch] = useState('');
   const canSwitchRole = (user?.roles?.length ?? 0) > 1;
-  const showClinicSwitcher = hasAnyRole(user?.roles, [ROLES.DOCTOR, ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF]);
+  const displayUser = useMemo(() => resolvePortalUser(config, user), [config, user]);
+  const showClinicSwitcher = hasAnyRole(user?.roles, [
+    ROLES.DOCTOR,
+    ROLES.CLINIC_ADMIN,
+    ROLES.CLINIC_STAFF,
+  ]);
   const isClinicPortal = config.basePath === '/clinic';
 
   useEffect(() => {
@@ -116,12 +143,25 @@ export function PortalShell({ config }: PortalShellProps) {
           collapsed ? 'w-[68px]' : 'w-[250px]'
         )}
       >
-        <SidebarInner config={config} collapsed={collapsed} setCollapsed={setCollapsed} onLogout={handleLogout} />
+        <SidebarInner
+          config={config}
+          displayUser={displayUser}
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
+          onLogout={handleLogout}
+        />
       </aside>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="p-0 w-[280px] bg-card">
-          <SidebarInner config={config} collapsed={false} setCollapsed={() => {}} onLogout={handleLogout} mobile />
+          <SidebarInner
+            config={config}
+            displayUser={displayUser}
+            collapsed={false}
+            setCollapsed={() => {}}
+            onLogout={handleLogout}
+            mobile
+          />
         </SheetContent>
       </Sheet>
 
@@ -183,15 +223,17 @@ export function PortalShell({ config }: PortalShellProps) {
                   aria-label="Profile menu"
                 >
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-primary/20">
-                    <span className="text-xs font-semibold text-primary">{config.user.initials}</span>
+                    <span className="text-xs font-semibold text-primary">{displayUser.initials}</span>
                   </div>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
-                    <span className="text-sm">{config.user.name}</span>
-                    <span className="text-[11px] text-muted-foreground font-normal">{config.user.subtitle}</span>
+                    <span className="text-sm">{displayUser.name}</span>
+                    <span className="text-[11px] text-muted-foreground font-normal">
+                      {displayUser.subtitle}
+                    </span>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -218,7 +260,10 @@ export function PortalShell({ config }: PortalShellProps) {
                   Edit profile
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="text-destructive focus:text-destructive"
+                >
                   <LogOut className="h-4 w-4 mr-2" />
                   Sign Out
                 </DropdownMenuItem>
@@ -279,12 +324,14 @@ export function PortalShell({ config }: PortalShellProps) {
 
 function SidebarInner({
   config,
+  displayUser,
   collapsed,
   setCollapsed,
   onLogout,
   mobile = false,
 }: {
   config: PortalConfig;
+  displayUser: PortalConfig['user'];
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
   onLogout: () => void;
@@ -358,7 +405,9 @@ function SidebarInner({
                       variant="secondary"
                       className={cn(
                         'h-5 px-1.5 text-[10px] border-0',
-                        active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary/10 text-primary'
+                        active
+                          ? 'bg-primary-foreground/20 text-primary-foreground'
+                          : 'bg-primary/10 text-primary'
                       )}
                     >
                       {badge}
@@ -380,11 +429,11 @@ function SidebarInner({
         {!collapsed && (
           <div className="flex items-center gap-3 px-3 py-2 mb-2">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <span className="text-xs font-semibold text-primary">{config.user.initials}</span>
+              <span className="text-xs font-semibold text-primary">{displayUser.initials}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{config.user.name}</p>
-              <p className="text-[11px] text-muted-foreground truncate">{config.user.subtitle}</p>
+              <p className="text-sm font-medium text-foreground truncate">{displayUser.name}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{displayUser.subtitle}</p>
             </div>
           </div>
         )}

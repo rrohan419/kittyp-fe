@@ -24,6 +24,12 @@ export interface DoctorVerificationModel {
   governmentIdUrl?: string;
   clinicPhotosUrls?: string;
   clinicAddress?: string;
+  clinicName?: string;
+  hasClinic: boolean;
+  clinicPriority: boolean;
+  requiresGovernmentIdCheck: boolean;
+  requiresClinicChecks: boolean;
+  requiresClinicPhotosCheck: boolean;
   emailOtpVerified: boolean;
   phoneOtpVerified: boolean;
   checkMobileOtp: boolean;
@@ -39,6 +45,17 @@ export interface DoctorVerificationModel {
   reviewedAt?: string;
   reviewNotes?: string;
 }
+
+export type ChecklistKey =
+  | 'checkMobileOtp'
+  | 'checkEmailOtp'
+  | 'checkGovernmentId'
+  | 'checkDegree'
+  | 'checkRegistrationCertificate'
+  | 'checkClinicAddress'
+  | 'checkRegistrationNumber'
+  | 'checkGoogleMapsMatch'
+  | 'checkClinicPhotos';
 
 export async function sendSignupOtp(body: {
   channel: 'EMAIL' | 'PHONE';
@@ -86,23 +103,7 @@ export async function fetchAdminDoctor(uuid: string) {
   return res.data.data;
 }
 
-export async function updateDoctorChecklist(
-  uuid: string,
-  checklist: Partial<
-    Pick<
-      DoctorVerificationModel,
-      | 'checkMobileOtp'
-      | 'checkEmailOtp'
-      | 'checkGovernmentId'
-      | 'checkDegree'
-      | 'checkRegistrationCertificate'
-      | 'checkClinicAddress'
-      | 'checkRegistrationNumber'
-      | 'checkGoogleMapsMatch'
-      | 'checkClinicPhotos'
-    >
-  >
-) {
+export async function updateDoctorChecklist(uuid: string, checklist: Partial<Record<ChecklistKey, boolean>>) {
   const res = await axiosInstance.patch<ApiSuccessResponse<DoctorVerificationModel>>(
     `/admin/doctors/${uuid}/checklist`,
     checklist
@@ -132,4 +133,33 @@ export function statusLabel(status: DoctorStatus): string {
     .split('_')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
+}
+
+export function isChecklistItemApplicable(doctor: DoctorVerificationModel, key: ChecklistKey): boolean {
+  switch (key) {
+    case 'checkGovernmentId':
+      return doctor.requiresGovernmentIdCheck;
+    case 'checkClinicAddress':
+    case 'checkGoogleMapsMatch':
+      return doctor.requiresClinicChecks;
+    case 'checkClinicPhotos':
+      return doctor.requiresClinicPhotosCheck;
+    default:
+      return true;
+  }
+}
+
+export function allApplicableChecksPassed(doctor: DoctorVerificationModel): boolean {
+  const keys: ChecklistKey[] = [
+    'checkMobileOtp',
+    'checkEmailOtp',
+    'checkGovernmentId',
+    'checkDegree',
+    'checkRegistrationCertificate',
+    'checkClinicAddress',
+    'checkRegistrationNumber',
+    'checkGoogleMapsMatch',
+    'checkClinicPhotos',
+  ];
+  return keys.every((key) => !isChecklistItemApplicable(doctor, key) || Boolean(doctor[key]));
 }
