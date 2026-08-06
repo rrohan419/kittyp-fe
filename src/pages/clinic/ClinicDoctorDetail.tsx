@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import {
   ArrowLeft,
+  ArrowRight,
   CheckCircle2,
   ExternalLink,
   FileText,
@@ -20,7 +21,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import {
   ClinicDoctorDetailModel,
+  ClinicDoctorModel,
   fetchClinicDoctorDetail,
+  fetchClinicDoctors,
 } from '@/services/clinicService';
 import { statusLabel } from '@/services/doctorVerificationService';
 import { toast } from 'sonner';
@@ -88,9 +91,30 @@ function formatWhen(value?: string | null) {
 
 export default function ClinicDoctorDetail() {
   const { doctorUuid = '' } = useParams();
+  const navigate = useNavigate();
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
   const [detail, setDetail] = useState<ClinicDoctorDetailModel | null>(null);
+  const [roster, setRoster] = useState<ClinicDoctorModel[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!clinicUuid) {
+        setRoster([]);
+        return;
+      }
+      try {
+        const list = await fetchClinicDoctors(clinicUuid);
+        if (!cancelled) setRoster(list);
+      } catch {
+        if (!cancelled) setRoster([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [clinicUuid]);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,6 +141,14 @@ export default function ClinicDoctorDetail() {
       cancelled = true;
     };
   }, [clinicUuid, doctorUuid]);
+
+  const rosterIndex = useMemo(
+    () => roster.findIndex((d) => d.doctorUuid === doctorUuid),
+    [roster, doctorUuid]
+  );
+  const prevDoctor = rosterIndex > 0 ? roster[rosterIndex - 1] : null;
+  const nextDoctor =
+    rosterIndex >= 0 && rosterIndex < roster.length - 1 ? roster[rosterIndex + 1] : null;
 
   const checks: CheckItem[] = useMemo(() => {
     if (!detail) return [];
@@ -192,54 +224,78 @@ export default function ClinicDoctorDetail() {
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!prevDoctor}
+          onClick={() => prevDoctor && navigate(`/clinic/doctors/${prevDoctor.doctorUuid}`)}
+          className="gap-1"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="hidden sm:inline max-w-[140px] truncate">
+            {prevDoctor ? prevDoctor.name : 'Previous'}
+          </span>
+        </Button>
+        <Button variant="ghost" size="sm" asChild>
+          <Link to="/clinic/doctors">All doctors</Link>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!nextDoctor}
+          onClick={() => nextDoctor && navigate(`/clinic/doctors/${nextDoctor.doctorUuid}`)}
+          className="gap-1"
+        >
+          <span className="hidden sm:inline max-w-[140px] truncate">
+            {nextDoctor ? nextDoctor.name : 'Next'}
+          </span>
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3 min-w-0">
-          <Button variant="ghost" size="sm" className="-ml-2" asChild>
-            <Link to="/clinic/doctors">
-              <ArrowLeft className="h-4 w-4 mr-1" /> Doctors
-            </Link>
-          </Button>
-          <div className="flex items-start gap-4">
-            {detail.photoUrl ? (
-              <img
-                src={detail.photoUrl}
-                alt={detail.name}
-                className="w-16 h-16 rounded-2xl object-cover border border-border"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                <span className="text-lg font-bold text-primary">{initials}</span>
-              </div>
-            )}
-            <div className="min-w-0">
-              <h1 className="text-2xl lg:text-3xl font-bold text-foreground truncate">{detail.name}</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {(detail.specialization || 'General').replace(/_/g, ' ')}
-                {clinic?.name ? ` · ${clinic.name}` : ''}
-              </p>
-              <div className="flex flex-wrap gap-2 mt-2">
-                <Badge
-                  variant="secondary"
-                  className={cn(
-                    'border-0 capitalize',
-                    detail.isActive === false
-                      ? 'bg-muted text-muted-foreground'
-                      : 'bg-green-100 text-green-700'
-                  )}
-                >
-                  {detail.isActive === false ? 'inactive' : 'active'}
+        <div className="flex items-start gap-4 min-w-0">
+          {detail.photoUrl ? (
+            <img
+              src={detail.photoUrl}
+              alt={detail.name}
+              className="w-16 h-16 rounded-2xl object-cover border border-border"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+              <span className="text-lg font-bold text-primary">{initials}</span>
+            </div>
+          )}
+          <div className="min-w-0">
+            <h1 className="text-2xl lg:text-3xl font-bold text-foreground truncate">{detail.name}</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {(detail.specialization || 'General').replace(/_/g, ' ')}
+              {clinic?.name ? ` · ${clinic.name}` : ''}
+              {rosterIndex >= 0 ? ` · ${rosterIndex + 1} of ${roster.length}` : ''}
+            </p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <Badge
+                variant="secondary"
+                className={cn(
+                  'border-0 capitalize',
+                  detail.isActive === false
+                    ? 'bg-muted text-muted-foreground'
+                    : 'bg-green-100 text-green-700'
+                )}
+              >
+                {detail.isActive === false ? 'inactive' : 'active'}
+              </Badge>
+              {detail.status && (
+                <Badge variant="outline" className="capitalize">
+                  {statusLabel(detail.status as Parameters<typeof statusLabel>[0])}
                 </Badge>
-                {detail.status && (
-                  <Badge variant="outline" className="capitalize">
-                    {statusLabel(detail.status as Parameters<typeof statusLabel>[0])}
-                  </Badge>
-                )}
-                {detail.role && (
-                  <Badge variant="secondary" className="capitalize">
-                    {detail.role}
-                  </Badge>
-                )}
-              </div>
+              )}
+              {detail.role && (
+                <Badge variant="secondary" className="capitalize">
+                  {detail.role}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -304,9 +360,7 @@ export default function ClinicDoctorDetail() {
                       Reviewed {formatWhen(detail.reviewedAt)}
                     </p>
                   )}
-                  {detail.reviewNotes && (
-                    <p className="text-sm">{detail.reviewNotes}</p>
-                  )}
+                  {detail.reviewNotes && <p className="text-sm">{detail.reviewNotes}</p>}
                 </div>
               )}
             </CardContent>
@@ -320,7 +374,10 @@ export default function ClinicDoctorDetail() {
             </CardHeader>
             <CardContent className="space-y-2">
               <DocLink href={detail.degreeCertificateUrl} label="Degree certificate" />
-              <DocLink href={detail.registrationCertificateUrl || detail.licenseDocumentUrl} label="Registration certificate" />
+              <DocLink
+                href={detail.registrationCertificateUrl || detail.licenseDocumentUrl}
+                label="Registration certificate"
+              />
               <DocLink href={detail.governmentIdUrl} label="Government ID" />
               {clinicPhotoLinks.length === 0 ? (
                 <DocLink href={undefined} label="Clinic photos" />
@@ -342,8 +399,8 @@ export default function ClinicDoctorDetail() {
             <CardContent className="space-y-3">
               {(detail.patients || []).length === 0 ? (
                 <p className="text-sm text-muted-foreground py-6 text-center">
-                  No pets linked to this doctor at this clinic yet. Pets appear after appointments
-                  with this doctor, or when the doctor is the linked pet-owner account.
+                  No pets linked to this doctor yet. Patients from the doctor&apos;s other clinics
+                  and their personal pets are imported here automatically.
                 </p>
               ) : (
                 detail.patients.map((row) => (
@@ -357,15 +414,15 @@ export default function ClinicDoctorDetail() {
                         <p className="text-xs text-muted-foreground">
                           {[row.pet.species, row.pet.breed, row.pet.gender].filter(Boolean).join(' · ') ||
                             'Pet'}
-                          {row.pet.patientNumber ? ` · #${row.pet.patientNumber}` : ''}
+                          {row.pet.patientNumber && !row.pet.patientNumber.startsWith('doc:')
+                            ? ` · #${row.pet.patientNumber}`
+                            : ''}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           {row.appointmentCount > 0
                             ? `${row.appointmentCount} visit${row.appointmentCount === 1 ? '' : 's'} with this doctor`
-                            : 'Linked via owner account'}
-                          {row.lastAppointment
-                            ? ` · last ${formatWhen(row.lastAppointment)}`
-                            : ''}
+                            : 'From doctor\'s clinic / records'}
+                          {row.lastAppointment ? ` · last ${formatWhen(row.lastAppointment)}` : ''}
                         </p>
                       </div>
                       <div className="flex gap-2 shrink-0">
