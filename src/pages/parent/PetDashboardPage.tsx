@@ -39,6 +39,7 @@ import {
   fetchWeightHistory,
   logPetWeight,
 } from '@/services/petDashboardService';
+import { PetHealthTimeline } from '@/components/health/PetHealthTimeline';
 
 export default function PetDashboardPage() {
   const { petId } = useParams<{ petId: string }>();
@@ -233,6 +234,7 @@ export default function PetDashboardPage() {
         </TabsContent>
 
         <TabsContent value="health" className="space-y-4 mt-4">
+          {petId && pet?.name && <PetHealthTimeline petId={petId} petName={pet.name} />}
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">

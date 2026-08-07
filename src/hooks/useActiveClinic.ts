@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { setActiveClinic } from '@/module/slice/AuthSlice';
-import { ClinicModel, fetchUserClinics } from '@/services/clinicService';
+import { ClinicModel, fetchMyClinics, fetchUserClinics } from '@/services/clinicService';
 
 /** Resolves the active clinic uuid + model for clinic portal pages. */
 export function useActiveClinic() {
@@ -13,7 +13,20 @@ export function useActiveClinic() {
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const list = await fetchUserClinics();
+    // Prefer /clinic/mine (owner + staff + doctor) — same as portal membership.
+    let list: ClinicModel[] = [];
+    try {
+      list = await fetchMyClinics();
+    } catch {
+      list = await fetchUserClinics();
+    }
+    if (!list.length) {
+      try {
+        list = await fetchUserClinics();
+      } catch {
+        list = [];
+      }
+    }
     setClinics(list);
     return list;
   }, []);
@@ -23,9 +36,8 @@ export function useActiveClinic() {
     (async () => {
       setLoading(true);
       try {
-        const list = await fetchUserClinics();
+        const list = await refresh();
         if (cancelled) return;
-        setClinics(list);
         setError(null);
         const stored = localStorage.getItem('activeClinicId');
         if (list.length) {
@@ -48,11 +60,15 @@ export function useActiveClinic() {
     return () => {
       cancelled = true;
     };
-    // Load once on mount; activeClinicId updates come from Redux/localStorage
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
 
-  const clinicUuid = activeClinicId ?? clinics[0]?.uuid ?? null;
+  const clinicUuid =
+    clinics.length === 0
+      ? null
+      : activeClinicId && clinics.some((c) => c.uuid === activeClinicId)
+        ? activeClinicId
+        : clinics[0]?.uuid ?? null;
   const clinic = (clinicUuid ? clinics.find((c) => c.uuid === clinicUuid) : null) ?? null;
 
   return { clinic, clinicUuid, clinics, loading, error, refresh };

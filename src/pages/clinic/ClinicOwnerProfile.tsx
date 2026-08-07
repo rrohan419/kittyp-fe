@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -22,12 +23,15 @@ import {
   Plus,
   Link2,
   User,
+  EyeOff,
 } from 'lucide-react';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import {
   ClinicOwnerProfileModel,
   addPetToClinicOwner,
   fetchClinicOwnerProfile,
+  hideClinicOwner,
+  hideClinicPet,
 } from '@/services/clinicService';
 import { PetPhoto } from '@/components/clinic/PetPhoto';
 import { toast } from 'sonner';
@@ -44,12 +48,16 @@ const emptyPet = {
 
 export default function ClinicOwnerProfile() {
   const { ownerUuid = '' } = useParams();
+  const navigate = useNavigate();
   const { clinicUuid, loading: clinicLoading } = useActiveClinic();
   const [profile, setProfile] = useState<ClinicOwnerProfileModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [petForm, setPetForm] = useState(emptyPet);
   const [saving, setSaving] = useState(false);
+  const [hideOwnerOpen, setHideOwnerOpen] = useState(false);
+  const [hidePetUuid, setHidePetUuid] = useState<{ uuid: string; name: string } | null>(null);
+  const [hiding, setHiding] = useState(false);
 
   const reload = async () => {
     if (!clinicUuid || !ownerUuid) return;
@@ -111,6 +119,46 @@ export default function ClinicOwnerProfile() {
     }
   };
 
+  const confirmHideOwner = async () => {
+    if (!clinicUuid || !ownerUuid || !profile) return;
+    setHiding(true);
+    try {
+      await hideClinicOwner(clinicUuid, ownerUuid);
+      toast.success(`${profile.owner.name} hidden from clinic lists`, {
+        description: 'Records are kept in the database.',
+      });
+      setHideOwnerOpen(false);
+      navigate('/clinic/patients');
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Could not hide client';
+      toast.error(message);
+    } finally {
+      setHiding(false);
+    }
+  };
+
+  const confirmHidePet = async () => {
+    if (!clinicUuid || !hidePetUuid) return;
+    setHiding(true);
+    try {
+      await hideClinicPet(clinicUuid, hidePetUuid.uuid);
+      toast.success(`${hidePetUuid.name} hidden from clinic lists`, {
+        description: 'Records are kept in the database.',
+      });
+      setHidePetUuid(null);
+      await reload();
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Could not hide pet';
+      toast.error(message);
+    } finally {
+      setHiding(false);
+    }
+  };
+
   if (clinicLoading || loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-24 text-muted-foreground">
@@ -144,10 +192,16 @@ export default function ClinicOwnerProfile() {
             Clients & Pets
           </Link>
         </Button>
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add pet
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setHideOwnerOpen(true)}>
+            <EyeOff className="h-4 w-4 mr-2" />
+            Hide client
+          </Button>
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add pet
+          </Button>
+        </div>
       </div>
 
       <Card className="border-0 shadow-sm">
@@ -237,9 +291,20 @@ export default function ClinicOwnerProfile() {
                     </p>
                   )}
                 </div>
-                <Button variant="outline" size="sm" asChild className="w-full">
-                  <Link to={`/clinic/pets/${p.petUuid}`}>Open pet profile</Link>
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <Button variant="outline" size="sm" asChild className="w-full">
+                    <Link to={`/clinic/pets/${p.petUuid}`}>Open pet profile</Link>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-muted-foreground"
+                    onClick={() => setHidePetUuid({ uuid: p.petUuid, name: p.name })}
+                  >
+                    <EyeOff className="h-3.5 w-3.5 mr-1.5" />
+                    Hide pet
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -322,6 +387,47 @@ export default function ClinicOwnerProfile() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={hideOwnerOpen} onOpenChange={(open) => !hiding && setHideOwnerOpen(open)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hide {owner.name} from clinic lists?</DialogTitle>
+            <DialogDescription>
+              This client and their pets will leave Clients & Pets. Visits and medical records stay
+              in the database.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setHideOwnerOpen(false)} disabled={hiding}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => void confirmHideOwner()} disabled={hiding}>
+              {hiding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Yes, hide
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!hidePetUuid} onOpenChange={(open) => !open && !hiding && setHidePetUuid(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hide {hidePetUuid?.name} from clinic lists?</DialogTitle>
+            <DialogDescription>
+              The pet will leave clinic directories. Visits and medical history stay in the database.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setHidePetUuid(null)} disabled={hiding}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => void confirmHidePet()} disabled={hiding}>
+              {hiding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Yes, hide
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

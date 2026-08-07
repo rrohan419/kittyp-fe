@@ -55,15 +55,22 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
   const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
   const savedPets = user?.ownerPets || [];
 
-  // Clear selectedPetId if the selected pet no longer exists
+  // Clear selectedPetId if the selected pet no longer exists; auto-select sole pet
   useEffect(() => {
+    if (savedPets.length === 1 && !useManualEntry) {
+      const only = savedPets[0].uuid;
+      if (selectedPetId !== only) {
+        setSelectedPetId(only);
+      }
+      return;
+    }
     if (selectedPetId && selectedPetId !== 'manual-entry') {
       const petExists = savedPets.some(pet => pet.uuid === selectedPetId);
       if (!petExists) {
         setSelectedPetId(null);
       }
     }
-  }, [savedPets, selectedPetId, setSelectedPetId]);
+  }, [savedPets, selectedPetId, setSelectedPetId, useManualEntry]);
 
   const selectedPet = savedPets.find(pet => pet.uuid === selectedPetId) ||
     (useManualEntry ? { ...manualPetData, id: 'manual' } : null);
@@ -82,11 +89,13 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                 <Heart className="h-5 w-5 text-primary" />
               </motion.div>
               <span className="bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                Choose Your Pet
+                {savedPets.length === 1 && !useManualEntry ? 'Your Pet' : 'Choose Your Pet'}
               </span>
             </CardTitle>
             <CardDescription>
-              Select a saved pet or enter details manually for personalized nutrition analysis
+              {savedPets.length === 1 && !useManualEntry
+                ? 'Using your pet profile for personalized recommendations'
+                : 'Select a saved pet or enter details manually for personalized nutrition analysis'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -149,6 +158,34 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                     </Button>
                   )}
                 </motion.div>
+              ) : savedPets.length === 1 ? (
+                <div className="rounded-xl border border-primary/20 bg-background/80 p-4 flex items-center gap-4">
+                  <Avatar className="h-16 w-16 border-2 border-primary/20">
+                    {savedPets[0].profilePicture ? (
+                      <AvatarImage src={savedPets[0].profilePicture} alt={savedPets[0].name} />
+                    ) : (
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        <PawPrint className="h-7 w-7" />
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-lg truncate">{savedPets[0].name}</p>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {savedPets[0].type} · {savedPets[0].breed || 'Mixed'}
+                      {savedPets[0].dateOfBirth
+                        ? ` · ${calculatePetAgeForDisplay(savedPets[0].dateOfBirth)}`
+                        : ''}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {savedPets[0].weight && <Badge variant="secondary">{savedPets[0].weight}</Badge>}
+                      {savedPets[0].activityLevel && (
+                        <Badge variant="outline">{savedPets[0].activityLevel}</Badge>
+                      )}
+                    </div>
+                  </div>
+                  <CheckCircle className="h-6 w-6 text-primary shrink-0" />
+                </div>
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {savedPets.map((pet, index) => (

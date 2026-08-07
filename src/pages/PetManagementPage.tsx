@@ -1,14 +1,19 @@
 import { useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { PawPrint, Plus } from 'lucide-react';
 import { RootState } from '@/module/store/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { calculatePetAgeForDisplay } from '@/services/UserService';
 
 export const PetManagementPage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.authReducer);
   const pets = user?.ownerPets ?? [];
+
+  if (pets.length === 1) {
+    return <Navigate to={`/app/pets/${pets[0].uuid}`} replace />;
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">

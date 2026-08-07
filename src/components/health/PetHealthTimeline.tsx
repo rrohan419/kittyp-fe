@@ -1,362 +1,229 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Calendar, 
-  Clock, 
-  Plus, 
-  Heart, 
-  Shield, 
-  Scissors, 
-  Stethoscope,
-  Pill,
-  AlertCircle,
-  CheckCircle2,
-  CalendarDays,
-  Filter
-} from 'lucide-react';
-import { format, isAfter, isBefore, isToday, addDays, startOfDay } from 'date-fns';
-import { HealthEvent, HealthEventFilters } from '@/types/health';
-import { AddHealthEventDialog } from './AddHealthEventDialog';
-import { HealthEventCard } from './HealthEventCard';
+import { Calendar, Loader2, Stethoscope } from 'lucide-react';
+import { format, parseISO, isValid } from 'date-fns';
+import { ClinicVisitModel, VisitStatus } from '@/services/clinicService';
+import { fetchParentPetVisits } from '@/services/visitService';
 
 interface PetHealthTimelineProps {
   petId: string;
   petName: string;
+  /** Poll interval ms; default 15s so clinic/doctor status changes appear. */
+  pollMs?: number;
 }
 
-export const PetHealthTimeline: React.FC<PetHealthTimelineProps> = ({ petId, petName }) => {
-  const [events, setEvents] = useState<HealthEvent[]>([]);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [filters, setFilters] = useState<HealthEventFilters>({ petId });
-  const [activeTab, setActiveTab] = useState<'timeline' | 'upcoming' | 'history'>('timeline');
+const CURRENT: VisitStatus[] = ['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS', 'CHECKING_OUT'];
+const PAST: VisitStatus[] = ['COMPLETED', 'CANCELLED', 'NO_SHOW'];
 
-  // Generate mock data specific to the pet
-  useEffect(() => {
-    const mockEvents: HealthEvent[] = [
-      {
-        id: `${petId}_1`,
-        petId,
-        type: 'vaccination',
-        title: 'Annual Vaccination',
-        description: 'DHPP + Rabies vaccination',
-        date: '2024-03-15T10:00:00Z',
-        status: 'completed',
-        veterinarian: 'Dr. Sarah Johnson',
-        clinic: 'Pawsome Vet Clinic',
-        cost: 120,
-        notes: 'No adverse reactions. Next due in 1 year.',
-        nextDue: '2025-03-15T10:00:00Z',
-        reminder: true,
-        createdAt: '2024-03-15T10:00:00Z',
-        updatedAt: '2024-03-15T10:00:00Z'
-      },
-      {
-        id: `${petId}_2`,
-        petId,
-        type: 'deworming',
-        title: 'Deworming Treatment',
-        description: 'Quarterly deworming',
-        date: '2024-06-01T09:00:00Z',
-        status: 'completed',
-        veterinarian: 'Dr. Mike Chen',
-        clinic: 'Pawsome Vet Clinic',
-        cost: 45,
-        nextDue: '2024-09-01T09:00:00Z',
-        reminder: true,
-        createdAt: '2024-06-01T09:00:00Z',
-        updatedAt: '2024-06-01T09:00:00Z'
-      },
-      {
-        id: `${petId}_3`,
-        petId,
-        type: 'grooming',
-        title: 'Professional Grooming',
-        date: '2024-08-20T14:00:00Z',
-        status: 'scheduled',
-        clinic: 'Furry Friends Grooming',
-        cost: 80,
-        notes: 'Full grooming service with nail trimming',
-        createdAt: '2024-08-15T10:00:00Z',
-        updatedAt: '2024-08-15T10:00:00Z'
-      },
-      {
-        id: `${petId}_4`,
-        petId,
-        type: 'checkup',
-        title: 'Annual Health Checkup',
-        description: 'Comprehensive health examination',
-        date: '2024-09-15T11:00:00Z',
-        status: 'scheduled',
-        veterinarian: 'Dr. Sarah Johnson',
-        clinic: 'Pawsome Vet Clinic',
-        reminder: true,
-        createdAt: '2024-08-20T10:00:00Z',
-        updatedAt: '2024-08-20T10:00:00Z'
-      }
-    ];
-    setEvents(mockEvents);
+function visitWhen(v: ClinicVisitModel): Date | null {
+  const raw = v.completedAt || v.startedAt || v.checkedInAt || v.createdAt;
+  if (!raw) return null;
+  const d = parseISO(raw);
+  return isValid(d) ? d : null;
+}
+
+function doctorLine(v: ClinicVisitModel): string {
+  if (!v.doctorName) return 'Attending doctor not listed';
+  const name = `Dr. ${v.doctorName.replace(/^Dr\.?\s*/i, '')}`;
+  const bits: string[] = [name];
+  if (v.doctorSpecialization) bits.push(v.doctorSpecialization);
+  if (v.doctorExperienceYears != null && v.doctorExperienceYears > 0) {
+    const y = Math.round(v.doctorExperienceYears);
+    bits.push(`${y} yr${y === 1 ? '' : 's'} experience`);
+  }
+  return bits.join(' · ');
+}
+
+function statusLabel(status: VisitStatus): string {
+  switch (status) {
+    case 'WAITLIST':
+      return 'Waitlist';
+    case 'CHECKED_IN':
+      return 'Checked in';
+    case 'IN_PROGRESS':
+      return 'With doctor';
+    case 'CHECKING_OUT':
+      return 'Checkout';
+    case 'COMPLETED':
+      return 'Completed';
+    case 'CANCELLED':
+      return 'Cancelled';
+    case 'NO_SHOW':
+      return 'No show';
+    default:
+      return status;
+  }
+}
+
+function statusBadgeClass(status: VisitStatus): string {
+  switch (status) {
+    case 'IN_PROGRESS':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200';
+    case 'CHECKING_OUT':
+      return 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200';
+    case 'COMPLETED':
+      return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200';
+    case 'CANCELLED':
+    case 'NO_SHOW':
+      return 'bg-muted text-muted-foreground';
+    default:
+      return '';
+  }
+}
+
+export const PetHealthTimeline: React.FC<PetHealthTimelineProps> = ({
+  petId,
+  petName,
+  pollMs = 15000,
+}) => {
+  const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'current' | 'history' | 'all'>('current');
+
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
+    try {
+      const list = await fetchParentPetVisits(petId);
+      setVisits(list);
+    } catch {
+      if (!quiet) setVisits([]);
+    } finally {
+      if (!quiet) setLoading(false);
+    }
   }, [petId]);
 
-  const getEventIcon = (type: HealthEvent['type']) => {
-    const iconMap = {
-      vaccination: Shield,
-      deworming: Pill,
-      grooming: Scissors,
-      'vet-visit': Stethoscope,
-      medication: Pill,
-      dental: Heart,
-      checkup: Stethoscope,
-      emergency: AlertCircle,
-      surgery: Heart,
-      other: Calendar
+  useEffect(() => {
+    void load(false);
+    const t = setInterval(() => void load(true), pollMs);
+    const onFocus = () => void load(true);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener('focus', onFocus);
     };
-    return iconMap[type] || Calendar;
-  };
+  }, [load, pollMs]);
 
-  const getStatusColor = (status: HealthEvent['status']) => {
-    switch (status) {
-      case 'completed': return 'default';
-      case 'scheduled': return 'secondary';
-      case 'overdue': return 'destructive';
-      case 'cancelled': return 'outline';
-      default: return 'default';
-    }
-  };
+  const current = useMemo(() => visits.filter((v) => CURRENT.includes(v.status)), [visits]);
+  const history = useMemo(() => visits.filter((v) => PAST.includes(v.status)), [visits]);
 
-  const categorizeEvents = () => {
-    const now = new Date();
-    const today = startOfDay(now);
-    const nextWeek = addDays(today, 7);
-
-    const upcoming = events.filter(event => 
-      isAfter(new Date(event.date), now) && 
-      ['scheduled'].includes(event.status)
-    ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    const overdue = events.filter(event => 
-      isBefore(new Date(event.date), now) && 
-      event.status === 'scheduled'
+  const renderVisit = (v: ClinicVisitModel) => {
+    const when = visitWhen(v);
+    const showReport = Boolean(
+      v.chart?.assessment || v.chart?.examinationNotes || v.chart?.plan
     );
-
-    const history = events.filter(event => 
-      event.status === 'completed' || 
-      isBefore(new Date(event.date), now)
-    ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    const todayEvents = events.filter(event => 
-      isToday(new Date(event.date))
-    );
-
-    const thisWeekEvents = events.filter(event => {
-      const eventDate = new Date(event.date);
-      return isAfter(eventDate, today) && 
-             isBefore(eventDate, nextWeek) && 
-             event.status === 'scheduled';
-    });
-
-    return { upcoming, overdue, history, todayEvents, thisWeekEvents };
-  };
-
-  const { upcoming, overdue, history, todayEvents, thisWeekEvents } = categorizeEvents();
-
-  const handleAddEvent = (eventData: Omit<HealthEvent, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newEvent: HealthEvent = {
-      ...eventData,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    setEvents([...events, newEvent]);
-  };
-
-  const renderTimelineView = () => (
-    <div className="space-y-6">
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="text-center">
-          <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-primary">{upcoming.length}</div>
-            <div className="text-sm text-muted-foreground">Upcoming</div>
-          </CardContent>
-        </Card>
-        <Card className="text-center">
-          <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-destructive">{overdue.length}</div>
-            <div className="text-sm text-muted-foreground">Overdue</div>
-          </CardContent>
-        </Card>
-        <Card className="text-center">
-          <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-secondary">{todayEvents.length}</div>
-            <div className="text-sm text-muted-foreground">Today</div>
-          </CardContent>
-        </Card>
-        <Card className="text-center">
-          <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-accent">{thisWeekEvents.length}</div>
-            <div className="text-sm text-muted-foreground">This Week</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Overdue Events */}
-      {overdue.length > 0 && (
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-5 w-5" />
-              Overdue Events
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {overdue.map((event) => (
-              <HealthEventCard key={event.id} event={event} />
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Today's Events */}
-      {todayEvents.length > 0 && (
-        <Card className="border-primary">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-primary">
-              <CalendarDays className="h-5 w-5" />
-              Today's Events
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {todayEvents.map((event) => (
-              <HealthEventCard key={event.id} event={event} />
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Timeline */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Health Timeline
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-96">
-            <div className="space-y-4">
-              {[...upcoming, ...history].sort((a, b) => 
-                new Date(b.date).getTime() - new Date(a.date).getTime()
-              ).map((event, index) => (
-                <div key={event.id} className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center ${
-                      event.status === 'completed' ? 'bg-primary border-primary text-primary-foreground' :
-                      event.status === 'scheduled' ? 'bg-secondary border-secondary text-secondary-foreground' :
-                      'bg-destructive border-destructive text-destructive-foreground'
-                    }`}>
-                      {React.createElement(getEventIcon(event.type), { className: 'h-4 w-4' })}
-                    </div>
-                    {index < [...upcoming, ...history].length - 1 && (
-                      <div className="w-0.5 h-12 bg-border mt-2" />
-                    )}
-                  </div>
-                  <div className="flex-1 pb-4">
-                    <HealthEventCard event={event} />
-                  </div>
-                </div>
-              ))}
+    return (
+      <Card key={v.uuid} className="border-0 shadow-sm">
+        <CardContent className="p-4 flex gap-3">
+          <div className="mt-0.5 rounded-full bg-primary/10 p-2 h-fit">
+            <Stethoscope className="h-4 w-4 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-medium">
+                  {v.chart?.assessment || v.reasonForVisit || 'Clinic visit'}
+                </p>
+                <p className="text-sm text-muted-foreground mt-0.5">{doctorLine(v)}</p>
+                {v.clinicName && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{v.clinicName}</p>
+                )}
+              </div>
+              <Badge variant="secondary" className={statusBadgeClass(v.status)}>
+                {statusLabel(v.status)}
+              </Badge>
             </div>
-          </ScrollArea>
+            {showReport && (
+              <>
+                {v.chart?.assessment && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Diagnosis</p>
+                    <p className="text-sm">{v.chart.assessment}</p>
+                  </div>
+                )}
+                {v.chart?.examinationNotes && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Report</p>
+                    <p className="text-sm whitespace-pre-wrap">{v.chart.examinationNotes}</p>
+                  </div>
+                )}
+                {v.chart?.plan && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Plan</p>
+                    <p className="text-sm">{v.chart.plan}</p>
+                  </div>
+                )}
+              </>
+            )}
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              {when ? format(when, 'MMM d, yyyy · h:mm a') : '—'}
+              {v.source === 'WALK_IN' ? ' · Walk-in' : ''}
+            </p>
+          </div>
         </CardContent>
       </Card>
-    </div>
+    );
+  };
+
+  const empty = (msg: string) => (
+    <p className="text-sm text-muted-foreground text-center py-8">{msg}</p>
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Heart className="h-6 w-6 text-primary" />
-            {petName}'s Health Timeline
-          </h2>
-          <p className="text-muted-foreground">Track vaccinations, treatments, and health records</p>
-        </div>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Event
-        </Button>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="upcoming">
-            Upcoming {upcoming.length > 0 && `(${upcoming.length})`}
-          </TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="timeline" className="space-y-4">
-          {renderTimelineView()}
-        </TabsContent>
-
-        <TabsContent value="upcoming" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Upcoming Events</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {upcoming.length > 0 ? (
-                upcoming.map((event) => (
-                  <HealthEventCard key={event.id} event={event} />
-                ))
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <CalendarDays className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No upcoming events scheduled</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="history" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Health History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-96">
+    <Card className="border-0 shadow-sm">
+      <CardHeader>
+        <CardTitle className="text-lg">{petName}&apos;s clinic visits & reports</CardTitle>
+        <p className="text-sm text-muted-foreground font-normal">
+          Updates when the clinic or doctor moves your pet through the visit flow.
+        </p>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+            <TabsList>
+              <TabsTrigger value="current">
+                Current ({current.length})
+              </TabsTrigger>
+              <TabsTrigger value="history">
+                History ({history.length})
+              </TabsTrigger>
+              <TabsTrigger value="all">All ({visits.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="current" className="mt-4">
+              <ScrollArea className="max-h-[480px] pr-2">
                 <div className="space-y-3">
-                  {history.length > 0 ? (
-                    history.map((event) => (
-                      <HealthEventCard key={event.id} event={event} />
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No health records found</p>
-                    </div>
-                  )}
+                  {current.length
+                    ? current.map(renderVisit)
+                    : empty(`No active visit for ${petName}. Walk-ins and check-ins appear here.`)}
                 </div>
               </ScrollArea>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      <AddHealthEventDialog 
-        isOpen={isAddDialogOpen}
-        onClose={() => setIsAddDialogOpen(false)}
-        onAdd={handleAddEvent}
-        petId={petId}
-      />
-    </div>
+            </TabsContent>
+            <TabsContent value="history" className="mt-4">
+              <div className="space-y-3">
+                {history.length
+                  ? history.map(renderVisit)
+                  : empty('No past visits yet. Completed visits include diagnosis and report.')}
+              </div>
+            </TabsContent>
+            <TabsContent value="all" className="mt-4">
+              <ScrollArea className="max-h-[520px] pr-2">
+                <div className="space-y-3">
+                  {visits.length
+                    ? visits.map(renderVisit)
+                    : empty(`No clinic visits yet for ${petName}.`)}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
+        )}
+      </CardContent>
+    </Card>
   );
 };

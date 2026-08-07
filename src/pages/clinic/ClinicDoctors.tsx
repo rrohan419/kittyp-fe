@@ -22,6 +22,7 @@ import {
   fetchDoctorInvites,
   inviteDoctor,
   lookupDoctorByUuid,
+  remindDoctorInvite,
   revokeDoctorInvite,
 } from '@/services/clinicService';
 import { statusLabel } from '@/services/doctorVerificationService';
@@ -41,6 +42,7 @@ export default function ClinicDoctors() {
   const [lookedUp, setLookedUp] = useState<{ name: string; email: string } | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [remindingId, setRemindingId] = useState<string | null>(null);
 
   const reload = async () => {
     if (!clinicUuid) {
@@ -195,10 +197,27 @@ export default function ClinicDoctors() {
     if (!clinicUuid) return;
     try {
       await revokeDoctorInvite(clinicUuid, inviteUuid);
-      toast.success('Invite revoked');
+      toast.success('Invite cancelled');
       await reload();
     } catch {
-      toast.error('Failed to revoke invite');
+      toast.error('Failed to cancel invite');
+    }
+  };
+
+  const handleRemind = async (inviteUuid: string) => {
+    if (!clinicUuid) return;
+    setRemindingId(inviteUuid);
+    try {
+      await remindDoctorInvite(clinicUuid, inviteUuid);
+      toast.success('Reminder sent to the doctor');
+      await reload();
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Reminder available 24h after invite or last reminder';
+      toast.error(message);
+    } finally {
+      setRemindingId(null);
     }
   };
 
@@ -236,6 +255,10 @@ export default function ClinicDoctors() {
               <UserPlus className="h-4 w-4" />
               Pending invitations
             </CardTitle>
+            <p className="text-xs text-muted-foreground font-normal pt-1">
+              Cancel invite ends it from the clinic side. If the doctor declines instead, you&apos;ll see
+              that under Notifications → Invites.
+            </p>
           </CardHeader>
           <CardContent className="space-y-2">
             {invites.map((inv) => (
@@ -247,10 +270,25 @@ export default function ClinicDoctors() {
                   <p className="font-medium text-sm truncate">{inv.doctorName}</p>
                   <p className="text-xs text-muted-foreground truncate">{inv.email}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="secondary" className="text-[10px]">
                     Pending
                   </Badge>
+                  {inv.canRemind && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={remindingId === inv.uuid}
+                      onClick={() => void handleRemind(inv.uuid)}
+                    >
+                      {remindingId === inv.uuid ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                      ) : (
+                        <Mail className="h-3.5 w-3.5 mr-1" />
+                      )}
+                      Remind
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -275,7 +313,7 @@ export default function ClinicDoctors() {
                     onClick={() => handleRevoke(inv.uuid)}
                   >
                     <Trash2 className="h-3.5 w-3.5 mr-1" />
-                    Revoke
+                    Cancel invite
                   </Button>
                 </div>
               </div>

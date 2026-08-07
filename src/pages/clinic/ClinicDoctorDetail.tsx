@@ -392,15 +392,15 @@ export default function ClinicDoctorDetail() {
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
-                <PawPrint className="h-4 w-4" /> Patients & owners
+                <PawPrint className="h-4 w-4" /> Pets attended
               </CardTitle>
               <Badge variant="secondary">{detail.patients?.length || 0}</Badge>
             </CardHeader>
             <CardContent className="space-y-3">
               {(detail.patients || []).length === 0 ? (
                 <p className="text-sm text-muted-foreground py-6 text-center">
-                  No pets linked to this doctor yet. Patients from the doctor&apos;s other clinics
-                  and their personal pets are imported here automatically.
+                  No pets attended yet. When this doctor treats a walk-in on the clinic board,
+                  the pet and owner show here.
                 </p>
               ) : (
                 detail.patients.map((row) => (
@@ -421,7 +421,7 @@ export default function ClinicDoctorDetail() {
                         <p className="text-xs text-muted-foreground mt-1">
                           {row.appointmentCount > 0
                             ? `${row.appointmentCount} visit${row.appointmentCount === 1 ? '' : 's'} with this doctor`
-                            : 'From doctor\'s clinic / records'}
+                            : 'Scheduled booking'}
                           {row.lastAppointment ? ` · last ${formatWhen(row.lastAppointment)}` : ''}
                         </p>
                       </div>

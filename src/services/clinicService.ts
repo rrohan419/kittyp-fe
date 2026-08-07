@@ -138,6 +138,15 @@ export interface ClinicOwnerModel {
   pets: ClinicOwnerPetModel[];
 }
 
+export interface PlatformUserSearchModel {
+  userUuid: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  clinicOwnerUuid?: string;
+  alreadyClient: boolean;
+}
+
 export interface ClinicOwnerProfileModel {
   owner: ClinicOwnerModel;
   billingStatus: string;
@@ -319,6 +328,9 @@ export interface DoctorInviteModel {
   clinicName: string;
   /** Present only on GET /clinic/my-doctor-invites (doctor inbox). */
   token?: string | null;
+  createdAt?: string | null;
+  lastRemindedAt?: string | null;
+  canRemind?: boolean | null;
 }
 
 export interface DoctorInvitePreview {
@@ -369,6 +381,16 @@ export async function revokeDoctorInvite(clinicUuid: string, inviteUuid: string)
   await axiosInstance.post(`/clinic/${clinicUuid}/doctors/invites/${inviteUuid}/revoke`);
 }
 
+export async function remindDoctorInvite(
+  clinicUuid: string,
+  inviteUuid: string
+): Promise<DoctorInviteModel> {
+  const res = await axiosInstance.post<ApiSuccessResponse<DoctorInviteModel>>(
+    `/clinic/${clinicUuid}/doctors/invites/${inviteUuid}/remind`
+  );
+  return res.data.data;
+}
+
 export async function fetchInviteByToken(token: string): Promise<DoctorInvitePreview> {
   const res = await axiosInstance.get<ApiSuccessResponse<DoctorInvitePreview>>(`/clinic/invites/${token}`);
   return res.data.data;
@@ -377,6 +399,10 @@ export async function fetchInviteByToken(token: string): Promise<DoctorInvitePre
 export async function acceptInvite(token: string): Promise<ClinicDoctorModel> {
   const res = await axiosInstance.post<ApiSuccessResponse<ClinicDoctorModel>>(`/clinic/invites/${token}/accept`);
   return res.data.data;
+}
+
+export async function rejectInvite(token: string): Promise<void> {
+  await axiosInstance.post(`/clinic/invites/${token}/reject`);
 }
 
 export async function fetchClinicPatients(clinicUuid: string): Promise<ClinicPatientModel[]> {
@@ -424,6 +450,30 @@ export async function fetchClinicOwners(clinicUuid: string, q?: string): Promise
     { params: q ? { q } : undefined }
   );
   return res.data.data ?? [];
+}
+
+export async function searchPlatformUsers(
+  clinicUuid: string,
+  q: string
+): Promise<PlatformUserSearchModel[]> {
+  const query = q.trim();
+  if (query.length < 3) return [];
+  const res = await axiosInstance.get<ApiSuccessResponse<PlatformUserSearchModel[]>>(
+    `/clinic/${clinicUuid}/users/search`,
+    { params: { q: query }, headers: { 'Cache-Control': 'no-cache' } }
+  );
+  return res.data.data ?? [];
+}
+
+export async function ensureClinicOwnerFromUser(
+  clinicUuid: string,
+  userUuid: string
+): Promise<ClinicOwnerModel> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ClinicOwnerModel>>(
+    `/clinic/${clinicUuid}/owners/from-user`,
+    { userUuid }
+  );
+  return res.data.data;
 }
 
 export async function createClinicOwner(
@@ -485,6 +535,14 @@ export async function fetchClinicPets(clinicUuid: string, q?: string): Promise<C
   return res.data.data ?? [];
 }
 
+export async function hideClinicPet(clinicUuid: string, petUuid: string): Promise<void> {
+  await axiosInstance.post(`/clinic/${clinicUuid}/pets/${petUuid}/hide`);
+}
+
+export async function hideClinicOwner(clinicUuid: string, ownerUuid: string): Promise<void> {
+  await axiosInstance.post(`/clinic/${clinicUuid}/owners/${ownerUuid}/hide`);
+}
+
 export async function fetchClinicPetMedicalProfile(
   clinicUuid: string,
   petUuid: string
@@ -501,6 +559,115 @@ export async function fetchClinicBookings(clinicUuid: string, page = 0, size = 2
     { params: { page, size } }
   );
   return res.data.data;
+}
+
+export type VisitStatus =
+  | 'WAITLIST'
+  | 'CHECKED_IN'
+  | 'IN_PROGRESS'
+  | 'CHECKING_OUT'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'NO_SHOW';
+
+export type VisitUrgency = 'ROUTINE' | 'URGENT';
+
+export interface VisitChartModel {
+  examinationNotes?: string;
+  assessment?: string;
+  plan?: string;
+  nextVisitNotes?: string;
+  vitals?: Record<string, unknown> | null;
+  internalNotes?: string | null;
+}
+
+export interface ClinicVisitModel {
+  uuid: string;
+  clinicUuid: string;
+  clinicName?: string;
+  petUuid: string;
+  petName: string;
+  ownerName?: string;
+  ownerEmail?: string;
+  ownerPhone?: string;
+  doctorUuid?: string | null;
+  doctorName?: string | null;
+  doctorSpecialization?: string | null;
+  doctorExperienceYears?: number | null;
+  source: string;
+  channel: string;
+  status: VisitStatus;
+  urgency: VisitUrgency;
+  reasonForVisit?: string;
+  checkedInAt?: string;
+  startedAt?: string;
+  completedAt?: string;
+  createdAt?: string;
+  chart?: VisitChartModel;
+  invoiceUuid?: string;
+  healthEventUuid?: string;
+}
+
+export async function fetchClinicVisits(
+  clinicUuid: string,
+  params?: { date?: string; status?: VisitStatus; doctorUuid?: string }
+): Promise<ClinicVisitModel[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ClinicVisitModel[]>>(
+    `/clinic/${clinicUuid}/visits`,
+    { params }
+  );
+  return res.data.data ?? [];
+}
+
+export async function createWalkInVisit(
+  clinicUuid: string,
+  payload: {
+    petUuid?: string;
+    owner?: {
+      firstName: string;
+      lastName?: string;
+      email: string;
+      phone: string;
+      address?: string;
+    };
+    newPet?: { name: string; species?: string; breed?: string; gender?: string };
+    reasonForVisit?: string;
+    urgency?: VisitUrgency;
+    doctorUuid?: string;
+  }
+): Promise<ClinicVisitModel> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ClinicVisitModel>>(
+    `/clinic/${clinicUuid}/visits/walk-in`,
+    payload
+  );
+  return res.data.data;
+}
+
+export async function patchClinicVisit(
+  clinicUuid: string,
+  visitUuid: string,
+  payload: {
+    status?: VisitStatus;
+    doctorUuid?: string | null;
+    urgency?: VisitUrgency;
+    reasonForVisit?: string;
+  }
+): Promise<ClinicVisitModel> {
+  const res = await axiosInstance.patch<ApiSuccessResponse<ClinicVisitModel>>(
+    `/clinic/${clinicUuid}/visits/${visitUuid}`,
+    payload
+  );
+  return res.data.data;
+}
+
+export async function fetchClinicPetVisits(
+  clinicUuid: string,
+  petUuid: string
+): Promise<ClinicVisitModel[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ClinicVisitModel[]>>(
+    `/clinic/${clinicUuid}/patients/${petUuid}/visits`
+  );
+  return res.data.data ?? [];
 }
 
 export async function fetchRetentionAlerts(clinicUuid: string): Promise<RetentionAlertModel[]> {

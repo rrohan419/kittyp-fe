@@ -1,5 +1,5 @@
 import { useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { Heart, PawPrint } from 'lucide-react';
 import { RootState } from '@/module/store/store';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,10 @@ export default function ParentHealthPage() {
   const { user } = useSelector((s: RootState) => s.authReducer);
   const pets = user?.ownerPets ?? [];
 
+  if (pets.length === 1) {
+    return <Navigate to={`/app/pets/${pets[0].uuid}`} replace />;
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
       <div>
@@ -18,7 +22,8 @@ export default function ParentHealthPage() {
           Health
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Open each pet dashboard for vaccine dues, weight trends, and daily logging.
+          Open a pet for visit history, diagnosis/reports, vaccines, and daily logging. Updates when
+          the clinic or doctor changes a visit.
         </p>
       </div>
 

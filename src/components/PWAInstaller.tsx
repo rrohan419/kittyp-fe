@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { X, Download, RefreshCw, Info, Smartphone, Bell, BellOff, ArrowUpCircle } from 'lucide-react';
+import { X, Download, RefreshCw, Smartphone, ArrowUpCircle } from 'lucide-react';
 import { useTheme } from '@/components/providers/ThemeProvider';
 // Add this import for Vite PWA update detection
 // @ts-ignore
@@ -23,11 +23,21 @@ interface PWAState {
   hasServiceWorker: boolean;
   canInstall: boolean;
   deferredPrompt: BeforeInstallPromptEvent | null;
-  userDismissed: boolean;
   installAttempts: number;
+  dismissedUntil: number | null;
+  installedAt: number | null;
 }
 
 const PWA_STORAGE_KEY = 'kittyp-pwa-preferences';
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+type StoredPwaPrefs = {
+  dismissedUntil?: number | null;
+  installedAt?: number | null;
+  installAttempts?: number;
+  /** legacy permanent dismiss — treat as 1-day from now if still set without dismissedUntil */
+  userDismissed?: boolean;
+};
 
 export function PWAInstaller() {
   const [state, setState] = useState<PWAState>({
@@ -37,8 +47,9 @@ export function PWAInstaller() {
     hasServiceWorker: false,
     canInstall: false,
     deferredPrompt: null,
-    userDismissed: false,
-    installAttempts: 0
+    installAttempts: 0,
+    dismissedUntil: null,
+    installedAt: null,
   });
   
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
@@ -62,16 +73,27 @@ export function PWAInstaller() {
     return false;
   }, []);
 
+  const isSnoozed = useCallback((dismissedUntil: number | null | undefined) => {
+    return typeof dismissedUntil === 'number' && Date.now() < dismissedUntil;
+  }, []);
+
   // Load user preferences from localStorage
   const loadUserPreferences = useCallback(() => {
     try {
       const stored = localStorage.getItem(PWA_STORAGE_KEY);
       if (stored) {
-        const preferences = JSON.parse(stored);
+        const preferences = JSON.parse(stored) as StoredPwaPrefs;
+        let dismissedUntil = preferences.dismissedUntil ?? null;
+        // Migrate old permanent dismiss → one-day snooze so popup can return tomorrow.
+        if (preferences.userDismissed && !dismissedUntil && !preferences.installedAt) {
+          dismissedUntil = Date.now() + ONE_DAY_MS;
+        }
         setState(prev => ({
           ...prev,
-          userDismissed: preferences.userDismissed || false,
-          installAttempts: preferences.installAttempts || 0
+          installAttempts: preferences.installAttempts || 0,
+          dismissedUntil,
+          installedAt: preferences.installedAt ?? null,
+          isInstalled: !!preferences.installedAt || prev.isInstalled,
         }));
       }
     } catch (error) {
@@ -80,12 +102,27 @@ export function PWAInstaller() {
   }, []);
 
   // Save user preferences to localStorage
-  const saveUserPreferences = useCallback((updates: Partial<PWAState>) => {
+  const saveUserPreferences = useCallback((updates: Partial<StoredPwaPrefs & PWAState>) => {
     try {
-      const current = JSON.parse(localStorage.getItem(PWA_STORAGE_KEY) || '{}');
-      const updated = { ...current, ...updates };
+      const current = JSON.parse(localStorage.getItem(PWA_STORAGE_KEY) || '{}') as StoredPwaPrefs;
+      const updated: StoredPwaPrefs = {
+        ...current,
+        dismissedUntil:
+          updates.dismissedUntil !== undefined ? updates.dismissedUntil : current.dismissedUntil,
+        installedAt: updates.installedAt !== undefined ? updates.installedAt : current.installedAt,
+        installAttempts:
+          updates.installAttempts !== undefined ? updates.installAttempts : current.installAttempts,
+      };
+      // Clear legacy flag once migrated
+      delete updated.userDismissed;
       localStorage.setItem(PWA_STORAGE_KEY, JSON.stringify(updated));
-      setState(prev => ({ ...prev, ...updates }));
+      setState(prev => ({
+        ...prev,
+        installAttempts: updated.installAttempts || 0,
+        dismissedUntil: updated.dismissedUntil ?? null,
+        installedAt: updated.installedAt ?? null,
+        isInstalled: !!updated.installedAt || prev.isInstalled,
+      }));
     } catch (error) {
       console.error('Error saving PWA preferences:', error);
     }
@@ -142,12 +179,16 @@ export function PWAInstaller() {
         const choiceResult = await state.deferredPrompt.userChoice;
         
         if (choiceResult.outcome === 'accepted') {
-          saveUserPreferences({ installAttempts: state.installAttempts + 1 });
+          saveUserPreferences({
+            installAttempts: state.installAttempts + 1,
+            installedAt: Date.now(),
+            dismissedUntil: null,
+          });
         } else {
-          // User dismissed the prompt
-          saveUserPreferences({ 
-            userDismissed: true, 
-            installAttempts: state.installAttempts + 1 
+          // Soft close for a day when browser install is declined
+          saveUserPreferences({
+            dismissedUntil: Date.now() + ONE_DAY_MS,
+            installAttempts: state.installAttempts + 1,
           });
         }
         
@@ -178,23 +219,21 @@ export function PWAInstaller() {
     saveUserPreferences({ installAttempts: state.installAttempts + 1 });
   }, [state.installAttempts, saveUserPreferences]);
 
-  // Handle dismiss
+  // Soft dismiss — hide for 24 hours, then show again
   const handleDismiss = useCallback((type: 'install' | 'manual') => {
     if (type === 'install') {
       setShowInstallPrompt(false);
     } else {
       setShowManualInstall(false);
     }
-    
-    // Don't show again for this session
-    saveUserPreferences({ userDismissed: true });
+    saveUserPreferences({ dismissedUntil: Date.now() + ONE_DAY_MS });
   }, [saveUserPreferences]);
 
-  // Handle permanent dismiss
-  const handlePermanentDismiss = useCallback(() => {
-    saveUserPreferences({ userDismissed: true });
+  const markInstalled = useCallback(() => {
+    saveUserPreferences({ installedAt: Date.now(), dismissedUntil: null });
     setShowInstallPrompt(false);
     setShowManualInstall(false);
+    setState((prev) => ({ ...prev, isInstalled: true, deferredPrompt: null }));
   }, [saveUserPreferences]);
 
   // Service Worker update logic
@@ -256,8 +295,8 @@ export function PWAInstaller() {
         canInstall: true 
       }));
       
-      // Only show if user hasn't permanently dismissed and app isn't installed
-      if (!state.userDismissed && !isAppInstalled()) {
+      // Only show if not snoozed and app isn't installed
+      if (!isSnoozed(state.dismissedUntil) && !state.installedAt && !isAppInstalled()) {
         setShowInstallPrompt(true);
         installPromptShownRef.current = true;
       }
@@ -265,13 +304,7 @@ export function PWAInstaller() {
 
     // Listen for appinstalled event
     const handleAppInstalled = () => {
-      setState(prev => ({ 
-        ...prev, 
-        isInstalled: true,
-        deferredPrompt: null 
-      }));
-      setShowInstallPrompt(false);
-      setShowManualInstall(false);
+      markInstalled();
     };
 
     // Listen for online/offline status
@@ -289,10 +322,11 @@ export function PWAInstaller() {
     const handleManualTrigger = () => {
       const { supportsInstall, supportsManualInstall } = checkBrowserSupport();
       
-      if (!isAppInstalled() && 
-          !installPromptShownRef.current && 
-          !state.userDismissed &&
-          supportsManualInstall && 
+      if (!isAppInstalled() &&
+          !state.installedAt &&
+          !installPromptShownRef.current &&
+          !isSnoozed(state.dismissedUntil) &&
+          supportsManualInstall &&
           !supportsInstall) {
         setShowManualInstall(true);
       }
@@ -308,11 +342,12 @@ export function PWAInstaller() {
     const timer = setTimeout(() => {
       const { supportsInstall, supportsManualInstall } = checkBrowserSupport();
       
-      if (!installPromptShownRef.current && 
-          !isAppInstalled() && 
-          state.hasManifest && 
-          !state.userDismissed &&
-          supportsManualInstall && 
+      if (!installPromptShownRef.current &&
+          !isAppInstalled() &&
+          !state.installedAt &&
+          state.hasManifest &&
+          !isSnoozed(state.dismissedUntil) &&
+          supportsManualInstall &&
           !supportsInstall) {
         setShowManualInstall(true);
       }
@@ -326,14 +361,24 @@ export function PWAInstaller() {
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('manual-pwa-trigger', handleManualTrigger);
     };
-  }, [loadUserPreferences, checkPWAStatus, checkBrowserSupport, state.userDismissed, isAppInstalled]);
+  }, [
+    loadUserPreferences,
+    checkPWAStatus,
+    checkBrowserSupport,
+    state.dismissedUntil,
+    state.installedAt,
+    state.hasManifest,
+    isAppInstalled,
+    isSnoozed,
+    markInstalled,
+  ]);
 
   const handleRefresh = () => {
     window.location.reload();
   };
 
-  // Don't show anything if already installed or user permanently dismissed
-  if (isAppInstalled() || state.userDismissed) return null;
+  const hideInstallUi =
+    isAppInstalled() || !!state.installedAt || isSnoozed(state.dismissedUntil);
 
   return (
     <>
@@ -365,7 +410,7 @@ export function PWAInstaller() {
         </Card>
       )}
       {/* Install Prompt */}
-      {showInstallPrompt && !isAppInstalled() && (
+      {showInstallPrompt && !hideInstallUi && (
         <Card className="fixed bottom-4 right-4 w-80 z-50 shadow-lg border-primary/20 bg-card/95 backdrop-blur-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -376,15 +421,7 @@ export function PWAInstaller() {
                   size="sm"
                   onClick={() => handleDismiss('install')}
                   className="text-muted-foreground hover:text-foreground"
-                  title="Don't show again"
-                >
-                  <BellOff className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowInstallPrompt(false)}
-                  className="text-muted-foreground hover:text-foreground"
+                  title="Hide for today"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -403,7 +440,7 @@ export function PWAInstaller() {
         </Card>
       )}
       {/* Manual Install Prompt */}
-      {showManualInstall && !isAppInstalled() && (
+      {showManualInstall && !hideInstallUi && (
         <Card className="fixed bottom-4 right-4 w-80 z-50 shadow-lg border-primary/30 bg-primary/5 backdrop-blur-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -414,15 +451,7 @@ export function PWAInstaller() {
                   size="sm"
                   onClick={() => handleDismiss('manual')}
                   className="text-muted-foreground hover:text-foreground"
-                  title="Don't show again"
-                >
-                  <BellOff className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowManualInstall(false)}
-                  className="text-muted-foreground hover:text-foreground"
+                  title="Hide for today"
                 >
                   <X className="h-4 w-4" />
                 </Button>
