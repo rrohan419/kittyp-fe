@@ -6,6 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { PlusCircle, Heart, Trash2, Save, Edit, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -31,6 +39,8 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
     const [isAddingPet, setIsAddingPet] = useState(false);
     const [isEditingPet, setIsEditingPet] = useState(false);
     const [editingPetId, setEditingPetId] = useState<string | null>(null);
+    const [pendingDelete, setPendingDelete] = useState<PetProfile | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     const [petForm, setPetForm] = useState<Omit<AddPet, 'isNeutered'> & { isNeutered: string }>({
         name: '',
@@ -167,12 +177,20 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
         }
     };
 
-    const handleDeletePet = async (petId: string) => {
+    const handleDeletePet = async () => {
+        if (!pendingDelete) return;
+        setDeleting(true);
         try {
-            dispatch(removePetFromUser(petId));
+            await dispatch(removePetFromUser(pendingDelete.uuid)).unwrap();
+            toast.success(`${pendingDelete.name} removed from My Pets`, {
+                description: 'Clinic and medical records are kept.',
+            });
+            setPendingDelete(null);
         } catch (error) {
-            console.error('Error deleting pet:', error);
-            // Error handling is already done in the async thunk
+            console.error('Error removing pet:', error);
+            toast.error('Could not remove pet');
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -264,7 +282,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                             size="sm"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleDeletePet(pet.uuid);
+                                                setPendingDelete(pet);
                                             }}
                                             className="text-destructive hover:text-destructive"
                                         >
@@ -531,6 +549,27 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                     </CardContent>
                 </Card>
             )} */}
+
+            <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Remove {pendingDelete?.name} from My Pets?</DialogTitle>
+                        <DialogDescription>
+                            This hides the pet from your account only. Clinic visits, reports, and medical
+                            history stay in the clinic and doctor records.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setPendingDelete(null)} disabled={deleting}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={() => void handleDeletePet()} disabled={deleting}>
+                            {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Remove from My Pets
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

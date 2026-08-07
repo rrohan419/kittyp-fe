@@ -40,7 +40,7 @@ import AdminUsers from './pages/AdminUsers';
 import AIAssistant from './pages/AIAssistant';
 import { VetConsultation } from './pages/VetConsultation';
 import { VetDashboardPage } from './pages/VetDashboardPage';
-import { UserBookingsPage } from './pages/UserBookingsPage';
+import ParentAppointmentsPage from './pages/parent/ParentAppointmentsPage';
 import { PetManagementPage } from './pages/PetManagementPage';
 import PetDetail from './pages/PetDetails';
 import DoctorSignup from './pages/DoctorSignup';
@@ -258,7 +258,7 @@ export const router = createBrowserRouter(
             },
             {
               path: "appointments",
-              element: <PageTransition><UserBookingsPage /></PageTransition>,
+              element: <PageTransition><ParentAppointmentsPage /></PageTransition>,
             },
             {
               path: "orders",

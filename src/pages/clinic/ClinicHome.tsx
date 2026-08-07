@@ -12,11 +12,13 @@ import {
   ClinicBookingModel,
   ClinicDoctorModel,
   ClinicPatientModel,
+  ClinicVisitModel,
   RetentionAlertModel,
   fetchClinicBookings,
   fetchClinicDoctors,
   fetchClinicPatients,
   fetchClinicStats,
+  fetchClinicVisits,
   fetchRetentionAlerts,
 } from '@/services/clinicService';
 import { cn } from '@/lib/utils';
@@ -26,6 +28,7 @@ export default function ClinicHome() {
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
   const [patients, setPatients] = useState<ClinicPatientModel[]>([]);
   const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
+  const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [alerts, setAlerts] = useState<RetentionAlertModel[]>([]);
   const [diagnosedCount, setDiagnosedCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -36,6 +39,7 @@ export default function ClinicHome() {
       setDoctors([]);
       setPatients([]);
       setBookings([]);
+      setVisits([]);
       setAlerts([]);
       setDiagnosedCount(0);
       return;
@@ -44,17 +48,19 @@ export default function ClinicHome() {
     setDoctors([]);
     setPatients([]);
     setBookings([]);
+    setVisits([]);
     setAlerts([]);
     setDiagnosedCount(0);
     (async () => {
       setLoading(true);
       try {
-        const [d, p, b, a, stats] = await Promise.all([
+        const [d, p, b, a, stats, v] = await Promise.all([
           fetchClinicDoctors(clinicUuid),
           fetchClinicPatients(clinicUuid),
           fetchClinicBookings(clinicUuid),
           fetchRetentionAlerts(clinicUuid),
           fetchClinicStats(clinicUuid),
+          fetchClinicVisits(clinicUuid).catch(() => [] as ClinicVisitModel[]),
         ]);
         if (cancelled) return;
         setDoctors(d);
@@ -62,11 +68,13 @@ export default function ClinicHome() {
         setBookings(b?.models ?? []);
         setAlerts(a);
         setDiagnosedCount(stats?.diagnosedPetCount ?? 0);
+        setVisits(v);
       } catch {
         if (cancelled) return;
         setDoctors([]);
         setPatients([]);
         setBookings([]);
+        setVisits([]);
         setAlerts([]);
         setDiagnosedCount(0);
       } finally {
@@ -86,13 +94,20 @@ export default function ClinicHome() {
     }
   });
 
+  const flowActive = visits.filter((v) =>
+    ['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS', 'CHECKING_OUT'].includes(v.status)
+  );
+  const withDoctor = visits.filter((v) => v.status === 'IN_PROGRESS');
+  const atCheckout = visits.filter((v) => v.status === 'CHECKING_OUT');
+  const completedVisits = visits.filter((v) => v.status === 'COMPLETED');
+
   const openAlerts = alerts.filter((a) => a.status === 'OPEN' || a.status === 'open').length;
 
   const stats = [
     {
-      label: "Today's Appointments",
-      value: todayBookings.length,
-      sub: 'Scheduled visits',
+      label: "Today's flow",
+      value: flowActive.length,
+      sub: `${withDoctor.length} with doctor · ${atCheckout.length} checkout`,
       icon: Calendar,
       to: '/clinic/appointments',
       color: 'from-primary/10 to-accent',
@@ -220,39 +235,68 @@ export default function ClinicHome() {
       <div className="relative grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="lg:col-span-2 border-0 shadow-sm bg-card/80 backdrop-blur">
           <CardHeader className="flex flex-row items-center justify-between pb-4">
-            <CardTitle className="text-lg font-semibold">Today&apos;s Schedule</CardTitle>
+            <CardTitle className="text-lg font-semibold">Today&apos;s clinic flow</CardTitle>
             <Button variant="ghost" size="sm" asChild>
               <Link to="/clinic/appointments" className="text-primary">
-                View All <ArrowRight className="h-4 w-4 ml-1" />
+                Open board <ArrowRight className="h-4 w-4 ml-1" />
               </Link>
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
             {loading || clinicLoading ? (
               <p className="text-sm text-muted-foreground">Loading schedule…</p>
-            ) : todayBookings.length === 0 ? (
+            ) : flowActive.length === 0 && completedVisits.length === 0 && todayBookings.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border p-6 text-center">
-                <p className="text-sm text-muted-foreground">No appointments scheduled for today at this branch.</p>
+                <p className="text-sm text-muted-foreground">No walk-ins or visits on the board yet.</p>
                 <Button variant="link" asChild className="mt-1">
-                  <Link to="/clinic/appointments">Open appointments</Link>
+                  <Link to="/clinic/appointments">Add a walk-in</Link>
                 </Button>
               </div>
             ) : (
-              todayBookings.slice(0, 5).map((apt) => (
-                <div
-                  key={apt.uuid}
-                  className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium text-sm truncate">{apt.petName}</p>
-                    <p className="text-xs text-muted-foreground truncate">{apt.ownerName}</p>
+              <>
+                {[...withDoctor, ...atCheckout, ...flowActive.filter((v) => v.status === 'CHECKED_IN' || v.status === 'WAITLIST')]
+                  .slice(0, 6)
+                  .map((v) => (
+                    <Link
+                      key={v.uuid}
+                      to="/clinic/appointments"
+                      className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {v.petName}
+                          {v.ownerName ? ` · ${v.ownerName}` : ''}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {v.doctorName ? `Dr. ${v.doctorName.replace(/^Dr\.?\s*/i, '')} · ` : ''}
+                          {v.reasonForVisit || v.chart?.assessment || 'Visit'}
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="text-[10px] shrink-0">
+                        {v.status === 'IN_PROGRESS'
+                          ? 'With doctor'
+                          : v.status === 'CHECKING_OUT'
+                            ? 'Checkout'
+                            : v.status.replace('_', ' ')}
+                      </Badge>
+                    </Link>
+                  ))}
+                {todayBookings.slice(0, 3).map((apt) => (
+                  <div
+                    key={apt.uuid}
+                    className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-xl bg-muted/30"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{apt.petName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{apt.ownerName} · scheduled</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-medium">{format(parseISO(apt.slotStart), 'h:mm a')}</p>
+                      <Badge variant="secondary" className="text-[10px]">{apt.status}</Badge>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-medium">{format(parseISO(apt.slotStart), 'h:mm a')}</p>
-                    <Badge variant="secondary" className="text-[10px]">{apt.status}</Badge>
-                  </div>
-                </div>
-              ))
+                ))}
+              </>
             )}
           </CardContent>
         </Card>

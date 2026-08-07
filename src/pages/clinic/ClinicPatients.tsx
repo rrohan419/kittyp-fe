@@ -26,15 +26,21 @@ import {
   User,
   Building2,
   MapPin,
+  EyeOff,
 } from 'lucide-react';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { PetPhoto } from '@/components/clinic/PetPhoto';
 import {
   ClinicOwnerModel,
   ClinicPetListModel,
+  PlatformUserSearchModel,
   addClinicPatient,
+  ensureClinicOwnerFromUser,
   fetchClinicOwners,
   fetchClinicPets,
+  hideClinicOwner,
+  hideClinicPet,
+  searchPlatformUsers,
 } from '@/services/clinicService';
 import { toast } from 'sonner';
 import { digitsOnlyPhone, validateEmail, validatePhone } from '@/utils/validation';
@@ -42,6 +48,10 @@ import { cn } from '@/lib/utils';
 
 type OwnerRow = ClinicOwnerModel & { clinicUuid?: string; clinicName?: string };
 type PetRow = ClinicPetListModel & { clinicUuid?: string; clinicName?: string };
+
+type HideTarget =
+  | { kind: 'owner'; clinicUuid: string; uuid: string; name: string }
+  | { kind: 'pet'; clinicUuid: string; uuid: string; name: string };
 
 const emptyForm = {
   ownerFirstName: '',
@@ -65,10 +75,14 @@ export default function ClinicPatients() {
   const [searchAllBranches, setSearchAllBranches] = useState(false);
   const [owners, setOwners] = useState<OwnerRow[]>([]);
   const [pets, setPets] = useState<PetRow[]>([]);
+  const [platformUsers, setPlatformUsers] = useState<PlatformUserSearchModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [hideTarget, setHideTarget] = useState<HideTarget | null>(null);
+  const [hiding, setHiding] = useState(false);
+  const [selectingUserUuid, setSelectingUserUuid] = useState<string | null>(null);
 
   const set = (key: keyof typeof emptyForm, value: string) =>
     setForm((s) => ({ ...s, [key]: value }));
@@ -84,37 +98,56 @@ export default function ClinicPatients() {
     if (!clinicUuid && !searchAllBranches) {
       setOwners([]);
       setPets([]);
+      setPlatformUsers([]);
       return;
     }
     if (searchAllBranches) {
       const results = await Promise.all(
         clinics.map(async (c) => {
-          const [o, p] = await Promise.all([
+          const [o, p, users] = await Promise.all([
             fetchClinicOwners(c.uuid, search || undefined),
             fetchClinicPets(c.uuid, search || undefined),
+            search.trim().length() >= 3
+              ? searchPlatformUsers(c.uuid, search.trim())
+              : Promise.resolve([]),
           ]);
           return {
             owners: o.map((row) => ({ ...row, clinicUuid: c.uuid, clinicName: c.name })),
             pets: p.map((row) => ({ ...row, clinicUuid: c.uuid, clinicName: c.name })),
+            users,
           };
         })
       );
       setOwners(results.flatMap((r) => r.owners));
       setPets(results.flatMap((r) => r.pets));
+      // Dedupe platform users by userUuid across branches
+      const seen = new Set<string>();
+      const merged: PlatformUserSearchModel[] = [];
+      for (const u of results.flatMap((r) => r.users)) {
+        if (seen.has(u.userUuid)) continue;
+        seen.add(u.userUuid);
+        merged.push(u);
+      }
+      setPlatformUsers(merged);
       return;
     }
-    const [o, p] = await Promise.all([
+    const [o, p, users] = await Promise.all([
       fetchClinicOwners(clinicUuid!, search || undefined),
       fetchClinicPets(clinicUuid!, search || undefined),
+      search.trim().length() >= 3
+        ? searchPlatformUsers(clinicUuid!, search.trim())
+        : Promise.resolve([]),
     ]);
     setOwners(o.map((row) => ({ ...row, clinicUuid: clinicUuid!, clinicName: clinic?.name })));
     setPets(p.map((row) => ({ ...row, clinicUuid: clinicUuid!, clinicName: clinic?.name })));
+    setPlatformUsers(users);
   };
 
   useEffect(() => {
     if (!clinicUuid && !searchAllBranches) {
       setOwners([]);
       setPets([]);
+      setPlatformUsers([]);
       setLoading(false);
       return;
     }
@@ -122,40 +155,58 @@ export default function ClinicPatients() {
     // Clear previous branch data immediately on switch
     setOwners([]);
     setPets([]);
+    setPlatformUsers([]);
     const handle = window.setTimeout(async () => {
       setLoading(true);
       try {
         if (searchAllBranches) {
           const results = await Promise.all(
             clinics.map(async (c) => {
-              const [o, p] = await Promise.all([
+              const [o, p, users] = await Promise.all([
                 fetchClinicOwners(c.uuid, search || undefined),
                 fetchClinicPets(c.uuid, search || undefined),
+                  search.trim().length() >= 3
+                    ? searchPlatformUsers(c.uuid, search.trim())
+                    : Promise.resolve([]),
               ]);
               return {
                 owners: o.map((row) => ({ ...row, clinicUuid: c.uuid, clinicName: c.name })),
                 pets: p.map((row) => ({ ...row, clinicUuid: c.uuid, clinicName: c.name })),
+                users,
               };
             })
           );
           if (!cancelled) {
             setOwners(results.flatMap((r) => r.owners));
             setPets(results.flatMap((r) => r.pets));
+            const seen = new Set<string>();
+            const merged: PlatformUserSearchModel[] = [];
+            for (const u of results.flatMap((r) => r.users)) {
+              if (seen.has(u.userUuid)) continue;
+              seen.add(u.userUuid);
+              merged.push(u);
+            }
+            setPlatformUsers(merged);
           }
         } else if (clinicUuid) {
-          const [o, p] = await Promise.all([
+          const [o, p, users] = await Promise.all([
             fetchClinicOwners(clinicUuid, search || undefined),
             fetchClinicPets(clinicUuid, search || undefined),
+            search.trim().length() >= 3
+              ? searchPlatformUsers(clinicUuid, search.trim())
+              : Promise.resolve([]),
           ]);
           if (!cancelled) {
             setOwners(o.map((row) => ({ ...row, clinicUuid, clinicName: clinic?.name })));
             setPets(p.map((row) => ({ ...row, clinicUuid, clinicName: clinic?.name })));
+            setPlatformUsers(users);
           }
         }
       } catch {
         if (!cancelled) {
           setOwners([]);
           setPets([]);
+          setPlatformUsers([]);
           toast.error('Failed to load clients & pets');
         }
       } finally {
@@ -167,6 +218,31 @@ export default function ClinicPatients() {
       window.clearTimeout(handle);
     };
   }, [clinicUuid, search, searchAllBranches, clinics, clinic?.name]);
+
+  const selectPlatformUser = async (user: PlatformUserSearchModel) => {
+    const targetClinic = clinicUuid;
+    if (!targetClinic) {
+      toast.error('Select a clinic first');
+      return;
+    }
+    if (user.alreadyClient && user.clinicOwnerUuid) {
+      navigate(`/clinic/owners/${user.clinicOwnerUuid}`);
+      return;
+    }
+    setSelectingUserUuid(user.userUuid);
+    try {
+      const owner = await ensureClinicOwnerFromUser(targetClinic, user.userUuid);
+      toast.success(`${owner.name} ready as clinic client`);
+      navigate(`/clinic/owners/${owner.ownerUuid}`);
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Could not select user';
+      toast.error(message);
+    } finally {
+      setSelectingUserUuid(null);
+    }
+  };
 
   const onTabChange = (value: string) => {
     setTab(value);
@@ -182,6 +258,33 @@ export default function ClinicPatients() {
     if (value.trim()) next.set('q', value.trim());
     else next.delete('q');
     setSearchParams(next, { replace: true });
+  };
+
+  const confirmHide = async () => {
+    if (!hideTarget) return;
+    setHiding(true);
+    try {
+      if (hideTarget.kind === 'owner') {
+        await hideClinicOwner(hideTarget.clinicUuid, hideTarget.uuid);
+        toast.success(`${hideTarget.name} hidden from clinic lists`, {
+          description: 'Visits and medical records are kept.',
+        });
+      } else {
+        await hideClinicPet(hideTarget.clinicUuid, hideTarget.uuid);
+        toast.success(`${hideTarget.name} hidden from clinic lists`, {
+          description: 'Visits and medical records are kept.',
+        });
+      }
+      setHideTarget(null);
+      await reload();
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Could not hide record';
+      toast.error(message);
+    } finally {
+      setHiding(false);
+    }
   };
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -260,7 +363,7 @@ export default function ClinicPatients() {
             className="pl-9 h-11 bg-muted/40 border-0 shadow-inner"
             placeholder={
               tab === 'clients'
-                ? 'Search by name, phone, or email…'
+                ? 'Search KittyP users or clients by name, email, phone, or owner ID…'
                 : 'Search by pet name, breed, microchip, or global ID…'
             }
             value={search}
@@ -327,6 +430,70 @@ export default function ClinicPatients() {
         </TabsList>
 
         <TabsContent value="clients" className="mt-4 space-y-3">
+          {search.trim() && (
+            <div className="space-y-2">
+              <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+                <p className="text-sm font-medium text-foreground">KittyP accounts</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {search.trim().length() < 3
+                    ? 'Type at least 3 characters to search pet-parent accounts.'
+                    : 'Active pet-parent users — select to open or add as a clinic client.'}
+                </p>
+              </div>
+              {search.trim().length() < 3 ? null : loading ? null : platformUsers.length ? (
+                platformUsers.map((u) => (
+                  <Card
+                    key={u.userUuid}
+                    className="border border-primary/20 shadow-sm hover:shadow-md hover:border-primary/40 transition-all bg-card"
+                  >
+                    <CardContent className="p-4 sm:p-5">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="w-12 h-12 rounded-full bg-sky-600 text-white flex items-center justify-center shrink-0 font-semibold">
+                            {(u.name || '?').slice(0, 1).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-semibold truncate text-base">{u.name}</p>
+                              <Badge className="bg-sky-600/15 text-sky-800 dark:text-sky-200 hover:bg-sky-600/15 border-0 text-[10px]">
+                                KittyP user
+                              </Badge>
+                              {u.alreadyClient && (
+                                <Badge variant="secondary" className="text-[10px]">
+                                  Already a client
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-0.5 truncate">{u.email || '—'}</p>
+                            <p className="text-[11px] font-mono text-muted-foreground mt-1 break-all">
+                              Owner ID: {u.userUuid}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          disabled={!!selectingUserUuid}
+                          onClick={() => void selectPlatformUser(u)}
+                        >
+                          {selectingUserUuid === u.userUuid ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : null}
+                          {u.alreadyClient ? 'Open client' : 'Select'}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="rounded-xl border border-dashed border-border py-8 text-center bg-muted/20">
+                  <p className="text-sm text-muted-foreground">
+                    No KittyP accounts match “{search.trim()}”.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="rounded-xl border border-primary/15 bg-accent px-4 py-3">
             <p className="text-sm font-medium text-accent-foreground">Clients (owners)</p>
           </div>
@@ -394,9 +561,27 @@ export default function ClinicPatients() {
                             pet{o.petCount === 1 ? '' : 's'}
                           </p>
                         </div>
-                        <Button size="sm" asChild>
-                          <Link to={`/clinic/owners/${o.ownerUuid}`}>Client profile</Link>
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" asChild>
+                            <Link to={`/clinic/owners/${o.ownerUuid}`}>Client profile</Link>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-muted-foreground"
+                            onClick={() =>
+                              setHideTarget({
+                                kind: 'owner',
+                                clinicUuid: o.clinicUuid || clinicUuid!,
+                                uuid: o.ownerUuid,
+                                name: o.name || 'Client',
+                              })
+                            }
+                          >
+                            <EyeOff className="h-3.5 w-3.5 mr-1.5" />
+                            Hide
+                          </Button>
+                        </div>
                       </div>
                     </div>
                     {o.lastVisit && (
@@ -502,9 +687,27 @@ export default function ClinicPatients() {
                         </Link>
                       </span>
                     </div>
-                    <Button size="sm" asChild className="w-full">
-                      <Link to={`/clinic/pets/${p.petUuid}`}>Open medical profile</Link>
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button size="sm" asChild className="w-full">
+                        <Link to={`/clinic/pets/${p.petUuid}`}>Open medical profile</Link>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-muted-foreground"
+                        onClick={() =>
+                          setHideTarget({
+                            kind: 'pet',
+                            clinicUuid: p.clinicUuid || clinicUuid!,
+                            uuid: p.petUuid,
+                            name: p.name || 'Pet',
+                          })
+                        }
+                      >
+                        <EyeOff className="h-3.5 w-3.5 mr-1.5" />
+                        Hide from lists
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -620,6 +823,31 @@ export default function ClinicPatients() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!hideTarget} onOpenChange={(open) => !open && !hiding && setHideTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {hideTarget?.kind === 'owner'
+                ? `Hide ${hideTarget.name} from clinic lists?`
+                : `Hide ${hideTarget?.name} from clinic lists?`}
+            </DialogTitle>
+            <DialogDescription>
+              They will no longer appear in Clients & Pets for this clinic. Visits, reports, and
+              medical history stay in the database and remain available from history.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setHideTarget(null)} disabled={hiding}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => void confirmHide()} disabled={hiding}>
+              {hiding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Yes, hide
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
