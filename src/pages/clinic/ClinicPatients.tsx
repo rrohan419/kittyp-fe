@@ -107,7 +107,7 @@ export default function ClinicPatients() {
           const [o, p, users] = await Promise.all([
             fetchClinicOwners(c.uuid, search || undefined),
             fetchClinicPets(c.uuid, search || undefined),
-            search.trim().length() >= 3
+            search.trim().length >= 3
               ? searchPlatformUsers(c.uuid, search.trim())
               : Promise.resolve([]),
           ]);
@@ -134,7 +134,7 @@ export default function ClinicPatients() {
     const [o, p, users] = await Promise.all([
       fetchClinicOwners(clinicUuid!, search || undefined),
       fetchClinicPets(clinicUuid!, search || undefined),
-      search.trim().length() >= 3
+      search.trim().length >= 3
         ? searchPlatformUsers(clinicUuid!, search.trim())
         : Promise.resolve([]),
     ]);
@@ -165,7 +165,7 @@ export default function ClinicPatients() {
               const [o, p, users] = await Promise.all([
                 fetchClinicOwners(c.uuid, search || undefined),
                 fetchClinicPets(c.uuid, search || undefined),
-                  search.trim().length() >= 3
+                  search.trim().length >= 3
                     ? searchPlatformUsers(c.uuid, search.trim())
                     : Promise.resolve([]),
               ]);
@@ -192,7 +192,7 @@ export default function ClinicPatients() {
           const [o, p, users] = await Promise.all([
             fetchClinicOwners(clinicUuid, search || undefined),
             fetchClinicPets(clinicUuid, search || undefined),
-            search.trim().length() >= 3
+            search.trim().length >= 3
               ? searchPlatformUsers(clinicUuid, search.trim())
               : Promise.resolve([]),
           ]);
@@ -435,12 +435,12 @@ export default function ClinicPatients() {
               <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
                 <p className="text-sm font-medium text-foreground">KittyP accounts</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {search.trim().length() < 3
+                  {search.trim().length < 3
                     ? 'Type at least 3 characters to search pet-parent accounts.'
                     : 'Active pet-parent users — select to open or add as a clinic client.'}
                 </p>
               </div>
-              {search.trim().length() < 3 ? null : loading ? null : platformUsers.length ? (
+              {search.trim().length < 3 ? null : loading ? null : platformUsers.length ? (
                 platformUsers.map((u) => (
                   <Card
                     key={u.userUuid}

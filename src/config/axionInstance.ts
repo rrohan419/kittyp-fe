@@ -86,8 +86,16 @@ axiosInstance.interceptors.response.use(
     // Only force re-auth on 401. 403 is a permission denial, not an expired session.
     // Never hard-redirect during public auth/signup flows — a 401 there is usually a
     // business error (e.g. OTP required), not an expired session.
+    // Only clear the session when a token was actually sent — a bare 401 without a
+    // token is not "logged out", and clearing would wipe any race-set credentials.
     if (error.response?.status === 401) {
-      if (typeof window !== 'undefined' && !isPublicAuthPath(window.location.pathname)) {
+      const hadToken = Boolean(error.config?.headers?.Authorization)
+        || Boolean(localStorage.getItem('access_token'));
+      if (
+        hadToken &&
+        typeof window !== 'undefined' &&
+        !isPublicAuthPath(window.location.pathname)
+      ) {
         clearAuthData();
         const redirect = encodeURIComponent(
           window.location.pathname + window.location.search

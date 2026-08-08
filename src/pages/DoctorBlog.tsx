@@ -96,6 +96,11 @@ export default function DoctorBlog() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="font-semibold truncate">{article.title}</h2>
                     <Badge variant="secondary">{article.status || 'DRAFT'}</Badge>
+                    {article.status === 'SCHEDULED' && article.scheduledPublishAt ? (
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(article.scheduledPublishAt).toLocaleString()}
+                      </span>
+                    ) : null}
                   </div>
                   <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{article.excerpt}</p>
                 </div>

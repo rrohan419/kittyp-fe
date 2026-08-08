@@ -247,9 +247,9 @@ export default function ClinicHome() {
               <p className="text-sm text-muted-foreground">Loading schedule…</p>
             ) : flowActive.length === 0 && completedVisits.length === 0 && todayBookings.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border p-6 text-center">
-                <p className="text-sm text-muted-foreground">No walk-ins or visits on the board yet.</p>
+                <p className="text-sm text-muted-foreground">No visits on the board yet.</p>
                 <Button variant="link" asChild className="mt-1">
-                  <Link to="/clinic/appointments">Add a walk-in</Link>
+                  <Link to="/clinic/appointments">Add appointment</Link>
                 </Button>
               </div>
             ) : (

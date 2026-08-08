@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -13,8 +13,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Stethoscope } from 'lucide-react';
-import { ClinicVisitModel } from '@/services/clinicService';
+import { Loader2, Plus, Stethoscope } from 'lucide-react';
+import { ClinicDoctorModel, ClinicVisitModel, fetchClinicDoctors } from '@/services/clinicService';
+import { WalkInDialog } from '@/components/clinic/WalkInDialog';
+import { useActiveClinic } from '@/hooks/useActiveClinic';
 import {
   completeDoctorVisit,
   fetchMyDoctorVisits,
@@ -22,12 +24,17 @@ import {
   saveDoctorVisitChart,
   startDoctorVisit,
 } from '@/services/visitService';
+import { fetchMyDoctorProfile } from '@/services/doctorVerificationService';
 import { toast } from 'sonner';
 import { parseApiErrorMessage } from '@/utils/validation';
 
 export default function DoctorAppointments() {
+  const { clinicUuid, clinic } = useActiveClinic();
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
+  const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
+  const [myDoctorUuid, setMyDoctorUuid] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [addOpen, setAddOpen] = useState(false);
   const [chartVisit, setChartVisit] = useState<ClinicVisitModel | null>(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
@@ -43,13 +50,28 @@ export default function DoctorAppointments() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setVisits(await fetchMyDoctorVisits());
+      const [v, docs] = await Promise.all([
+        fetchMyDoctorVisits({ clinicUuid: clinicUuid || undefined }),
+        clinicUuid ? fetchClinicDoctors(clinicUuid).catch(() => [] as ClinicDoctorModel[]) : Promise.resolve([]),
+      ]);
+      setVisits(v);
+      setDoctors(docs);
     } catch {
       setVisits([]);
       toast.error('Failed to load your visit queue');
     } finally {
       setLoading(false);
     }
+  }, [clinicUuid]);
+
+  useEffect(() => {
+    void fetchMyDoctorProfile()
+      .then((p) => {
+        if (p?.uuid) setMyDoctorUuid(p.uuid);
+      })
+      .catch(() => {
+        /* keep last known uuid */
+      });
   }, []);
 
   useEffect(() => {
@@ -166,11 +188,22 @@ export default function DoctorAppointments() {
 
   return (
     <div className="p-4 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">My visits</h1>
-        <p className="text-sm text-muted-foreground">
-          Patients assigned or checked in for you. Finish treatment to send them to clinic Checkout.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Visits</h1>
+          <p className="text-sm text-muted-foreground">
+            {clinic?.personal
+              ? 'Personal practice queue — not shared with other clinics.'
+              : clinic?.name
+                ? `Queue for ${clinic.name}.`
+                : 'Patients assigned or checked in for you.'}{' '}
+            Finish treatment to send them to Checkout.
+          </p>
+        </div>
+        <Button onClick={() => setAddOpen(true)} disabled={!clinicUuid || !myDoctorUuid}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add
+        </Button>
       </div>
 
       {loading ? (
@@ -184,7 +217,7 @@ export default function DoctorAppointments() {
             {active.length === 0 ? (
               <Card>
                 <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                  No visits assigned to you today. Ask the front desk to assign and check in a walk-in.
+                  No visits for this practice today. Use + to add a walk-in or schedule.
                 </CardContent>
               </Card>
             ) : (
@@ -246,6 +279,17 @@ export default function DoctorAppointments() {
         </>
       )}
 
+      {clinicUuid && (
+        <WalkInDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          clinicUuid={clinicUuid}
+          doctors={doctors}
+          lockedDoctorUuid={myDoctorUuid || undefined}
+          onCreated={load}
+        />
+      )}
+
       <Dialog open={!!chartVisit} onOpenChange={(o) => !o && setChartVisit(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -293,11 +337,12 @@ export default function DoctorAppointments() {
               />
             </div>
             <div>
-              <Label>Plan</Label>
+              <Label>Plan / prescription notes</Label>
               <Textarea
                 value={form.plan}
                 onChange={(e) => setForm((s) => ({ ...s, plan: e.target.value }))}
                 rows={2}
+                placeholder="Treatment plan and prescription notes"
               />
             </div>
             <div>

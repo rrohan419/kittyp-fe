@@ -29,6 +29,8 @@ export default function ParentAppointmentsPage() {
   const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [tab, setTab] = useState('current');
+
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
@@ -85,6 +87,16 @@ export default function ParentAppointmentsPage() {
     [bookings]
   );
 
+  useEffect(() => {
+    if (loading) return;
+    // Prefer History when there is past activity but nothing current.
+    if (current.length === 0 && (history.length > 0 || pastBookings.length > 0)) {
+      setTab('history');
+    } else if (current.length > 0) {
+      setTab('current');
+    }
+  }, [loading, current.length, history.length, pastBookings.length]);
+
   if (loading) {
     return (
       <div className="p-8 flex justify-center text-muted-foreground">
@@ -106,7 +118,7 @@ export default function ParentAppointmentsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="current">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="current">Current ({current.length})</TabsTrigger>
           <TabsTrigger value="upcoming">Upcoming ({upcomingBookings.length})</TabsTrigger>

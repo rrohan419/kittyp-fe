@@ -21,7 +21,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { setActiveRole, validateAndSetUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
-import { AppRole, getPortalPath } from '@/utils/roles';
+import { AppRole, getPortalPath, ROLES } from '@/utils/roles';
 import { RoleSelectModal } from '@/components/auth/RoleSelectModal';
 import { isEcommerceEnabled } from '@/config/features';
 import { validateEmail } from '@/utils/validation';
@@ -54,32 +54,41 @@ const Login = () => {
   const finishAuth = (roles: string[] | undefined) => {
     const redirect = safeRedirect();
     const appRoles = (roles || []).filter((r): r is AppRole => typeof r === 'string');
-    if (appRoles.length > 1) {
-      const preferred = resolvePreferredRole(appRoles);
-      if (preferred) {
-        dispatch(setActiveRole(preferred));
-        navigate(redirect || getPortalPath(preferred));
+
+    if (appRoles.length === 0) {
+      dispatch(setActiveRole(null));
+      navigate(redirect || '/');
+      return;
+    }
+
+    // Doctors always land on the doctor portal after login (clinic admin is via Switch workspace).
+    const preferred = resolvePreferredRole(appRoles);
+    if (preferred) {
+      dispatch(setActiveRole(preferred));
+      // Honor deep-link redirect only when it matches the chosen portal family.
+      if (
+        redirect &&
+        ((preferred === ROLES.DOCTOR && redirect.startsWith('/doctor')) ||
+          (preferred !== ROLES.DOCTOR && redirect.startsWith('/clinic')) ||
+          (!redirect.startsWith('/doctor') && !redirect.startsWith('/clinic')))
+      ) {
+        navigate(redirect);
         return;
       }
+      navigate(getPortalPath(preferred));
+      return;
+    }
+
+    if (appRoles.length > 1) {
+      dispatch(setActiveRole(null));
       setPendingRoles(appRoles);
       setRoleModalOpen(true);
       return;
     }
+
     const role = appRoles[0];
-    if (role) {
-      dispatch(setActiveRole(role));
-    } else {
-      dispatch(setActiveRole(null));
-    }
-    if (redirect) {
-      navigate(redirect);
-      return;
-    }
-    if (role) {
-      navigate(getPortalPath(role));
-    } else {
-      navigate('/');
-    }
+    dispatch(setActiveRole(role));
+    navigate(redirect || getPortalPath(role));
   };
 
   const handleLogin = async (e: React.FormEvent) => {

@@ -127,8 +127,9 @@ export const DOCTOR_STATUS_STEPS: DoctorStatus[] = [
   'PUBLISHED',
 ];
 
-export function statusLabel(status: DoctorStatus): string {
-  return status
+export function statusLabel(status: DoctorStatus | string | null | undefined): string {
+  if (!status) return 'Unknown';
+  return String(status)
     .toLowerCase()
     .split('_')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))

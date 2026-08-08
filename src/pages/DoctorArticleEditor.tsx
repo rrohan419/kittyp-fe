@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, Send } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Save, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,24 @@ function slugify(title: string): string {
     .slice(0, 80);
 }
 
+/** Convert API LocalDateTime / ISO string to datetime-local value (local TZ). */
+function toDatetimeLocalValue(iso?: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** datetime-local → ISO-like local datetime string for backend LocalDateTime. */
+function fromDatetimeLocalValue(value: string): string | undefined {
+  if (!value.trim()) return undefined;
+  // Send as "yyyy-MM-dd'T'HH:mm:ss" without Z so Jackson binds to LocalDateTime.
+  return value.length === 16 ? `${value}:00` : value;
+}
+
+type ArticleStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED';
+
 export default function DoctorArticleEditor() {
   const { slug: editSlug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -39,6 +57,7 @@ export default function DoctorArticleEditor() {
   const [category, setCategory] = useState('Veterinary Care');
   const [tags, setTags] = useState('pet health');
   const [readTime, setReadTime] = useState(5);
+  const [scheduledPublishAt, setScheduledPublishAt] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -58,6 +77,7 @@ export default function DoctorArticleEditor() {
           setCategory(article.category || 'Veterinary Care');
           setTags((article.tags || []).join(', '));
           setReadTime(article.readTime || 5);
+          setScheduledPublishAt(toDatetimeLocalValue(article.scheduledPublishAt));
         }
       } catch {
         toast.error('Could not load article editor');
@@ -68,9 +88,13 @@ export default function DoctorArticleEditor() {
     void init();
   }, [editSlug]);
 
-  const save = async (status: 'DRAFT' | 'PUBLISHED') => {
+  const save = async (status: ArticleStatus) => {
     if (!title.trim() || !excerpt.trim() || content.replace(/<[^>]+>/g, '').trim().length < 20) {
       toast.error('Title, excerpt, and content are required');
+      return;
+    }
+    if (status === 'SCHEDULED' && !scheduledPublishAt.trim()) {
+      toast.error('Pick a publish date and time to schedule');
       return;
     }
     setSaving(true);
@@ -80,6 +104,7 @@ export default function DoctorArticleEditor() {
         .map((t) => t.trim())
         .filter(Boolean);
       const finalSlug = (slug || slugify(title)).trim();
+      const scheduleIso = status === 'SCHEDULED' ? fromDatetimeLocalValue(scheduledPublishAt) : undefined;
       const payload = {
         title: title.trim(),
         slug: finalSlug,
@@ -91,6 +116,7 @@ export default function DoctorArticleEditor() {
         readTime,
         authorId: authorId ?? undefined,
         status,
+        scheduledPublishAt: scheduleIso,
       };
       if (isEdit && editSlug) {
         await editArticle(editSlug, {
@@ -102,11 +128,24 @@ export default function DoctorArticleEditor() {
           tags: payload.tags,
           readTime: payload.readTime,
           status: payload.status,
+          scheduledPublishAt: scheduleIso ?? null,
         });
-        toast.success(status === 'PUBLISHED' ? 'Article published' : 'Draft saved');
+        toast.success(
+          status === 'PUBLISHED'
+            ? 'Article published'
+            : status === 'SCHEDULED'
+              ? 'Article scheduled'
+              : 'Draft saved'
+        );
       } else {
         await createArticle(payload);
-        toast.success(status === 'PUBLISHED' ? 'Article published' : 'Draft created');
+        toast.success(
+          status === 'PUBLISHED'
+            ? 'Article published'
+            : status === 'SCHEDULED'
+              ? 'Article scheduled'
+              : 'Draft created'
+        );
       }
       navigate('/doctor/blog');
     } catch (err: unknown) {
@@ -125,21 +164,29 @@ export default function DoctorArticleEditor() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <Button variant="ghost" size="sm" asChild>
           <Link to="/doctor/blog">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Link>
         </Button>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" disabled={saving} onClick={() => void save('DRAFT')}>
             <Save className="h-4 w-4 mr-1.5" />
             Save draft
           </Button>
+          <Button
+            variant="outline"
+            disabled={saving}
+            onClick={() => void save('SCHEDULED')}
+          >
+            <CalendarClock className="h-4 w-4 mr-1.5" />
+            Schedule
+          </Button>
           <Button disabled={saving} onClick={() => void save('PUBLISHED')}>
             <Send className="h-4 w-4 mr-1.5" />
-            Publish
+            Publish now
           </Button>
         </div>
       </div>
@@ -147,7 +194,9 @@ export default function DoctorArticleEditor() {
       <Card className="border-0 shadow-sm">
         <CardHeader>
           <CardTitle>{isEdit ? 'Edit article' : 'New article'}</CardTitle>
-          <CardDescription>Independent doctor blog — published under your author profile.</CardDescription>
+          <CardDescription>
+            Independent doctor blog — publish now or schedule for a specific date.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -192,6 +241,18 @@ export default function DoctorArticleEditor() {
           <div className="space-y-2">
             <Label htmlFor="coverImage">Cover image URL</Label>
             <Input id="coverImage" value={coverImage} onChange={(e) => setCoverImage(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="scheduledPublishAt">Schedule publish at</Label>
+            <Input
+              id="scheduledPublishAt"
+              type="datetime-local"
+              value={scheduledPublishAt}
+              onChange={(e) => setScheduledPublishAt(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Set a date/time, then click Schedule. The article stays private until then.
+            </p>
           </div>
           <div className="space-y-2">
             <Label>Content</Label>
