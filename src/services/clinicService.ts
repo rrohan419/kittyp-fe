@@ -25,6 +25,9 @@ export interface ClinicDoctorModel {
   isActive?: boolean;
   status?: string;
   photoUrl?: string;
+  rating?: number | null;
+  reviewsCount?: number | null;
+  ratingLabel?: string | null;
 }
 
 export interface ClinicDoctorPatientModel {
@@ -71,6 +74,9 @@ export interface ClinicDoctorDetailModel {
   submittedAt?: string;
   reviewedAt?: string;
   reviewNotes?: string;
+  rating?: number | null;
+  reviewsCount?: number | null;
+  ratingLabel?: string | null;
   patients: ClinicDoctorPatientModel[];
 }
 
@@ -252,6 +258,9 @@ export interface PatientDetailModel {
 export interface ClinicStatsModel {
   diagnosedPetCount: number;
   patientCount: number;
+  clinicRating?: number | null;
+  clinicReviewsCount?: number | null;
+  clinicRatingLabel?: string | null;
 }
 
 export interface ClinicCreateRequest {
@@ -609,6 +618,7 @@ export interface ClinicVisitModel {
   chart?: VisitChartModel;
   invoiceUuid?: string;
   healthEventUuid?: string;
+  parentRating?: number | null;
 }
 
 export async function fetchClinicVisits(

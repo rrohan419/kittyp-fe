@@ -79,7 +79,6 @@ import ParentHome from './pages/parent/ParentHome';
 import PetDashboardPage from './pages/parent/PetDashboardPage';
 import { RoleGuard } from './components/auth/RoleGuard';
 import { ROLES } from './utils/roles';
-import ClinicRetention from './pages/clinic/ClinicRetention';
 import DoctorBlog from './pages/DoctorBlog';
 import DoctorArticleEditor from './pages/DoctorArticleEditor';
 import DoctorInvoices from './pages/DoctorInvoices';
@@ -387,10 +386,6 @@ export const router = createBrowserRouter(
             {
               path: "clinics/new",
               element: <PageTransition><ClinicCreateClinic /></PageTransition>,
-            },
-            {
-              path: "retention",
-              element: <PageTransition><ClinicRetention /></PageTransition>,
             },
             {
               path: "inventory",

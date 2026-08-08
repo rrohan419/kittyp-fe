@@ -74,6 +74,26 @@ export async function fetchMyParentVisits(): Promise<ClinicVisitModel[]> {
   return res.data.data ?? [];
 }
 
+export type VisitRatingResult = {
+  visitUuid: string;
+  doctorUuid: string;
+  stars: number;
+  ratingLabel: string;
+  doctorRating?: number | null;
+  doctorReviewsCount?: number | null;
+};
+
+export async function rateParentVisit(
+  visitUuid: string,
+  payload: { stars: number; comment?: string }
+): Promise<VisitRatingResult> {
+  const res = await axiosInstance.post<ApiSuccessResponse<VisitRatingResult>>(
+    `/user/visits/${visitUuid}/rating`,
+    payload
+  );
+  return res.data.data;
+}
+
 export async function fetchMyParentBookings(): Promise<ClinicBookingModel[]> {
   const res = await axiosInstance.get<ApiSuccessResponse<ClinicBookingModel[]>>('/user/bookings/mine');
   return res.data.data ?? [];

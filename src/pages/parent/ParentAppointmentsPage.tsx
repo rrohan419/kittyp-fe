@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format, parseISO, isValid, isFuture, isPast } from 'date-fns';
-import { Calendar, Loader2, PawPrint, Stethoscope } from 'lucide-react';
+import { Calendar, Loader2, PawPrint, Star, Stethoscope } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ratingAdjective } from '@/components/schedule/weekCalendarUtils';
 import { ClinicBookingModel, ClinicVisitModel, VisitStatus } from '@/services/clinicService';
-import { fetchMyParentBookings, fetchMyParentVisits } from '@/services/visitService';
+import { fetchMyParentBookings, fetchMyParentVisits, rateParentVisit } from '@/services/visitService';
 import { toast } from 'sonner';
 
 const ACTIVE: VisitStatus[] = ['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS', 'CHECKING_OUT'];
@@ -97,6 +98,10 @@ export default function ParentAppointmentsPage() {
     }
   }, [loading, current.length, history.length, pastBookings.length]);
 
+  const onRated = useCallback((visitUuid: string, stars: number) => {
+    setVisits((prev) => prev.map((v) => (v.uuid === visitUuid ? { ...v, parentRating: stars } : v)));
+  }, []);
+
   if (loading) {
     return (
       <div className="p-8 flex justify-center text-muted-foreground">
@@ -133,7 +138,7 @@ export default function ParentAppointmentsPage() {
               </CardContent>
             </Card>
           ) : (
-            current.map((v) => <VisitCard key={v.uuid} visit={v} />)
+            current.map((v) => <VisitCard key={v.uuid} visit={v} onRated={onRated} />)
           )}
         </TabsContent>
 
@@ -160,7 +165,7 @@ export default function ParentAppointmentsPage() {
           ) : (
             <>
               {history.map((v) => (
-                <VisitCard key={v.uuid} visit={v} />
+                <VisitCard key={v.uuid} visit={v} onRated={onRated} />
               ))}
               {pastBookings.map((b) => (
                 <BookingCard key={b.uuid} booking={b} />
@@ -173,8 +178,45 @@ export default function ParentAppointmentsPage() {
   );
 }
 
-function VisitCard({ visit: v }: { visit: ClinicVisitModel }) {
+function VisitCard({
+  visit: v,
+  onRated,
+}: {
+  visit: ClinicVisitModel;
+  onRated: (visitUuid: string, stars: number) => void;
+}) {
   const when = visitWhen(v);
+  const canRate = v.status === 'COMPLETED' && !!v.doctorUuid;
+  const alreadyRated = v.parentRating != null && v.parentRating > 0;
+  const [hover, setHover] = useState(0);
+  const [picked, setPicked] = useState(v.parentRating ?? 0);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setPicked(v.parentRating ?? 0);
+  }, [v.parentRating, v.uuid]);
+
+  const submit = async (stars: number) => {
+    if (!canRate || alreadyRated || submitting) return;
+    setPicked(stars);
+    setSubmitting(true);
+    try {
+      const result = await rateParentVisit(v.uuid, { stars });
+      onRated(v.uuid, result.stars);
+      toast.success(result.ratingLabel || 'Thanks for your feedback');
+    } catch (err: unknown) {
+      setPicked(v.parentRating ?? 0);
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Could not submit rating';
+      toast.error(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const displayStars = alreadyRated ? picked : hover || picked;
+
   return (
     <Card className="border-0 shadow-sm">
       <CardContent className="p-4 flex gap-3">
@@ -204,6 +246,41 @@ function VisitCard({ visit: v }: { visit: ClinicVisitModel }) {
           )}
           {v.chart?.plan && (
             <p className="text-xs text-muted-foreground line-clamp-2">Plan: {v.chart.plan}</p>
+          )}
+          {canRate && (
+            <div className="rounded-lg bg-muted/40 px-3 py-2 space-y-1">
+              <p className="text-xs font-medium text-foreground">
+                {alreadyRated ? 'Your rating' : 'Rate this visit'}
+              </p>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    disabled={alreadyRated || submitting}
+                    className="p-0.5 disabled:cursor-default"
+                    onMouseEnter={() => !alreadyRated && setHover(n)}
+                    onMouseLeave={() => setHover(0)}
+                    onClick={() => void submit(n)}
+                    aria-label={`${n} star${n === 1 ? '' : 's'}`}
+                  >
+                    <Star
+                      className={`h-5 w-5 ${
+                        n <= displayStars
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'text-muted-foreground/40'
+                      }`}
+                    />
+                  </button>
+                ))}
+                {displayStars > 0 && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {ratingAdjective(displayStars)}
+                  </span>
+                )}
+                {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-1" />}
+              </div>
+            </div>
           )}
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">

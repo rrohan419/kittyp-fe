@@ -77,6 +77,7 @@ export default function ClinicAppointments() {
     reasonForVisit: '',
   });
   const [editSaving, setEditSaving] = useState(false);
+  const [dragOverStatus, setDragOverStatus] = useState<VisitStatus | null>(null);
 
   const load = useCallback(async () => {
     if (!clinicUuid) {
@@ -203,6 +204,35 @@ export default function ClinicAppointments() {
     }
   };
 
+  const onDropVisit = async (visitUuid: string, status: VisitStatus) => {
+    const visit = visits.find((v) => v.uuid === visitUuid);
+    if (!visit || visit.status === status) return;
+    if (status === 'IN_PROGRESS' && !visit.doctorUuid) {
+      toast.error('Assign a doctor before moving to With doctor');
+      return;
+    }
+    if (status === 'COMPLETED' && !visit.doctorUuid) {
+      toast.error('Assign a doctor before completing the visit');
+      return;
+    }
+    if (visit.status === 'COMPLETED') {
+      if (!visit.completedAt) {
+        toast.error('Cannot reopen this visit');
+        return;
+      }
+      const completedAt = parseISO(visit.completedAt);
+      if (!isValid(completedAt) || Date.now() - completedAt.getTime() > 30 * 60 * 1000) {
+        toast.error('Can only reopen a completed visit within 30 minutes');
+        return;
+      }
+      if (visit.parentRating != null && visit.parentRating > 0) {
+        toast.error('Cannot reopen a visit that already has a parent rating');
+        return;
+      }
+    }
+    await patch(visitUuid, { status });
+  };
+
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -254,7 +284,23 @@ export default function ClinicAppointments() {
           <TabsContent value="flow" className="mt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
               {FLOW_COLUMNS.map((col) => (
-                <Card key={col.status} className="min-h-[280px]">
+                <Card
+                  key={col.status}
+                  className={`min-h-[280px] transition-colors ${
+                    dragOverStatus === col.status ? 'ring-2 ring-primary/60 bg-primary/5' : ''
+                  }`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOverStatus(col.status);
+                  }}
+                  onDragLeave={() => setDragOverStatus((s) => (s === col.status ? null : s))}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOverStatus(null);
+                    const visitUuid = e.dataTransfer.getData('text/visit-uuid');
+                    if (visitUuid) void onDropVisit(visitUuid, col.status);
+                  }}
+                >
                   <CardHeader className="py-3">
                     <CardTitle className="text-sm font-semibold flex items-center justify-between">
                       {col.title}
@@ -264,6 +310,7 @@ export default function ClinicAppointments() {
                           : byStatus(col.status).length}
                       </Badge>
                     </CardTitle>
+                    <p className="text-[10px] text-muted-foreground font-normal">Drop visits here</p>
                   </CardHeader>
                   <CardContent className="space-y-2 pt-0">
                     {col.status === 'WAITLIST' &&
@@ -305,14 +352,16 @@ export default function ClinicAppointments() {
                         doctors={doctors}
                         busy={actingId === v.uuid}
                         onCheckIn={() => {
-                          if (!v.doctorUuid) {
-                            toast.error('Assign a doctor first — they are notified on check-in');
-                            return;
-                          }
                           patch(v.uuid, { status: 'CHECKED_IN' });
                         }}
                         onCheckout={() => patch(v.uuid, { status: 'CHECKING_OUT' })}
-                        onComplete={() => patch(v.uuid, { status: 'COMPLETED' })}
+                        onComplete={() => {
+                          if (!v.doctorUuid) {
+                            toast.error('Assign a doctor before completing the visit');
+                            return;
+                          }
+                          patch(v.uuid, { status: 'COMPLETED' });
+                        }}
                         onCancel={() => patch(v.uuid, { status: 'CANCELLED' })}
                         onAssign={(doctorUuid) =>
                           patch(v.uuid, { doctorUuid: doctorUuid || null })
@@ -342,23 +391,49 @@ export default function ClinicAppointments() {
             {completedToday.length === 0 ? (
               <p className="text-sm text-muted-foreground">No completed visits today.</p>
             ) : (
-              completedToday.map((v) => (
-                <Card key={v.uuid}>
-                  <CardContent className="py-3 flex justify-between gap-2 text-sm">
-                    <div>
-                      <div className="font-medium">
-                        {v.petName} · {v.ownerName || 'Owner'}
-                        {v.ownerPhone ? ` · ${v.ownerPhone}` : ''}
+              completedToday.map((v) => {
+                const completedAt = v.completedAt ? parseISO(v.completedAt) : null;
+                const rated = v.parentRating != null && v.parentRating > 0;
+                const canReopen =
+                  !rated &&
+                  completedAt != null &&
+                  isValid(completedAt) &&
+                  Date.now() - completedAt.getTime() <= 30 * 60 * 1000;
+                return (
+                  <Card
+                    key={v.uuid}
+                    draggable={canReopen}
+                    onDragStart={(e) => {
+                      if (!canReopen) {
+                        e.preventDefault();
+                        return;
+                      }
+                      e.dataTransfer.setData('text/visit-uuid', v.uuid);
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    className={canReopen ? 'cursor-grab active:cursor-grabbing' : undefined}
+                  >
+                    <CardContent className="py-3 flex justify-between gap-2 text-sm">
+                      <div>
+                        <div className="font-medium">
+                          {v.petName} · {v.ownerName || 'Owner'}
+                          {v.ownerPhone ? ` · ${v.ownerPhone}` : ''}
+                        </div>
+                        <div className="text-muted-foreground">
+                          {v.doctorName ? `Dr. ${v.doctorName.replace(/^Dr\.?\s*/i, '')} · ` : ''}
+                          {v.chart?.assessment || v.reasonForVisit || 'Visit'}
+                        </div>
+                        {canReopen && (
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            Drag onto Today&apos;s flow within 30 min to reopen
+                          </p>
+                        )}
                       </div>
-                      <div className="text-muted-foreground">
-                        {v.doctorName ? `Dr. ${v.doctorName.replace(/^Dr\.?\s*/i, '')} · ` : ''}
-                        {v.chart?.assessment || v.reasonForVisit || 'Visit'}
-                      </div>
-                    </div>
-                    <Badge className={statusBadge.COMPLETED}>Completed</Badge>
-                  </CardContent>
-                </Card>
-              ))
+                      <Badge className={statusBadge.COMPLETED}>Completed</Badge>
+                    </CardContent>
+                  </Card>
+                );
+              })
             )}
           </TabsContent>
 
@@ -459,7 +534,9 @@ export default function ClinicAppointments() {
                       {c.title}
                     </SelectItem>
                   ))}
-                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  {(editVisit?.status === 'CHECKING_OUT' || editForm.status === 'COMPLETED') && (
+                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                  )}
                   <SelectItem value="CANCELLED">Cancelled</SelectItem>
                   <SelectItem value="NO_SHOW">No show</SelectItem>
                 </SelectContent>
@@ -496,6 +573,14 @@ export default function ClinicAppointments() {
               disabled={editSaving || !clinicUuid || !editVisit}
               onClick={async () => {
                 if (!clinicUuid || !editVisit) return;
+                if (editForm.status === 'IN_PROGRESS' && !editForm.doctorUuid) {
+                  toast.error('Assign a doctor before moving to With doctor');
+                  return;
+                }
+                if (editForm.status === 'COMPLETED' && !editForm.doctorUuid) {
+                  toast.error('Assign a doctor before completing the visit');
+                  return;
+                }
                 setEditSaving(true);
                 try {
                   await patchClinicVisit(clinicUuid, editVisit.uuid, {
@@ -550,7 +635,14 @@ function VisitCard({
 }) {
   const activeDoctors = doctors.filter((d) => d.isActive !== false && d.doctorUuid);
   return (
-    <div className="rounded-md border p-2.5 space-y-2 bg-background">
+    <div
+      className="rounded-md border p-2.5 space-y-2 bg-background cursor-grab active:cursor-grabbing"
+      draggable={!busy}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/visit-uuid', visit.uuid);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
+    >
       <div className="flex items-start justify-between gap-1">
         <div>
           <div className="font-medium text-sm">{visit.petName}</div>

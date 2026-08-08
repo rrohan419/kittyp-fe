@@ -21,10 +21,8 @@ import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
 import {
   DoctorInviteModel,
-  RetentionAlertModel,
   fetchDoctorInvites,
   fetchMyPendingInvites,
-  fetchRetentionAlerts,
   remindDoctorInvite,
 } from '@/services/clinicService';
 import { fetchMyDoctorVisits } from '@/services/visitService';
@@ -44,7 +42,7 @@ type NotifItem = {
 };
 
 type PortalKind = 'clinic' | 'doctor' | 'other';
-type ClinicFilter = 'all' | 'retention' | 'invites';
+type ClinicFilter = 'all' | 'invites';
 
 const NOTIF_CLICKED_KEY = 'kittyp-notif-clicked';
 
@@ -139,22 +137,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
       }
 
       if (portal === 'clinic' && clinicUuid) {
-        const [alerts, invites] = await Promise.all([
-          fetchRetentionAlerts(clinicUuid).catch(() => [] as RetentionAlertModel[]),
-          fetchDoctorInvites(clinicUuid).catch(() => [] as DoctorInviteModel[]),
-        ]);
-
-        for (const a of alerts
-          .filter((x) => !x.status || x.status.toUpperCase() === 'OPEN')
-          .slice(0, 12)) {
-          next.push({
-            id: `alert-${a.id}`,
-            kind: 'alert',
-            title: `${a.petName} · follow-up`,
-            body: a.message || a.type,
-            href: `/clinic/retention`,
-          });
-        }
+        const invites = await fetchDoctorInvites(clinicUuid).catch(() => [] as DoctorInviteModel[]);
 
         for (const inv of invites.slice(0, 20)) {
           const pending = inv.status === 'PENDING';
@@ -231,20 +214,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
 
   const visible = useMemo(() => {
     let list = items;
-    if (portal === 'clinic' && filter === 'retention') {
-      const alerts = items.filter((i) => i.kind === 'alert');
-      list = alerts.length
-        ? alerts
-        : [
-            {
-              id: 'empty-retention',
-              kind: 'update' as const,
-              title: 'No retention alerts',
-              body: 'Vaccine and follow-up reminders will appear here.',
-              href: '/clinic/retention',
-            },
-          ];
-    } else if (portal === 'clinic' && filter === 'invites') {
+    if (portal === 'clinic' && filter === 'invites') {
       const invites = items.filter((i) => i.kind === 'invite');
       list = invites.length
         ? invites
@@ -434,24 +404,14 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
         </div>
         <div className="p-2 border-t border-border bg-muted/30 flex gap-2 flex-wrap">
           {portal === 'clinic' && (
-            <>
-              <Button
-                variant={filter === 'retention' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="flex-1 text-xs min-w-[40%]"
-                onClick={() => setFilter((f) => (f === 'retention' ? 'all' : 'retention'))}
-              >
-                Retention
-              </Button>
-              <Button
-                variant={filter === 'invites' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="flex-1 text-xs min-w-[40%]"
-                onClick={() => setFilter((f) => (f === 'invites' ? 'all' : 'invites'))}
-              >
-                Invites
-              </Button>
-            </>
+            <Button
+              variant={filter === 'invites' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="flex-1 text-xs min-w-[40%]"
+              onClick={() => setFilter((f) => (f === 'invites' ? 'all' : 'invites'))}
+            >
+              Invites
+            </Button>
           )}
           <Button
             variant={showAll ? 'secondary' : 'ghost'}

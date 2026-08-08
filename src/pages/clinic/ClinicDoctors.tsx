@@ -12,9 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Search, Mail, Loader2, UserPlus, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, Search, Mail, Loader2, UserPlus, Trash2, ChevronRight, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { ratingAdjective } from '@/components/schedule/weekCalendarUtils';
 import {
   ClinicDoctorModel,
   DoctorInviteModel,
@@ -28,6 +29,30 @@ import {
 import { statusLabel } from '@/services/doctorVerificationService';
 import { toast } from 'sonner';
 import { parseApiErrorMessage, validateEmail } from '@/utils/validation';
+
+function DoctorRatingLine({
+  rating,
+  reviewsCount,
+  ratingLabel,
+}: {
+  rating?: number | null;
+  reviewsCount?: number | null;
+  ratingLabel?: string | null;
+}) {
+  const count = reviewsCount ?? 0;
+  if (!rating || count <= 0) {
+    return <p className="text-xs text-muted-foreground">Not rated yet</p>;
+  }
+  const label = ratingLabel || ratingAdjective(rating);
+  return (
+    <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
+      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+      <span className="font-medium text-foreground">{rating.toFixed(1)}</span>
+      <span>· {label}</span>
+      <span>· {count} review{count === 1 ? '' : 's'}</span>
+    </p>
+  );
+}
 
 export default function ClinicDoctors() {
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
@@ -356,6 +381,13 @@ export default function ClinicDoctors() {
                         <p className="text-xs text-muted-foreground truncate">
                           {(d.specialization || 'General').replace(/_/g, ' ')}
                         </p>
+                        <div className="mt-1">
+                          <DoctorRatingLine
+                            rating={d.rating}
+                            reviewsCount={d.reviewsCount}
+                            ratingLabel={d.ratingLabel}
+                          />
+                        </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
                     </div>

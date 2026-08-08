@@ -11,6 +11,7 @@ import {
   Mail,
   PawPrint,
   Phone,
+  Star,
   Stethoscope,
   User,
   XCircle,
@@ -19,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { ratingAdjective } from '@/components/schedule/weekCalendarUtils';
 import {
   ClinicDoctorDetailModel,
   ClinicDoctorModel,
@@ -273,6 +275,20 @@ export default function ClinicDoctorDetail() {
               {(detail.specialization || 'General').replace(/_/g, ' ')}
               {clinic?.name ? ` · ${clinic.name}` : ''}
               {rosterIndex >= 0 ? ` · ${rosterIndex + 1} of ${roster.length}` : ''}
+            </p>
+            <p className="text-sm mt-2 inline-flex items-center gap-1.5 text-muted-foreground">
+              {detail.rating != null && (detail.reviewsCount ?? 0) > 0 ? (
+                <>
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  <span className="font-medium text-foreground">{detail.rating.toFixed(1)}</span>
+                  <span>· {detail.ratingLabel || ratingAdjective(detail.rating)}</span>
+                  <span>
+                    · {detail.reviewsCount} review{detail.reviewsCount === 1 ? '' : 's'}
+                  </span>
+                </>
+              ) : (
+                <span>Not rated yet</span>
+              )}
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
               <Badge
