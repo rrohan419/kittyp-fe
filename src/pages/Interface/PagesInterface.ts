@@ -25,6 +25,7 @@ export interface LoginResponse {
   export enum ArticleStatus {
     PUBLISHED = 'PUBLISHED',
     DRAFT = 'DRAFT',
+    SCHEDULED = 'SCHEDULED',
     ARCHIVED = 'ARCHIVED'
   }
   
@@ -39,6 +40,7 @@ export interface LoginResponse {
     category: string;
     coverImage : string;
     status: ArticleStatus;
+    scheduledPublishAt?: string | null;
     commentCount: number;
     likeCount: number;
   }

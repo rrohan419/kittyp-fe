@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clock, Loader2, Pencil, Plus, User } from 'lucide-react';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, isSameDay, startOfDay, addMinutes } from 'date-fns';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { WalkInDialog } from '@/components/clinic/WalkInDialog';
 import {
@@ -67,7 +67,7 @@ export default function ClinicAppointments() {
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
   const [doctorFilter, setDoctorFilter] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [walkInOpen, setWalkInOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
   const [editVisit, setEditVisit] = useState<ClinicVisitModel | null>(null);
   const [editForm, setEditForm] = useState({
@@ -90,7 +90,7 @@ export default function ClinicAppointments() {
     try {
       const [visitList, bookingPage, doctorList] = await Promise.all([
         fetchClinicVisits(clinicUuid),
-        fetchClinicBookings(clinicUuid, 0, 50),
+        fetchClinicBookings(clinicUuid, 0, 100),
         fetchClinicDoctors(clinicUuid),
       ]);
       setVisits(visitList);
@@ -116,7 +116,7 @@ export default function ClinicAppointments() {
         try {
           const [visitList, bookingPage, doctorList] = await Promise.all([
             fetchClinicVisits(clinicUuid),
-            fetchClinicBookings(clinicUuid, 0, 50),
+            fetchClinicBookings(clinicUuid, 0, 100),
             fetchClinicDoctors(clinicUuid),
           ]);
           setVisits(visitList);
@@ -140,6 +140,49 @@ export default function ClinicAppointments() {
     filteredVisits.filter((v) => v.status === status);
 
   const completedToday = filteredVisits.filter((v) => v.status === 'COMPLETED');
+
+  const upcomingBookings = useMemo(() => {
+    const now = Date.now();
+    return [...bookings]
+      .filter((b) => {
+        const status = (b.status || '').toUpperCase();
+        if (['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(status)) return false;
+        const start = bookingStart(b);
+        if (!start) return false;
+        return start.getTime() >= now;
+      })
+      .sort((a, b) => {
+        const sa = bookingStart(a)?.getTime() ?? 0;
+        const sb = bookingStart(b)?.getTime() ?? 0;
+        return sa - sb;
+      });
+  }, [bookings]);
+
+  /** Today's still-relevant scheduled cards for Waitlist (include until slot end passes). */
+  const todayScheduledBookings = useMemo(() => {
+    const today = startOfDay(new Date());
+    const now = Date.now();
+    return [...bookings]
+      .filter((b) => {
+        const status = (b.status || '').toUpperCase();
+        if (['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(status)) return false;
+        const start = bookingStart(b);
+        if (!start || !isSameDay(start, today)) return false;
+        const end = b.slotEnd ? parseISO(b.slotEnd) : addMinutes(start, 30);
+        return end.getTime() >= now;
+      })
+      .sort((a, b) => {
+        const sa = bookingStart(a)?.getTime() ?? 0;
+        const sb = bookingStart(b)?.getTime() ?? 0;
+        return sa - sb;
+      });
+  }, [bookings]);
+
+  const doctorName = (doctorUuid?: string | null) => {
+    if (!doctorUuid) return null;
+    const d = doctors.find((x) => x.doctorUuid === doctorUuid);
+    return d?.name || d?.email || null;
+  };
 
   const patch = async (
     visitUuid: string,
@@ -166,12 +209,13 @@ export default function ClinicAppointments() {
         <div>
           <h1 className="text-2xl font-bold">Clinic flow</h1>
           <p className="text-sm text-muted-foreground">
-            Walk-ins and today&apos;s visit board. Assign doctors and move pets through the queue.
+            Today&apos;s visit board and upcoming appointments. Use + to check someone in or schedule
+            for later.
           </p>
         </div>
-        <Button onClick={() => setWalkInOpen(true)} disabled={!clinicUuid}>
+        <Button onClick={() => setAddOpen(true)} disabled={!clinicUuid} aria-label="Add appointment">
           <Plus className="h-4 w-4 mr-2" />
-          Walk-in
+          Add
         </Button>
       </div>
 
@@ -204,7 +248,7 @@ export default function ClinicAppointments() {
           <TabsList>
             <TabsTrigger value="flow">Today&apos;s flow</TabsTrigger>
             <TabsTrigger value="done">Completed</TabsTrigger>
-            <TabsTrigger value="scheduled">Scheduled (legacy)</TabsTrigger>
+            <TabsTrigger value="scheduled">Upcoming</TabsTrigger>
           </TabsList>
 
           <TabsContent value="flow" className="mt-4">
@@ -214,10 +258,46 @@ export default function ClinicAppointments() {
                   <CardHeader className="py-3">
                     <CardTitle className="text-sm font-semibold flex items-center justify-between">
                       {col.title}
-                      <Badge variant="secondary">{byStatus(col.status).length}</Badge>
+                      <Badge variant="secondary">
+                        {col.status === 'WAITLIST'
+                          ? byStatus(col.status).length + todayScheduledBookings.length
+                          : byStatus(col.status).length}
+                      </Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 pt-0">
+                    {col.status === 'WAITLIST' &&
+                      todayScheduledBookings.map((b) => {
+                        const start = bookingStart(b);
+                        const doc = doctorName(b.doctorUuid);
+                        return (
+                          <div
+                            key={`booking-${b.uuid}`}
+                            className="rounded-md border border-sky-200 bg-sky-50/60 dark:bg-sky-950/20 dark:border-sky-900 p-2.5 space-y-1.5 text-sm"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="font-medium min-w-0">
+                                {b.petName}
+                                <span className="text-muted-foreground font-normal">
+                                  {' '}
+                                  · {b.ownerName || 'Owner'}
+                                </span>
+                              </div>
+                              <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200 shrink-0">
+                                Scheduled
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {start ? format(start, 'p') : '—'}
+                              {doc ? ` · Dr. ${doc.replace(/^Dr\.?\s*/i, '')}` : ''}
+                            </div>
+                            {b.notes ? (
+                              <p className="text-xs text-muted-foreground truncate">{b.notes}</p>
+                            ) : null}
+                          </div>
+                        );
+                      })}
                     {byStatus(col.status).map((v) => (
                       <VisitCard
                         key={v.uuid}
@@ -248,7 +328,8 @@ export default function ClinicAppointments() {
                         }}
                       />
                     ))}
-                    {byStatus(col.status).length === 0 && (
+                    {byStatus(col.status).length === 0 &&
+                      !(col.status === 'WAITLIST' && todayScheduledBookings.length > 0) && (
                       <p className="text-xs text-muted-foreground py-6 text-center">Empty</p>
                     )}
                   </CardContent>
@@ -282,24 +363,30 @@ export default function ClinicAppointments() {
           </TabsContent>
 
           <TabsContent value="scheduled" className="mt-4 space-y-2">
-            {bookings.length === 0 ? (
+            {upcomingBookings.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No scheduled bookings yet. Online booking lands here later.
+                No upcoming appointments. Use + → Schedule to book a future slot for a doctor.
               </p>
             ) : (
-              bookings.map((b) => {
+              upcomingBookings.map((b) => {
                 const start = bookingStart(b);
+                const doc = doctorName(b.doctorUuid);
                 return (
                   <Card key={b.uuid}>
-                    <CardContent className="py-3 text-sm flex justify-between">
+                    <CardContent className="py-3 text-sm flex justify-between gap-3">
                       <div>
                         <div className="font-medium">
                           {b.petName} · {b.ownerName}
                         </div>
                         <div className="text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {start ? format(start, 'PPp') : '—'} · {b.mode || 'IN_PERSON'}
+                          {start ? format(start, 'PPp') : '—'}
+                          {doc ? ` · Dr. ${doc.replace(/^Dr\.?\s*/i, '')}` : ''}
+                          {b.mode ? ` · ${b.mode}` : ''}
                         </div>
+                        {b.notes ? (
+                          <div className="text-muted-foreground text-xs mt-0.5">{b.notes}</div>
+                        ) : null}
                       </div>
                       <Badge variant="outline">{b.status}</Badge>
                     </CardContent>
@@ -313,8 +400,8 @@ export default function ClinicAppointments() {
 
       {clinicUuid && (
         <WalkInDialog
-          open={walkInOpen}
-          onOpenChange={setWalkInOpen}
+          open={addOpen}
+          onOpenChange={setAddOpen}
           clinicUuid={clinicUuid}
           doctors={doctors}
           onCreated={load}

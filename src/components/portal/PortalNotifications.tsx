@@ -34,7 +34,7 @@ import { toast } from 'sonner';
 
 type NotifItem = {
   id: string;
-  kind: 'alert' | 'invite' | 'update' | 'visit';
+  kind: 'alert' | 'invite' | 'update' | 'visit' | 'booking';
   title: string;
   body: string;
   href: string;
@@ -114,7 +114,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
         }
 
         try {
-          const mine = await fetchMyDoctorVisits();
+          const mine = await fetchMyDoctorVisits({ clinicUuid: clinicUuid || undefined });
           for (const v of mine.filter((x) =>
             ['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS'].includes(x.status)
           ).slice(0, 12)) {
@@ -284,7 +284,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
   const actionable = items.filter((i) => {
     if (i.id.startsWith('empty-') || i.kind === 'update') return false;
     if (!showAll && clickedIds.has(i.id)) return false;
-    if (i.kind === 'alert' || i.kind === 'visit') return true;
+    if (i.kind === 'alert' || i.kind === 'visit' || i.kind === 'booking') return true;
     return i.kind === 'invite' && (i.canRemind || i.inviteUuid || i.href.includes('clinic-invite'));
   }).length;
 
@@ -378,12 +378,14 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
                       item.kind === 'alert' && 'bg-destructive/10 text-destructive',
                       item.kind === 'invite' && 'bg-primary/15 text-primary',
                       item.kind === 'visit' && 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
+                      item.kind === 'booking' && 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
                       item.kind === 'update' && 'bg-muted text-muted-foreground'
                     )}
                   >
                     {item.kind === 'alert' && <PawPrint className="h-4 w-4" />}
                     {item.kind === 'invite' && <UserPlus className="h-4 w-4" />}
                     {item.kind === 'visit' && <Stethoscope className="h-4 w-4" />}
+                    {item.kind === 'booking' && <CalendarClock className="h-4 w-4" />}
                     {item.kind === 'update' && <Mail className="h-4 w-4" />}
                   </div>
                   <div className="min-w-0 flex-1">

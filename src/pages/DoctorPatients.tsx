@@ -49,7 +49,7 @@ export default function DoctorPatients() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">My Patients</h1>
+        <h1 className="text-2xl font-bold text-foreground">Patients</h1>
         <p className="text-muted-foreground mt-1 text-sm">
           {clinic ? `${clinic.name} — ` : ''}{patients.length} pets in clinic records
         </p>

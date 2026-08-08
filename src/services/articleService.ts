@@ -24,6 +24,8 @@ export type ArticleData = {
   author: Author;
   commentCount: number;
   likeCount: number;
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED';
+  scheduledPublishAt?: string | null;
 };
 
 export type ArticleCommentDto = {
@@ -83,7 +85,8 @@ export type CreateArticleRequest = {
   tags: string[];
   readTime: number;
   authorId?: number;
-  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED';
+  scheduledPublishAt?: string;
 };
 
 export type EditArticleRequest = {
@@ -94,7 +97,8 @@ export type EditArticleRequest = {
   category?: string;
   tags?: string[];
   readTime?: number;
-  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED';
+  scheduledPublishAt?: string | null;
 };
 
 export const createArticle = async (body: CreateArticleRequest): Promise<WrappedArticleResponse> => {

@@ -110,10 +110,30 @@ export default function ParentHome() {
           const age = p.dateOfBirth ? calculatePetAgeForDisplay(p.dateOfBirth) : '—';
           return (
             <Card className="border-0 shadow-sm overflow-hidden">
-              <CardContent className="p-6 space-y-5">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/30 to-primary/5 flex items-center justify-center shrink-0">
-                    <PawPrint className="h-10 w-10 text-primary" />
+              <div className="relative h-48 sm:h-56 bg-gradient-to-br from-primary/20 to-primary/5">
+                {p.profilePicture ? (
+                  <img
+                    src={p.profilePicture}
+                    alt={p.name}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <PawPrint className="h-20 w-20 text-primary/40" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+              </div>
+              <CardContent className="p-6 space-y-5 -mt-10 relative">
+                <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                  <div className="w-20 h-20 rounded-3xl border-4 border-background bg-muted overflow-hidden shadow-md shrink-0">
+                    {p.profilePicture ? (
+                      <img src={p.profilePicture} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-primary/10">
+                        <PawPrint className="h-10 w-10 text-primary" />
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-primary uppercase tracking-wide mb-1">Your pet</p>
@@ -150,42 +170,35 @@ export default function ParentHome() {
           );
         })()
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {pets.map((p) => {
             const age = p.dateOfBirth ? calculatePetAgeForDisplay(p.dateOfBirth) : '—';
             return (
-              <Card key={p.uuid} className="border-0 shadow-sm overflow-hidden">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/5 flex items-center justify-center shrink-0">
-                      <PawPrint className="h-7 w-7 text-primary" />
+              <Link
+                key={p.uuid}
+                to={`/app/pets/${p.uuid}`}
+                className="group rounded-2xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all"
+              >
+                <div className="aspect-square bg-muted relative">
+                  {p.profilePicture ? (
+                    <img
+                      src={p.profilePicture}
+                      alt={p.name}
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                      <PawPrint className="h-10 w-10 text-primary/50" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-foreground truncate">{p.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {p.type} · {p.breed || 'Mixed'} · {age}
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link to={`/app/pets/${p.uuid}`}>Dashboard</Link>
-                    </Button>
-                  </div>
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    <div className="text-center p-2 rounded-lg bg-muted/50">
-                      <p className="text-[10px] text-muted-foreground uppercase">Weight</p>
-                      <p className="text-sm font-semibold">{p.weight ? `${p.weight} kg` : '—'}</p>
-                    </div>
-                    <div className="text-center p-2 rounded-lg bg-muted/50">
-                      <p className="text-[10px] text-muted-foreground uppercase">Activity</p>
-                      <p className="text-sm font-semibold truncate">{p.activityLevel || '—'}</p>
-                    </div>
-                    <div className="text-center p-2 rounded-lg bg-muted/50">
-                      <p className="text-[10px] text-muted-foreground uppercase">Status</p>
-                      <p className="text-sm font-semibold text-green-600">Active</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  )}
+                </div>
+                <div className="p-3 space-y-0.5">
+                  <p className="font-semibold text-sm truncate">{p.name}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {p.type} · {p.breed || 'Mixed'} · {age}
+                  </p>
+                </div>
+              </Link>
             );
           })}
         </div>

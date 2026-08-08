@@ -11,6 +11,8 @@ export interface ClinicModel {
   timezone?: string;
   operatingHours?: string;
   status?: string;
+  /** True when the current user owns this clinic (personal practice). */
+  personal?: boolean;
 }
 
 export interface ClinicDoctorModel {
@@ -206,6 +208,7 @@ export interface ClinicBookingModel {
   status: string;
   mode?: string;
   notes?: string;
+  clinicUuid?: string;
 }
 
 export interface RetentionAlertModel {
@@ -619,6 +622,18 @@ export async function fetchClinicVisits(
   return res.data.data ?? [];
 }
 
+export async function fetchDoctorBusySlots(
+  clinicUuid: string,
+  doctorUuid: string,
+  range: { from: string; to: string }
+): Promise<ClinicBookingModel[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ClinicBookingModel[]>>(
+    `/clinic/${clinicUuid}/doctors/${doctorUuid}/busy`,
+    { params: { from: range.from, to: range.to } }
+  );
+  return res.data.data ?? [];
+}
+
 export async function createWalkInVisit(
   clinicUuid: string,
   payload: {
@@ -638,6 +653,33 @@ export async function createWalkInVisit(
 ): Promise<ClinicVisitModel> {
   const res = await axiosInstance.post<ApiSuccessResponse<ClinicVisitModel>>(
     `/clinic/${clinicUuid}/visits/walk-in`,
+    payload
+  );
+  return res.data.data;
+}
+
+export async function createClinicBooking(
+  clinicUuid: string,
+  payload: {
+    petUuid?: string;
+    owner?: {
+      firstName: string;
+      lastName?: string;
+      email: string;
+      phone: string;
+      address?: string;
+    };
+    newPet?: { name: string; species?: string; breed?: string; gender?: string };
+    doctorUuid: string;
+    slotStart: string;
+    slotEnd?: string;
+    durationMinutes?: number;
+    notes?: string;
+    mode?: 'IN_PERSON' | 'VIDEO';
+  }
+): Promise<ClinicBookingModel> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ClinicBookingModel>>(
+    `/clinic/${clinicUuid}/bookings`,
     payload
   );
   return res.data.data;

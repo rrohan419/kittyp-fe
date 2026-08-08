@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -19,15 +18,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, Search, X } from 'lucide-react';
+import { addHours, addMinutes, format, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
 import {
   ClinicDoctorModel,
   ClinicOwnerModel,
   ClinicPetListModel,
   PlatformUserSearchModel,
+  createClinicBooking,
   createWalkInVisit,
   ensureClinicOwnerFromUser,
   fetchClinicOwners,
   fetchClinicPets,
+  fetchDoctorBusySlots,
   searchPlatformUsers,
   VisitUrgency,
 } from '@/services/clinicService';
@@ -41,7 +43,11 @@ type Props = {
   clinicUuid: string;
   doctors: ClinicDoctorModel[];
   onCreated: () => void;
+  /** When set (doctor portal), hide Assign doctor and always use this UUID. */
+  lockedDoctorUuid?: string;
 };
+
+type TimingMode = 'now' | 'schedule';
 
 const emptyNew = {
   ownerFirstName: '',
@@ -54,6 +60,8 @@ const emptyNew = {
   reason: '',
   urgency: 'ROUTINE' as VisitUrgency,
   doctorUuid: '',
+  slotDate: '',
+  slotTime: '',
 };
 
 type SearchHit =
@@ -61,8 +69,39 @@ type SearchHit =
   | { kind: 'owner'; owner: ClinicOwnerModel; pet: ClinicPetListModel }
   | { kind: 'user'; user: PlatformUserSearchModel };
 
-export function WalkInDialog({ open, onOpenChange, clinicUuid, doctors, onCreated }: Props) {
+/** Snap: :00 stays; 1–30 → :30; >30 → next hour :00. */
+export function snapToHalfHour(date: Date): Date {
+  const minutes = date.getMinutes();
+  let rounded = setSeconds(setMilliseconds(date, 0), 0);
+  if (minutes === 0) {
+    return setMinutes(rounded, 0);
+  }
+  if (minutes <= 30) {
+    return setMinutes(rounded, 30);
+  }
+  return setMinutes(addHours(rounded, 1), 0);
+}
+
+/** Default schedule start: ~3 hours from now, snapped to half hour. */
+function defaultScheduleParts() {
+  const rounded = snapToHalfHour(addHours(new Date(), 3));
+  return {
+    slotDate: format(rounded, 'yyyy-MM-dd'),
+    slotTime: format(rounded, 'HH:mm'),
+  };
+}
+
+export function AddAppointmentDialog({
+  open,
+  onOpenChange,
+  clinicUuid,
+  doctors,
+  onCreated,
+  lockedDoctorUuid,
+}: Props) {
+  const hideDoctorSelect = Boolean(lockedDoctorUuid);
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
+  const [timing, setTiming] = useState<TimingMode>('now');
   const [petSearch, setPetSearch] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
   const [hits, setHits] = useState<SearchHit[]>([]);
@@ -71,11 +110,14 @@ export function WalkInDialog({ open, onOpenChange, clinicUuid, doctors, onCreate
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [busyHint, setBusyHint] = useState<string | null>(null);
 
   const activeDoctors = useMemo(
     () => doctors.filter((d) => d.isActive !== false && d.doctorUuid),
     [doctors]
   );
+
+  const resolvedDoctorUuid = lockedDoctorUuid || form.doctorUuid;
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(petSearch.trim()), 250);
@@ -131,18 +173,38 @@ export function WalkInDialog({ open, onOpenChange, clinicUuid, doctors, onCreate
           }
         }
         const userHits: SearchHit[] = users.slice(0, 20).map((user) => ({ kind: 'user', user }));
-        const seen = new Set<string>();
+        const seenPet = new Set<string>();
+        const seenOwner = new Set<string>();
+        const seenUser = new Set<string>();
         const merged: SearchHit[] = [];
-        for (const hit of [...userHits, ...petHits, ...ownerPetHits]) {
-          const id =
-            hit.kind === 'user' ? `user-${hit.user.userUuid}` : hit.pet.petUuid;
-          if (seen.has(id)) continue;
-          seen.add(id);
+
+        for (const hit of petHits) {
+          if (seenPet.has(hit.pet.petUuid)) continue;
+          seenPet.add(hit.pet.petUuid);
+          if (hit.pet.ownerUuid) seenOwner.add(hit.pet.ownerUuid);
+          if (hit.pet.ownerEmail) seenOwner.add(hit.pet.ownerEmail.toLowerCase());
+          merged.push(hit);
+        }
+        for (const hit of ownerPetHits) {
+          if (seenPet.has(hit.pet.petUuid)) continue;
+          seenPet.add(hit.pet.petUuid);
+          if (hit.owner.ownerUuid) seenOwner.add(hit.owner.ownerUuid);
+          if (hit.owner.email) seenOwner.add(hit.owner.email.toLowerCase());
+          merged.push(hit);
+        }
+        for (const hit of userHits) {
+          if (seenUser.has(hit.user.userUuid)) continue;
+          const ownerKey = hit.user.clinicOwnerUuid;
+          const emailKey = hit.user.email?.toLowerCase();
+          if (ownerKey && seenOwner.has(ownerKey)) continue;
+          if (emailKey && seenOwner.has(emailKey)) continue;
+          if (hit.user.alreadyClient && ownerKey) continue;
+          seenUser.add(hit.user.userUuid);
           merged.push(hit);
         }
         setHits(merged.slice(0, 40));
       } catch (err) {
-        console.error('Walk-in patient search failed', err);
+        console.error('Appointment patient search failed', err);
         if (!cancelled) {
           setHits([]);
           toast.error('Could not search patients — check clinic selection and try again');
@@ -158,15 +220,74 @@ export function WalkInDialog({ open, onOpenChange, clinicUuid, doctors, onCreate
 
   useEffect(() => {
     if (!open) {
-      setForm(emptyNew);
+      setForm({ ...emptyNew, ...defaultScheduleParts(), doctorUuid: lockedDoctorUuid || '' });
       setSelectedPet(null);
       setPetSearch('');
       setDebouncedQ('');
       setHits([]);
       setMode('existing');
+      setTiming('now');
       setFieldErrors({});
+      setBusyHint(null);
+    } else {
+      setForm((s) => ({
+        ...s,
+        ...defaultScheduleParts(),
+        doctorUuid: lockedDoctorUuid || s.doctorUuid,
+      }));
     }
-  }, [open]);
+  }, [open, lockedDoctorUuid]);
+
+  /** Clinic path: proactive busy check when doctor + date/time are set. */
+  useEffect(() => {
+    if (!open || hideDoctorSelect || timing !== 'schedule') {
+      setBusyHint(null);
+      return;
+    }
+    if (!resolvedDoctorUuid || !form.slotDate || !form.slotTime || !clinicUuid) {
+      setBusyHint(null);
+      return;
+    }
+    let cancelled = false;
+    const handle = setTimeout(() => {
+      void (async () => {
+        try {
+          const raw = new Date(`${form.slotDate}T${form.slotTime}`);
+          if (Number.isNaN(raw.getTime())) return;
+          const snapped = snapToHalfHour(raw);
+          const startIso = format(snapped, "yyyy-MM-dd'T'HH:mm:ss");
+          const endIso = format(addMinutes(snapped, 30), "yyyy-MM-dd'T'HH:mm:ss");
+          const busy = await fetchDoctorBusySlots(clinicUuid, resolvedDoctorUuid, {
+            from: startIso,
+            to: endIso,
+          });
+          if (cancelled) return;
+          if (busy.length > 0) {
+            const next = snapToHalfHour(addMinutes(snapped, 30));
+            setBusyHint(
+              `Doctor not available at ${format(snapped, 'h:mm a')} — try ${format(next, 'h:mm a')}`
+            );
+          } else {
+            setBusyHint(null);
+          }
+        } catch {
+          if (!cancelled) setBusyHint(null);
+        }
+      })();
+    }, 350);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [
+    open,
+    hideDoctorSelect,
+    timing,
+    resolvedDoctorUuid,
+    form.slotDate,
+    form.slotTime,
+    clinicUuid,
+  ]);
 
   const set = (key: keyof typeof emptyNew, value: string) => {
     setForm((s) => ({ ...s, [key]: value }));
@@ -175,6 +296,21 @@ export function WalkInDialog({ open, onOpenChange, clinicUuid, doctors, onCreate
       delete next[key];
       return next;
     });
+  };
+
+  const applyTimeSnap = () => {
+    if (!form.slotDate || !form.slotTime) return;
+    const raw = new Date(`${form.slotDate}T${form.slotTime}`);
+    if (Number.isNaN(raw.getTime())) return;
+    const snapped = snapToHalfHour(raw);
+    const nextDate = format(snapped, 'yyyy-MM-dd');
+    const nextTime = format(snapped, 'HH:mm');
+    if (nextDate !== form.slotDate || nextTime !== form.slotTime) {
+      setForm((s) => ({ ...s, slotDate: nextDate, slotTime: nextTime }));
+      if (!hideDoctorSelect) {
+        toast.message(`Time adjusted to ${format(snapped, 'h:mm a')} (30‑min slots)`);
+      }
+    }
   };
 
   const selectPet = (p: ClinicPetListModel) => {
@@ -211,7 +347,6 @@ export function WalkInDialog({ open, onOpenChange, clinicUuid, doctors, onCreate
         });
         return;
       }
-      // No clinic pets yet — switch to new-patient form with account prefilled.
       const [first = '', ...rest] = (user.name || '').trim().split(/\s+/);
       setMode('new');
       setForm((s) => ({
@@ -222,7 +357,7 @@ export function WalkInDialog({ open, onOpenChange, clinicUuid, doctors, onCreate
         ownerPhone: digitsOnlyPhone(user.phone || ''),
       }));
       setHits([]);
-      toast.message('Account selected — add the pet for this walk-in');
+      toast.message('Account selected — add the pet for this appointment');
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -250,47 +385,89 @@ export function WalkInDialog({ open, onOpenChange, clinicUuid, doctors, onCreate
     return Object.keys(errors).length === 0;
   };
 
+  const validateSchedule = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!resolvedDoctorUuid) errors.doctorUuid = 'Doctor is required to schedule';
+    if (!form.slotDate) errors.slotDate = 'Date is required';
+    if (!form.slotTime) errors.slotTime = 'Time is required';
+    if (form.slotDate && form.slotTime) {
+      const start = snapToHalfHour(new Date(`${form.slotDate}T${form.slotTime}`));
+      if (Number.isNaN(start.getTime())) {
+        errors.slotTime = 'Invalid date/time';
+      } else if (start.getTime() < Date.now() - 60_000) {
+        errors.slotTime = 'Pick a future time';
+      }
+    }
+    setFieldErrors((prev) => ({ ...prev, ...errors }));
+    return Object.keys(errors).length === 0;
+  };
+
+  const patientPayload = () => {
+    if (mode === 'existing' && selectedPet) {
+      return { petUuid: selectedPet.petUuid };
+    }
+    return {
+      owner: {
+        firstName: form.ownerFirstName.trim(),
+        lastName: form.ownerLastName.trim() || undefined,
+        email: form.ownerEmail.trim(),
+        phone: digitsOnlyPhone(form.ownerPhone),
+      },
+      newPet: {
+        name: form.petName.trim(),
+        species: form.petType || undefined,
+        breed: form.petBreed || undefined,
+      },
+    };
+  };
+
   const submit = async () => {
     if (!clinicUuid) {
       toast.error('No active clinic selected — use the clinic switcher or Add clinic');
       return;
     }
+    if (mode === 'existing' && !selectedPet) {
+      toast.error('Search and select a pet or owner first');
+      return;
+    }
+    if (mode === 'new' && !validateNewPatient()) {
+      toast.error('Fix the highlighted fields');
+      return;
+    }
+    if (timing === 'schedule' && !validateSchedule()) {
+      toast.error('Fix the schedule fields');
+      return;
+    }
+
     setSaving(true);
     try {
-      if (mode === 'existing') {
-        if (!selectedPet) {
-          toast.error('Search and select a pet or owner first');
-          return;
-        }
+      const doctorUuid = resolvedDoctorUuid || undefined;
+      if (timing === 'now') {
         await createWalkInVisit(clinicUuid, {
-          petUuid: selectedPet.petUuid,
+          ...patientPayload(),
           reasonForVisit: form.reason || undefined,
           urgency: form.urgency,
-          doctorUuid: form.doctorUuid || undefined,
+          doctorUuid,
         });
+        toast.success('Added to waitlist');
       } else {
-        if (!validateNewPatient()) {
-          toast.error('Fix the highlighted fields');
-          return;
+        const raw = new Date(`${form.slotDate}T${form.slotTime}`);
+        const slotStart = snapToHalfHour(raw);
+        const snappedDate = format(slotStart, 'yyyy-MM-dd');
+        const snappedTime = format(slotStart, 'HH:mm');
+        if (snappedDate !== form.slotDate || snappedTime !== form.slotTime) {
+          setForm((s) => ({ ...s, slotDate: snappedDate, slotTime: snappedTime }));
         }
-        await createWalkInVisit(clinicUuid, {
-          owner: {
-            firstName: form.ownerFirstName.trim(),
-            lastName: form.ownerLastName.trim() || undefined,
-            email: form.ownerEmail.trim(),
-            phone: digitsOnlyPhone(form.ownerPhone),
-          },
-          newPet: {
-            name: form.petName.trim(),
-            species: form.petType || undefined,
-            breed: form.petBreed || undefined,
-          },
-          reasonForVisit: form.reason || undefined,
-          urgency: form.urgency,
-          doctorUuid: form.doctorUuid || undefined,
+        await createClinicBooking(clinicUuid, {
+          ...patientPayload(),
+          doctorUuid: doctorUuid!,
+          slotStart: format(slotStart, "yyyy-MM-dd'T'HH:mm:ss"),
+          durationMinutes: 30,
+          notes: form.reason || undefined,
+          mode: 'IN_PERSON',
         });
+        toast.success('Appointment scheduled — doctor notified');
       }
-      toast.success('Walk-in added to waitlist');
       onCreated();
       onOpenChange(false);
     } catch (e: unknown) {
@@ -299,10 +476,12 @@ export function WalkInDialog({ open, onOpenChange, clinicUuid, doctors, onCreate
       const msg =
         (e as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         (status === 404
-          ? 'Visit API not found — restart the backend with the latest build'
+          ? 'API not found — restart the backend with the latest build'
           : status === 500
-            ? 'Server error creating walk-in — try again; if it persists, restart the backend'
-            : 'Failed to create walk-in');
+            ? 'Server error — try again; if it persists, restart the backend'
+            : timing === 'now'
+              ? 'Failed to create walk-in'
+              : 'Failed to schedule appointment');
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -311,13 +490,9 @@ export function WalkInDialog({ open, onOpenChange, clinicUuid, doctors, onCreate
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add walk-in</DialogTitle>
-          <DialogDescription>
-            Unscheduled clinic arrival — goes to the waitlist. Assign a doctor now or later from the
-            board.
-          </DialogDescription>
+          <DialogTitle>Add appointment</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1">
@@ -499,7 +674,18 @@ export function WalkInDialog({ open, onOpenChange, clinicUuid, doctors, onCreate
               </div>
               <div>
                 <Label>Species</Label>
-                <Input value={form.petType} onChange={(e) => set('petType', e.target.value)} />
+                <Select value={form.petType} onValueChange={(v) => set('petType', v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select species" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CAT">Cat</SelectItem>
+                    <SelectItem value="DOG">Dog</SelectItem>
+                    <SelectItem value="BIRD">Bird</SelectItem>
+                    <SelectItem value="RABBIT">Rabbit</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div>
@@ -509,7 +695,43 @@ export function WalkInDialog({ open, onOpenChange, clinicUuid, doctors, onCreate
           </div>
         )}
 
-        <div className="space-y-3 pt-2">
+        <div className="space-y-3 pt-2 border-t">
+          <div>
+            <Label className="mb-1.5 block">When</Label>
+            <div className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1">
+              <button
+                type="button"
+                className={cn(
+                  'rounded-sm px-3 py-1.5 text-sm font-medium',
+                  timing === 'now' ? 'bg-background shadow-sm' : 'text-muted-foreground'
+                )}
+                onClick={() => {
+                  setTiming('now');
+                  setBusyHint(null);
+                  setFieldErrors((e) => {
+                    const next = { ...e };
+                    delete next.doctorUuid;
+                    delete next.slotDate;
+                    delete next.slotTime;
+                    return next;
+                  });
+                }}
+              >
+                Here now
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  'rounded-sm px-3 py-1.5 text-sm font-medium',
+                  timing === 'schedule' ? 'bg-background shadow-sm' : 'text-muted-foreground'
+                )}
+                onClick={() => setTiming('schedule')}
+              >
+                Schedule
+              </button>
+            </div>
+          </div>
+
           <div>
             <Label>Reason for visit</Label>
             <Input
@@ -518,56 +740,118 @@ export function WalkInDialog({ open, onOpenChange, clinicUuid, doctors, onCreate
               placeholder="e.g. Leg injury"
             />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label>Urgency</Label>
-              <Select value={form.urgency} onValueChange={(v) => set('urgency', v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ROUTINE">Routine</SelectItem>
-                  <SelectItem value="URGENT">Urgent</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Assign doctor</Label>
-              <Select
-                value={form.doctorUuid || 'none'}
-                onValueChange={(v) => set('doctorUuid', v === 'none' ? '' : v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Unassigned" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Unassigned</SelectItem>
-                  {activeDoctors.map((d) => (
-                    <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
-                      {d.name || d.email || d.doctorUuid}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {activeDoctors.length === 0 && (
-                <p className="text-xs text-amber-600 mt-1">
-                  No doctors linked yet. Invite under Doctors — then assign here or from the board.
-                </p>
+
+          {timing === 'now' ? (
+            <div className={cn('grid gap-2', hideDoctorSelect ? 'grid-cols-1' : 'grid-cols-2')}>
+              <div>
+                <Label>Urgency</Label>
+                <Select value={form.urgency} onValueChange={(v) => set('urgency', v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ROUTINE">Routine</SelectItem>
+                    <SelectItem value="URGENT">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {!hideDoctorSelect && (
+                <div>
+                  <Label>Assign doctor</Label>
+                  <Select
+                    value={form.doctorUuid || 'none'}
+                    onValueChange={(v) => set('doctorUuid', v === 'none' ? '' : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Unassigned" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Unassigned</SelectItem>
+                      {activeDoctors.map((d) => (
+                        <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
+                          {d.name || d.email || d.doctorUuid}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
             </div>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              {!hideDoctorSelect && (
+                <div>
+                  <Label>Assign doctor</Label>
+                  <Select
+                    value={form.doctorUuid || undefined}
+                    onValueChange={(v) => set('doctorUuid', v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select doctor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeDoctors.map((d) => (
+                        <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
+                          {d.name || d.email || d.doctorUuid}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldErrors.doctorUuid && (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors.doctorUuid}</p>
+                  )}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Date</Label>
+                  <Input
+                    type="date"
+                    value={form.slotDate}
+                    onChange={(e) => set('slotDate', e.target.value)}
+                  />
+                  {fieldErrors.slotDate && (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors.slotDate}</p>
+                  )}
+                </div>
+                <div>
+                  <Label>Time</Label>
+                  <Input
+                    type="time"
+                    value={form.slotTime}
+                    onChange={(e) => set('slotTime', e.target.value)}
+                    onBlur={applyTimeSnap}
+                  />
+                  {fieldErrors.slotTime && (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors.slotTime}</p>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">Appointments are 30 minutes.</p>
+              {busyHint && <p className="text-xs text-amber-600">{busyHint}</p>}
+            </div>
+          )}
+
+          {!hideDoctorSelect && activeDoctors.length === 0 && (
+            <p className="text-xs text-amber-600">
+              No doctors linked yet. Invite under Doctors — then assign here or from the board.
+            </p>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={submit} disabled={saving}>
+          <Button onClick={submit} disabled={saving || Boolean(busyHint && timing === 'schedule')}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Add to waitlist
+            {timing === 'now' ? 'Add to waitlist' : 'Schedule appointment'}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+/** @deprecated Use AddAppointmentDialog */
+export const WalkInDialog = AddAppointmentDialog;

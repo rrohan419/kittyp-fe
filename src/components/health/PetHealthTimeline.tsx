@@ -109,6 +109,15 @@ export const PetHealthTimeline: React.FC<PetHealthTimelineProps> = ({
   const current = useMemo(() => visits.filter((v) => CURRENT.includes(v.status)), [visits]);
   const history = useMemo(() => visits.filter((v) => PAST.includes(v.status)), [visits]);
 
+  useEffect(() => {
+    if (loading) return;
+    if (current.length === 0 && history.length > 0) {
+      setActiveTab('history');
+    } else if (current.length > 0) {
+      setActiveTab('current');
+    }
+  }, [loading, current.length, history.length]);
+
   const renderVisit = (v: ClinicVisitModel) => {
     const when = visitWhen(v);
     const showReport = Boolean(

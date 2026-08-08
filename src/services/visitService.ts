@@ -2,9 +2,25 @@ import axiosInstance from '@/config/axionInstance';
 import { ApiSuccessResponse } from './cartService';
 import type { ClinicBookingModel, ClinicVisitModel, VisitChartModel } from './clinicService';
 
-export async function fetchMyDoctorVisits(date?: string): Promise<ClinicVisitModel[]> {
+export type DoctorScheduleParams = {
+  date?: string;
+  from?: string;
+  to?: string;
+  clinicUuid?: string | null;
+};
+
+export async function fetchMyDoctorVisits(params?: string | DoctorScheduleParams): Promise<ClinicVisitModel[]> {
+  const query =
+    typeof params === 'string'
+      ? { date: params }
+      : {
+          date: params?.date,
+          from: params?.from,
+          to: params?.to,
+          clinicUuid: params?.clinicUuid || undefined,
+        };
   const res = await axiosInstance.get<ApiSuccessResponse<ClinicVisitModel[]>>('/doctor/visits/mine', {
-    params: date ? { date } : undefined,
+    params: query,
   });
   return res.data.data ?? [];
 }
@@ -86,11 +102,27 @@ export async function fetchMyAttendedPatients(): Promise<AttendedPatientModel[]>
   return res.data.data ?? [];
 }
 
-export async function fetchMyDoctorBookings(date?: string): Promise<ClinicBookingModel[]> {
+export async function fetchMyDoctorBookings(params?: string | DoctorScheduleParams): Promise<ClinicBookingModel[]> {
+  const query =
+    typeof params === 'string'
+      ? { date: params }
+      : {
+          date: params?.date,
+          from: params?.from,
+          to: params?.to,
+          clinicUuid: params?.clinicUuid || undefined,
+        };
   const res = await axiosInstance.get<ApiSuccessResponse<ClinicBookingModel[]>>('/doctor/bookings/mine', {
-    params: date ? { date } : undefined,
+    params: query,
   });
   return res.data.data ?? [];
+}
+
+export async function startDoctorBookingTreatment(bookingUuid: string): Promise<ClinicVisitModel> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ClinicVisitModel>>(
+    `/doctor/bookings/${bookingUuid}/start-treatment`
+  );
+  return res.data.data;
 }
 
 export type { ClinicVisitModel, VisitChartModel, ClinicBookingModel };

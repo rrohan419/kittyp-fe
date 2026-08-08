@@ -43,7 +43,11 @@ export function useActiveClinic() {
         if (list.length) {
           const stillValid = stored && list.some((c) => c.uuid === stored);
           if (!stillValid) {
-            dispatch(setActiveClinic(list[0].uuid));
+            // Prefer personal only for doctors; clinic admins just get first branch.
+            const isDoctorPath =
+              typeof window !== 'undefined' && window.location.pathname.startsWith('/doctor');
+            const personal = isDoctorPath ? list.find((c) => c.personal) : undefined;
+            dispatch(setActiveClinic((personal ?? list[0]).uuid));
           } else if (!activeClinicId) {
             dispatch(setActiveClinic(stored));
           }
