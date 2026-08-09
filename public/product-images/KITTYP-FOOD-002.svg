@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" role="img" aria-label="Salmon Treats">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFF3D6"/>
+      <stop offset="100%" stop-color="#FFD59E"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" rx="28" fill="url(#g)"/>
+  <circle cx="330" cy="70" r="50" fill="#fff" fill-opacity=".14"/>
+  <circle cx="50" cy="430" r="70" fill="#fff" fill-opacity=".10"/>
+  
+    <ellipse cx="160" cy="230" rx="28" ry="16" fill="#BC6C25"/>
+    <ellipse cx="210" cy="250" rx="28" ry="16" fill="#9A3412"/>
+    <ellipse cx="250" cy="220" rx="28" ry="16" fill="#BC6C25"/>
+    <ellipse cx="180" cy="290" rx="28" ry="16" fill="#9A3412"/>
+    <ellipse cx="240" cy="285" rx="28" ry="16" fill="#BC6C25"/>
+  
+  <text x="200" y="400" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="26" font-weight="750" fill="#1f2937">Salmon Treats</text>
+  <text x="200" y="432" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="16" fill="#4b5563">Soft bites</text>
+</svg>

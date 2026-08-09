@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" role="img" aria-label="Dog Bed">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFF7ED"/>
+      <stop offset="100%" stop-color="#FED7AA"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" rx="28" fill="url(#g)"/>
+  <circle cx="330" cy="70" r="50" fill="#fff" fill-opacity=".14"/>
+  <circle cx="50" cy="430" r="70" fill="#fff" fill-opacity=".10"/>
+  
+    <ellipse cx="200" cy="290" rx="120" ry="45" fill="#FB923C"/>
+    <ellipse cx="200" cy="270" rx="90" ry="32" fill="#FFEDD5"/>
+    <path d="M100 255 q20 -55 60 -55 q20 30 40 30 q20 -30 40 -30 q40 0 60 55" fill="#F97316"/>
+  
+  <text x="200" y="400" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="26" font-weight="750" fill="#1f2937">Dog Bed</text>
+  <text x="200" y="432" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="16" fill="#4b5563">Orthopedic</text>
+</svg>

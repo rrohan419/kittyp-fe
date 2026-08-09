@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" role="img" aria-label="Willow Balls">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F8FAFC"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" rx="28" fill="url(#g)"/>
+  <circle cx="330" cy="70" r="50" fill="#fff" fill-opacity=".14"/>
+  <circle cx="50" cy="430" r="70" fill="#fff" fill-opacity=".10"/>
+  
+    <circle cx="160" cy="230" r="40" fill="none" stroke="#78716C" stroke-width="8"/>
+    <circle cx="160" cy="230" r="22" fill="none" stroke="#A8A29E" stroke-width="6"/>
+    <circle cx="240" cy="270" r="40" fill="none" stroke="#78716C" stroke-width="8"/>
+    <circle cx="240" cy="270" r="22" fill="none" stroke="#A8A29E" stroke-width="6"/>
+  
+  <text x="200" y="400" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="26" font-weight="750" fill="#1f2937">Willow Balls</text>
+  <text x="200" y="432" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="16" fill="#4b5563">3-pack chews</text>
+</svg>
