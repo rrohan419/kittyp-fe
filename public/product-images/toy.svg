@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" role="img" aria-label="toy">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F3E8FF"/>
+      <stop offset="100%" stop-color="#D8B4FE"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" rx="28" fill="url(#bg)"/>
+  <circle cx="320" cy="80" r="54" fill="#ffffff" fill-opacity=".12"/>
+  <circle cx="60" cy="420" r="70" fill="#ffffff" fill-opacity=".10"/>
+
+  <circle cx="200" cy="240" r="90" fill="#A855F7"/>
+  <circle cx="200" cy="240" r="62" fill="#C084FC"/>
+  <circle cx="200" cy="240" r="30" fill="#F5D0FE"/>
+  <path d="M200 150 v-40 M200 330 v40 M110 240 h-40 M290 240 h40" stroke="#7E22CE" stroke-width="10" stroke-linecap="round"/>
+  <text x="200" y="420" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#6B21A8">Toys</text>
+
+</svg>

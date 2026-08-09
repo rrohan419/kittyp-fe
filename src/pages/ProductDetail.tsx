@@ -12,6 +12,7 @@ import Loading from '@/components/ui/loading';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/services/cartService';
 import { handleToggleFavorite } from '@/utils/favorites';
+import { resolveProductImage, PRODUCT_IMAGE } from '@/utils/productImage';
 
 const ProductDetail = () => {
   const { uuid } = useParams<{ uuid: string }>();
@@ -44,8 +45,8 @@ const ProductDetail = () => {
   }, [dispatch, uuid]);
 
   useEffect(() => {
-    if (product?.productImageUrls?.length > 0) {
-      setSelectedImage(product.productImageUrls[0]);
+    if (product) {
+      setSelectedImage(resolveProductImage(product, { width: 900, quality: 70 }));
     }
   }, [product]);
 
@@ -131,32 +132,18 @@ const ProductDetail = () => {
           <div className="space-y-4">
             <div className="aspect-square overflow-hidden rounded-xl bg-muted">
               <img
-                src={selectedImage || product.productImageUrls[0] || ''}
+                src={selectedImage || resolveProductImage(product, { width: 900, quality: 70 })}
                 alt={product.name}
+                width={900}
+                height={900}
+                decoding="async"
+                fetchPriority="high"
                 className="object-cover w-full h-full"
+                onError={(e) => {
+                  e.currentTarget.src = PRODUCT_IMAGE.accessories;
+                }}
               />
             </div>
-
-            {product.productImageUrls.length > 1 && (
-              <div className="grid grid-cols-4 gap-2">
-                {product.productImageUrls.map((imageUrl, index) => (
-                  <button
-                    key={`product-image-index-number-${index}`}
-                    onClick={() => setSelectedImage(imageUrl)}
-                    className={cn(
-                      "aspect-square rounded-md overflow-hidden border-2",
-                      selectedImage === imageUrl ? "border-primary" : "border-transparent"
-                    )}
-                  >
-                    <img
-                      src={imageUrl}
-                      alt={`${product.name} - view ${index + 1}`}
-                      className="object-cover w-full h-full"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Product Info */}
