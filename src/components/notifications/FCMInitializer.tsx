@@ -92,7 +92,7 @@ export function FCMInitializer() {
     }
   }, [isAuthenticated, isInitialized]);
 
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_FCM === 'true') {
     const configInfo = firebaseService.getConfigInfo();
 
     let status = 'Waiting for login';
@@ -134,7 +134,7 @@ export function FCMInitializer() {
       >
         <div>FCM: {status}</div>
         <div style={{ fontSize: '10px', opacity: 0.8 }}>
-          Auth: {isAuthenticated ? `✅ ${user?.email || 'User'}` : '❌ Not logged in'}
+          Auth: {isAuthenticated ? '✅ logged in' : '❌ Not logged in'}
         </div>
         <div style={{ fontSize: '10px', opacity: 0.8 }}>
           {configInfo.projectId} ({configInfo.environment})

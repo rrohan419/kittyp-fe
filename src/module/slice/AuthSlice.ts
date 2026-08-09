@@ -124,7 +124,13 @@ export const authSlice = createSlice({
   initialState,
   reducers: {
     setUser: (state, action) => {
-      state.user = action.payload;
+      const payload = action.payload;
+      if (payload && typeof payload === 'object' && 'accessToken' in payload) {
+        const { accessToken: _omit, ...safe } = payload;
+        state.user = safe;
+      } else {
+        state.user = payload;
+      }
       state.isAuthenticated = !!action.payload;
       state.error = null;
     },

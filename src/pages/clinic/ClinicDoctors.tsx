@@ -13,8 +13,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Plus, Search, Mail, Loader2, UserPlus, Trash2, ChevronRight, Star } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { useAppSelector } from '@/module/store/hooks';
 import { ratingAdjective } from '@/components/schedule/weekCalendarUtils';
 import {
   ClinicDoctorModel,
@@ -55,6 +56,8 @@ function DoctorRatingLine({
 }
 
 export default function ClinicDoctors() {
+  const navigate = useNavigate();
+  const user = useAppSelector((s) => s.authReducer.user);
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
   const [search, setSearch] = useState('');
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
@@ -68,6 +71,7 @@ export default function ClinicDoctors() {
   const [lookingUp, setLookingUp] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [remindingId, setRemindingId] = useState<string | null>(null);
+  const [autoOpened, setAutoOpened] = useState(false);
 
   const reload = async () => {
     if (!clinicUuid) {
@@ -87,7 +91,7 @@ export default function ClinicDoctors() {
     } catch {
       setDoctors([]);
       setInvites([]);
-      toast.error('Failed to load doctors');
+      toast.error('Failed to load profile');
     } finally {
       setLoading(false);
     }
@@ -95,6 +99,7 @@ export default function ClinicDoctors() {
 
   useEffect(() => {
     let cancelled = false;
+    setAutoOpened(false);
     (async () => {
       if (cancelled) return;
       await reload();
@@ -104,6 +109,19 @@ export default function ClinicDoctors() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clinicUuid]);
+
+  // Personal / single-doctor clinics: open the profile directly (no tile list).
+  useEffect(() => {
+    if (loading || autoOpened || !clinicUuid || doctors.length !== 1) return;
+    const only = doctors[0];
+    if (!only?.doctorUuid) return;
+    const selfMatch =
+      !!user?.uuid && !!only.userUuid && user.uuid === only.userUuid;
+    if (clinic?.personal || selfMatch || doctors.length === 1) {
+      setAutoOpened(true);
+      navigate(`/clinic/doctors/${only.doctorUuid}`, { replace: true });
+    }
+  }, [loading, autoOpened, clinicUuid, doctors, clinic?.personal, user?.uuid, navigate]);
 
   const filtered = useMemo(
     () =>
@@ -246,11 +264,19 @@ export default function ClinicDoctors() {
     }
   };
 
+  if (loading || (doctors.length === 1 && !autoOpened && clinicUuid)) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto flex items-center justify-center py-16 text-muted-foreground gap-2">
+        <Loader2 className="h-5 w-5 animate-spin" /> Opening profile…
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Doctors</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Profile</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             {clinicLoading || loading
               ? 'Loading…'

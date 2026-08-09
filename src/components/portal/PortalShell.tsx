@@ -31,6 +31,9 @@ import { clearUser, setActiveRole } from '@/module/slice/AuthSlice';
 import { AppRole, ROLES, hasAnyRole } from '@/utils/roles';
 import { ClinicSwitcher } from '@/components/clinic/ClinicSwitcher';
 import { PortalNotifications } from '@/components/portal/PortalNotifications';
+import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { resolveClinicSearchTarget } from '@/utils/clinicSearchNavigate';
+import { clearStuckUiLocks, installStuckUiLockGuard } from '@/utils/clearStuckUiLocks';
 import {
   Dialog,
   DialogContent,
@@ -38,6 +41,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import EditProfileForm from '@/components/ui/EditProfileForm';
+import { toast } from 'sonner';
 
 interface PortalShellProps {
   config: PortalConfig;
@@ -89,6 +93,8 @@ export function PortalShell({ config }: PortalShellProps) {
     ROLES.CLINIC_STAFF,
   ]);
   const isClinicPortal = config.basePath === '/clinic';
+  const navItems = config.navItems;
+  const { clinicUuid } = useActiveClinic();
 
   useEffect(() => {
     const handler = () => {
@@ -102,7 +108,12 @@ export function PortalShell({ config }: PortalShellProps) {
 
   useEffect(() => {
     setMobileOpen(false);
+    clearStuckUiLocks();
   }, [location.pathname]);
+
+  useEffect(() => {
+    return installStuckUiLockGuard();
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -129,7 +140,24 @@ export function PortalShell({ config }: PortalShellProps) {
     e.preventDefault();
     const q = headerSearch.trim();
     if (!isClinicPortal) return;
-    navigate(q ? `/clinic/patients?q=${encodeURIComponent(q)}` : '/clinic/patients');
+    if (!q) {
+      navigate('/clinic/patients');
+      return;
+    }
+    void (async () => {
+      if (clinicUuid) {
+        try {
+          const target = await resolveClinicSearchTarget(clinicUuid, q);
+          if (target) {
+            navigate(target);
+            return;
+          }
+        } catch {
+          toast.error('Search failed');
+        }
+      }
+      navigate(`/clinic/patients?q=${encodeURIComponent(q)}`);
+    })();
   };
 
   const Brand = config.brandIcon;
@@ -144,6 +172,7 @@ export function PortalShell({ config }: PortalShellProps) {
       >
         <SidebarInner
           config={config}
+          navItems={navItems}
           displayUser={displayUser}
           collapsed={collapsed}
           setCollapsed={setCollapsed}
@@ -155,6 +184,7 @@ export function PortalShell({ config }: PortalShellProps) {
         <SheetContent side="left" className="p-0 w-[280px] bg-card">
           <SidebarInner
             config={config}
+            navItems={navItems}
             displayUser={displayUser}
             collapsed={false}
             setCollapsed={() => {}}
@@ -171,7 +201,7 @@ export function PortalShell({ config }: PortalShellProps) {
           collapsed && 'lg:ml-[68px]'
         )}
       >
-        <header className="sticky top-0 z-30 h-16 bg-background/80 backdrop-blur-md border-b border-border flex items-center gap-3 px-4 lg:px-6">
+        <header className="sticky top-0 z-50 h-16 bg-background/95 backdrop-blur-md border-b border-border flex items-center gap-3 px-4 lg:px-6 isolate">
           <Button
             variant="ghost"
             size="icon"
@@ -209,7 +239,7 @@ export function PortalShell({ config }: PortalShellProps) {
             {showClinicSwitcher && <ClinicSwitcher />}
             <PortalNotifications basePath={config.basePath} />
 
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <button
                   className="flex items-center gap-2 rounded-full hover:bg-muted px-1 py-1 transition-colors"
@@ -220,7 +250,7 @@ export function PortalShell({ config }: PortalShellProps) {
                   </div>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-56 z-[200]" sideOffset={8} collisionPadding={12}>
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
                     <span className="text-sm">{displayUser.name}</span>
@@ -317,6 +347,7 @@ export function PortalShell({ config }: PortalShellProps) {
 
 function SidebarInner({
   config,
+  navItems,
   displayUser,
   collapsed,
   setCollapsed,
@@ -324,6 +355,7 @@ function SidebarInner({
   mobile = false,
 }: {
   config: PortalConfig;
+  navItems: NavItem[];
   displayUser: PortalConfig['user'];
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
@@ -372,7 +404,7 @@ function SidebarInner({
       </div>
 
       <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-        {config.navItems.map((item) => {
+        {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActiveLink(location.pathname, item);
           const isCart = item.path === '/app/cart';

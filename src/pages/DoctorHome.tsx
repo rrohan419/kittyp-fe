@@ -27,7 +27,7 @@ import {
   LayoutGrid,
   List,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   addDays,
   addMinutes,
@@ -36,6 +36,7 @@ import {
   endOfWeek,
   format,
   isSameDay,
+  isValid,
   parseISO,
   setHours,
   setMinutes,
@@ -71,6 +72,7 @@ import {
 import { useAppSelector } from '@/module/store/hooks';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { toast } from 'sonner';
+import { notifyInviteAddressed } from '@/components/portal/PortalNotifications';
 import { parseApiErrorMessage } from '@/utils/validation';
 import { cn } from '@/lib/utils';
 
@@ -142,8 +144,9 @@ function withLanes(events: CalEvent[]): Array<CalEvent & { lane: number; laneCou
 }
 
 export default function DoctorHome() {
+  const navigate = useNavigate();
   const user = useAppSelector((s) => s.authReducer.user);
-  const { clinicUuid, clinic } = useActiveClinic();
+  const { clinicUuid, clinic, clinics, isPersonalPractice } = useActiveClinic();
   const [profile, setProfile] = useState<DoctorVerificationModel | null>(null);
   const [invites, setInvites] = useState<DoctorInviteModel[]>([]);
   const [invitesLoading, setInvitesLoading] = useState(true);
@@ -194,6 +197,7 @@ export default function DoctorHome() {
     try {
       const from = format(weekStart, 'yyyy-MM-dd');
       const to = format(weekEnd, 'yyyy-MM-dd');
+      // Scope calendar to the active practice so clinic visits never appear under Personal.
       const params = { from, to, clinicUuid: clinicUuid || undefined };
       const [v, b] = await Promise.all([
         fetchMyDoctorVisits(params),
@@ -242,36 +246,69 @@ export default function DoctorHome() {
       }),
     [visits, today]
   );
-  const attending = useMemo(() => todayVisits.filter((v) => v.status === 'IN_PROGRESS'), [todayVisits]);
+
+  /** Stats tiles follow the active practice; calendar keeps the full unfiltered list. */
+  const practiceTodayVisits = useMemo(() => {
+    if (!clinicUuid) return todayVisits;
+    if (isPersonalPractice) {
+      return todayVisits.filter((v) => !v.clinicUuid || v.clinicUuid === clinicUuid);
+    }
+    return todayVisits.filter((v) => v.clinicUuid === clinicUuid);
+  }, [todayVisits, clinicUuid, isPersonalPractice]);
+
+  const attending = useMemo(
+    () => practiceTodayVisits.filter((v) => v.status === 'IN_PROGRESS'),
+    [practiceTodayVisits]
+  );
   const queue = useMemo(
-    () => todayVisits.filter((v) => v.status === 'WAITLIST' || v.status === 'CHECKED_IN'),
-    [todayVisits]
+    () => practiceTodayVisits.filter((v) => v.status === 'WAITLIST' || v.status === 'CHECKED_IN'),
+    [practiceTodayVisits]
   );
   const treatedToday = useMemo(
-    () => todayVisits.filter((v) => v.status === 'CHECKING_OUT' || v.status === 'COMPLETED'),
-    [todayVisits]
+    () => practiceTodayVisits.filter((v) => v.status === 'CHECKING_OUT' || v.status === 'COMPLETED'),
+    [practiceTodayVisits]
   );
-  const completedToday = useMemo(() => todayVisits.filter((v) => v.status === 'COMPLETED'), [todayVisits]);
+  const completedToday = useMemo(
+    () => practiceTodayVisits.filter((v) => v.status === 'COMPLETED'),
+    [practiceTodayVisits]
+  );
   const todayBookings = useMemo(
     () =>
       bookings.filter((b) => {
         if (!b.slotStart) return false;
         if (['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes((b.status || '').toUpperCase())) return false;
-        return isSameDay(parseISO(b.slotStart), today);
+        if (!isSameDay(parseISO(b.slotStart), today)) return false;
+        if (!clinicUuid) return true;
+        if (isPersonalPractice) {
+          return !b.clinicUuid || b.clinicUuid === clinicUuid;
+        }
+        return b.clinicUuid === clinicUuid;
       }),
-    [bookings, today]
+    [bookings, today, clinicUuid, isPersonalPractice]
   );
   const activeAppointments = attending.length + queue.length;
+
+  const clinicLabelByUuid = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of clinics) {
+      if (c.uuid) map.set(c.uuid, c.personal ? `${c.name || 'Personal'} (personal)` : c.name || 'Clinic');
+    }
+    return map;
+  }, [clinics]);
 
   const weekEvents = useMemo(() => {
     const events: CalEvent[] = [];
     for (const v of visits) {
       const { start, end } = visitEventTime(v);
+      const place =
+        v.clinicName ||
+        (v.clinicUuid ? clinicLabelByUuid.get(v.clinicUuid) : undefined) ||
+        '';
       events.push({
         id: `visit-${v.uuid}`,
         kind: 'visit',
         title: v.petName,
-        subtitle: `${v.ownerName || 'Owner'}${v.reasonForVisit ? ` · ${v.reasonForVisit}` : ''}`,
+        subtitle: [v.ownerName || 'Owner', place, v.reasonForVisit].filter(Boolean).join(' · '),
         start,
         end,
         status: v.status,
@@ -283,11 +320,15 @@ export default function DoctorHome() {
       if (['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes((b.status || '').toUpperCase())) continue;
       const start = parseISO(b.slotStart);
       const end = b.slotEnd ? parseISO(b.slotEnd) : addMinutes(start, 30);
+      const place =
+        b.clinicName ||
+        (b.clinicUuid ? clinicLabelByUuid.get(b.clinicUuid) : undefined) ||
+        '';
       events.push({
         id: `booking-${b.uuid}`,
         kind: 'booking',
         title: b.petName,
-        subtitle: `${b.ownerName || 'Owner'}${b.notes ? ` · ${b.notes}` : ''}`,
+        subtitle: [b.ownerName || 'Owner', place, b.notes].filter(Boolean).join(' · '),
         start,
         end,
         status: b.status,
@@ -295,7 +336,7 @@ export default function DoctorHome() {
       });
     }
     return events.sort((a, b) => a.start.getTime() - b.start.getTime());
-  }, [visits, bookings]);
+  }, [visits, bookings, clinicLabelByUuid]);
 
   const todayEvents = useMemo(
     () => weekEvents.filter((e) => isSameDay(e.start, today)),
@@ -413,9 +454,39 @@ export default function DoctorHome() {
         vitals: Object.keys(vitals).length ? vitals : undefined,
       });
       if (andComplete) {
-        await completeDoctorVisit(chartVisit.uuid);
-        toast.success('Treatment finished');
+        const completed = await completeDoctorVisit(chartVisit.uuid);
+        const visitClinic = completed.clinicUuid || chartVisit.clinicUuid;
+        const billableOnDoctor =
+          isPersonalPractice && (!visitClinic || visitClinic === clinicUuid);
         setChartVisit(null);
+        await loadSchedule();
+        if (billableOnDoctor) {
+          const fromVisit = {
+            visitUuid: completed.uuid || chartVisit.uuid,
+            clinicUuid: visitClinic,
+            petUuid: completed.petUuid || chartVisit.petUuid,
+            petName: completed.petName || chartVisit.petName,
+            ownerName: completed.ownerName || chartVisit.ownerName || undefined,
+            ownerPhone: completed.ownerPhone || chartVisit.ownerPhone || undefined,
+            ownerEmail: completed.ownerEmail || chartVisit.ownerEmail || undefined,
+            reason: completed.reasonForVisit || chartVisit.reasonForVisit || undefined,
+            diagnosis: form.assessment.trim() || completed.chart?.assessment || undefined,
+            doctorNotes: form.plan || completed.chart?.plan || undefined,
+            nextVisitNotes: form.nextVisitNotes || completed.chart?.nextVisitNotes || undefined,
+            petWeight: form.weightKg || undefined,
+          };
+          toast.success('Treatment finished — create invoice');
+          navigate(`/doctor/invoices?visit=${encodeURIComponent(fromVisit.visitUuid)}`, {
+            state: { fromVisit },
+          });
+        } else {
+          toast.success(
+            isPersonalPractice
+              ? 'Treatment finished — clinic staff can create the invoice from Clinic → Appointments'
+              : 'Treatment finished — create the invoice from Clinic → Appointments on this branch'
+          );
+        }
+        return;
       } else {
         toast.success('Chart saved');
       }
@@ -444,6 +515,7 @@ export default function DoctorHome() {
       await acceptInvite(inv.token);
       toast.success(`Joined ${inv.clinicName}`);
       setInvites((prev) => prev.filter((i) => i.uuid !== inv.uuid));
+      notifyInviteAddressed(inv.uuid);
     } catch (err: unknown) {
       toast.error(parseApiErrorMessage(String(err), 'Could not accept invite'));
     } finally {
@@ -458,6 +530,7 @@ export default function DoctorHome() {
       await rejectInvite(inv.token);
       toast.message('Invite declined');
       setInvites((prev) => prev.filter((i) => i.uuid !== inv.uuid));
+      notifyInviteAddressed(inv.uuid);
     } catch {
       toast.error('Could not decline invite');
     } finally {
@@ -619,6 +692,8 @@ export default function DoctorHome() {
               <p className="text-xs text-muted-foreground mt-1">
                 {queue.length} waiting · {attending.length} with you
                 {todayBookings.length ? ` · ${todayBookings.length} scheduled` : ''}
+                {' · '}
+                {isPersonalPractice ? 'Personal' : clinic?.name || 'This clinic'}
               </p>
             </CardContent>
           </Card>
@@ -645,7 +720,7 @@ export default function DoctorHome() {
               <div className="flex justify-between">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Patients</p>
-                  <p className="text-3xl font-bold mt-2">{scheduleLoading ? '—' : todayVisits.length}</p>
+                  <p className="text-3xl font-bold mt-2">{scheduleLoading ? '—' : practiceTodayVisits.length}</p>
                 </div>
                 <Users className="h-5 w-5 text-green-600 mt-1" />
               </div>
@@ -663,8 +738,12 @@ export default function DoctorHome() {
               Week calendar
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Mon–Sun · click a visit for diagnosis / prescription · {format(weekStart, 'MMM d')} –{' '}
-              {format(weekEnd, 'MMM d')}
+              {isPersonalPractice
+                ? 'Personal practice only — clinic-branch visits stay on the clinic board'
+                : clinic?.name
+                  ? `${clinic.name} only`
+                  : 'Active practice'}{' '}
+              · {format(weekStart, 'MMM d')} – {format(weekEnd, 'MMM d')}
             </p>
           </div>
           <div className="flex items-center gap-1">
@@ -880,7 +959,15 @@ export default function DoctorHome() {
             </div>
             <div>
               <Label>Plan / prescription notes</Label>
-              <Textarea rows={2} value={form.plan} onChange={(e) => setForm((s) => ({ ...s, plan: e.target.value }))} />
+              <Textarea
+                rows={2}
+                value={form.plan}
+                onChange={(e) => setForm((s) => ({ ...s, plan: e.target.value }))}
+                placeholder="Medications, home care, and follow-up — then finish to create the invoice"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Last clinical step before billing. Finish treatment opens the invoice for this visit.
+              </p>
             </div>
             <div>
               <Label>Next visit</Label>
@@ -1008,7 +1095,13 @@ export default function DoctorHome() {
             </Button>
             {eventDetail?.kind === 'visit' &&
             (eventDetail.visit?.status === 'IN_PROGRESS' ||
-              eventDetail.visit?.status === 'CHECKING_OUT') ? (
+              (eventDetail.visit?.status === 'CHECKING_OUT' &&
+                (() => {
+                  const raw = eventDetail.visit?.checkingOutAt;
+                  if (!raw) return false;
+                  const at = parseISO(raw);
+                  return isValid(at) && Date.now() - at.getTime() <= 30 * 60 * 1000;
+                })())) ? (
               <Button
                 onClick={() => {
                   const v = eventDetail.visit!;

@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { format, parseISO, isValid } from 'date-fns';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Loader2,
@@ -14,7 +12,6 @@ import {
   ExternalLink,
   CheckCircle2,
   XCircle,
-  PawPrint,
 } from 'lucide-react';
 import { useAppSelector } from '@/module/store/hooks';
 import {
@@ -22,7 +19,12 @@ import {
   fetchMyDoctorProfile,
   statusLabel,
 } from '@/services/doctorVerificationService';
-import { AttendedPatientModel, fetchMyAttendedPatients } from '@/services/visitService';
+import { useActiveClinic } from '@/hooks/useActiveClinic';
+import {
+  fetchDoctorWhatsAppSettings,
+  updateDoctorWhatsAppSettings,
+} from '@/services/invoiceService';
+import { WhatsAppSettingsForm } from '@/components/whatsapp/WhatsAppSettingsForm';
 
 function DocLink({ href, label }: { href?: string | null; label: string }) {
   if (!href) {
@@ -68,29 +70,41 @@ function CheckRow({ label, ok }: { label: string; ok: boolean }) {
   );
 }
 
-function formatWhen(raw?: string) {
-  if (!raw) return null;
-  const d = parseISO(raw);
-  return isValid(d) ? format(d, 'MMM d, yyyy') : null;
-}
-
 export default function DoctorSettings() {
   const user = useAppSelector((s) => s.authReducer.user);
+  const { isPersonalPractice } = useActiveClinic();
   const [profile, setProfile] = useState<DoctorVerificationModel | null>(null);
-  const [attended, setAttended] = useState<AttendedPatientModel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [waConfigured, setWaConfigured] = useState(false);
+  const [waPhoneId, setWaPhoneId] = useState('');
+  const [waBusinessId, setWaBusinessId] = useState('');
 
   useEffect(() => {
-    void Promise.all([
-      fetchMyDoctorProfile().catch(() => null),
-      fetchMyAttendedPatients().catch(() => [] as AttendedPatientModel[]),
-    ])
-      .then(([p, a]) => {
-        setProfile(p);
-        setAttended(a);
-      })
+    void fetchMyDoctorProfile()
+      .then(setProfile)
+      .catch(() => setProfile(null))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!isPersonalPractice) {
+      setWaConfigured(false);
+      setWaPhoneId('');
+      setWaBusinessId('');
+      return;
+    }
+    void fetchDoctorWhatsAppSettings()
+      .then((wa) => {
+        setWaConfigured(!!wa.whatsappConfigured);
+        setWaPhoneId(wa.phoneNumberId || '');
+        setWaBusinessId(wa.businessAccountId || '');
+      })
+      .catch(() => {
+        setWaConfigured(false);
+        setWaPhoneId('');
+        setWaBusinessId('');
+      });
+  }, [isPersonalPractice]);
 
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Doctor';
   const isVerified = profile?.status === 'VERIFIED' || profile?.status === 'PUBLISHED';
@@ -111,7 +125,11 @@ export default function DoctorSettings() {
     <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">Your account, verification, documents, and patients</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          {isPersonalPractice
+            ? 'Your account, WhatsApp, verification, and documents'
+            : 'Your account, verification, and documents — WhatsApp for this clinic is in Clinic Settings'}
+        </p>
       </div>
 
       <Card className="border-0 shadow-sm">
@@ -162,63 +180,29 @@ export default function DoctorSettings() {
         </CardContent>
       </Card>
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between gap-2">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <PawPrint className="h-4 w-4" /> Pets attended
-            </CardTitle>
-            <p className="text-sm text-muted-foreground font-normal mt-1">
-              Pets and owners from visits you treated across clinics.
-            </p>
-          </div>
-          <Badge variant="secondary">{attended.length}</Badge>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {attended.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              Finish treatment on a visit and the pet + owner will appear here.
-            </p>
-          ) : (
-            attended.slice(0, 20).map((row) => (
-              <div
-                key={`${row.petUuid}-${row.clinicUuid || 'x'}`}
-                className="rounded-xl border border-border px-3 py-2.5 space-y-1"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {row.petName}
-                      {row.ownerName ? ` · ${row.ownerName}` : ''}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {[row.species, row.breed].filter(Boolean).join(' · ') || 'Pet'}
-                      {row.ownerPhone ? ` · ${row.ownerPhone}` : ''}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {row.clinicName || 'Clinic'}
-                      {row.lastAssessment ? ` · ${row.lastAssessment}` : ''}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <Badge variant="secondary" className="text-[10px]">
-                      {row.visitCount} visit{row.visitCount === 1 ? '' : 's'}
-                    </Badge>
-                    {formatWhen(row.lastVisitAt) && (
-                      <p className="text-[10px] text-muted-foreground mt-1">{formatWhen(row.lastVisitAt)}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-          {attended.length > 0 && (
-            <Link to="/doctor/appointments" className="text-xs text-primary font-medium inline-block pt-1">
-              Open My visits →
-            </Link>
-          )}
-        </CardContent>
-      </Card>
+      {isPersonalPractice ? (
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg">WhatsApp number</CardTitle>
+            <CardDescription>
+              Used for Personal practice invoices and receipts. Clinic branches use Clinic Settings.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <WhatsAppSettingsForm
+              configured={waConfigured}
+              phoneNumberIdInitial={waPhoneId}
+              businessAccountIdInitial={waBusinessId}
+              onSave={async (values) => {
+                const res = await updateDoctorWhatsAppSettings(values);
+                setWaConfigured(!!res.whatsappConfigured);
+                setWaPhoneId(res.phoneNumberId || '');
+                setWaBusinessId(res.businessAccountId || '');
+              }}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="border-0 shadow-sm">
         <CardHeader>

@@ -72,7 +72,8 @@ export interface UserProfile {
   age?: number | null;
   uuid: string;
   createdAt: string;
-  accessToken: string;
+  /** Present only briefly after email change — never persist to localStorage. */
+  accessToken?: string;
   profilePictureUrl: string;
   ownerPets: PetProfile[];
   fcmToken: string;

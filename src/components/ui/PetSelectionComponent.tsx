@@ -19,8 +19,11 @@ import { calculatePetAgeForDisplay } from "@/services/UserService";
 interface PetSelectionProps {
   selectedPetId: string | null;
   setSelectedPetId: (id: string | null) => void;
-  // savedPets: PetProfile[];
-  // user: any;
+  /** When provided (doctor / clinic flows), overrides Redux ownerPets. */
+  pets?: PetProfile[];
+  petsLoading?: boolean;
+  petsLabel?: string;
+  emptyHint?: string;
   onGenerateRecommendation: (manualPetData?: PetProfile) => void;
   isGenerating: boolean;
   recommendations: PetCarePlan;
@@ -29,8 +32,10 @@ interface PetSelectionProps {
 export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
   selectedPetId,
   setSelectedPetId,
-  // savedPets,
-  // user,
+  pets,
+  petsLoading = false,
+  petsLabel,
+  emptyHint,
   onGenerateRecommendation,
   isGenerating,
   recommendations
@@ -52,8 +57,15 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
     isNeutered: true,
     createdAt: '',
   });
-  const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
-  const savedPets = user?.ownerPets || [];
+  const { user } = useSelector((state: RootState) => state.authReducer);
+  const savedPets = pets ?? user?.ownerPets ?? [];
+  const listTitle = petsLabel || (savedPets.length === 1 && !useManualEntry ? 'Your Pet' : 'Choose Your Pet');
+  const listDescription =
+    petsLabel
+      ? 'Select a patient or enter details manually for personalized nutrition analysis'
+      : savedPets.length === 1 && !useManualEntry
+        ? 'Using your pet profile for personalized recommendations'
+        : 'Select a saved pet or enter details manually for personalized nutrition analysis';
 
   // Clear selectedPetId if the selected pet no longer exists; auto-select sole pet
   useEffect(() => {
@@ -89,14 +101,10 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                 <Heart className="h-5 w-5 text-primary" />
               </motion.div>
               <span className="bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                {savedPets.length === 1 && !useManualEntry ? 'Your Pet' : 'Choose Your Pet'}
+                {listTitle}
               </span>
             </CardTitle>
-            <CardDescription>
-              {savedPets.length === 1 && !useManualEntry
-                ? 'Using your pet profile for personalized recommendations'
-                : 'Select a saved pet or enter details manually for personalized nutrition analysis'}
-            </CardDescription>
+            <CardDescription>{listDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Toggle between saved pets and manual entry */}
@@ -110,7 +118,8 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                 className="flex-1 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
               >
                 <PawPrint className="h-4 w-4 mr-2" />
-                Saved Pets {savedPets.length > 0 && `(${savedPets.length})`}
+                {pets ? 'Patients' : 'Saved Pets'}{' '}
+                {savedPets.length > 0 && `(${savedPets.length})`}
               </Button>
               <Button
                 variant={useManualEntry ? "default" : "outline"}
@@ -127,7 +136,9 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
 
             {!useManualEntry ? (
               // Saved Pets Section
-              savedPets.length === 0 ? (
+              petsLoading ? (
+                <p className="text-center py-10 text-sm text-muted-foreground">Loading patients…</p>
+              ) : savedPets.length === 0 ? (
                 <motion.div
                   className="text-center py-12 text-muted-foreground"
                   variants={fadeUp}
@@ -138,9 +149,12 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                   >
                     <PawPrint className="h-16 w-16 mx-auto mb-4 opacity-30" />
                   </motion.div>
-                  <p className="text-lg mb-4">No saved pets found</p>
-                  <p className="text-sm mb-6">Add your pet's profile to get personalized recommendations</p>
-                  {user ? (
+                  <p className="text-lg mb-4">No patients found</p>
+                  <p className="text-sm mb-6">
+                    {emptyHint ||
+                      'Finish a visit or add a clinic patient, or enter details manually.'}
+                  </p>
+                  {user && !pets ? (
                     <Button asChild variant="outline" size="lg" className="mr-4">
                       <a href="/profile?tab=pets">
                         <Plus className="h-4 w-4 mr-2" />

@@ -1,6 +1,13 @@
 import axiosInstance from "@/config/axionInstance";
 import { PetProfile, UserProfile } from "./authService";
 
+/** Persist user without JWT — token lives only in access_token key. */
+export function persistUserProfile(user: UserProfile): UserProfile {
+  const { accessToken: _omit, ...safe } = user;
+  localStorage.setItem('user', JSON.stringify(safe));
+  return safe as UserProfile;
+}
+
 
 interface WrappedUserResponse {
   success: boolean;
@@ -94,9 +101,7 @@ export const calculatePetAgeForDisplay = (dobString: string) => {
 export const fetchUserDetail = async (): Promise<UserProfile> => {
   const userResponse = await axiosInstance.get<WrappedUserResponse>('/user/me');
   const user = userResponse.data.data;
-  localStorage.setItem('user', JSON.stringify(user));
-
-  return user;
+  return persistUserProfile(user);
 };
 
 export const updateUserDetails = async (userUuid: string, userUpdateDto: UserUpdateDto): Promise<UserProfile> => {
@@ -104,9 +109,7 @@ export const updateUserDetails = async (userUuid: string, userUpdateDto: UserUpd
   const user = userResponse.data.data;
 
   // Step 4: Store user data if needed
-  localStorage.setItem('user', JSON.stringify(user));
-
-  return user;
+  return persistUserProfile(user);
 
 };
 
@@ -151,8 +154,7 @@ export const updateUserProfilePicture = async (userUuid: string, profilePictureU
     { profilePictureUrl }
   );
   const user = userResponse.data.data;
-  localStorage.setItem('user', JSON.stringify(user));
-  return user;
+  return persistUserProfile(user);
 };
 
 export const updatePetPhotos = async (petUuid: string, photos: string[]): Promise<PetProfile> => {
@@ -173,8 +175,5 @@ export const saveUserFcmToken = async (fcmToken: string): Promise<UserProfile> =
   const userResponse = await axiosInstance.patch<WrappedUserResponse>(`/user/${fcmToken}`);
   const user = userResponse.data.data;
 
-  // Store updated user data
-  localStorage.setItem('user', JSON.stringify(user));
-
-  return user;
+  return persistUserProfile(user);
 };

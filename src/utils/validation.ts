@@ -1,3 +1,5 @@
+import DOMPurify from 'dompurify';
+
 export const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,72}$/;
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** Exactly 10 digits (local number without country code). */
@@ -57,18 +59,22 @@ export function toE164Phone(localPhone: string, countryCode = '+91'): string {
   return `${code}${local}`;
 }
 
+const HTML_ALLOWLIST = {
+  ALLOWED_TAGS: [
+    'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'a', 'ul', 'ol', 'li',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre',
+    'img', 'span', 'div', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
+  ],
+  ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target', 'rel', 'width', 'height'],
+  ALLOW_DATA_ATTR: false,
+  FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'style'],
+  FORBID_ATTR: ['style'],
+} as const;
+
 export function sanitizeHtml(html: string): string {
-  if (!html || typeof DOMParser === 'undefined') return html || '';
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  doc.querySelectorAll('script,iframe,object,embed,form').forEach((el) => el.remove());
-  doc.querySelectorAll('*').forEach((el) => {
-    [...el.attributes].forEach((attr) => {
-      if (attr.name.toLowerCase().startsWith('on') || attr.value.trim().toLowerCase().startsWith('javascript:')) {
-        el.removeAttribute(attr.name);
-      }
-    });
-  });
-  return doc.body.innerHTML;
+  if (!html) return '';
+  if (typeof window === 'undefined') return html;
+  return DOMPurify.sanitize(html, HTML_ALLOWLIST);
 }
 
 /** Parse Spring / API error bodies into a readable message. */

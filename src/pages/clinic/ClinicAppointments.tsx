@@ -12,7 +12,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clock, Loader2, Pencil, Plus, User } from 'lucide-react';
 import { format, parseISO, isValid, isSameDay, startOfDay, addMinutes } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import type { InvoiceFromVisitState } from '@/services/invoiceService';
 import { WalkInDialog } from '@/components/clinic/WalkInDialog';
 import {
   Dialog,
@@ -35,6 +37,7 @@ import {
   patchClinicVisit,
 } from '@/services/clinicService';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const FLOW_COLUMNS: { status: VisitStatus; title: string }[] = [
   { status: 'WAITLIST', title: 'Waitlist' },
@@ -61,6 +64,7 @@ function bookingStart(b: ClinicBookingModel): Date | null {
 }
 
 export default function ClinicAppointments() {
+  const navigate = useNavigate();
   const { clinicUuid } = useActiveClinic();
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
@@ -230,6 +234,20 @@ export default function ClinicAppointments() {
         return;
       }
     }
+    if (
+      visit.status === 'CHECKING_OUT' &&
+      (status === 'WAITLIST' || status === 'CHECKED_IN' || status === 'IN_PROGRESS')
+    ) {
+      if (!visit.checkingOutAt) {
+        toast.error('Can only move out of Checkout within 30 minutes');
+        return;
+      }
+      const checkingOutAt = parseISO(visit.checkingOutAt);
+      if (!isValid(checkingOutAt) || Date.now() - checkingOutAt.getTime() > 30 * 60 * 1000) {
+        toast.error('Can only move out of Checkout within 30 minutes');
+        return;
+      }
+    }
     await patch(visitUuid, { status });
   };
 
@@ -361,6 +379,24 @@ export default function ClinicAppointments() {
                             return;
                           }
                           patch(v.uuid, { status: 'COMPLETED' });
+                        }}
+                        onInvoice={() => {
+                          const fromVisit: InvoiceFromVisitState = {
+                            visitUuid: v.uuid,
+                            clinicUuid: v.clinicUuid || clinicUuid || undefined,
+                            petUuid: v.petUuid,
+                            petName: v.petName,
+                            ownerName: v.ownerName || undefined,
+                            ownerPhone: v.ownerPhone || undefined,
+                            ownerEmail: v.ownerEmail || undefined,
+                            reason: v.reasonForVisit || undefined,
+                            diagnosis: v.chart?.assessment || undefined,
+                            doctorNotes: v.chart?.plan || undefined,
+                            nextVisitNotes: v.chart?.nextVisitNotes || undefined,
+                          };
+                          navigate(`/clinic/invoices?visit=${encodeURIComponent(v.uuid)}`, {
+                            state: { fromVisit },
+                          });
                         }}
                         onCancel={() => patch(v.uuid, { status: 'CANCELLED' })}
                         onAssign={(doctorUuid) =>
@@ -581,6 +617,25 @@ export default function ClinicAppointments() {
                   toast.error('Assign a doctor before completing the visit');
                   return;
                 }
+                if (
+                  editVisit.status === 'CHECKING_OUT' &&
+                  (editForm.status === 'WAITLIST' ||
+                    editForm.status === 'CHECKED_IN' ||
+                    editForm.status === 'IN_PROGRESS')
+                ) {
+                  if (!editVisit.checkingOutAt) {
+                    toast.error('Can only move out of Checkout within 30 minutes');
+                    return;
+                  }
+                  const checkingOutAt = parseISO(editVisit.checkingOutAt);
+                  if (
+                    !isValid(checkingOutAt) ||
+                    Date.now() - checkingOutAt.getTime() > 30 * 60 * 1000
+                  ) {
+                    toast.error('Can only move out of Checkout within 30 minutes');
+                    return;
+                  }
+                }
                 setEditSaving(true);
                 try {
                   await patchClinicVisit(clinicUuid, editVisit.uuid, {
@@ -619,6 +674,7 @@ function VisitCard({
   onCheckIn,
   onCheckout,
   onComplete,
+  onInvoice,
   onCancel,
   onAssign,
   onEdit,
@@ -629,16 +685,35 @@ function VisitCard({
   onCheckIn: () => void;
   onCheckout: () => void;
   onComplete: () => void;
+  onInvoice: () => void;
   onCancel: () => void;
   onAssign: (doctorUuid: string) => void;
   onEdit: () => void;
 }) {
   const activeDoctors = doctors.filter((d) => d.isActive !== false && d.doctorUuid);
+  const checkingOutAt = visit.checkingOutAt ? parseISO(visit.checkingOutAt) : null;
+  const canLeaveCheckout =
+    visit.status !== 'CHECKING_OUT' ||
+    (checkingOutAt != null &&
+      isValid(checkingOutAt) &&
+      Date.now() - checkingOutAt.getTime() <= 30 * 60 * 1000);
+  const canEditVisit =
+    visit.status !== 'CHECKING_OUT' ||
+    (checkingOutAt != null &&
+      isValid(checkingOutAt) &&
+      Date.now() - checkingOutAt.getTime() <= 30 * 60 * 1000);
   return (
     <div
-      className="rounded-md border p-2.5 space-y-2 bg-background cursor-grab active:cursor-grabbing"
-      draggable={!busy}
+      className={cn(
+        'rounded-md border p-2.5 space-y-2 bg-background',
+        canLeaveCheckout ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
+      )}
+      draggable={!busy && canLeaveCheckout}
       onDragStart={(e) => {
+        if (!canLeaveCheckout) {
+          e.preventDefault();
+          return;
+        }
         e.dataTransfer.setData('text/visit-uuid', visit.uuid);
         e.dataTransfer.effectAllowed = 'move';
       }}
@@ -659,9 +734,18 @@ function VisitCard({
         </div>
         <div className="flex items-center gap-1">
           {visit.urgency === 'URGENT' && <Badge className={statusBadge.URGENT}>Urgent</Badge>}
-          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={onEdit} title="Edit visit">
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
+          {canEditVisit ? (
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={onEdit} title="Edit visit">
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          ) : (
+            <span
+              className="text-[10px] text-muted-foreground px-1"
+              title="Checkout edit window (30 min) has ended"
+            >
+              Locked
+            </span>
+          )}
         </div>
       </div>
       {visit.reasonForVisit && (
@@ -675,7 +759,7 @@ function VisitCard({
       <Select
         value={visit.doctorUuid || 'none'}
         onValueChange={(v) => onAssign(v === 'none' ? '' : v)}
-        disabled={busy}
+        disabled={busy || !canEditVisit}
       >
         <SelectTrigger className="h-8 text-xs">
           <SelectValue placeholder="Assign doctor" />
@@ -704,8 +788,25 @@ function VisitCard({
           </Button>
         )}
         {visit.status === 'CHECKING_OUT' && (
-          <Button size="sm" variant="secondary" className="h-7 text-xs" disabled={busy} onClick={onComplete}>
-            Complete checkout
+          <>
+            <Button size="sm" variant="secondary" className="h-7 text-xs" disabled={busy} onClick={onComplete}>
+              Complete checkout
+            </Button>
+            {!visit.invoiceUuid && (
+              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={onInvoice}>
+                Create invoice
+              </Button>
+            )}
+          </>
+        )}
+        {(visit.status === 'COMPLETED' || visit.status === 'CHECKING_OUT') && visit.invoiceUuid && (
+          <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={onInvoice}>
+            Invoice
+          </Button>
+        )}
+        {visit.status === 'COMPLETED' && !visit.invoiceUuid && (
+          <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={onInvoice}>
+            Create invoice
           </Button>
         )}
         {(visit.status === 'WAITLIST' || visit.status === 'CHECKED_IN') && (

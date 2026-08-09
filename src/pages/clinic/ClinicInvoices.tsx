@@ -22,14 +22,13 @@ import {
   InvoiceFromVisitState,
   TreatmentItemType,
   TreatmentLineItem,
-  createConsultationInvoice,
-  fetchInvoicePdfUrl,
-  fetchMyInvoices,
-  generateInvoicePdf,
-  sendInvoiceWhatsApp,
+  createClinicInvoice,
+  fetchClinicInvoicePdfUrl,
+  fetchClinicInvoices,
+  generateClinicInvoicePdf,
+  sendClinicInvoiceWhatsApp,
 } from '@/services/invoiceService';
-import { fetchClinicPetMedicalProfile } from '@/services/clinicService';
-import { fetchMyDoctorVisits } from '@/services/visitService';
+import { fetchClinicPetMedicalProfile, fetchClinicVisits } from '@/services/clinicService';
 import { formatInr } from '@/services/availabilityService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 
@@ -42,19 +41,12 @@ const emptyItem = (): TreatmentLineItem => ({
 
 type LocationState = { fromVisit?: InvoiceFromVisitState } | null;
 
-export default function DoctorInvoices() {
+export default function ClinicInvoices() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const hydratedRef = useRef<string | null>(null);
-  const { isPersonalPractice, loading: clinicLoading } = useActiveClinic();
-
-  useEffect(() => {
-    if (!clinicLoading && !isPersonalPractice) {
-      toast.message('Switch to Personal practice to create invoices');
-      navigate('/doctor', { replace: true });
-    }
-  }, [clinicLoading, isPersonalPractice, navigate]);
+  const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
 
   const [items, setItems] = useState<TreatmentLineItem[]>([emptyItem()]);
   const [petName, setPetName] = useState('');
@@ -131,16 +123,20 @@ export default function DoctorInvoices() {
       setHydrating(true);
       try {
         let from = state?.fromVisit;
-        if (!from && visitQ) {
+        if (!from && visitQ && clinicUuid) {
           const today = startOfDay(new Date());
-          const fromDate = format(addDays(today, -7), 'yyyy-MM-dd');
-          const toDate = format(today, 'yyyy-MM-dd');
-          const mine = await fetchMyDoctorVisits({ from: fromDate, to: toDate }).catch(() => []);
-          const visit = mine.find((v) => v.uuid === visitQ);
+          const days = await Promise.all(
+            [0, 1, 2, 3, 4, 5, 6].map((offset) =>
+              fetchClinicVisits(clinicUuid, {
+                date: format(addDays(today, -offset), 'yyyy-MM-dd'),
+              }).catch(() => [])
+            )
+          );
+          const visit = days.flat().find((v) => v.uuid === visitQ);
           if (visit) {
             from = {
               visitUuid: visit.uuid,
-              clinicUuid: visit.clinicUuid,
+              clinicUuid: visit.clinicUuid || clinicUuid,
               petUuid: visit.petUuid,
               petName: visit.petName,
               ownerName: visit.ownerName || undefined,
@@ -156,6 +152,7 @@ export default function DoctorInvoices() {
             };
           } else {
             setLinkVisitUuid(visitQ);
+            setLinkClinicUuid(clinicUuid);
           }
         }
         if (from) {
@@ -171,11 +168,15 @@ export default function DoctorInvoices() {
         setHydrating(false);
       }
     })();
-  }, [location.state, location.pathname, location.search, navigate, searchParams]);
+  }, [location.state, location.pathname, location.search, navigate, searchParams, clinicUuid]);
 
   const load = async () => {
+    if (!clinicUuid) {
+      setInvoices([]);
+      return;
+    }
     try {
-      setInvoices(await fetchMyInvoices());
+      setInvoices(await fetchClinicInvoices(clinicUuid));
     } catch {
       setInvoices([]);
     }
@@ -183,7 +184,7 @@ export default function DoctorInvoices() {
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [clinicUuid]);
 
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0),
@@ -239,9 +240,13 @@ export default function DoctorInvoices() {
       toast.error('Add at least one line item with a description');
       return;
     }
+    if (!clinicUuid) {
+      toast.error('Select a clinic first');
+      return;
+    }
     setLoading(true);
     try {
-      const created = await createConsultationInvoice({
+      const created = await createClinicInvoice(clinicUuid, {
         items: items.map((item) => ({
           ...item,
           total: Number(item.quantity) * Number(item.unitPrice),
@@ -254,7 +259,7 @@ export default function DoctorInvoices() {
         sgst: sgstNum,
         paidAmount: paidNum,
         currency: 'INR',
-        clinicUuid: linkClinicUuid,
+        clinicUuid,
         petUuid: linkPetUuid,
         visitUuid: linkVisitUuid,
         petName: petName.trim(),
@@ -304,10 +309,11 @@ export default function DoctorInvoices() {
   };
 
   const onGeneratePdf = async (uuid: string) => {
+    if (!clinicUuid) return;
     setBusyUuid(uuid);
     try {
-      await generateInvoicePdf(uuid);
-      const url = await fetchInvoicePdfUrl(uuid);
+      await generateClinicInvoicePdf(clinicUuid, uuid);
+      const url = await fetchClinicInvoicePdfUrl(clinicUuid, uuid);
       window.open(url, '_blank');
       toast.success('PDF ready');
       await load();
@@ -319,9 +325,10 @@ export default function DoctorInvoices() {
   };
 
   const onViewPdf = async (uuid: string) => {
+    if (!clinicUuid) return;
     setBusyUuid(uuid);
     try {
-      const url = await fetchInvoicePdfUrl(uuid);
+      const url = await fetchClinicInvoicePdfUrl(clinicUuid, uuid);
       window.open(url, '_blank');
     } catch {
       toast.error('PDF not available yet — generate it first');
@@ -331,9 +338,10 @@ export default function DoctorInvoices() {
   };
 
   const onSendWhatsApp = async (uuid: string) => {
+    if (!clinicUuid) return;
     setBusyUuid(uuid);
     try {
-      const sent = await sendInvoiceWhatsApp(uuid);
+      const sent = await sendClinicInvoiceWhatsApp(clinicUuid, uuid);
       toast.success(`Invoice ${sent.invoiceNumber || ''} sent on WhatsApp`);
       await load();
     } catch (err: unknown) {
@@ -355,9 +363,10 @@ export default function DoctorInvoices() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Treatment Invoices</h1>
+        <h1 className="text-2xl font-bold">Clinic invoices</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Prefill from a finished visit, then Save and Send to deliver the PDF on WhatsApp.
+          {clinic?.name ? `${clinic.name} · ` : ''}
+          Create invoices for clinic visits and send on the clinic WhatsApp number.
         </p>
       </div>
 

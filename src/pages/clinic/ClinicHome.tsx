@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Calendar, Users, Stethoscope, Activity, Sparkles, Star } from 'lucide-react';
+import { Calendar, Users, Stethoscope, Activity, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   addDays,
@@ -33,11 +33,7 @@ import {
   fetchClinicVisits,
 } from '@/services/clinicService';
 import { WeekCalendar } from '@/components/schedule/WeekCalendar';
-import {
-  WeekCalEvent,
-  buildWeekEvents,
-  ratingAdjective,
-} from '@/components/schedule/weekCalendarUtils';
+import { WeekCalEvent, buildWeekEvents } from '@/components/schedule/weekCalendarUtils';
 import { cn } from '@/lib/utils';
 
 export default function ClinicHome() {
@@ -47,9 +43,6 @@ export default function ClinicHome() {
   const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [diagnosedCount, setDiagnosedCount] = useState(0);
-  const [clinicRating, setClinicRating] = useState<number | null>(null);
-  const [clinicReviewsCount, setClinicReviewsCount] = useState(0);
-  const [clinicRatingLabel, setClinicRatingLabel] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [weekAnchor, setWeekAnchor] = useState(() => startOfDay(new Date()));
   const [selected, setSelected] = useState<WeekCalEvent | null>(null);
@@ -68,9 +61,6 @@ export default function ClinicHome() {
       setBookings([]);
       setVisits([]);
       setDiagnosedCount(0);
-      setClinicRating(null);
-      setClinicReviewsCount(0);
-      setClinicRatingLabel(null);
       return;
     }
     setLoading(true);
@@ -92,18 +82,12 @@ export default function ClinicHome() {
       setBookings(bookingPage?.models ?? []);
       setVisits([...visitMap.values()]);
       setDiagnosedCount(stats?.diagnosedPetCount ?? 0);
-      setClinicRating(stats?.clinicRating ?? null);
-      setClinicReviewsCount(stats?.clinicReviewsCount ?? 0);
-      setClinicRatingLabel(stats?.clinicRatingLabel ?? null);
     } catch {
       setDoctors([]);
       setPatients([]);
       setBookings([]);
       setVisits([]);
       setDiagnosedCount(0);
-      setClinicRating(null);
-      setClinicReviewsCount(0);
-      setClinicRatingLabel(null);
     } finally {
       setLoading(false);
     }
@@ -135,22 +119,11 @@ export default function ClinicHome() {
     return buildWeekEvents(weekVisits, weekBookings);
   }, [visits, bookings, weekStart, weekEnd]);
 
-  const ratingLabel = clinicRatingLabel || ratingAdjective(clinicRating);
   const stats = [
     {
-      label: 'Clinic rating',
-      value:
-        clinicRating != null && clinicReviewsCount > 0 ? clinicRating.toFixed(1) : '—',
-      sub: clinicReviewsCount > 0 ? `${ratingLabel} · ${clinicReviewsCount} reviews` : 'Not rated yet',
-      icon: Star,
-      to: '/clinic/doctors',
-      color: 'from-amber-500/10 to-accent',
-      iconColor: 'bg-amber-500/20 text-amber-700 dark:text-amber-300',
-    },
-    {
-      label: 'Doctors',
+      label: 'Profile',
       value: doctors.length,
-      sub: 'On roster',
+      sub: 'Doctors on roster',
       icon: Stethoscope,
       to: '/clinic/doctors',
       color: 'from-primary/5 to-muted',
@@ -177,25 +150,21 @@ export default function ClinicHome() {
   ];
 
   return (
-    <div className="relative p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 lg:space-y-8 overflow-hidden">
+    <div className="relative px-4 pt-0 pb-4 sm:px-5 sm:pt-0 sm:pb-5 lg:px-6 lg:pt-1 lg:pb-6 max-w-7xl mx-auto space-y-3 lg:space-y-4 overflow-x-hidden">
       <div className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-primary/15 blur-3xl" />
       <div className="pointer-events-none absolute top-40 -left-16 w-56 h-56 rounded-full bg-accent blur-3xl" />
 
-      <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <div className="inline-flex items-center gap-1.5 text-xs font-medium text-primary mb-2 px-2.5 py-1 rounded-full bg-primary/10">
-            <Sparkles className="h-3.5 w-3.5" />
-            Live branch dashboard
-          </div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground leading-tight">
             {clinic?.name ?? 'Clinic Dashboard'}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
+          <p className="text-muted-foreground mt-0 text-sm">
             {format(new Date(), 'EEEE, MMMM d, yyyy')}
             {clinic?.name ? ` · Showing only ${clinic.name}` : ''}
           </p>
         </div>
-        <Button asChild size="sm" className="shadow-md shadow-primary/20">
+        <Button asChild size="sm" className="shadow-md shadow-primary/20 shrink-0">
           <Link to="/clinic/appointments">
             <Calendar className="h-4 w-4 mr-2" />
             Appointments board
@@ -253,9 +222,11 @@ export default function ClinicHome() {
             <Calendar className="h-5 w-5" />
             Week calendar
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Visits and scheduled appointments for this branch. Click a slot for details.
-          </p>
+          {!clinic?.personal && (
+            <p className="text-sm text-muted-foreground">
+              Visits and scheduled appointments for this branch. Click a slot for details.
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           <WeekCalendar
@@ -265,9 +236,13 @@ export default function ClinicHome() {
             loading={loading}
             onEventClick={setSelected}
             emptyLabel="No visits or bookings this week — use Appointments to add one."
-            doctors={doctors
-              .filter((d) => d.isActive !== false && d.doctorUuid)
-              .map((d) => ({ doctorUuid: d.doctorUuid, name: d.name || d.email || 'Doctor' }))}
+            doctors={
+              clinic?.personal
+                ? undefined
+                : doctors
+                    .filter((d) => d.isActive !== false && d.doctorUuid)
+                    .map((d) => ({ doctorUuid: d.doctorUuid, name: d.name || d.email || 'Doctor' }))
+            }
           />
         </CardContent>
       </Card>

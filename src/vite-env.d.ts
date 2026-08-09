@@ -11,6 +11,8 @@ interface ImportMetaEnv {
     readonly VITE_FEATURE_ECOMMERCE?: string;
     /** Alias for VITE_FEATURE_ECOMMERCE (ENABLE_STORE). */
     readonly VITE_ENABLE_STORE?: string;
+    /** Show FCM debug overlay (email redacted). Default off. */
+    readonly VITE_DEBUG_FCM?: string;
     // Add other environment variables as needed
   }
   

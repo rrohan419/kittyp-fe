@@ -14,6 +14,7 @@ import {
   rejectInvite,
 } from '@/services/clinicService';
 import { toast } from 'sonner';
+import { notifyInviteAddressed } from '@/components/portal/PortalNotifications';
 import { ROLES, hasAnyRole } from '@/utils/roles';
 import { parseApiErrorMessage } from '@/utils/validation';
 
@@ -60,6 +61,7 @@ export default function ClinicInviteAccept() {
     try {
       await acceptInvite(token);
       toast.success('You joined the clinic');
+      notifyInviteAddressed();
       navigate('/doctor');
     } catch (err: unknown) {
       const ax = err as { response?: { data?: unknown }; message?: string };
@@ -81,6 +83,7 @@ export default function ClinicInviteAccept() {
     try {
       await rejectInvite(token);
       toast.success('Invite declined — the clinic has been notified');
+      notifyInviteAddressed();
       navigate('/doctor');
     } catch (err: unknown) {
       const ax = err as { response?: { data?: unknown }; message?: string };

@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { PetPhoto } from '@/components/clinic/PetPhoto';
+import { resolveClinicSearchTarget } from '@/utils/clinicSearchNavigate';
 import {
   ClinicOwnerModel,
   ClinicPetListModel,
@@ -218,6 +219,22 @@ export default function ClinicPatients() {
       window.clearTimeout(handle);
     };
   }, [clinicUuid, search, searchAllBranches, clinics, clinic?.name]);
+
+  // When a header/list search uniquely identifies a pet or owner, open that entity directly.
+  useEffect(() => {
+    if (loading || searchAllBranches || !clinicUuid) return;
+    const q = search.trim();
+    if (q.length < 2) return;
+    let cancelled = false;
+    void resolveClinicSearchTarget(clinicUuid, q).then((target) => {
+      if (!cancelled && target) {
+        navigate(target, { replace: true });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, search, clinicUuid, searchAllBranches, owners.length, pets.length, navigate]);
 
   const selectPlatformUser = async (user: PlatformUserSearchModel) => {
     const targetClinic = clinicUuid;

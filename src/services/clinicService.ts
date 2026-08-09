@@ -13,6 +13,8 @@ export interface ClinicModel {
   status?: string;
   /** True when the current user owns this clinic (personal practice). */
   personal?: boolean;
+  /** Clinic Meta WhatsApp credentials are set (token never returned). */
+  whatsappConfigured?: boolean;
 }
 
 export interface ClinicDoctorModel {
@@ -28,6 +30,9 @@ export interface ClinicDoctorModel {
   rating?: number | null;
   reviewsCount?: number | null;
   ratingLabel?: string | null;
+  joinedAt?: string | null;
+  experienceYears?: number | null;
+  registrationNumber?: string | null;
 }
 
 export interface ClinicDoctorPatientModel {
@@ -215,6 +220,7 @@ export interface ClinicBookingModel {
   mode?: string;
   notes?: string;
   clinicUuid?: string;
+  clinicName?: string;
 }
 
 export interface RetentionAlertModel {
@@ -614,6 +620,7 @@ export interface ClinicVisitModel {
   checkedInAt?: string;
   startedAt?: string;
   completedAt?: string;
+  checkingOutAt?: string;
   createdAt?: string;
   chart?: VisitChartModel;
   invoiceUuid?: string;

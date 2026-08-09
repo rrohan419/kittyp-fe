@@ -72,6 +72,7 @@ import ClinicInventory from './pages/clinic/ClinicInventory';
 import ClinicStaff from './pages/clinic/ClinicStaff';
 import ClinicReports from './pages/clinic/ClinicReports';
 import ClinicSettings from './pages/clinic/ClinicSettings';
+import ClinicInvoices from './pages/clinic/ClinicInvoices';
 
 // Parent Portal
 import { ParentLayout } from './pages/parent/ParentLayout';
@@ -398,6 +399,10 @@ export const router = createBrowserRouter(
             {
               path: "reports",
               element: <PageTransition><ClinicReports /></PageTransition>,
+            },
+            {
+              path: "invoices",
+              element: <PageTransition><ClinicInvoices /></PageTransition>,
             },
             {
               path: "settings",

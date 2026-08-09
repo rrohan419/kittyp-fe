@@ -84,7 +84,6 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Patients', path: '/doctor/patients', icon: Users },
       { label: 'Nutrition', path: '/doctor/nutrition', icon: Apple },
       { label: 'Blog', path: '/doctor/blog', icon: FileText },
-      { label: 'Invoices', path: '/doctor/invoices', icon: Package },
       { label: 'Messages', path: '/doctor/messages', icon: MessageSquare, badge: '5' },
       { label: 'Analytics', path: '/doctor/analytics', icon: BarChart3 },
       { label: 'Settings', path: '/doctor/settings', icon: Settings },
@@ -105,16 +104,16 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
     user: { name: 'Happy Paws Clinic', subtitle: 'Clinic Admin', initials: 'HP' },
     navItems: [
       { label: 'Dashboard', path: '/clinic', icon: LayoutDashboard, end: true },
-      { label: 'Doctors', path: '/clinic/doctors', icon: Stethoscope },
       { label: 'Appointments', path: '/clinic/appointments', icon: Calendar },
       { label: 'Clients & Pets', path: '/clinic/patients', icon: PawPrint },
       { label: 'Staff', path: '/clinic/staff', icon: UserCog },
       { label: 'Reports', path: '/clinic/reports', icon: BarChart3 },
+      { label: 'Clinic profile', path: '/clinic/doctors', icon: User },
       { label: 'Settings', path: '/clinic/settings', icon: Settings },
     ],
     bottomTabs: [
       { label: 'Home', path: '/clinic', icon: LayoutDashboard, end: true },
-      { label: 'Doctors', path: '/clinic/doctors', icon: Stethoscope },
+      { label: 'Clinic profile', path: '/clinic/doctors', icon: User },
       { label: 'Visits', path: '/clinic/appointments', icon: Calendar },
       { label: 'Clients', path: '/clinic/patients', icon: PawPrint },
       { label: 'More', path: '/clinic/settings', icon: MoreHorizontal },
@@ -130,13 +129,14 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Dashboard', path: '/clinic', icon: LayoutDashboard, end: true },
       { label: 'Appointments', path: '/clinic/appointments', icon: Calendar },
       { label: 'Clients & Pets', path: '/clinic/patients', icon: PawPrint },
+      { label: 'Staff', path: '/clinic/staff', icon: UserCog },
       { label: 'Settings', path: '/clinic/settings', icon: Settings },
     ],
     bottomTabs: [
       { label: 'Home', path: '/clinic', icon: LayoutDashboard, end: true },
       { label: 'Visits', path: '/clinic/appointments', icon: Calendar },
       { label: 'Clients', path: '/clinic/patients', icon: PawPrint },
-      { label: 'Doctors', path: '/clinic/doctors', icon: Stethoscope },
+      { label: 'Staff', path: '/clinic/staff', icon: UserCog },
       { label: 'More', path: '/clinic/settings', icon: MoreHorizontal },
     ],
   },
@@ -201,19 +201,6 @@ export function getPortalConfig(role: PortalRole): PortalConfig {
     navItems: base.navItems.filter((item) => !ECOMMERCE_NAV_PATHS.has(item.path)),
     bottomTabs: base.bottomTabs.filter((item) => !ECOMMERCE_NAV_PATHS.has(item.path)),
   };
-}
-
-export const demoCredentials: { email: string; role: PortalRole; label: string }[] = [
-  { email: 'parent@demo.com', role: 'ROLE_USER', label: 'Pet Parent' },
-  { email: 'doctor@demo.com', role: 'ROLE_DOCTOR', label: 'Doctor' },
-  { email: 'clinic_admin@demo.com', role: 'ROLE_CLINIC_ADMIN', label: 'Clinic Admin' },
-  { email: 'clinic_staff@demo.com', role: 'ROLE_CLINIC_STAFF', label: 'Clinic Staff' },
-  { email: 'admin@demo.com', role: 'ROLE_ADMIN', label: 'Admin' },
-];
-
-export function getRoleFromEmail(email: string): PortalRole | null {
-  const match = demoCredentials.find((c) => c.email.toLowerCase() === email.toLowerCase().trim());
-  return match?.role ?? null;
 }
 
 export function getStoredRole(): PortalRole | null {

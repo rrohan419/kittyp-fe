@@ -62,6 +62,10 @@ export interface CreateTreatmentInvoicePayload {
   paymentStatus?: string;
   paymentMode?: string;
   transactionId?: string;
+  clinicUuid?: string;
+  petUuid?: string;
+  visitUuid?: string;
+  ownerUserUuid?: string;
   petName?: string;
   petSpecies?: string;
   petBreed?: string;
@@ -74,7 +78,26 @@ export interface CreateTreatmentInvoicePayload {
   ownerEmail?: string;
   ownerAddress?: string;
   generatePdf?: boolean;
+  sendWhatsApp?: boolean;
 }
+
+/** Prefill payload when navigating from Finish treatment → invoices. */
+export type InvoiceFromVisitState = {
+  visitUuid: string;
+  clinicUuid?: string;
+  petUuid?: string;
+  petName?: string;
+  petBreed?: string;
+  petSpecies?: string;
+  petWeight?: string;
+  ownerName?: string;
+  ownerPhone?: string;
+  ownerEmail?: string;
+  reason?: string;
+  diagnosis?: string;
+  doctorNotes?: string;
+  nextVisitNotes?: string;
+};
 
 export async function createConsultationInvoice(
   body: CreateTreatmentInvoicePayload
@@ -95,9 +118,124 @@ export async function generateInvoicePdf(uuid: string): Promise<ConsultationInvo
   return res.data.data;
 }
 
+/** Resend an existing invoice PDF via WhatsApp (document template). */
+export async function sendInvoiceWhatsApp(uuid: string): Promise<ConsultationInvoice> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
+    `/invoice/${uuid}/send-whatsapp`
+  );
+  return res.data.data;
+}
+
 export async function fetchInvoicePdfUrl(uuid: string): Promise<string> {
   const res = await axiosInstance.get<ApiSuccessResponse<{ url: string }>>(`/invoice/${uuid}/pdf`);
   return res.data.data.url;
+}
+
+export async function createClinicInvoice(
+  clinicUuid: string,
+  body: CreateTreatmentInvoicePayload
+): Promise<ConsultationInvoice> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
+    `/clinic/${clinicUuid}/invoices`,
+    { ...body, clinicUuid }
+  );
+  return res.data.data;
+}
+
+export async function fetchClinicInvoices(clinicUuid: string): Promise<ConsultationInvoice[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ConsultationInvoice[]>>(
+    `/clinic/${clinicUuid}/invoices`
+  );
+  return res.data.data ?? [];
+}
+
+export async function generateClinicInvoicePdf(
+  clinicUuid: string,
+  invoiceUuid: string
+): Promise<ConsultationInvoice> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
+    `/clinic/${clinicUuid}/invoices/${invoiceUuid}/generate-pdf`
+  );
+  return res.data.data;
+}
+
+export async function sendClinicInvoiceWhatsApp(
+  clinicUuid: string,
+  invoiceUuid: string
+): Promise<ConsultationInvoice> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
+    `/clinic/${clinicUuid}/invoices/${invoiceUuid}/send-whatsapp`
+  );
+  return res.data.data;
+}
+
+export async function fetchClinicInvoicePdfUrl(
+  clinicUuid: string,
+  invoiceUuid: string
+): Promise<string> {
+  const res = await axiosInstance.get<ApiSuccessResponse<{ url: string }>>(
+    `/clinic/${clinicUuid}/invoices/${invoiceUuid}/pdf`
+  );
+  return res.data.data.url;
+}
+
+export async function fetchDoctorWhatsAppSettings(): Promise<{
+  whatsappConfigured: boolean;
+  phoneNumberId: string;
+  businessAccountId: string;
+}> {
+  const res = await axiosInstance.get<
+    ApiSuccessResponse<{
+      whatsappConfigured: boolean;
+      phoneNumberId: string;
+      businessAccountId: string;
+    }>
+  >('/doctor/whatsapp-settings');
+  return res.data.data;
+}
+
+export async function updateDoctorWhatsAppSettings(body: {
+  phoneNumberId: string;
+  businessAccountId: string;
+  token?: string;
+}): Promise<{ whatsappConfigured: boolean; phoneNumberId: string; businessAccountId: string }> {
+  const res = await axiosInstance.put<
+    ApiSuccessResponse<{
+      whatsappConfigured: boolean;
+      phoneNumberId: string;
+      businessAccountId: string;
+    }>
+  >('/doctor/whatsapp-settings', body);
+  return res.data.data;
+}
+
+export async function fetchClinicWhatsAppSettings(clinicUuid: string): Promise<{
+  whatsappConfigured: boolean;
+  phoneNumberId: string;
+  businessAccountId: string;
+}> {
+  const res = await axiosInstance.get<
+    ApiSuccessResponse<{
+      whatsappConfigured: boolean;
+      phoneNumberId: string;
+      businessAccountId: string;
+    }>
+  >(`/clinic/${clinicUuid}/whatsapp-settings`);
+  return res.data.data;
+}
+
+export async function updateClinicWhatsAppSettings(
+  clinicUuid: string,
+  body: { phoneNumberId: string; businessAccountId: string; token?: string }
+): Promise<{ whatsappConfigured: boolean; phoneNumberId: string; businessAccountId: string }> {
+  const res = await axiosInstance.put<
+    ApiSuccessResponse<{
+      whatsappConfigured: boolean;
+      phoneNumberId: string;
+      businessAccountId: string;
+    }>
+  >(`/clinic/${clinicUuid}/whatsapp-settings`, body);
+  return res.data.data;
 }
 
 export const ITEM_TYPE_OPTIONS: { value: TreatmentItemType; label: string }[] = [

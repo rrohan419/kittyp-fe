@@ -1,19 +1,52 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Building2, AlertTriangle, Plus } from 'lucide-react';
+import { Building2, AlertTriangle, Plus, Power } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { shutdownClinic, reopenClinic } from '@/services/clinicService';
+import {
+  fetchClinicWhatsAppSettings,
+  updateClinicWhatsAppSettings,
+} from '@/services/invoiceService';
+import { WhatsAppSettingsForm } from '@/components/whatsapp/WhatsAppSettingsForm';
 import { Link } from 'react-router-dom';
+import { RootState } from '@/module/store/store';
+import { ROLES, hasRole } from '@/utils/roles';
 
 export default function ClinicSettings() {
+  const { user } = useSelector((state: RootState) => state.authReducer);
+  const canManageWhatsApp = hasRole(user?.roles, ROLES.CLINIC_ADMIN);
   const { clinic, clinicUuid, refresh } = useActiveClinic();
   const [acting, setActing] = useState(false);
+  const [waConfigured, setWaConfigured] = useState(false);
+  const [waPhoneId, setWaPhoneId] = useState('');
+  const [waBusinessId, setWaBusinessId] = useState('');
   const isShutdown = clinic?.status === 'SHUTDOWN';
+
+  useEffect(() => {
+    if (!clinicUuid || !canManageWhatsApp) {
+      setWaConfigured(false);
+      setWaPhoneId('');
+      setWaBusinessId('');
+      return;
+    }
+    void fetchClinicWhatsAppSettings(clinicUuid)
+      .then((wa) => {
+        setWaConfigured(!!wa.whatsappConfigured);
+        setWaPhoneId(wa.phoneNumberId || '');
+        setWaBusinessId(wa.businessAccountId || '');
+      })
+      .catch(() => {
+        setWaConfigured(!!clinic?.whatsappConfigured);
+        setWaPhoneId('');
+        setWaBusinessId('');
+      });
+  }, [clinicUuid, clinic?.whatsappConfigured, canManageWhatsApp]);
 
   const handleShutdown = async () => {
     if (!clinicUuid) return;
@@ -53,23 +86,6 @@ export default function ClinicSettings() {
         </p>
       </div>
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base">Multi-clinic</CardTitle>
-          <CardDescription>
-            Switch clinics from the top bar, or add another clinic under this account.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="outline" asChild>
-            <Link to="/clinic/clinics/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Add another clinic
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
-
       {isShutdown && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-950/30 dark:border-red-900/50 dark:text-red-200 flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -78,7 +94,9 @@ export default function ClinicSettings() {
       )}
 
       <Card className="border-0 shadow-sm">
-        <CardHeader><CardTitle className="text-base">Clinic Profile</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Clinic Profile</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -111,29 +129,82 @@ export default function ClinicSettings() {
             <Label>Operating Hours</Label>
             <Textarea rows={4} value={clinic?.operatingHours ?? ''} readOnly className="resize-none" />
           </div>
-          <p className={`text-xs ${isShutdown ? 'text-red-700 font-medium' : 'text-muted-foreground'}`}>
-            Status: {clinic?.status ?? '—'}
-          </p>
         </CardContent>
       </Card>
 
+      {canManageWhatsApp && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base">WhatsApp number</CardTitle>
+            <CardDescription>
+              One clinic number for all doctors at this branch — invoices and receipts send from here.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <WhatsAppSettingsForm
+              configured={waConfigured}
+              phoneNumberIdInitial={waPhoneId}
+              businessAccountIdInitial={waBusinessId}
+              helperText="Enter only the Meta values from this clinic’s WhatsApp Business account."
+              onSave={async (values) => {
+                if (!clinicUuid) throw new Error('No clinic');
+                const res = await updateClinicWhatsAppSettings(clinicUuid, values);
+                setWaConfigured(!!res.whatsappConfigured);
+                setWaPhoneId(res.phoneNumberId || '');
+                setWaBusinessId(res.businessAccountId || '');
+                await refresh();
+              }}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="border-0 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base">Clinic lifecycle</CardTitle>
+          <CardTitle className="text-base">Multi-clinic</CardTitle>
           <CardDescription>
-            Shutting down archives the clinic without deleting data. Other clinics stay unaffected.
+            Switch clinics from the top bar, or add another clinic under this account.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          {isShutdown ? (
-            <Button onClick={handleReopen} disabled={acting || !clinicUuid}>
-              Reopen clinic
-            </Button>
-          ) : (
-            <Button variant="destructive" onClick={handleShutdown} disabled={acting || !clinicUuid}>
-              Shut down clinic
-            </Button>
-          )}
+        <CardContent>
+          <Button variant="outline" asChild>
+            <Link to="/clinic/clinics/new">
+              <Plus className="h-4 w-4 mr-2" />
+              Add another clinic
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card
+        className={`border shadow-sm ${
+          isShutdown
+            ? 'border-red-200 bg-red-50/40 dark:border-red-900/50 dark:bg-red-950/20'
+            : 'border-border'
+        }`}
+      >
+        <CardHeader>
+          <CardTitle className="text-base inline-flex items-center gap-2">
+            <Power className="h-4 w-4" />
+            Clinic lifecycle
+          </CardTitle>
+          <CardDescription>
+            Shutting down archives this branch without deleting data. Other clinics stay unaffected.
+            Reopen anytime to resume bookings and writes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            {isShutdown ? (
+              <Button onClick={handleReopen} disabled={acting || !clinicUuid}>
+                Reopen clinic
+              </Button>
+            ) : (
+              <Button variant="destructive" onClick={handleShutdown} disabled={acting || !clinicUuid}>
+                Shut down clinic
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

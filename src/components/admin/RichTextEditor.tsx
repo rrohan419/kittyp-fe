@@ -16,6 +16,7 @@ import {
   Code
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { sanitizeHtml } from '@/utils/validation';
 
 interface RichTextEditorProps {
   value: string;
@@ -232,7 +233,7 @@ const RichTextEditor = ({ value, onChange }: RichTextEditorProps) => {
       {previewMode ? (
         <div 
           className="p-4 prose max-w-none min-h-[300px] bg-white dark:bg-gray-800"
-          dangerouslySetInnerHTML={{ __html: value }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(value) }}
         />
       ) : (
         <Textarea 

@@ -39,7 +39,10 @@ type NotifItem = {
   time?: string;
   inviteUuid?: string;
   canRemind?: boolean;
+  inviteStatus?: string;
 };
+
+const ADDRESSED_INVITE_STATUSES = new Set(['ACCEPTED', 'REJECTED', 'REVOKED', 'EXPIRED']);
 
 type PortalKind = 'clinic' | 'doctor' | 'other';
 type ClinicFilter = 'all' | 'invites';
@@ -62,6 +65,20 @@ function persistClickedIds(ids: Set<string>) {
     localStorage.setItem(NOTIF_CLICKED_KEY, JSON.stringify([...ids]));
   } catch {
     /* ignore */
+  }
+}
+
+const NOTIF_REFRESH_EVENT = 'kittyp-notif-refresh';
+
+/** Call after accept/decline so the bell drops the invite immediately. */
+export function notifyInviteAddressed(inviteUuid?: string) {
+  if (inviteUuid) {
+    const ids = loadClickedIds();
+    ids.add(`my-invite-${inviteUuid}`);
+    persistClickedIds(ids);
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(NOTIF_REFRESH_EVENT));
   }
 }
 
@@ -166,6 +183,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
             time: inv.expiresAt,
             inviteUuid: pending ? inv.uuid : undefined,
             canRemind,
+            inviteStatus: inv.status,
           });
         }
       }
@@ -212,6 +230,15 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    const onRefresh = () => {
+      setClickedIds(loadClickedIds());
+      void load();
+    };
+    window.addEventListener(NOTIF_REFRESH_EVENT, onRefresh);
+    return () => window.removeEventListener(NOTIF_REFRESH_EVENT, onRefresh);
+  }, [load]);
+
   const visible = useMemo(() => {
     let list = items;
     if (portal === 'clinic' && filter === 'invites') {
@@ -230,9 +257,18 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
     }
 
     if (!showAll) {
-      const filtered = list.filter(
-        (i) => i.id.startsWith('empty-') || i.kind === 'update' || !clickedIds.has(i.id)
-      );
+      const filtered = list.filter((i) => {
+        if (i.id.startsWith('empty-') || i.kind === 'update') return true;
+        if (clickedIds.has(i.id)) return false;
+        if (
+          i.kind === 'invite' &&
+          i.inviteStatus &&
+          ADDRESSED_INVITE_STATUSES.has(i.inviteStatus)
+        ) {
+          return false;
+        }
+        return true;
+      });
       // If everything real was clicked, keep a quiet empty tip instead of a blank panel.
       const hasReal = filtered.some((i) => !i.id.startsWith('empty-') && i.kind !== 'update');
       if (!hasReal && list.some((i) => !i.id.startsWith('empty-') && i.kind !== 'update')) {
@@ -254,6 +290,13 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
   const actionable = items.filter((i) => {
     if (i.id.startsWith('empty-') || i.kind === 'update') return false;
     if (!showAll && clickedIds.has(i.id)) return false;
+    if (
+      i.kind === 'invite' &&
+      i.inviteStatus &&
+      ADDRESSED_INVITE_STATUSES.has(i.inviteStatus)
+    ) {
+      return false;
+    }
     if (i.kind === 'alert' || i.kind === 'visit' || i.kind === 'booking') return true;
     return i.kind === 'invite' && (i.canRemind || i.inviteUuid || i.href.includes('clinic-invite'));
   }).length;
@@ -288,6 +331,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
 
   return (
     <Popover
+      modal={false}
       open={open}
       onOpenChange={(v) => {
         setOpen(v);
@@ -307,7 +351,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[380px] p-0 overflow-hidden">
+      <PopoverContent align="end" sideOffset={8} collisionPadding={12} className="w-[380px] p-0 overflow-hidden z-[200]">
         <div className="px-4 py-3 border-b border-border bg-muted/30">
           <p className="text-sm font-semibold">Notifications</p>
           <p className="text-xs text-muted-foreground truncate">
