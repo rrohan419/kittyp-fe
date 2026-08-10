@@ -43,7 +43,9 @@ export default defineConfig(({ mode }) => ({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
       devOptions: {
-        enabled: true,
+        // Keep SW off in local/dev so auth/session experiments aren't stuck
+        // on a precached bundle that still used shared localStorage.
+        enabled: false,
         type: "module",
         navigateFallback: 'index.html'
       },

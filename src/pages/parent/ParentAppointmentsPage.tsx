@@ -112,16 +112,51 @@ export default function ParentAppointmentsPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Calendar className="h-6 w-6 text-primary" />
-          Appointments
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Current clinic visits, upcoming bookings, and past reports — updates live when the clinic
-          or doctor changes status.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Calendar className="h-6 w-6 text-primary" />
+            Appointments
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Current clinic visits, upcoming bookings, and past reports — updates live when the clinic
+            or doctor changes status.
+          </p>
+        </div>
+        <Button asChild>
+          <Link to="/app/book">Book appointment</Link>
+        </Button>
       </div>
+
+      {upcomingBookings.length > 0 && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Upcoming calendar</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {upcomingBookings.slice(0, 8).map((b) => {
+              const d = b.slotStart ? parseISO(b.slotStart) : null;
+              const doctorLabel = b.doctorName
+                ? `Dr. ${b.doctorName.replace(/^Dr\.?\s*/i, '')}`
+                : null;
+              const specialty = b.doctorSpecialization?.replace(/_/g, ' ');
+              return (
+                <div key={b.uuid} className="flex items-center justify-between gap-3 text-sm border-b last:border-0 py-2">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{b.petName || 'Pet'}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {[doctorLabel, specialty, b.clinicName || 'Clinic'].filter(Boolean).join(' · ')} · {b.status}
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground shrink-0">
+                    {d && isValid(d) ? format(d, 'EEE d MMM · h:mm a') : '—'}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
@@ -146,8 +181,10 @@ export default function ParentAppointmentsPage() {
           {upcomingBookings.length === 0 ? (
             <Card className="border-0 shadow-sm">
               <CardContent className="py-10 text-center text-sm text-muted-foreground space-y-3">
-                <p>No upcoming scheduled bookings.</p>
-                <p className="text-xs">Walk-in visits show under Current once you arrive at the clinic.</p>
+                <p>No upcoming appointments.</p>
+                <Button asChild size="sm">
+                  <Link to="/app/book">Book an appointment</Link>
+                </Button>
               </CardContent>
             </Card>
           ) : (
@@ -234,6 +271,7 @@ function VisitCard({
                 {v.doctorName
                   ? `Dr. ${v.doctorName.replace(/^Dr\.?\s*/i, '')}`
                   : 'Doctor pending'}
+                {v.doctorSpecialization ? ` · ${v.doctorSpecialization.replace(/_/g, ' ')}` : ''}
                 {v.clinicName ? ` · ${v.clinicName}` : ''}
               </p>
             </div>
@@ -302,6 +340,10 @@ function VisitCard({
 
 function BookingCard({ booking: b }: { booking: ClinicBookingModel }) {
   const start = b.slotStart ? parseISO(b.slotStart) : null;
+  const doctorLabel = b.doctorName
+    ? `Dr. ${b.doctorName.replace(/^Dr\.?\s*/i, '')}`
+    : null;
+  const specialty = b.doctorSpecialization?.replace(/_/g, ' ');
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader className="pb-2">
@@ -317,6 +359,9 @@ function BookingCard({ booking: b }: { booking: ClinicBookingModel }) {
         <p>
           {start && isValid(start) ? format(start, 'MMM d, yyyy · h:mm a') : 'Time TBD'}
           {b.mode ? ` · ${b.mode}` : ''}
+        </p>
+        <p>
+          {[doctorLabel, specialty, b.clinicName].filter(Boolean).join(' · ') || 'Provider pending'}
         </p>
         {b.notes && <p className="text-xs">{b.notes}</p>}
         {b.petUuid && (

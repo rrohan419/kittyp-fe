@@ -178,7 +178,7 @@ export default function DoctorPatients() {
         <h1 className="text-2xl font-bold text-foreground">Patients</h1>
         <p className="text-muted-foreground mt-1 text-sm">
           {clinic?.personal
-            ? 'Patients from your personal practice.'
+            ? 'Patients enrolled on your personal practice, plus those you’ve treated.'
             : clinic
               ? `${clinic.name} — patients and clients`
               : 'Your patients and clients'}
@@ -201,7 +201,9 @@ export default function DoctorPatients() {
       ) : filtered.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="py-16 text-center text-muted-foreground">
-            No patients yet. They appear when assigned, booked, or after you treat them.
+            {clinic?.personal
+              ? 'No patients yet. They appear when a parent books your personal practice, or after you treat them.'
+              : 'No patients yet. They appear when assigned, booked, or after you treat them.'}
           </CardContent>
         </Card>
       ) : (

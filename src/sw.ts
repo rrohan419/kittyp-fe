@@ -155,7 +155,12 @@ registerRoute(
 );
 
 registerRoute(
-  ({ url }) => url.origin === 'https://api.kittyp.in',
+  ({ url, request }) => {
+    if (url.origin !== 'https://api.kittyp.in') return false;
+    // Never cache authenticated API responses — would leak across accounts.
+    if (request.headers.get('Authorization')) return false;
+    return true;
+  },
   new NetworkFirst({
     cacheName: 'api-cache',
     plugins: [

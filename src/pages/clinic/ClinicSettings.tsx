@@ -5,10 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Building2, AlertTriangle, Plus, Power } from 'lucide-react';
+import { Building2, AlertTriangle, Plus, Power, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
-import { shutdownClinic, reopenClinic } from '@/services/clinicService';
+import { shutdownClinic, reopenClinic, updateClinic } from '@/services/clinicService';
 import {
   fetchClinicWhatsAppSettings,
   updateClinicWhatsAppSettings,
@@ -16,17 +16,29 @@ import {
 import { WhatsAppSettingsForm } from '@/components/whatsapp/WhatsAppSettingsForm';
 import { Link } from 'react-router-dom';
 import { RootState } from '@/module/store/store';
-import { ROLES, hasRole } from '@/utils/roles';
+import { ROLES, hasAnyRole, hasRole } from '@/utils/roles';
 
 export default function ClinicSettings() {
   const { user } = useSelector((state: RootState) => state.authReducer);
   const canManageWhatsApp = hasRole(user?.roles, ROLES.CLINIC_ADMIN);
+  const canManageLocation = hasAnyRole(user?.roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF, ROLES.DOCTOR]);
   const { clinic, clinicUuid, refresh } = useActiveClinic();
   const [acting, setActing] = useState(false);
   const [waConfigured, setWaConfigured] = useState(false);
   const [waPhoneId, setWaPhoneId] = useState('');
   const [waBusinessId, setWaBusinessId] = useState('');
   const isShutdown = clinic?.status === 'SHUTDOWN';
+
+  const [city, setCity] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [savingLocation, setSavingLocation] = useState(false);
+
+  useEffect(() => {
+    setCity(clinic?.city ?? '');
+    setLatitude(clinic?.latitude != null ? String(clinic.latitude) : '');
+    setLongitude(clinic?.longitude != null ? String(clinic.longitude) : '');
+  }, [clinic?.city, clinic?.latitude, clinic?.longitude, clinic?.uuid]);
 
   useEffect(() => {
     if (!clinicUuid || !canManageWhatsApp) {
@@ -74,6 +86,53 @@ export default function ClinicSettings() {
       toast.error(e instanceof Error ? e.message : 'Failed to reopen clinic');
     } finally {
       setActing(false);
+    }
+  };
+
+  const fillFromBrowser = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not available');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLatitude(pos.coords.latitude.toFixed(6));
+        setLongitude(pos.coords.longitude.toFixed(6));
+        toast.success('Coordinates filled from your device');
+      },
+      () => toast.error('Could not read device location')
+    );
+  };
+
+  const saveLocation = async () => {
+    if (!clinicUuid || !clinic) return;
+    const lat = latitude.trim() === '' ? null : Number(latitude);
+    const lng = longitude.trim() === '' ? null : Number(longitude);
+    if ((lat != null && !Number.isFinite(lat)) || (lng != null && !Number.isFinite(lng))) {
+      toast.error('Latitude and longitude must be numbers');
+      return;
+    }
+    setSavingLocation(true);
+    try {
+      await updateClinic(clinicUuid, {
+        name: clinic.name,
+        licenseNumber: clinic.licenseNumber,
+        address: clinic.address,
+        phone: clinic.phone,
+        email: clinic.email,
+        timezone: clinic.timezone,
+        operatingHours: clinic.operatingHours,
+        city: city.trim() || undefined,
+        latitude: lat,
+        longitude: lng,
+        profileImageUrl: clinic.profileImageUrl || undefined,
+      });
+      await refresh();
+      toast.success('Clinic location saved');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save location');
+    } finally {
+      setSavingLocation(false);
     }
   };
 
@@ -131,6 +190,58 @@ export default function ClinicSettings() {
           </div>
         </CardContent>
       </Card>
+
+      {canManageLocation && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <MapPin className="h-4 w-4" /> Location for nearby search
+            </CardTitle>
+            <CardDescription>
+              City helps area search; latitude/longitude enable distance ranking for pet parents.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>City / area</Label>
+              <Input
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Pune"
+                disabled={isShutdown}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Latitude</Label>
+                <Input
+                  value={latitude}
+                  onChange={(e) => setLatitude(e.target.value)}
+                  placeholder="18.5204"
+                  disabled={isShutdown}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Longitude</Label>
+                <Input
+                  value={longitude}
+                  onChange={(e) => setLongitude(e.target.value)}
+                  placeholder="73.8567"
+                  disabled={isShutdown}
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={fillFromBrowser} disabled={isShutdown}>
+                Use my device location
+              </Button>
+              <Button type="button" onClick={() => void saveLocation()} disabled={isShutdown || savingLocation}>
+                {savingLocation ? 'Saving…' : 'Save location'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {canManageWhatsApp && (
         <Card className="border-0 shadow-sm">

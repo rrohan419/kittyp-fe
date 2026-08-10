@@ -16,6 +16,7 @@ import PetDetailsForm from '@/components/ui/PetDetailsForm';
 import { Button } from '@/components/ui/button';
 import { AddressModal } from '@/components/ui/AddressModal';
 import EditProfileForm from '@/components/ui/EditProfileForm';
+import { getAuthItem } from '@/utils/authStorage';
 
 const Profile: React.FC = () => {
   const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
@@ -26,7 +27,7 @@ const Profile: React.FC = () => {
   const [addressModalOpen, setAddressModalOpen] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = getAuthItem('access_token');
     if (token && !isAuthenticated && !loading) {
       dispatch(validateAndSetUser());
     } else if (!token) {
@@ -47,7 +48,7 @@ const Profile: React.FC = () => {
   }, [user?.uuid]);
 
   // Show loading while checking user state
-  if (loading || (!isAuthenticated && localStorage.getItem('access_token'))) {
+  if (loading || (!isAuthenticated && getAuthItem('access_token'))) {
     return <Loading />;
   }
 

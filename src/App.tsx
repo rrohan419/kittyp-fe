@@ -52,6 +52,24 @@ function App() {
   const isLoading = navigation.state === "loading";
   const inPortal = isPortalRoute(location.pathname);
 
+  // Dev: drop any previously registered SW so multi-tab auth isn't stuck on
+  // an old precached bundle that wrote a shared localStorage token.
+  useEffect(() => {
+    if (!import.meta.env.DEV || !('serviceWorker' in navigator)) return;
+    void navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((reg) => {
+        void reg.unregister();
+      });
+    });
+    if ('caches' in window) {
+      void caches.keys().then((keys) => {
+        keys.forEach((key) => {
+          void caches.delete(key);
+        });
+      });
+    }
+  }, []);
+
   // Listen for navigation messages from service worker (push notifications)
   useEffect(() => {
     if ('serviceWorker' in navigator) {

@@ -1,4 +1,5 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
+import '@/utils/authStorage';
 import cartReducer from '../slice/CartSlice';
 import dummyReducer from '../slice/DummySlice';
 import adminReducer from '../slice/AdminSlice';
@@ -9,31 +10,17 @@ import orderReducer from '../slice/OrderSlice';
 import adminProductReducer from '../slice/AdminProductSlice';
 import schedulingReducer from '../slice/SchedulingSlice';
 import { persistReducer, persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
-import storage from 'redux-persist/lib/storage';
+import storageSession from 'redux-persist/lib/storage/session';
 // import schedularReducer from '../slice/SchedulingSlice';
 // import vetReducer from '../slice/VetSlice';
 
 
 const persistConfig = {
     key: 'root',
-    storage,
-    whitelist: ['cartReducer', 'authReducer', 'favoritesReducer'],
-    transforms: [
-        {
-            in: (inboundState: unknown, key: string) => {
-                if (key !== 'authReducer' || !inboundState || typeof inboundState !== 'object') {
-                    return inboundState;
-                }
-                const state = inboundState as { user?: { accessToken?: string } | null };
-                if (state.user && 'accessToken' in state.user) {
-                    const { accessToken: _omit, ...safeUser } = state.user;
-                    return { ...state, user: safeUser };
-                }
-                return inboundState;
-            },
-            out: (outboundState: unknown) => outboundState,
-        },
-    ],
+    storage: storageSession,
+    // Auth lives in sessionStorage via authStorage — do not persist authReducer
+    // or a shared localStorage blob can rehydrate the wrong user into a tab.
+    whitelist: ['cartReducer', 'favoritesReducer'],
 };
 
 const rootReducer = combineReducers({
@@ -65,4 +52,4 @@ export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 
 export const persistor = persistStore(store);
-export { store }; 
+export { store };

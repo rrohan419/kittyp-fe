@@ -13,6 +13,7 @@ import {
   resolvePreferredRole,
   setDefaultWorkspace,
 } from '@/utils/workspacePreference';
+import { getAuthItem } from '@/utils/authStorage';
 
 interface LocationState {
   roles?: AppRole[];
@@ -25,7 +26,7 @@ const SelectRole = () => {
   const authState = useSelector((state: RootState) => state.authReducer);
   const rolesFromState = (location.state as LocationState)?.roles;
   const effectiveRoles = useMemo(() => {
-    const storedRoles = JSON.parse(localStorage.getItem('roles') || 'null') as string[] | null;
+    const storedRoles = JSON.parse(getAuthItem('roles') || 'null') as string[] | null;
     const roles = rolesFromState ?? (Array.isArray(storedRoles) ? storedRoles : authState.user?.roles ?? []);
     return Array.isArray(roles) ? roles.filter((role): role is AppRole => typeof role === 'string') : [];
   }, [rolesFromState, authState.user?.roles]);

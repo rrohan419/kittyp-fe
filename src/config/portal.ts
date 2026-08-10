@@ -24,6 +24,7 @@ import {
   Bell,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { getAuthItem } from '@/utils/authStorage';
 
 export type PortalRole = (typeof ROLES)[keyof typeof ROLES];
 
@@ -58,6 +59,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Nutrition', path: '/app/nutrition', icon: Apple },
       { label: 'Health', path: '/app/health', icon: Heart },
       { label: 'Appointments', path: '/app/appointments', icon: Calendar },
+      { label: 'Book appointment', path: '/app/book', icon: Calendar },
       { label: 'Cart', path: '/app/cart', icon: ShoppingCart },
       { label: 'Orders', path: '/app/orders', icon: ShoppingBag },
       { label: 'Articles', path: '/app/articles', icon: FileText },
@@ -204,7 +206,7 @@ export function getPortalConfig(role: PortalRole): PortalConfig {
 }
 
 export function getStoredRole(): PortalRole | null {
-  const r = localStorage.getItem('role');
+  const r = getAuthItem('role');
   if (!r) return null;
   const valid = Object.values(ROLES) as string[];
   if (valid.includes(r)) {

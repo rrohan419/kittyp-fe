@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/dialog";
 import { AuthorSelector } from '@/components/admin/AuthorSelector';
 import { Author } from '@/pages/Interface/PagesInterface';
+import { getAuthItem } from '@/utils/authStorage';
 
 const articleFormSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters" }),
@@ -93,7 +94,7 @@ const AdminArticleEditor = () => {
 
 
   useEffect(() => {
-    const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+    const roles = JSON.parse(getAuthItem('roles') || '[]');
     const isAdmin = Array.isArray(roles) && roles.includes('ROLE_ADMIN');
     setUserRole(isAdmin ? 'ROLE_ADMIN' : null);
     setLoading(false);

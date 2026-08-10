@@ -3,6 +3,7 @@ import { API_BASE_URL } from "./env";
 import { Store } from '@reduxjs/toolkit';
 import { Persistor } from 'redux-persist';
 import { AppDispatch } from '@/module/store/store';
+import { clearAuthStorage, getAuthItem } from '@/utils/authStorage';
 
 type CreateInstanceAndInjectStoreFunction = (
   _store: Store,
@@ -21,13 +22,9 @@ export const createInstanceAndInjectStore: CreateInstanceAndInjectStoreFunction 
     dispatch = _dispatch;
   };
 
-// Helper to clear all auth-related data
+// Helper to clear all auth-related data for this tab only
 const clearAuthData = () => {
-  // Clear localStorage
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('refresh_token');
-  localStorage.removeItem('user');
-  localStorage.removeItem('roles');
+  clearAuthStorage();
 
   // Clear Redux state if available
   if (dispatch && store) {
@@ -37,9 +34,6 @@ const clearAuthData = () => {
       console.error('Error clearing auth state:', error);
     }
   }
-
-  // Trigger storage event to sync across tabs
-  window.dispatchEvent(new Event('storage'));
 };
 
 const axiosInstance: AxiosInstance = axios.create({
@@ -51,8 +45,7 @@ const axiosInstance: AxiosInstance = axios.create({
 // Add the JWT token to the request header
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Retrieve the token from storage (localStorage, sessionStorage, or cookies)
-    const token = localStorage.getItem('access_token'); // or sessionStorage
+    const token = getAuthItem('access_token');
 
     // If the token exists, add it to the Authorization header
     if (token) {
@@ -90,7 +83,7 @@ axiosInstance.interceptors.response.use(
     // token is not "logged out", and clearing would wipe any race-set credentials.
     if (error.response?.status === 401) {
       const hadToken = Boolean(error.config?.headers?.Authorization)
-        || Boolean(localStorage.getItem('access_token'));
+        || Boolean(getAuthItem('access_token'));
       if (
         hadToken &&
         typeof window !== 'undefined' &&

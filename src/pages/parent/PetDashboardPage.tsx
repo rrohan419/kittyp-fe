@@ -164,6 +164,9 @@ export default function PetDashboardPage() {
               {pet?.gender && <Badge variant="outline">{pet.gender}</Badge>}
             </div>
           </div>
+          <Button asChild className="shrink-0">
+            <Link to={`/app/book?petId=${petId}`}>Book appointment</Link>
+          </Button>
         </CardContent>
       </Card>
 

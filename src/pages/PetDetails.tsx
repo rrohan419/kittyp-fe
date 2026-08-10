@@ -149,15 +149,15 @@ const PetDetail: React.FC = () => {
             <Button
               variant="outline"
               className="h-auto flex-col gap-2 py-4"
-              onClick={() => navigate('/vet-consultation')}
+              onClick={() => navigate(`/app/book?petId=${uuid || ''}`)}
             >
               <Calendar className="h-5 w-5 text-primary" />
-              <span className="text-xs">Schedule Visit</span>
+              <span className="text-xs">Book Appointment</span>
             </Button>
             <Button
               variant="outline"
               className="h-auto flex-col gap-2 py-4"
-              onClick={() => setActiveTab('notifications')}
+              onClick={() => navigate(`/app?reminders=1&petId=${uuid || ''}`)}
             >
               <Bell className="h-5 w-5 text-primary" />
               <span className="text-xs">Set Reminder</span>

@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { setActiveClinic } from '@/module/slice/AuthSlice';
 import { ClinicModel, fetchMyClinics, fetchUserClinics } from '@/services/clinicService';
+import { getAuthItem } from '@/utils/authStorage';
 
 /** Resolves the active clinic uuid + model for clinic portal pages. */
 export function useActiveClinic() {
@@ -39,7 +40,7 @@ export function useActiveClinic() {
         const list = await refresh();
         if (cancelled) return;
         setError(null);
-        const stored = localStorage.getItem('activeClinicId');
+        const stored = getAuthItem('activeClinicId');
         if (list.length) {
           const stillValid = stored && list.some((c) => c.uuid === stored);
           if (!stillValid) {
