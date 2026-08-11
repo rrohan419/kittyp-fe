@@ -36,6 +36,7 @@ import {
 import { digitsOnlyPhone, validateEmail, validatePhone } from '@/utils/validation';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { PetPhotoField } from '@/components/clinic/PetPhotoField';
 
 type Props = {
   open: boolean;
@@ -57,6 +58,7 @@ const emptyNew = {
   petName: '',
   petType: 'CAT',
   petBreed: '',
+  petPhotoUrl: '',
   reason: '',
   urgency: 'ROUTINE' as VisitUrgency,
   doctorUuid: '',
@@ -196,9 +198,10 @@ export function AddAppointmentDialog({
           if (seenUser.has(hit.user.userUuid)) continue;
           const ownerKey = hit.user.clinicOwnerUuid;
           const emailKey = hit.user.email?.toLowerCase();
+          // Skip only when we already listed one of their pets — still show
+          // KittyP users who are clients but have no pets yet at this clinic.
           if (ownerKey && seenOwner.has(ownerKey)) continue;
           if (emailKey && seenOwner.has(emailKey)) continue;
-          if (hit.user.alreadyClient && ownerKey) continue;
           seenUser.add(hit.user.userUuid);
           merged.push(hit);
         }
@@ -417,6 +420,7 @@ export function AddAppointmentDialog({
         name: form.petName.trim(),
         species: form.petType || undefined,
         breed: form.petBreed || undefined,
+        photoUrl: form.petPhotoUrl.trim() || undefined,
       },
     };
   };
@@ -588,6 +592,11 @@ export function AddAppointmentDialog({
                           <Badge variant="secondary" className="text-[10px]">
                             KittyP
                           </Badge>
+                          {hit.user.alreadyClient ? (
+                            <Badge variant="outline" className="text-[10px]">
+                              Client · add pet
+                            </Badge>
+                          ) : null}
                         </div>
                         <div className="text-muted-foreground text-xs">{hit.user.email || '—'}</div>
                         <div className="text-[10px] font-mono text-muted-foreground mt-0.5 break-all">
@@ -692,6 +701,11 @@ export function AddAppointmentDialog({
               <Label>Breed</Label>
               <Input value={form.petBreed} onChange={(e) => set('petBreed', e.target.value)} />
             </div>
+            <PetPhotoField
+              value={form.petPhotoUrl || null}
+              onChange={(url) => set('petPhotoUrl', url || '')}
+              disabled={saving}
+            />
           </div>
         )}
 

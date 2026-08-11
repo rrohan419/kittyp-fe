@@ -48,6 +48,18 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
       return;
     }
 
+    const maxBytes = 5 * 1024 * 1024;
+    for (const file of fileArray) {
+      if (file.size > maxBytes) {
+        toast.error(`${file.name} is over 5MB — choose a smaller photo`);
+        return;
+      }
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        toast.error('Use JPEG, PNG, or WebP only');
+        return;
+      }
+    }
+
     try {
       const previews = await Promise.all(
         fileArray.map(file => fileToBase64(file))
@@ -231,7 +243,7 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
 
           {/* Help Text */}
           <p className="text-xs text-muted-foreground mt-4">
-            Supported formats: JPEG, PNG, WebP (Max 3MB per photo, up to {maxPhotos} photos)
+            Supported formats: JPEG, PNG, WebP (Max 5MB per photo, up to {maxPhotos} photos)
           </p>
         </CardContent>
       </Card>

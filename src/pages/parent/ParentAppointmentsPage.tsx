@@ -21,8 +21,42 @@ function visitWhen(v: ClinicVisitModel): Date | null {
   return isValid(d) ? d : null;
 }
 
-function statusLabel(status: string): string {
-  return status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+function statusLabel(status: string, source?: string): string {
+  const st = (status || '').toUpperCase();
+  // Walk-ins start in WAITLIST (= clinic queue). Not a declined/deferred booking.
+  if (st === 'WAITLIST') {
+    return source === 'WALK_IN' ? 'Waiting' : 'Waiting';
+  }
+  if (st === 'CHECKED_IN') return 'Checked in';
+  if (st === 'IN_PROGRESS') return 'With doctor';
+  if (st === 'CHECKING_OUT') return 'Checking out';
+  return st.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function ProviderLines({
+  clinicName,
+  doctorName,
+  specialization,
+}: {
+  clinicName?: string | null;
+  doctorName?: string | null;
+  specialization?: string | null;
+}) {
+  const doctor = doctorName
+    ? `Dr. ${doctorName.replace(/^Dr\.?\s*/i, '')}`
+    : null;
+  const specialty = specialization?.replace(/_/g, ' ');
+  return (
+    <div className="text-sm leading-snug">
+      {clinicName ? (
+        <div className="font-medium text-foreground">{clinicName}</div>
+      ) : null}
+      {doctor ? <div className="text-muted-foreground">{doctor}</div> : (
+        <div className="text-muted-foreground">Doctor pending</div>
+      )}
+      {specialty ? <div className="text-xs text-muted-foreground">{specialty}</div> : null}
+    </div>
+  );
 }
 
 export default function ParentAppointmentsPage() {
@@ -136,19 +170,17 @@ export default function ParentAppointmentsPage() {
           <CardContent className="space-y-2">
             {upcomingBookings.slice(0, 8).map((b) => {
               const d = b.slotStart ? parseISO(b.slotStart) : null;
-              const doctorLabel = b.doctorName
-                ? `Dr. ${b.doctorName.replace(/^Dr\.?\s*/i, '')}`
-                : null;
-              const specialty = b.doctorSpecialization?.replace(/_/g, ' ');
               return (
-                <div key={b.uuid} className="flex items-center justify-between gap-3 text-sm border-b last:border-0 py-2">
-                  <div className="min-w-0">
+                <div key={b.uuid} className="flex items-start justify-between gap-3 text-sm border-b last:border-0 py-3">
+                  <div className="min-w-0 space-y-1">
                     <div className="font-medium truncate">{b.petName || 'Pet'}</div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {[doctorLabel, specialty, b.clinicName || 'Clinic'].filter(Boolean).join(' · ')} · {b.status}
-                    </div>
+                    <ProviderLines
+                      clinicName={b.clinicName || 'Clinic'}
+                      doctorName={b.doctorName}
+                      specialization={b.doctorSpecialization}
+                    />
                   </div>
-                  <div className="text-xs text-muted-foreground shrink-0">
+                  <div className="text-xs text-muted-foreground shrink-0 text-right">
                     {d && isValid(d) ? format(d, 'EEE d MMM · h:mm a') : '—'}
                   </div>
                 </div>
@@ -262,20 +294,25 @@ function VisitCard({
         </div>
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-start justify-between gap-2">
-            <div>
+            <div className="min-w-0 space-y-1">
               <p className="font-medium">
                 {v.petName}
                 {v.chart?.assessment ? ` · ${v.chart.assessment}` : v.reasonForVisit ? ` · ${v.reasonForVisit}` : ''}
               </p>
-              <p className="text-sm text-muted-foreground">
-                {v.doctorName
-                  ? `Dr. ${v.doctorName.replace(/^Dr\.?\s*/i, '')}`
-                  : 'Doctor pending'}
-                {v.doctorSpecialization ? ` · ${v.doctorSpecialization.replace(/_/g, ' ')}` : ''}
-                {v.clinicName ? ` · ${v.clinicName}` : ''}
-              </p>
+              <ProviderLines
+                clinicName={v.clinicName}
+                doctorName={v.doctorName}
+                specialization={v.doctorSpecialization}
+              />
+              {v.status === 'WAITLIST' && (
+                <p className="text-xs text-muted-foreground">
+                  {v.source === 'WALK_IN'
+                    ? 'In the clinic queue — staff will call you when ready.'
+                    : 'Waiting to be seen at the clinic.'}
+                </p>
+              )}
             </div>
-            <Badge variant="secondary">{statusLabel(v.status)}</Badge>
+            <Badge variant="secondary">{statusLabel(v.status, v.source)}</Badge>
           </div>
           {v.chart?.examinationNotes && (
             <p className="text-xs text-muted-foreground line-clamp-3">
@@ -340,10 +377,6 @@ function VisitCard({
 
 function BookingCard({ booking: b }: { booking: ClinicBookingModel }) {
   const start = b.slotStart ? parseISO(b.slotStart) : null;
-  const doctorLabel = b.doctorName
-    ? `Dr. ${b.doctorName.replace(/^Dr\.?\s*/i, '')}`
-    : null;
-  const specialty = b.doctorSpecialization?.replace(/_/g, ' ');
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader className="pb-2">
@@ -352,17 +385,19 @@ function BookingCard({ booking: b }: { booking: ClinicBookingModel }) {
             <PawPrint className="h-4 w-4 text-primary shrink-0" />
             {b.petName}
           </span>
-          <Badge variant="outline">{statusLabel(b.status || 'SCHEDULED')}</Badge>
+          <Badge variant="outline">{statusLabel(b.status || 'CONFIRMED')}</Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="text-sm text-muted-foreground space-y-1">
+      <CardContent className="text-sm text-muted-foreground space-y-2">
         <p>
           {start && isValid(start) ? format(start, 'MMM d, yyyy · h:mm a') : 'Time TBD'}
-          {b.mode ? ` · ${b.mode}` : ''}
+          {b.mode ? ` · ${b.mode.replace(/_/g, ' ')}` : ''}
         </p>
-        <p>
-          {[doctorLabel, specialty, b.clinicName].filter(Boolean).join(' · ') || 'Provider pending'}
-        </p>
+        <ProviderLines
+          clinicName={b.clinicName}
+          doctorName={b.doctorName}
+          specialization={b.doctorSpecialization}
+        />
         {b.notes && <p className="text-xs">{b.notes}</p>}
         {b.petUuid && (
           <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>

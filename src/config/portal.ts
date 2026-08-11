@@ -59,7 +59,6 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Nutrition', path: '/app/nutrition', icon: Apple },
       { label: 'Health', path: '/app/health', icon: Heart },
       { label: 'Appointments', path: '/app/appointments', icon: Calendar },
-      { label: 'Book appointment', path: '/app/book', icon: Calendar },
       { label: 'Cart', path: '/app/cart', icon: ShoppingCart },
       { label: 'Orders', path: '/app/orders', icon: ShoppingBag },
       { label: 'Articles', path: '/app/articles', icon: FileText },

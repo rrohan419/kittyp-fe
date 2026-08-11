@@ -455,6 +455,7 @@ export interface AddPatientRequest {
   petBreed?: string;
   petGender?: string;
   petDateOfBirth?: string;
+  petPhotoUrl?: string;
 }
 
 export async function addClinicPatient(

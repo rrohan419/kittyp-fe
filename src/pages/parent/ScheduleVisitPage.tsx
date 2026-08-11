@@ -4,12 +4,14 @@ import { useSelector } from 'react-redux';
 import { format, parseISO, isValid } from 'date-fns';
 import {
   ArrowLeft,
+  Building2,
   Calendar,
   Loader2,
   MapPin,
   Navigation,
   Search,
   Star,
+  Stethoscope,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { RootState } from '@/module/store/store';
@@ -18,7 +20,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
   DiscoverClinicCard,
@@ -35,11 +36,38 @@ type Step = 'search' | 'book';
 type NestedPractice = {
   key: string;
   clinicUuid: string;
+  /** Display title: clinic name, or doctor name for flat personal rows */
   name: string;
+  /** Real clinic/practice name used when booking */
+  clinicName: string;
   distanceKm?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
   personal: boolean;
+  /** Personal doctors render as a single line (no clinic header / indent) */
+  flat?: boolean;
   doctors: DiscoverDoctorCard[];
 };
+
+type ListFilter = 'all' | 'clinics' | 'doctors';
+
+function formatDistanceKm(km: number | null | undefined): string | null {
+  if (km == null || Number.isNaN(km)) return null;
+  if (km < 1) return `${Math.max(1, Math.round(km * 1000))} m`;
+  return `${km.toFixed(1)} km`;
+}
+
+function distanceFromCoords(
+  coords: { lat: number; lng: number } | null,
+  lat?: number | null,
+  lng?: number | null,
+  fallbackKm?: number | null
+): number | null {
+  if (coords && lat != null && lng != null) {
+    return Math.round((haversineMeters(coords, { lat, lng }) / 1000) * 10) / 10;
+  }
+  return fallbackKm ?? null;
+}
 
 function apiErrorMessage(err: unknown, fallback: string): string {
   if (isAxiosError(err)) {
@@ -105,6 +133,7 @@ export default function ScheduleVisitPage() {
   const [notes, setNotes] = useState('');
   const [booking, setBooking] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [listFilter, setListFilter] = useState<ListFilter>('all');
 
   const watchIdRef = useRef<number | null>(null);
   const lastCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -192,28 +221,14 @@ export default function ScheduleVisitPage() {
     );
   }, [applyPosition, stopWatch]);
 
-  // Initial load + watch while on search step
+  // Initial load + always watch location while on search (live distance)
   useEffect(() => {
     if (step !== 'search') {
       stopWatch();
       return;
     }
     void search({ quiet: true });
-    const perms = navigator.permissions;
-    if (perms?.query) {
-      perms
-        .query({ name: 'geolocation' as PermissionName })
-        .then((status) => {
-          if (status.state === 'granted') {
-            startWatch();
-          } else if (status.state === 'denied') {
-            setGeoStatus('denied');
-          }
-        })
-        .catch(() => {
-          /* ignore */
-        });
-    }
+    startWatch();
     return () => stopWatch();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount / step gated
   }, [step]);
@@ -231,43 +246,55 @@ export default function ScheduleVisitPage() {
         key: `clinic-${c.clinicUuid}`,
         clinicUuid: c.clinicUuid,
         name: c.name,
-        distanceKm: c.distanceKm,
+        clinicName: c.name,
+        distanceKm: distanceFromCoords(coords, c.latitude, c.longitude, c.distanceKm),
+        latitude: c.latitude,
+        longitude: c.longitude,
         personal: false,
         doctors: c.doctors ?? [],
       }));
 
-    const personalByClinic = new Map<string, NestedPractice>();
+    // Personal practices: one flat row per doctor (name only, no nested clinic header)
+    const personalFlat: NestedPractice[] = [];
     for (const d of personalDoctors) {
-      const existing = personalByClinic.get(d.clinicUuid);
-      if (existing) {
-        existing.doctors.push(d);
-        continue;
-      }
-      personalByClinic.set(d.clinicUuid, {
-        key: `personal-${d.clinicUuid}`,
+      const clinicMeta = clinics.find((c) => c.clinicUuid === d.clinicUuid);
+      const lat = clinicMeta?.latitude ?? null;
+      const lng = clinicMeta?.longitude ?? null;
+      const dist = distanceFromCoords(coords, lat, lng, d.distanceKm ?? clinicMeta?.distanceKm);
+      personalFlat.push({
+        key: `personal-${d.clinicUuid}-${d.doctorUuid}`,
         clinicUuid: d.clinicUuid,
-        name: d.clinicName || 'Personal practice',
-        distanceKm: d.distanceKm,
+        name: d.name,
+        clinicName: d.clinicName || 'Personal practice',
+        distanceKm: dist,
+        latitude: lat,
+        longitude: lng,
         personal: true,
+        flat: true,
         doctors: [d],
       });
     }
 
-    return [...personalByClinic.values(), ...branch]
-      .filter((p) => p.doctors.length > 0)
-      .sort((a, b) => {
-        if (a.distanceKm == null && b.distanceKm == null) return a.name.localeCompare(b.name);
-        if (a.distanceKm == null) return 1;
-        if (b.distanceKm == null) return -1;
-        return a.distanceKm - b.distanceKm;
-      });
-  }, [clinics, personalDoctors]);
+    const showClinics = listFilter === 'all' || listFilter === 'clinics';
+    const showDoctors = listFilter === 'all' || listFilter === 'doctors';
+    const merged = [
+      ...(showDoctors ? personalFlat : []),
+      ...(showClinics ? branch : []),
+    ].filter((p) => p.doctors.length > 0);
+
+    return merged.sort((a, b) => {
+      if (a.distanceKm == null && b.distanceKm == null) return a.name.localeCompare(b.name);
+      if (a.distanceKm == null) return 1;
+      if (b.distanceKm == null) return -1;
+      return a.distanceKm - b.distanceKm;
+    });
+  }, [clinics, personalDoctors, coords, listFilter]);
 
   const openDoctor = (practice: NestedPractice, d: DiscoverDoctorCard) => {
     setSelectedDoctorKey(`${practice.clinicUuid}:${d.doctorUuid}`);
     setClinic({
       clinicUuid: practice.clinicUuid,
-      name: practice.name,
+      name: practice.clinicName,
       personal: practice.personal,
       distanceKm: practice.distanceKm,
     });
@@ -375,11 +402,47 @@ export default function ScheduleVisitPage() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search clinics or doctors"
+                placeholder={
+                  listFilter === 'clinics'
+                    ? 'Search clinics'
+                    : listFilter === 'doctors'
+                      ? 'Search doctors'
+                      : 'Search clinics or doctors'
+                }
                 className="pl-9 h-11"
                 aria-label="Search clinics or doctors"
               />
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={cn(
+                'h-11 w-11 shrink-0',
+                listFilter === 'doctors' && 'border-primary text-primary bg-primary/5'
+              )}
+              onClick={() => setListFilter((f) => (f === 'doctors' ? 'all' : 'doctors'))}
+              title="Show personal doctors"
+              aria-label="Filter doctors"
+              aria-pressed={listFilter === 'doctors'}
+            >
+              <Stethoscope className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={cn(
+                'h-11 w-11 shrink-0',
+                listFilter === 'clinics' && 'border-primary text-primary bg-primary/5'
+              )}
+              onClick={() => setListFilter((f) => (f === 'clinics' ? 'all' : 'clinics'))}
+              title="Show clinics"
+              aria-label="Filter clinics"
+              aria-pressed={listFilter === 'clinics'}
+            >
+              <Building2 className="h-4 w-4" />
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -410,89 +473,158 @@ export default function ScheduleVisitPage() {
             </Button>
           </div>
 
-          <div className="rounded-xl border bg-card">
-            {loading && (
-              <div className="flex items-center gap-2 px-4 py-6 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Finding care near you…
-              </div>
+          <div className="space-y-3">
+            {geoStatus === 'ok' && (
+              <p className="text-xs text-muted-foreground px-0.5">
+                Distances update as you move · tap a doctor to pick a time
+              </p>
+            )}
+            {geoStatus === 'pending' && (
+              <p className="text-xs text-muted-foreground px-0.5">Getting your location for nearby care…</p>
+            )}
+            {(geoStatus === 'idle' || geoStatus === 'denied') && (
+              <p className="text-xs text-muted-foreground px-0.5">
+                Tap the location icon to sort clinics by distance · tap a doctor to book
+              </p>
             )}
 
-            {!loading && practices.length === 0 && (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                No clinics or doctors to show. Try another name
-                {geoStatus !== 'ok' ? ', or enable location' : ''}.
-              </div>
-            )}
-
-            {!loading &&
-              practices.map((practice) => (
-                <div key={practice.key} className="border-b last:border-b-0">
-                  <div className="flex items-center gap-3 px-4 py-3">
-                    <span
-                      className="h-4 w-4 rounded-full border-2 border-muted-foreground/50 shrink-0"
-                      aria-hidden
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-foreground truncate">{practice.name}</div>
-                      {practice.personal && (
-                        <div className="text-xs text-muted-foreground">Personal practice</div>
-                      )}
-                    </div>
-                    {practice.distanceKm != null && (
-                      <Badge variant="secondary" className="shrink-0 tabular-nums">
-                        {practice.distanceKm} km
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="pb-2">
-                    {practice.doctors.length === 0 ? (
-                      <p className="pl-11 pr-4 pb-2 text-xs text-muted-foreground">No doctors listed</p>
-                    ) : (
-                      practice.doctors.map((d) => {
-                        const key = `${practice.clinicUuid}:${d.doctorUuid}`;
-                        const selected = selectedDoctorKey === key;
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => openDoctor(practice, d)}
-                            className={cn(
-                              'w-full flex items-center gap-3 pl-11 pr-4 py-2.5 text-left hover:bg-muted/50 transition',
-                              selected && 'bg-muted/40'
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                'h-4 w-4 rounded-full border-2 shrink-0',
-                                selected
-                                  ? 'border-primary bg-primary/20'
-                                  : 'border-muted-foreground/50'
-                              )}
-                              aria-hidden
-                            />
-                            <div className="min-w-0 flex-1">
-                              <div className="text-sm font-medium text-foreground truncate">{d.name}</div>
-                              <div className="text-xs text-muted-foreground truncate">
-                                {[specialtyLabel(d.specialization), d.experienceYears != null ? `${d.experienceYears} yrs` : null]
-                                  .filter(Boolean)
-                                  .join(' · ') || 'Veterinarian'}
-                              </div>
-                            </div>
-                            {d.rating != null && (
-                              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                                <Star className="h-3 w-3" />
-                                {d.rating.toFixed(1)}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
+            <div className="rounded-xl border bg-card overflow-hidden divide-y divide-border">
+              {loading && (
+                <div className="flex items-center gap-2 px-4 py-8 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Finding clinics and doctors…
                 </div>
-              ))}
+              )}
+
+              {!loading && practices.length === 0 && (
+                <div className="px-4 py-10 text-center space-y-1">
+                  <p className="text-sm font-medium text-foreground">No matches nearby</p>
+                  <p className="text-sm text-muted-foreground">
+                    Try another name{geoStatus !== 'ok' ? ', or turn on location' : ''}.
+                  </p>
+                </div>
+              )}
+
+              {!loading &&
+                practices.map((practice) => {
+                  const distLabel = formatDistanceKm(practice.distanceKm);
+
+                  // Personal doctor: single-line row (name · specialty · distance)
+                  if (practice.flat && practice.doctors[0]) {
+                    const d = practice.doctors[0];
+                    const key = `${practice.clinicUuid}:${d.doctorUuid}`;
+                    const selected = selectedDoctorKey === key;
+                    const meta = [
+                      specialtyLabel(d.specialization),
+                      distLabel ? `${distLabel} away` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ');
+                    return (
+                      <button
+                        key={practice.key}
+                        type="button"
+                        onClick={() => openDoctor(practice, d)}
+                        className={cn(
+                          'w-full flex items-center gap-3 px-4 py-3.5 text-left transition',
+                          selected ? 'bg-primary/5' : 'hover:bg-muted/40'
+                        )}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-semibold text-foreground truncate">
+                            {d.name}
+                          </div>
+                          {meta ? (
+                            <div className="text-xs text-muted-foreground truncate mt-0.5">{meta}</div>
+                          ) : null}
+                        </div>
+                        {d.rating != null ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0 tabular-nums">
+                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            {d.rating.toFixed(1)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-primary/80 shrink-0 font-medium">Book</span>
+                        )}
+                      </button>
+                    );
+                  }
+
+                  // Clinic: header + line + indented doctors
+                  return (
+                    <section key={practice.key} className="bg-card">
+                      <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3">
+                        <div className="min-w-0">
+                          <h2 className="text-base font-semibold text-foreground leading-snug truncate">
+                            {practice.name}
+                          </h2>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {`${practice.doctors.length} doctor${practice.doctors.length === 1 ? '' : 's'}`}
+                            {distLabel ? ` · ${distLabel} away` : ''}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mx-4 border-t border-border" />
+
+                      <ul className="pl-5 sm:pl-6 py-1">
+                        {practice.doctors.map((d) => {
+                          const key = `${practice.clinicUuid}:${d.doctorUuid}`;
+                          const selected = selectedDoctorKey === key;
+                          const meta =
+                            [
+                              specialtyLabel(d.specialization),
+                              d.experienceYears != null ? `${d.experienceYears} yrs exp` : null,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ') || 'Veterinarian';
+                          return (
+                            <li key={key}>
+                              <button
+                                type="button"
+                                onClick={() => openDoctor(practice, d)}
+                                className={cn(
+                                  'w-full flex items-center gap-3 px-3 py-3 text-left rounded-lg transition',
+                                  'border-l-2 border-transparent',
+                                  selected
+                                    ? 'bg-primary/5 border-l-primary'
+                                    : 'hover:bg-muted/50 hover:border-l-muted-foreground/30'
+                                )}
+                              >
+                                <span
+                                  className={cn(
+                                    'h-2.5 w-2.5 rounded-full shrink-0',
+                                    selected ? 'bg-primary' : 'bg-muted-foreground/35'
+                                  )}
+                                  aria-hidden
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm font-medium text-foreground truncate">
+                                    {d.name}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground truncate mt-0.5">
+                                    {meta}
+                                  </div>
+                                </div>
+                                {d.rating != null ? (
+                                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0 tabular-nums">
+                                    <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                    {d.rating.toFixed(1)}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-primary/80 shrink-0 font-medium">
+                                    Book
+                                  </span>
+                                )}
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  );
+                })}
+            </div>
           </div>
         </div>
       )}

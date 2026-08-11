@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { PetPhoto } from '@/components/clinic/PetPhoto';
+import { PetPhotoField } from '@/components/clinic/PetPhotoField';
 import { resolveClinicSearchTarget } from '@/utils/clinicSearchNavigate';
 import {
   ClinicOwnerModel,
@@ -65,6 +66,7 @@ const emptyForm = {
   petBreed: '',
   petGender: '',
   petDateOfBirth: '',
+  petPhotoUrl: '',
 };
 
 export default function ClinicPatients() {
@@ -336,6 +338,7 @@ export default function ClinicPatients() {
         petBreed: form.petBreed.trim() || undefined,
         petGender: form.petGender.trim() || undefined,
         petDateOfBirth: form.petDateOfBirth || undefined,
+        petPhotoUrl: form.petPhotoUrl.trim() || undefined,
       });
       toast.success('Client & pet added');
       setAddOpen(false);
@@ -829,6 +832,11 @@ export default function ClinicPatients() {
                   />
                 </div>
               </div>
+              <PetPhotoField
+                value={form.petPhotoUrl || null}
+                onChange={(url) => set('petPhotoUrl', url || '')}
+                disabled={saving}
+              />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setAddOpen(false)} disabled={saving}>
