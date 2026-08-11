@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --mode devlocal",
+    "dev:remote": "vite --mode development",
     "build": "vite build",
     "local": "vite --mode devlocal",
     "build:local": "vite build --mode devlocal",
