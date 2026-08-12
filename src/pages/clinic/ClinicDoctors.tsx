@@ -12,9 +12,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Search, Mail, Loader2, UserPlus, Trash2, ChevronRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Plus, Search, Mail, Loader2, UserPlus, Trash2, ChevronRight, Star } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { useAppSelector } from '@/module/store/hooks';
+import { ratingAdjective } from '@/components/schedule/weekCalendarUtils';
 import {
   ClinicDoctorModel,
   DoctorInviteModel,
@@ -29,7 +31,33 @@ import { statusLabel } from '@/services/doctorVerificationService';
 import { toast } from 'sonner';
 import { parseApiErrorMessage, validateEmail } from '@/utils/validation';
 
+function DoctorRatingLine({
+  rating,
+  reviewsCount,
+  ratingLabel,
+}: {
+  rating?: number | null;
+  reviewsCount?: number | null;
+  ratingLabel?: string | null;
+}) {
+  const count = reviewsCount ?? 0;
+  if (!rating || count <= 0) {
+    return <p className="text-xs text-muted-foreground">Not rated yet</p>;
+  }
+  const label = ratingLabel || ratingAdjective(rating);
+  return (
+    <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
+      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+      <span className="font-medium text-foreground">{rating.toFixed(1)}</span>
+      <span>· {label}</span>
+      <span>· {count} review{count === 1 ? '' : 's'}</span>
+    </p>
+  );
+}
+
 export default function ClinicDoctors() {
+  const navigate = useNavigate();
+  const user = useAppSelector((s) => s.authReducer.user);
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
   const [search, setSearch] = useState('');
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
@@ -43,6 +71,7 @@ export default function ClinicDoctors() {
   const [lookingUp, setLookingUp] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [remindingId, setRemindingId] = useState<string | null>(null);
+  const [autoOpened, setAutoOpened] = useState(false);
 
   const reload = async () => {
     if (!clinicUuid) {
@@ -62,7 +91,7 @@ export default function ClinicDoctors() {
     } catch {
       setDoctors([]);
       setInvites([]);
-      toast.error('Failed to load doctors');
+      toast.error('Failed to load profile');
     } finally {
       setLoading(false);
     }
@@ -70,6 +99,7 @@ export default function ClinicDoctors() {
 
   useEffect(() => {
     let cancelled = false;
+    setAutoOpened(false);
     (async () => {
       if (cancelled) return;
       await reload();
@@ -79,6 +109,19 @@ export default function ClinicDoctors() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clinicUuid]);
+
+  // Personal / single-doctor clinics: open the profile directly (no tile list).
+  useEffect(() => {
+    if (loading || autoOpened || !clinicUuid || doctors.length !== 1) return;
+    const only = doctors[0];
+    if (!only?.doctorUuid) return;
+    const selfMatch =
+      !!user?.uuid && !!only.userUuid && user.uuid === only.userUuid;
+    if (clinic?.personal || selfMatch || doctors.length === 1) {
+      setAutoOpened(true);
+      navigate(`/clinic/doctors/${only.doctorUuid}`, { replace: true });
+    }
+  }, [loading, autoOpened, clinicUuid, doctors, clinic?.personal, user?.uuid, navigate]);
 
   const filtered = useMemo(
     () =>
@@ -221,11 +264,19 @@ export default function ClinicDoctors() {
     }
   };
 
+  if (loading || (doctors.length === 1 && !autoOpened && clinicUuid)) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto flex items-center justify-center py-16 text-muted-foreground gap-2">
+        <Loader2 className="h-5 w-5 animate-spin" /> Opening profile…
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Doctors</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Profile</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             {clinicLoading || loading
               ? 'Loading…'
@@ -356,6 +407,13 @@ export default function ClinicDoctors() {
                         <p className="text-xs text-muted-foreground truncate">
                           {(d.specialization || 'General').replace(/_/g, ' ')}
                         </p>
+                        <div className="mt-1">
+                          <DoctorRatingLine
+                            rating={d.rating}
+                            reviewsCount={d.reviewsCount}
+                            ratingLabel={d.ratingLabel}
+                          />
+                        </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
                     </div>

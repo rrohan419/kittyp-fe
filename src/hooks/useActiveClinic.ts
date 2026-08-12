@@ -74,6 +74,8 @@ export function useActiveClinic() {
         ? activeClinicId
         : clinics[0]?.uuid ?? null;
   const clinic = (clinicUuid ? clinics.find((c) => c.uuid === clinicUuid) : null) ?? null;
+  /** Doctor portal: Personal practice only (owned clinic). Affiliated switcher is not personal. */
+  const isPersonalPractice = clinic?.personal === true;
 
-  return { clinic, clinicUuid, clinics, loading, error, refresh };
+  return { clinic, clinicUuid, clinics, loading, error, refresh, isPersonalPractice };
 }

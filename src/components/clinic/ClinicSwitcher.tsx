@@ -18,7 +18,8 @@ import { ClinicModel, switchClinic } from '@/services/clinicService';
 import { cn } from '@/lib/utils';
 import { Link, useLocation } from 'react-router-dom';
 import { hasAnyRole, ROLES } from '@/utils/roles';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { clearStuckUiLocks } from '@/utils/clearStuckUiLocks';
 
 interface ClinicSwitcherProps {
   className?: string;
@@ -30,6 +31,8 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
   const activeClinicId = useSelector((s: RootState) => s.authReducer.activeClinicId);
   const user = useSelector((s: RootState) => s.authReducer.user);
   const { clinics, clinic, loading, refresh } = useActiveClinic();
+  const [open, setOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const canAddClinic = hasAnyRole(user?.roles, [ROLES.CLINIC_ADMIN, ROLES.DOCTOR]);
   const onDoctorPortal = location.pathname.startsWith('/doctor');
   // Personal practice is doctor-only. Clinic portal only switches branches.
@@ -45,13 +48,20 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
   }, [clinics, showPersonal]);
 
   const select = async (next: ClinicModel) => {
-    if (next.uuid === activeClinicId) return;
+    if (next.uuid === activeClinicId || switching) return;
+    setOpen(false);
+    clearStuckUiLocks();
+    setSwitching(true);
     try {
       await switchClinic(next.uuid);
       dispatch(setActiveClinic(next.uuid));
       await refresh();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Could not switch clinic');
+    } finally {
+      setSwitching(false);
+      // Async remounts can leave body pointer-events locked — clear after paint
+      requestAnimationFrame(() => clearStuckUiLocks());
     }
   };
 
@@ -102,13 +112,22 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
           Shutdown
         </Badge>
       )}
-      <DropdownMenu>
+      <DropdownMenu
+        modal={false}
+        open={open}
+        onOpenChange={(v) => {
+          if (switching) return;
+          setOpen(v);
+          if (!v) clearStuckUiLocks();
+        }}
+      >
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
             size="sm"
+            disabled={switching}
             className={cn(
-              'max-w-full',
+              'max-w-full relative z-[60]',
               isShutdown && 'border-red-200 bg-red-50/80 text-red-800 hover:bg-red-50 hover:text-red-900'
             )}
           >
@@ -117,24 +136,40 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
             ) : (
               <Building2 className="h-4 w-4 mr-2 shrink-0" />
             )}
-            <span className="truncate max-w-[180px]">{triggerName}</span>
+            <span className="truncate max-w-[180px]">{switching ? 'Switching…' : triggerName}</span>
             <ChevronsUpDown className="h-3.5 w-3.5 ml-2 opacity-60 shrink-0" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuContent
+          align="end"
+          sideOffset={8}
+          collisionPadding={16}
+          className="w-72 z-[200]"
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
           <DropdownMenuLabel>
-            {onDoctorPortal ? 'Your practices' : 'Clinic branches'}
+            {onDoctorPortal ? 'Your practices' : 'Practice branches'}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           {ordered.map((item) => {
             const itemShutdown = item.status === 'SHUTDOWN';
             const selected = item.uuid === (activeClinicId ?? clinic?.uuid);
             const label =
-              showPersonal && item.personal ? 'Personal' : item.name || 'Clinic';
+              showPersonal && item.personal ? 'Personal' : item.name || 'Practice';
+            const secondary =
+              showPersonal && item.personal
+                ? item.kittypPracticeId || item.organizationUuid || ''
+                : [item.address, item.kittypPracticeId || item.organizationUuid]
+                    .filter(Boolean)
+                    .join(' · ');
             return (
               <DropdownMenuItem
                 key={item.uuid}
-                onClick={() => select(item)}
+                disabled={switching}
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void select(item);
+                }}
                 className={cn(itemShutdown && 'bg-red-50/70 focus:bg-red-50 text-red-900')}
               >
                 <Check
@@ -157,11 +192,8 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
                       </Badge>
                     )}
                   </div>
-                  {showPersonal && item.personal ? (
-                    <p className="truncate text-[11px] text-muted-foreground">
-                    </p>
-                  ) : item.address ? (
-                    <p className="truncate text-[11px] text-muted-foreground">{item.address}</p>
+                  {secondary ? (
+                    <p className="truncate text-[11px] text-muted-foreground">{secondary}</p>
                   ) : null}
                 </div>
               </DropdownMenuItem>
@@ -173,7 +205,7 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
               <DropdownMenuItem asChild>
                 <Link to={addClinicPath} className="cursor-pointer">
                   <Plus className="h-4 w-4 mr-2" />
-                  {onDoctorPortal ? 'Add clinic' : 'Add branch'}
+                  {onDoctorPortal ? 'Add practice' : 'Add branch'}
                 </Link>
               </DropdownMenuItem>
             </>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" role="img" aria-label="bed">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFF7ED"/>
+      <stop offset="100%" stop-color="#FED7AA"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" rx="28" fill="url(#bg)"/>
+  <circle cx="320" cy="80" r="54" fill="#ffffff" fill-opacity=".12"/>
+  <circle cx="60" cy="420" r="70" fill="#ffffff" fill-opacity=".10"/>
+
+  <ellipse cx="200" cy="310" rx="130" ry="55" fill="#FB923C"/>
+  <ellipse cx="200" cy="290" rx="100" ry="40" fill="#FFEDD5"/>
+  <path d="M90 270 q20 -70 70 -70 q20 40 40 40 q20 -40 40 -40 q50 0 70 70" fill="#F97316"/>
+  <text x="200" y="420" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#9A3412">Pet Bed</text>
+
+</svg>

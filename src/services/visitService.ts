@@ -74,31 +74,52 @@ export async function fetchMyParentVisits(): Promise<ClinicVisitModel[]> {
   return res.data.data ?? [];
 }
 
-export async function fetchMyParentBookings(): Promise<ClinicBookingModel[]> {
-  const res = await axiosInstance.get<ApiSuccessResponse<ClinicBookingModel[]>>('/user/bookings/mine');
+export type AttendedPatientModel = {
+  petUuid: string;
+  petName: string;
+  species?: string | null;
+  breed?: string | null;
+  ownerUuid?: string | null;
+  ownerName?: string | null;
+  ownerEmail?: string | null;
+  ownerPhone?: string | null;
+  clinicUuid?: string | null;
+  clinicName?: string | null;
+  visitCount: number;
+  lastVisitAt?: string | null;
+  lastAssessment?: string | null;
+};
+
+export async function fetchMyAttendedPatients(clinicUuid?: string | null): Promise<AttendedPatientModel[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<AttendedPatientModel[]>>(
+    '/doctor/patients/attended',
+    { params: clinicUuid ? { clinicUuid } : undefined }
+  );
   return res.data.data ?? [];
 }
 
-export interface AttendedPatientModel {
-  petUuid: string;
-  petName: string;
-  species?: string;
-  breed?: string;
-  ownerUuid?: string;
-  ownerName?: string;
-  ownerEmail?: string;
-  ownerPhone?: string;
-  clinicUuid?: string;
-  clinicName?: string;
-  visitCount: number;
-  lastVisitAt?: string;
-  lastAssessment?: string;
+export type VisitRatingResult = {
+  visitUuid: string;
+  doctorUuid: string;
+  stars: number;
+  ratingLabel: string;
+  doctorRating?: number | null;
+  doctorReviewsCount?: number | null;
+};
+
+export async function rateParentVisit(
+  visitUuid: string,
+  payload: { stars: number; comment?: string }
+): Promise<VisitRatingResult> {
+  const res = await axiosInstance.post<ApiSuccessResponse<VisitRatingResult>>(
+    `/user/visits/${visitUuid}/rating`,
+    payload
+  );
+  return res.data.data;
 }
 
-export async function fetchMyAttendedPatients(): Promise<AttendedPatientModel[]> {
-  const res = await axiosInstance.get<ApiSuccessResponse<AttendedPatientModel[]>>(
-    '/doctor/patients/attended'
-  );
+export async function fetchMyParentBookings(): Promise<ClinicBookingModel[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ClinicBookingModel[]>>('/user/bookings/mine');
   return res.data.data ?? [];
 }
 

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" role="img" aria-label="cat">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFE8D6"/>
+      <stop offset="100%" stop-color="#FFB4A2"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" rx="28" fill="url(#bg)"/>
+  <circle cx="320" cy="80" r="54" fill="#ffffff" fill-opacity=".12"/>
+  <circle cx="60" cy="420" r="70" fill="#ffffff" fill-opacity=".10"/>
+
+  <ellipse cx="200" cy="290" rx="95" ry="80" fill="#F77F00"/>
+  <circle cx="200" cy="190" r="70" fill="#F77F00"/>
+  <polygon points="145,145 155,95 185,140" fill="#F77F00"/>
+  <polygon points="255,145 245,95 215,140" fill="#F77F00"/>
+  <polygon points="150,140 157,108 175,138" fill="#FFD6A5"/>
+  <polygon points="250,140 243,108 225,138" fill="#FFD6A5"/>
+  <circle cx="175" cy="185" r="8" fill="#2D2A32"/>
+  <circle cx="225" cy="185" r="8" fill="#2D2A32"/>
+  <ellipse cx="200" cy="210" rx="10" ry="7" fill="#E36414"/>
+  <path d="M175 230 Q200 250 225 230" fill="none" stroke="#2D2A32" stroke-width="4" stroke-linecap="round"/>
+  <text x="200" y="430" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#7A3E00">Cat Care</text>
+
+</svg>

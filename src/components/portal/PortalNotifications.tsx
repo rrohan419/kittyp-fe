@@ -21,10 +21,8 @@ import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
 import {
   DoctorInviteModel,
-  RetentionAlertModel,
   fetchDoctorInvites,
   fetchMyPendingInvites,
-  fetchRetentionAlerts,
   remindDoctorInvite,
 } from '@/services/clinicService';
 import { fetchMyDoctorVisits } from '@/services/visitService';
@@ -41,10 +39,13 @@ type NotifItem = {
   time?: string;
   inviteUuid?: string;
   canRemind?: boolean;
+  inviteStatus?: string;
 };
 
+const ADDRESSED_INVITE_STATUSES = new Set(['ACCEPTED', 'REJECTED', 'REVOKED', 'EXPIRED']);
+
 type PortalKind = 'clinic' | 'doctor' | 'other';
-type ClinicFilter = 'all' | 'retention' | 'invites';
+type ClinicFilter = 'all' | 'invites';
 
 const NOTIF_CLICKED_KEY = 'kittyp-notif-clicked';
 
@@ -64,6 +65,20 @@ function persistClickedIds(ids: Set<string>) {
     localStorage.setItem(NOTIF_CLICKED_KEY, JSON.stringify([...ids]));
   } catch {
     /* ignore */
+  }
+}
+
+const NOTIF_REFRESH_EVENT = 'kittyp-notif-refresh';
+
+/** Call after accept/decline so the bell drops the invite immediately. */
+export function notifyInviteAddressed(inviteUuid?: string) {
+  if (inviteUuid) {
+    const ids = loadClickedIds();
+    ids.add(`my-invite-${inviteUuid}`);
+    persistClickedIds(ids);
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(NOTIF_REFRESH_EVENT));
   }
 }
 
@@ -139,22 +154,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
       }
 
       if (portal === 'clinic' && clinicUuid) {
-        const [alerts, invites] = await Promise.all([
-          fetchRetentionAlerts(clinicUuid).catch(() => [] as RetentionAlertModel[]),
-          fetchDoctorInvites(clinicUuid).catch(() => [] as DoctorInviteModel[]),
-        ]);
-
-        for (const a of alerts
-          .filter((x) => !x.status || x.status.toUpperCase() === 'OPEN')
-          .slice(0, 12)) {
-          next.push({
-            id: `alert-${a.id}`,
-            kind: 'alert',
-            title: `${a.petName} · follow-up`,
-            body: a.message || a.type,
-            href: `/clinic/retention`,
-          });
-        }
+        const invites = await fetchDoctorInvites(clinicUuid).catch(() => [] as DoctorInviteModel[]);
 
         for (const inv of invites.slice(0, 20)) {
           const pending = inv.status === 'PENDING';
@@ -183,6 +183,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
             time: inv.expiresAt,
             inviteUuid: pending ? inv.uuid : undefined,
             canRemind,
+            inviteStatus: inv.status,
           });
         }
       }
@@ -229,22 +230,18 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    const onRefresh = () => {
+      setClickedIds(loadClickedIds());
+      void load();
+    };
+    window.addEventListener(NOTIF_REFRESH_EVENT, onRefresh);
+    return () => window.removeEventListener(NOTIF_REFRESH_EVENT, onRefresh);
+  }, [load]);
+
   const visible = useMemo(() => {
     let list = items;
-    if (portal === 'clinic' && filter === 'retention') {
-      const alerts = items.filter((i) => i.kind === 'alert');
-      list = alerts.length
-        ? alerts
-        : [
-            {
-              id: 'empty-retention',
-              kind: 'update' as const,
-              title: 'No retention alerts',
-              body: 'Vaccine and follow-up reminders will appear here.',
-              href: '/clinic/retention',
-            },
-          ];
-    } else if (portal === 'clinic' && filter === 'invites') {
+    if (portal === 'clinic' && filter === 'invites') {
       const invites = items.filter((i) => i.kind === 'invite');
       list = invites.length
         ? invites
@@ -260,9 +257,18 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
     }
 
     if (!showAll) {
-      const filtered = list.filter(
-        (i) => i.id.startsWith('empty-') || i.kind === 'update' || !clickedIds.has(i.id)
-      );
+      const filtered = list.filter((i) => {
+        if (i.id.startsWith('empty-') || i.kind === 'update') return true;
+        if (clickedIds.has(i.id)) return false;
+        if (
+          i.kind === 'invite' &&
+          i.inviteStatus &&
+          ADDRESSED_INVITE_STATUSES.has(i.inviteStatus)
+        ) {
+          return false;
+        }
+        return true;
+      });
       // If everything real was clicked, keep a quiet empty tip instead of a blank panel.
       const hasReal = filtered.some((i) => !i.id.startsWith('empty-') && i.kind !== 'update');
       if (!hasReal && list.some((i) => !i.id.startsWith('empty-') && i.kind !== 'update')) {
@@ -284,6 +290,13 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
   const actionable = items.filter((i) => {
     if (i.id.startsWith('empty-') || i.kind === 'update') return false;
     if (!showAll && clickedIds.has(i.id)) return false;
+    if (
+      i.kind === 'invite' &&
+      i.inviteStatus &&
+      ADDRESSED_INVITE_STATUSES.has(i.inviteStatus)
+    ) {
+      return false;
+    }
     if (i.kind === 'alert' || i.kind === 'visit' || i.kind === 'booking') return true;
     return i.kind === 'invite' && (i.canRemind || i.inviteUuid || i.href.includes('clinic-invite'));
   }).length;
@@ -318,6 +331,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
 
   return (
     <Popover
+      modal={false}
       open={open}
       onOpenChange={(v) => {
         setOpen(v);
@@ -337,7 +351,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[380px] p-0 overflow-hidden">
+      <PopoverContent align="end" sideOffset={8} collisionPadding={12} className="w-[380px] p-0 overflow-hidden z-[200]">
         <div className="px-4 py-3 border-b border-border bg-muted/30">
           <p className="text-sm font-semibold">Notifications</p>
           <p className="text-xs text-muted-foreground truncate">
@@ -434,24 +448,14 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
         </div>
         <div className="p-2 border-t border-border bg-muted/30 flex gap-2 flex-wrap">
           {portal === 'clinic' && (
-            <>
-              <Button
-                variant={filter === 'retention' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="flex-1 text-xs min-w-[40%]"
-                onClick={() => setFilter((f) => (f === 'retention' ? 'all' : 'retention'))}
-              >
-                Retention
-              </Button>
-              <Button
-                variant={filter === 'invites' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="flex-1 text-xs min-w-[40%]"
-                onClick={() => setFilter((f) => (f === 'invites' ? 'all' : 'invites'))}
-              >
-                Invites
-              </Button>
-            </>
+            <Button
+              variant={filter === 'invites' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="flex-1 text-xs min-w-[40%]"
+              onClick={() => setFilter((f) => (f === 'invites' ? 'all' : 'invites'))}
+            >
+              Invites
+            </Button>
           )}
           <Button
             variant={showAll ? 'secondary' : 'ghost'}

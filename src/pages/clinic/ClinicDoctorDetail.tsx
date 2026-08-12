@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInMonths, isValid } from 'date-fns';
 import {
   ArrowLeft,
   ArrowRight,
@@ -11,6 +11,7 @@ import {
   Mail,
   PawPrint,
   Phone,
+  Star,
   Stethoscope,
   User,
   XCircle,
@@ -19,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { ratingAdjective } from '@/components/schedule/weekCalendarUtils';
 import {
   ClinicDoctorDetailModel,
   ClinicDoctorModel,
@@ -87,6 +89,18 @@ function formatWhen(value?: string | null) {
   } catch {
     return value;
   }
+}
+
+function tenureLabel(joinedAt?: string | null): string | null {
+  if (!joinedAt) return null;
+  const raw = joinedAt.length === 10 ? `${joinedAt}T00:00:00` : joinedAt;
+  const d = parseISO(raw);
+  if (!isValid(d)) return null;
+  const months = Math.max(0, differenceInMonths(new Date(), d));
+  if (months < 1) return 'Joined this month';
+  if (months < 12) return `Since ${months} month${months === 1 ? '' : 's'}`;
+  const years = Math.floor(months / 12);
+  return `Since ${years} year${years === 1 ? '' : 's'}`;
 }
 
 export default function ClinicDoctorDetail() {
@@ -212,7 +226,7 @@ export default function ClinicDoctorDetail() {
       <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-4">
         <Button variant="ghost" size="sm" asChild>
           <Link to="/clinic/doctors">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back to doctors
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to profile
           </Link>
         </Button>
         <p className="text-sm text-muted-foreground">Doctor not found on this clinic roster.</p>
@@ -224,35 +238,45 @@ export default function ClinicDoctorDetail() {
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!prevDoctor}
-          onClick={() => prevDoctor && navigate(`/clinic/doctors/${prevDoctor.doctorUuid}`)}
-          className="gap-1"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span className="hidden sm:inline max-w-[140px] truncate">
-            {prevDoctor ? prevDoctor.name : 'Previous'}
-          </span>
-        </Button>
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/clinic/doctors">All doctors</Link>
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!nextDoctor}
-          onClick={() => nextDoctor && navigate(`/clinic/doctors/${nextDoctor.doctorUuid}`)}
-          className="gap-1"
-        >
-          <span className="hidden sm:inline max-w-[140px] truncate">
-            {nextDoctor ? nextDoctor.name : 'Next'}
-          </span>
-          <ArrowRight className="h-4 w-4" />
-        </Button>
-      </div>
+      {roster.length > 1 ? (
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!prevDoctor}
+            onClick={() => prevDoctor && navigate(`/clinic/doctors/${prevDoctor.doctorUuid}`)}
+            className="gap-1"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden sm:inline max-w-[140px] truncate">
+              {prevDoctor ? prevDoctor.name : 'Previous'}
+            </span>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/clinic/doctors">All profiles</Link>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!nextDoctor}
+            onClick={() => nextDoctor && navigate(`/clinic/doctors/${nextDoctor.doctorUuid}`)}
+            className="gap-1"
+          >
+            <span className="hidden sm:inline max-w-[140px] truncate">
+              {nextDoctor ? nextDoctor.name : 'Next'}
+            </span>
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        <div>
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/clinic/doctors">
+              <ArrowLeft className="h-4 w-4 mr-1" /> Back to profile
+            </Link>
+          </Button>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4 min-w-0">
@@ -273,6 +297,20 @@ export default function ClinicDoctorDetail() {
               {(detail.specialization || 'General').replace(/_/g, ' ')}
               {clinic?.name ? ` · ${clinic.name}` : ''}
               {rosterIndex >= 0 ? ` · ${rosterIndex + 1} of ${roster.length}` : ''}
+            </p>
+            <p className="text-sm mt-2 inline-flex items-center gap-1.5 text-muted-foreground">
+              {detail.rating != null && (detail.reviewsCount ?? 0) > 0 ? (
+                <>
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  <span className="font-medium text-foreground">{detail.rating.toFixed(1)}</span>
+                  <span>· {detail.ratingLabel || ratingAdjective(detail.rating)}</span>
+                  <span>
+                    · {detail.reviewsCount} review{detail.reviewsCount === 1 ? '' : 's'}
+                  </span>
+                </>
+              ) : (
+                <span>Not rated yet</span>
+              )}
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
               <Badge
@@ -339,8 +377,15 @@ export default function ClinicDoctorDetail() {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Joined clinic</p>
-                <p className="font-medium">{formatWhen(detail.joinedAt) || '—'}</p>
+                <p className="text-xs text-muted-foreground">With clinic</p>
+                <p className="font-medium">
+                  {tenureLabel(detail.joinedAt) || formatWhen(detail.joinedAt) || '—'}
+                </p>
+                {formatWhen(detail.joinedAt) && tenureLabel(detail.joinedAt) && (
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Joined {formatWhen(detail.joinedAt)}
+                  </p>
+                )}
               </div>
               {detail.bio && (
                 <div className="sm:col-span-2">
@@ -392,15 +437,15 @@ export default function ClinicDoctorDetail() {
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
-                <PawPrint className="h-4 w-4" /> Pets attended
+                <PawPrint className="h-4 w-4" /> Pets you&apos;ve seen
               </CardTitle>
               <Badge variant="secondary">{detail.patients?.length || 0}</Badge>
             </CardHeader>
             <CardContent className="space-y-3">
               {(detail.patients || []).length === 0 ? (
                 <p className="text-sm text-muted-foreground py-6 text-center">
-                  No pets attended yet. When this doctor treats a walk-in on the clinic board,
-                  the pet and owner show here.
+                  No treated pets yet. Pets appear here after this doctor sees them (with doctor,
+                  checkout, or completed)—not from waitlist or bookings alone.
                 </p>
               ) : (
                 detail.patients.map((row) => (
@@ -421,7 +466,7 @@ export default function ClinicDoctorDetail() {
                         <p className="text-xs text-muted-foreground mt-1">
                           {row.appointmentCount > 0
                             ? `${row.appointmentCount} visit${row.appointmentCount === 1 ? '' : 's'} with this doctor`
-                            : 'Scheduled booking'}
+                            : 'Seen at this clinic'}
                           {row.lastAppointment ? ` · last ${formatWhen(row.lastAppointment)}` : ''}
                         </p>
                       </div>

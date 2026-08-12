@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" role="img" aria-label="food">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFF3D6"/>
+      <stop offset="100%" stop-color="#FFD59E"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" rx="28" fill="url(#bg)"/>
+  <circle cx="320" cy="80" r="54" fill="#ffffff" fill-opacity=".12"/>
+  <circle cx="60" cy="420" r="70" fill="#ffffff" fill-opacity=".10"/>
+
+  <path d="M120 160 h160 l20 200 h-200 z" fill="#F4A261"/>
+  <rect x="115" y="145" width="170" height="35" rx="10" fill="#E76F51"/>
+  <circle cx="200" cy="250" r="36" fill="#FFF3D6"/>
+  <text x="200" y="258" text-anchor="middle" font-family="system-ui,sans-serif" font-size="28" font-weight="800" fill="#9C4300">K</text>
+  <ellipse cx="160" cy="380" rx="18" ry="10" fill="#BC6C25"/>
+  <ellipse cx="200" cy="390" rx="16" ry="9" fill="#BC6C25"/>
+  <ellipse cx="235" cy="378" rx="14" ry="8" fill="#BC6C25"/>
+  <text x="200" y="450" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#9C4300">Pet Food</text>
+
+</svg>

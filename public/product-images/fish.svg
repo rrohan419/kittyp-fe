@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" role="img" aria-label="fish">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ECFEFF"/>
+      <stop offset="100%" stop-color="#A5F3FC"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" rx="28" fill="url(#bg)"/>
+  <circle cx="320" cy="80" r="54" fill="#ffffff" fill-opacity=".12"/>
+  <circle cx="60" cy="420" r="70" fill="#ffffff" fill-opacity=".10"/>
+
+  <ellipse cx="200" cy="250" rx="90" ry="50" fill="#06B6D4"/>
+  <polygon points="110 250 70 220 70 280" fill="#0891B2"/>
+  <polygon points="200 200 230 170 240 210" fill="#22D3EE"/>
+  <circle cx="250" cy="240" r="8" fill="#083344"/>
+  <circle cx="253" cy="238" r="3" fill="#FFF"/>
+  <text x="200" y="420" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#155E75">Fish</text>
+
+</svg>

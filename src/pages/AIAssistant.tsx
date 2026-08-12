@@ -38,6 +38,7 @@ import {
 import { toast } from 'sonner';
 import UserLocationDisplay from '@/components/ui/UserLocationDisplay';
 import { PetSelectionComponent } from '@/components/ui/PetSelectionComponent';
+import { useNutritionPets } from '@/hooks/useNutritionPets';
 import { NutritionPlanPreview } from '@/components/nutrition/NutritionPlanPreview';
 import { canEditNutritionPlan } from '@/utils/roles';
 
@@ -526,6 +527,13 @@ export default function AIAssistant() {
   const navigate = useNavigate();
   const isPlanEditable = canEditNutritionPlan(user?.roles);
 
+  const {
+    pets: nutritionPets,
+    loading: nutritionPetsLoading,
+    sourceLabel: nutritionPetsLabel,
+    isDoctor: nutritionIsDoctor,
+  } = useNutritionPets();
+
   const locationSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -534,8 +542,8 @@ export default function AIAssistant() {
     }
   }, [showLocationPrompt]);
 
-  // Use real user pets data
-  const savedPets = user?.ownerPets || [];
+  // Doctor/clinic: practice-scoped patients; pet parent: ownerPets
+  const savedPets = nutritionIsDoctor ? nutritionPets : user?.ownerPets || [];
 
   // Clear recommendations when pet selection changes
   // useEffect(() => {
@@ -1123,8 +1131,14 @@ export default function AIAssistant() {
                   <PetSelectionComponent
                     selectedPetId={selectedPetId}
                     setSelectedPetId={setSelectedPetId}
-                    // savedPets={savedPets}
-                    // user={user}
+                    pets={nutritionIsDoctor ? nutritionPets : undefined}
+                    petsLoading={nutritionIsDoctor ? nutritionPetsLoading : false}
+                    petsLabel={nutritionIsDoctor ? nutritionPetsLabel : undefined}
+                    emptyHint={
+                      nutritionIsDoctor
+                        ? 'Treat a patient or open Patients, or enter details manually.'
+                        : undefined
+                    }
                     onGenerateRecommendation={handleGenerateNutritionRecommendation}
                     isGenerating={isGenerating}
                     recommendations={recommendations}

@@ -13,6 +13,13 @@ export interface ClinicModel {
   status?: string;
   /** True when the current user owns this clinic (personal practice). */
   personal?: boolean;
+  /** Phase 0 tenancy: parent Organization uuid */
+  organizationUuid?: string | null;
+  /** Practice type: CLINIC | HOSPITAL | MOBILE_UNIT | HOME_VISIT | SATELLITE | INDEPENDENT */
+  practiceType?: string | null;
+  kittypPracticeId?: string | null;
+  /** Clinic Meta WhatsApp credentials are set (token never returned). */
+  whatsappConfigured?: boolean;
 }
 
 export interface ClinicDoctorModel {
@@ -25,6 +32,12 @@ export interface ClinicDoctorModel {
   isActive?: boolean;
   status?: string;
   photoUrl?: string;
+  rating?: number | null;
+  reviewsCount?: number | null;
+  ratingLabel?: string | null;
+  joinedAt?: string | null;
+  experienceYears?: number | null;
+  registrationNumber?: string | null;
 }
 
 export interface ClinicDoctorPatientModel {
@@ -71,6 +84,9 @@ export interface ClinicDoctorDetailModel {
   submittedAt?: string;
   reviewedAt?: string;
   reviewNotes?: string;
+  rating?: number | null;
+  reviewsCount?: number | null;
+  ratingLabel?: string | null;
   patients: ClinicDoctorPatientModel[];
 }
 
@@ -209,6 +225,7 @@ export interface ClinicBookingModel {
   mode?: string;
   notes?: string;
   clinicUuid?: string;
+  clinicName?: string;
 }
 
 export interface RetentionAlertModel {
@@ -252,6 +269,9 @@ export interface PatientDetailModel {
 export interface ClinicStatsModel {
   diagnosedPetCount: number;
   patientCount: number;
+  clinicRating?: number | null;
+  clinicReviewsCount?: number | null;
+  clinicRatingLabel?: string | null;
 }
 
 export interface ClinicCreateRequest {
@@ -605,10 +625,12 @@ export interface ClinicVisitModel {
   checkedInAt?: string;
   startedAt?: string;
   completedAt?: string;
+  checkingOutAt?: string;
   createdAt?: string;
   chart?: VisitChartModel;
   invoiceUuid?: string;
   healthEventUuid?: string;
+  parentRating?: number | null;
 }
 
 export async function fetchClinicVisits(

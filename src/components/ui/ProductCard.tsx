@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Heart, Loader2, AlertCircle, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Badge } from './badge';
 import { Button } from './button';
 import { formatCurrency } from '@/services/cartService';
+import { resolveProductImage, PRODUCT_IMAGE } from '@/utils/productImage';
 
 interface ProductCardProps {
   product: Product;
@@ -21,17 +22,25 @@ interface ProductCardProps {
 
 export function ProductCard({ product, index = 0, className, onToggleFavorite, isFavorite }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const imgSrc = useMemo(
+    () => resolveProductImage(product, { width: 480, quality: 60 }),
+    [product]
+  );
   const dispatch = useDispatch<AppDispatch>();
   const loading = useSelector(selectCartLoading);
-  
+
+  useEffect(() => {
+    setImgLoaded(false);
+  }, [imgSrc]);
+
   const handleAddToCart = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     if (product.stockQuantity <= 0) {
-      toast.error("This product is out of stock");
+      toast.error('This product is out of stock');
       return;
     }
 
@@ -51,41 +60,56 @@ export function ProductCard({ product, index = 0, className, onToggleFavorite, i
     onToggleFavorite();
   }, [onToggleFavorite]);
 
-  // Generate random rating for demo (replace with actual rating system)
   const rating = useMemo(() => (Math.random() * 2 + 3).toFixed(1), []);
-  
+
   return (
-    <div 
+    <div
       className={cn(
-        "group relative overflow-hidden rounded-xl border bg-card text-card-foreground",
-        "transition-all duration-300 ease-out hover:shadow-xl hover:shadow-primary/5",
-        "transform-gpu hover:-translate-y-1",
+        'group relative overflow-hidden rounded-xl border bg-card text-card-foreground',
+        'transition-all duration-300 ease-out hover:shadow-xl hover:shadow-primary/5',
+        'transform-gpu hover:-translate-y-1',
         className
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      style={{
-        animationDelay: `${index * 100}ms`
-      }}
+      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
     >
       <Link to={`/product/${product.uuid}`} className="block h-full">
-        <div className="aspect-[4/5] relative overflow-hidden rounded-t-xl">
-          {!isImageLoaded && (
-            <div className="absolute inset-0 bg-muted animate-pulse" />
+        <div className="aspect-[4/5] relative overflow-hidden rounded-t-xl bg-muted">
+          {!imgLoaded && (
+            <div className="absolute inset-0 bg-muted animate-pulse" aria-hidden />
           )}
           <img
-            src={product.productImageUrls[0] ?? ""}
+            key={imgSrc}
+            src={imgSrc}
             alt={product.name}
+            width={480}
+            height={600}
+            decoding="async"
+            loading={index < 6 ? 'eager' : 'lazy'}
+            fetchPriority={index < 2 ? 'high' : 'auto'}
             className={cn(
-              "object-cover w-full h-full transform transition-all duration-500",
-              isHovered ? "scale-110" : "scale-100",
-              isImageLoaded ? "opacity-100" : "opacity-0",
+              'object-cover w-full h-full transform transition-all duration-300',
+              isHovered ? 'scale-105' : 'scale-100',
+              imgLoaded ? 'opacity-100' : 'opacity-0'
             )}
-            onLoad={() => setIsImageLoaded(true)}
+            onLoad={() => setImgLoaded(true)}
+            onError={(e) => {
+              e.currentTarget.src = PRODUCT_IMAGE.accessories;
+              setImgLoaded(true);
+            }}
           />
-          
+
           <div className="absolute top-3 left-3 flex flex-col gap-2">
-            <Badge variant={product.stockQuantity <= 0 ? "destructive" : product.stockQuantity <= 2 ? "secondary" : "default"}>
+            <Badge
+              variant={
+                product.stockQuantity <= 0
+                  ? 'destructive'
+                  : product.stockQuantity <= 2
+                    ? 'secondary'
+                    : 'default'
+              }
+            >
               {product.stockQuantity <= 0 ? (
                 <span className="flex items-center gap-1">
                   <AlertCircle size={12} />
@@ -104,15 +128,15 @@ export function ProductCard({ product, index = 0, className, onToggleFavorite, i
               {product.category}
             </Badge>
           </div>
-          
-          <div 
+
+          <div
             className={cn(
-              "absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent opacity-0 transition-opacity duration-300",
-              isHovered && "opacity-100"
+              'absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent opacity-0 transition-opacity duration-300',
+              isHovered && 'opacity-100'
             )}
           />
         </div>
-        
+
         <div className="p-4">
           <div className="flex flex-col gap-3">
             <div className="flex items-start justify-between gap-2">
@@ -122,7 +146,7 @@ export function ProductCard({ product, index = 0, className, onToggleFavorite, i
                 <span className="text-sm font-medium">{rating}</span>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <p className="text-lg font-semibold text-primary">
                 {formatCurrency(product.price, product.currency)}
@@ -130,24 +154,21 @@ export function ProductCard({ product, index = 0, className, onToggleFavorite, i
               <div className="flex items-center gap-2 sm:opacity-0 sm:translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
                 <Button
                   size="icon"
-                  variant={isFavorite ? "destructive" : "secondary"}
+                  variant={isFavorite ? 'destructive' : 'secondary'}
                   onClick={handleToggleFavorite}
                   className={cn(
-                    "h-9 w-9 rounded-full transition-transform hover:scale-105",
-                    isFavorite && "hover:bg-destructive/90"
+                    'h-9 w-9 rounded-full transition-transform hover:scale-105',
+                    isFavorite && 'hover:bg-destructive/90'
                   )}
                 >
-                  <Heart 
-                    size={16} 
-                    className={cn(
-                      "transition-colors",
-                      isFavorite && "fill-current"
-                    )} 
+                  <Heart
+                    size={16}
+                    className={cn('transition-colors', isFavorite && 'fill-current')}
                   />
                 </Button>
                 <Button
                   size="icon"
-                  variant={product.stockQuantity <= 0 ? "destructive" : "default"}
+                  variant={product.stockQuantity <= 0 ? 'destructive' : 'default'}
                   onClick={handleAddToCart}
                   disabled={isAddingToCart || loading || product.stockQuantity <= 0}
                   className="h-9 w-9 rounded-full transition-transform hover:scale-105"

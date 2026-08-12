@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" role="img" aria-label="leash">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#EEF2FF"/>
+      <stop offset="100%" stop-color="#C7D2FE"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" rx="28" fill="url(#bg)"/>
+  <circle cx="320" cy="80" r="54" fill="#ffffff" fill-opacity=".12"/>
+  <circle cx="60" cy="420" r="70" fill="#ffffff" fill-opacity=".10"/>
+
+  <circle cx="200" cy="170" r="55" fill="#6366F1"/>
+  <circle cx="200" cy="170" r="28" fill="#EEF2FF"/>
+  <path d="M200 225 C200 300 120 330 120 390" fill="none" stroke="#4338CA" stroke-width="14" stroke-linecap="round"/>
+  <rect x="95" y="385" width="50" height="28" rx="10" fill="#312E81"/>
+  <text x="200" y="450" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#312E81">Leash</text>
+
+</svg>

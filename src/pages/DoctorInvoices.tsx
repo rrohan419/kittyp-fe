@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { FileSpreadsheet, Plus, Trash2, FileDown, ExternalLink } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { addDays, format, startOfDay } from 'date-fns';
+import { FileSpreadsheet, Plus, Trash2, FileDown, ExternalLink, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,14 +19,19 @@ import { toast } from 'sonner';
 import {
   ConsultationInvoice,
   ITEM_TYPE_OPTIONS,
+  InvoiceFromVisitState,
   TreatmentItemType,
   TreatmentLineItem,
   createConsultationInvoice,
   fetchInvoicePdfUrl,
   fetchMyInvoices,
   generateInvoicePdf,
+  sendInvoiceWhatsApp,
 } from '@/services/invoiceService';
+import { fetchClinicPetMedicalProfile } from '@/services/clinicService';
+import { fetchMyDoctorVisits } from '@/services/visitService';
 import { formatInr } from '@/services/availabilityService';
+import { useActiveClinic } from '@/hooks/useActiveClinic';
 
 const emptyItem = (): TreatmentLineItem => ({
   itemType: 'CONSULTATION',
@@ -33,12 +40,29 @@ const emptyItem = (): TreatmentLineItem => ({
   unitPrice: 500,
 });
 
+type LocationState = { fromVisit?: InvoiceFromVisitState } | null;
+
 export default function DoctorInvoices() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const hydratedRef = useRef<string | null>(null);
+  const { isPersonalPractice, loading: clinicLoading } = useActiveClinic();
+
+  useEffect(() => {
+    if (!clinicLoading && !isPersonalPractice) {
+      toast.message('Switch to Personal practice to create invoices');
+      navigate('/doctor', { replace: true });
+    }
+  }, [clinicLoading, isPersonalPractice, navigate]);
+
   const [items, setItems] = useState<TreatmentLineItem[]>([emptyItem()]);
   const [petName, setPetName] = useState('');
   const [petBreed, setPetBreed] = useState('');
+  const [petSpecies, setPetSpecies] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
+  const [ownerEmail, setOwnerEmail] = useState('');
   const [reason, setReason] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
   const [doctorNotes, setDoctorNotes] = useState('');
@@ -51,6 +75,103 @@ export default function DoctorInvoices() {
   const [invoices, setInvoices] = useState<ConsultationInvoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyUuid, setBusyUuid] = useState<string | null>(null);
+  const [hydrating, setHydrating] = useState(false);
+  const [linkClinicUuid, setLinkClinicUuid] = useState<string | undefined>();
+  const [linkPetUuid, setLinkPetUuid] = useState<string | undefined>();
+  const [linkVisitUuid, setLinkVisitUuid] = useState<string | undefined>();
+  const [petWeight, setPetWeight] = useState('');
+  const [fromVisitBanner, setFromVisitBanner] = useState(false);
+
+  const applyFromVisit = (from: InvoiceFromVisitState) => {
+    if (from.petName) setPetName(from.petName);
+    if (from.petBreed) setPetBreed(from.petBreed);
+    if (from.petSpecies) setPetSpecies(from.petSpecies);
+    if (from.ownerName) setOwnerName(from.ownerName);
+    if (from.ownerPhone) setOwnerPhone(from.ownerPhone);
+    if (from.ownerEmail) setOwnerEmail(from.ownerEmail);
+    if (from.reason) setReason(from.reason);
+    if (from.diagnosis) setDiagnosis(from.diagnosis);
+    if (from.doctorNotes) setDoctorNotes(from.doctorNotes);
+    if (from.nextVisitNotes) setNextVisitNotes(from.nextVisitNotes);
+    if (from.petWeight) setPetWeight(from.petWeight);
+    if (from.clinicUuid) setLinkClinicUuid(from.clinicUuid);
+    if (from.petUuid) setLinkPetUuid(from.petUuid);
+    if (from.visitUuid) setLinkVisitUuid(from.visitUuid);
+    setFromVisitBanner(true);
+  };
+
+  const enrichFromPetProfile = async (clinicUuid: string, petUuid: string) => {
+    try {
+      const profile = await fetchClinicPetMedicalProfile(clinicUuid, petUuid);
+      const pet = profile?.pet;
+      const owner = profile?.owner;
+      if (pet?.name) setPetName((prev) => prev || pet.name);
+      if (pet?.breed) setPetBreed((prev) => prev || pet.breed || '');
+      if (pet?.species) setPetSpecies((prev) => prev || pet.species || '');
+      if (pet?.weight) setPetWeight((prev) => prev || pet.weight || '');
+      if (owner?.name) setOwnerName((prev) => prev || owner.name);
+      if (owner?.phone) setOwnerPhone((prev) => prev || owner.phone || '');
+      if (owner?.email) setOwnerEmail((prev) => prev || owner.email || '');
+      if (pet?.ownerName) setOwnerName((prev) => prev || pet.ownerName);
+      if (pet?.ownerPhone) setOwnerPhone((prev) => prev || pet.ownerPhone || '');
+      if (pet?.ownerEmail) setOwnerEmail((prev) => prev || pet.ownerEmail || '');
+    } catch {
+      /* keep visit-provided fields */
+    }
+  };
+
+  useEffect(() => {
+    const state = location.state as LocationState;
+    const visitQ = searchParams.get('visit') || undefined;
+    const key = state?.fromVisit?.visitUuid || visitQ;
+    if (!key || hydratedRef.current === key) return;
+    hydratedRef.current = key;
+
+    void (async () => {
+      setHydrating(true);
+      try {
+        let from = state?.fromVisit;
+        if (!from && visitQ) {
+          const today = startOfDay(new Date());
+          const fromDate = format(addDays(today, -7), 'yyyy-MM-dd');
+          const toDate = format(today, 'yyyy-MM-dd');
+          const mine = await fetchMyDoctorVisits({ from: fromDate, to: toDate }).catch(() => []);
+          const visit = mine.find((v) => v.uuid === visitQ);
+          if (visit) {
+            from = {
+              visitUuid: visit.uuid,
+              clinicUuid: visit.clinicUuid,
+              petUuid: visit.petUuid,
+              petName: visit.petName,
+              ownerName: visit.ownerName || undefined,
+              ownerPhone: visit.ownerPhone || undefined,
+              ownerEmail: visit.ownerEmail || undefined,
+              reason: visit.reasonForVisit || undefined,
+              diagnosis: visit.chart?.assessment || undefined,
+              doctorNotes: visit.chart?.plan || undefined,
+              nextVisitNotes: visit.chart?.nextVisitNotes || undefined,
+              petWeight: String(
+                (visit.chart?.vitals as { weightKg?: number } | undefined)?.weightKg ?? ''
+              ) || undefined,
+            };
+          } else {
+            setLinkVisitUuid(visitQ);
+          }
+        }
+        if (from) {
+          applyFromVisit(from);
+          if (from.clinicUuid && from.petUuid) {
+            await enrichFromPetProfile(from.clinicUuid, from.petUuid);
+          }
+        }
+        if (state?.fromVisit) {
+          navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: {} });
+        }
+      } finally {
+        setHydrating(false);
+      }
+    })();
+  }, [location.state, location.pathname, location.search, navigate, searchParams]);
 
   const load = async () => {
     try {
@@ -80,10 +201,38 @@ export default function DoctorInvoices() {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   };
 
-  const createDraft = async (e: React.FormEvent, withPdf: boolean) => {
+  const resetForm = () => {
+    setItems([emptyItem()]);
+    setPetName('');
+    setPetBreed('');
+    setPetSpecies('');
+    setOwnerName('');
+    setOwnerPhone('');
+    setOwnerEmail('');
+    setReason('');
+    setDiagnosis('');
+    setDoctorNotes('');
+    setNextVisitNotes('');
+    setDiscount('0');
+    setCgst('0');
+    setSgst('0');
+    setPaidAmount('0');
+    setPetWeight('');
+    setLinkClinicUuid(undefined);
+    setLinkPetUuid(undefined);
+    setLinkVisitUuid(undefined);
+    setFromVisitBanner(false);
+    hydratedRef.current = null;
+  };
+
+  const createDraft = async (e: React.FormEvent, withWhatsApp: boolean) => {
     e.preventDefault();
     if (!petName.trim()) {
       toast.error('Pet name is required');
+      return;
+    }
+    if (withWhatsApp && !ownerPhone.trim()) {
+      toast.error('Owner phone is required to send on WhatsApp');
       return;
     }
     if (!items.length || items.some((i) => !i.description.trim())) {
@@ -105,43 +254,50 @@ export default function DoctorInvoices() {
         sgst: sgstNum,
         paidAmount: paidNum,
         currency: 'INR',
+        clinicUuid: linkClinicUuid,
+        petUuid: linkPetUuid,
+        visitUuid: linkVisitUuid,
         petName: petName.trim(),
         petBreed: petBreed.trim() || undefined,
+        petSpecies: petSpecies.trim() || undefined,
+        petWeight: petWeight.trim() || undefined,
         ownerName: ownerName.trim() || undefined,
         ownerPhone: ownerPhone.trim() || undefined,
+        ownerEmail: ownerEmail.trim() || undefined,
         reason: reason.trim() || undefined,
         diagnosis: diagnosis.trim() || undefined,
         doctorNotes: doctorNotes.trim() || undefined,
         nextVisitNotes: nextVisitNotes.trim() || undefined,
         paymentMode,
         paymentStatus: paidNum <= 0 ? 'UNPAID' : balance <= 0 ? 'PAID' : 'PARTIAL',
-        generatePdf: withPdf,
+        generatePdf: withWhatsApp,
+        sendWhatsApp: withWhatsApp,
       });
-      toast.success(withPdf ? `Invoice ${created.invoiceNumber || ''} PDF generated` : 'Draft invoice created');
-      setItems([emptyItem()]);
-      setPetName('');
-      setPetBreed('');
-      setOwnerName('');
-      setOwnerPhone('');
-      setReason('');
-      setDiagnosis('');
-      setDoctorNotes('');
-      setNextVisitNotes('');
-      setDiscount('0');
-      setCgst('0');
-      setSgst('0');
-      setPaidAmount('0');
+      toast.success(
+        withWhatsApp
+          ? `Invoice ${created.invoiceNumber || ''} sent on WhatsApp`
+          : 'Draft invoice created'
+      );
+      resetForm();
       await load();
-      if (withPdf && created.uuid) {
-        try {
-          const url = await fetchInvoicePdfUrl(created.uuid);
-          window.open(url, '_blank');
-        } catch {
-          /* listed below; PDF may still be generating */
-        }
+    } catch (err: unknown) {
+      const ax = err as {
+        response?: { data?: { message?: string; detailMessage?: string; detailedMessage?: string } };
+        message?: string;
+      };
+      const msg =
+        ax.response?.data?.message ||
+        ax.response?.data?.detailedMessage ||
+        ax.response?.data?.detailMessage ||
+        ax.message ||
+        (withWhatsApp
+          ? 'Failed to send invoice on WhatsApp — check phone and WhatsApp setup'
+          : 'Failed to create invoice — ensure you are logged in as a doctor');
+      toast.error(msg);
+      // Invoice may still have been saved when WhatsApp send fails after create
+      if (withWhatsApp) {
+        await load();
       }
-    } catch {
-      toast.error('Failed to create invoice — ensure you are logged in as a doctor');
     } finally {
       setLoading(false);
     }
@@ -174,14 +330,44 @@ export default function DoctorInvoices() {
     }
   };
 
+  const onSendWhatsApp = async (uuid: string) => {
+    setBusyUuid(uuid);
+    try {
+      const sent = await sendInvoiceWhatsApp(uuid);
+      toast.success(`Invoice ${sent.invoiceNumber || ''} sent on WhatsApp`);
+      await load();
+    } catch (err: unknown) {
+      const ax = err as {
+        response?: { data?: { message?: string; detailedMessage?: string } };
+        message?: string;
+      };
+      toast.error(
+        ax.response?.data?.message ||
+          ax.response?.data?.detailedMessage ||
+          ax.message ||
+          'Failed to send on WhatsApp'
+      );
+    } finally {
+      setBusyUuid(null);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Treatment Invoices</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Tax / medical invoices in INR — generated with Thymeleaf PDF like product invoices.
+          Prefill from a finished visit, then Save and Send to deliver the PDF on WhatsApp.
         </p>
       </div>
+
+      {(fromVisitBanner || hydrating) && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          {hydrating
+            ? 'Loading patient details from the visit…'
+            : 'Patient details prefilled from the visit. Add line items, then Save and Send on WhatsApp.'}
+        </div>
+      )}
 
       <Card className="border-0 shadow-sm">
         <CardHeader>
@@ -204,12 +390,28 @@ export default function DoctorInvoices() {
                 <Input value={petBreed} onChange={(e) => setPetBreed(e.target.value)} placeholder="Golden Retriever" />
               </div>
               <div className="space-y-2">
+                <Label>Species</Label>
+                <Input value={petSpecies} onChange={(e) => setPetSpecies(e.target.value)} placeholder="Dog" />
+              </div>
+              <div className="space-y-2">
+                <Label>Weight (kg)</Label>
+                <Input value={petWeight} onChange={(e) => setPetWeight(e.target.value)} placeholder="12" />
+              </div>
+              <div className="space-y-2">
                 <Label>Owner name</Label>
                 <Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Owner phone</Label>
                 <Input value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Owner email</Label>
+                <Input
+                  type="email"
+                  value={ownerEmail}
+                  onChange={(e) => setOwnerEmail(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Reason</Label>
@@ -360,12 +562,16 @@ export default function DoctorInvoices() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button type="submit" disabled={loading} variant="outline">
+              <Button type="submit" disabled={loading || hydrating} variant="outline">
                 {loading ? 'Saving…' : 'Save draft'}
               </Button>
-              <Button type="button" disabled={loading} onClick={(e) => void createDraft(e, true)}>
-                <FileDown className="h-4 w-4 mr-1.5" />
-                {loading ? 'Generating…' : 'Save & generate PDF'}
+              <Button
+                type="button"
+                disabled={loading || hydrating}
+                onClick={(e) => void createDraft(e, true)}
+              >
+                <Send className="h-4 w-4 mr-1.5" />
+                {loading ? 'Sending…' : 'Save and Send'}
               </Button>
             </div>
           </form>
@@ -397,14 +603,24 @@ export default function DoctorInvoices() {
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge variant="secondary">{inv.status}</Badge>
                   {inv.pdfUrl ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busyUuid === inv.uuid}
-                      onClick={() => void onViewPdf(inv.uuid)}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5 mr-1" /> PDF
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyUuid === inv.uuid}
+                        onClick={() => void onViewPdf(inv.uuid)}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 mr-1" /> PDF
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={busyUuid === inv.uuid}
+                        onClick={() => void onSendWhatsApp(inv.uuid)}
+                      >
+                        <Send className="h-3.5 w-3.5 mr-1" /> WhatsApp
+                      </Button>
+                    </>
                   ) : (
                     <Button
                       size="sm"

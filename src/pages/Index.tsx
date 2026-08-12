@@ -111,7 +111,8 @@ const Index = () => {
         <Hero />
 
         {/* Featured Products */}
-        {/* <section className="py-16 md:py-24 container mx-auto px-4 sm:px-6 lg:px-8">
+        {isEcommerceEnabled() && (
+        <section className="py-16 md:py-24 container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12">
             <div className="max-w-lg">
               <span className="text-sm font-medium text-primary">
@@ -145,7 +146,8 @@ const Index = () => {
               />
             ))}
           </div>
-        </section> */}
+        </section>
+        )}
 
         {/* Features */}
         {/* <section className="py-16 md:py-24 container mx-auto px-4 sm:px-6 lg:px-8">

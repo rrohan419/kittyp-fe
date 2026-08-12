@@ -17,7 +17,23 @@ import storage from 'redux-persist/lib/storage';
 const persistConfig = {
     key: 'root',
     storage,
-    whitelist: ['cartReducer', 'authReducer', 'favoritesReducer'] // Removed 'user' since it's now part of authReducer
+    whitelist: ['cartReducer', 'authReducer', 'favoritesReducer'],
+    transforms: [
+        {
+            in: (inboundState: unknown, key: string) => {
+                if (key !== 'authReducer' || !inboundState || typeof inboundState !== 'object') {
+                    return inboundState;
+                }
+                const state = inboundState as { user?: { accessToken?: string } | null };
+                if (state.user && 'accessToken' in state.user) {
+                    const { accessToken: _omit, ...safeUser } = state.user;
+                    return { ...state, user: safeUser };
+                }
+                return inboundState;
+            },
+            out: (outboundState: unknown) => outboundState,
+        },
+    ],
 };
 
 const rootReducer = combineReducers({
