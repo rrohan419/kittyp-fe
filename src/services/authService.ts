@@ -6,6 +6,7 @@ import { setUser } from '@/module/slice/AuthSlice';
 import { fetchUserDetail } from "./UserService";
 import { TokenResponse } from "@react-oauth/google";
 import { AppRole } from "@/utils/roles";
+import { clearAuthStorage, beginNewAuthSession, getAuthItem, setAuthItem } from "@/utils/authStorage";
 
 interface SignupData {
   firstName: string;
@@ -72,7 +73,7 @@ export interface UserProfile {
   age?: number | null;
   uuid: string;
   createdAt: string;
-  /** Present only briefly after email change — never persist to localStorage. */
+  /** Present only briefly after email change — never persist to auth storage. */
   accessToken?: string;
   profilePictureUrl: string;
   ownerPets: PetProfile[];
@@ -162,9 +163,10 @@ export const socialSso = async (tokenResponse: TokenResponse) => {
     if (data.success && data.data) {
       const { token, roles } = data.data;
 
-      // Store tokens and roles
-      localStorage.setItem("access_token", token);
-      localStorage.setItem("roles", JSON.stringify(roles));
+      // New tab session so we never overwrite another tab's vault entry
+      beginNewAuthSession();
+      setAuthItem("access_token", token);
+      setAuthItem("roles", JSON.stringify(roles));
     } else {
       throw new Error(data.message || "Signup failed");
     }
@@ -184,11 +186,10 @@ export const login = async (data: AuthData): Promise<{ token, roles }> => {
 
     const { token, roles } = loginResponse.data.data; // <-- This is JwtResponseModel
 
-    // Step 2: Store token and roles
-    localStorage.setItem('access_token', token);
-    localStorage.setItem('roles', JSON.stringify(roles));
-    // console.log("user -> -> -> ->", loginResponse);
-    // console.log("user -> -> -> ->", { token, roles });
+    // New tab session so Duplicate-tab / prior login cannot leak into this account
+    beginNewAuthSession();
+    setAuthItem('access_token', token);
+    setAuthItem('roles', JSON.stringify(roles));
 
     return { token, roles };
   } catch (error: any) {
@@ -213,7 +214,7 @@ export const resetPassword = async (code: string, password: string, email: strin
 
 export const initializeUser = async () => {
   try {
-    const accessToken = localStorage.getItem('access_token');
+    const accessToken = getAuthItem('access_token');
     if (!accessToken) {
       return null;
     }
@@ -230,7 +231,7 @@ export const initializeUser = async () => {
 // Add token validation function
 export const validateToken = async (): Promise<boolean> => {
   try {
-    const token = localStorage.getItem('access_token');
+    const token = getAuthItem('access_token');
     if (!token) {
       return false;
     }
@@ -243,9 +244,7 @@ export const validateToken = async (): Promise<boolean> => {
 
     // If token is invalid, clear it
     if (error.response?.status === 401) {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('roles');
+      clearAuthStorage();
     }
 
     return false;
@@ -255,7 +254,7 @@ export const validateToken = async (): Promise<boolean> => {
 // Add function to get current user with token validation
 export const getCurrentUser = async (): Promise<UserProfile | null> => {
   try {
-    const token = localStorage.getItem('access_token');
+    const token = getAuthItem('access_token');
     if (!token) {
       return null;
     }

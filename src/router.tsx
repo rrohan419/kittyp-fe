@@ -41,6 +41,7 @@ import AIAssistant from './pages/AIAssistant';
 import { VetConsultation } from './pages/VetConsultation';
 import { VetDashboardPage } from './pages/VetDashboardPage';
 import ParentAppointmentsPage from './pages/parent/ParentAppointmentsPage';
+import ScheduleVisitPage from './pages/parent/ScheduleVisitPage';
 import { PetManagementPage } from './pages/PetManagementPage';
 import PetDetail from './pages/PetDetails';
 import DoctorSignup from './pages/DoctorSignup';
@@ -259,6 +260,14 @@ export const router = createBrowserRouter(
             {
               path: "appointments",
               element: <PageTransition><ParentAppointmentsPage /></PageTransition>,
+            },
+            {
+              path: "book",
+              element: <PageTransition><ScheduleVisitPage /></PageTransition>,
+            },
+            {
+              path: "schedule",
+              element: <PageTransition><ScheduleVisitPage /></PageTransition>,
             },
             {
               path: "orders",

@@ -20,6 +20,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { getAuthItem } from '@/utils/authStorage';
 
 export type PortalRole = (typeof ROLES)[keyof typeof ROLES];
 
@@ -211,7 +212,7 @@ export function getRoleFromEmail(email: string): PortalRole | null {
 }
 
 export function getStoredRole(): PortalRole | null {
-  const r = localStorage.getItem('role');
+  const r = getAuthItem('role');
   if (!r) return null;
   const valid = Object.values(ROLES) as string[];
   if (valid.includes(r)) {

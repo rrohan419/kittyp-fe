@@ -74,6 +74,7 @@ export default function DoctorInvoices() {
   const [paymentMode, setPaymentMode] = useState('UPI');
   const [invoices, setInvoices] = useState<ConsultationInvoice[]>([]);
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
   const [busyUuid, setBusyUuid] = useState<string | null>(null);
   const [hydrating, setHydrating] = useState(false);
   const [linkClinicUuid, setLinkClinicUuid] = useState<string | undefined>();
@@ -227,6 +228,7 @@ export default function DoctorInvoices() {
 
   const createDraft = async (e: React.FormEvent, withWhatsApp: boolean) => {
     e.preventDefault();
+    if (loading || submittingRef.current) return;
     if (!petName.trim()) {
       toast.error('Pet name is required');
       return;
@@ -239,9 +241,10 @@ export default function DoctorInvoices() {
       toast.error('Add at least one line item with a description');
       return;
     }
+    submittingRef.current = true;
     setLoading(true);
     try {
-      const created = await createConsultationInvoice({
+      const result = await createConsultationInvoice({
         items: items.map((item) => ({
           ...item,
           total: Number(item.quantity) * Number(item.unitPrice),
@@ -273,11 +276,18 @@ export default function DoctorInvoices() {
         generatePdf: withWhatsApp,
         sendWhatsApp: withWhatsApp,
       });
-      toast.success(
-        withWhatsApp
-          ? `Invoice ${created.invoiceNumber || ''} sent on WhatsApp`
-          : 'Draft invoice created'
-      );
+      const created = result.invoice;
+      if (withWhatsApp && result.whatsappSent) {
+        toast.success(`Invoice ${created.invoiceNumber || ''} sent on WhatsApp`);
+      } else if (withWhatsApp) {
+        toast.warning(
+          `Invoice ${created.invoiceNumber || ''} saved. ${
+            result.whatsappError || 'WhatsApp is not configured — use Send on the invoice row when ready.'
+          }`
+        );
+      } else {
+        toast.success('Draft invoice created');
+      }
       resetForm();
       await load();
     } catch (err: unknown) {
@@ -291,14 +301,11 @@ export default function DoctorInvoices() {
         ax.response?.data?.detailMessage ||
         ax.message ||
         (withWhatsApp
-          ? 'Failed to send invoice on WhatsApp — check phone and WhatsApp setup'
+          ? 'Failed to create invoice'
           : 'Failed to create invoice — ensure you are logged in as a doctor');
       toast.error(msg);
-      // Invoice may still have been saved when WhatsApp send fails after create
-      if (withWhatsApp) {
-        await load();
-      }
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };

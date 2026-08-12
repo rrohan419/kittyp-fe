@@ -20,6 +20,10 @@ export interface ClinicModel {
   kittypPracticeId?: string | null;
   /** Clinic Meta WhatsApp credentials are set (token never returned). */
   whatsappConfigured?: boolean;
+  city?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  profileImageUrl?: string | null;
 }
 
 export interface ClinicDoctorModel {
@@ -218,6 +222,9 @@ export interface ClinicBookingModel {
   petName: string;
   ownerName: string;
   doctorUuid?: string;
+  doctorName?: string | null;
+  doctorSpecialization?: string | null;
+  doctorPhotoUrl?: string | null;
   slotStart: string;
   slotEnd?: string;
   timezone?: string;
@@ -282,6 +289,15 @@ export interface ClinicCreateRequest {
   email?: string;
   timezone?: string;
   operatingHours?: string;
+  city?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  profileImageUrl?: string;
+}
+
+export async function updateClinic(clinicUuid: string, body: ClinicCreateRequest): Promise<ClinicModel> {
+  const res = await axiosInstance.patch<ApiSuccessResponse<ClinicModel>>(`/clinic/${clinicUuid}`, body);
+  return res.data.data;
 }
 
 export async function fetchMyClinics(): Promise<ClinicModel[]> {
@@ -444,6 +460,7 @@ export interface AddPatientRequest {
   petBreed?: string;
   petGender?: string;
   petDateOfBirth?: string;
+  petPhotoUrl?: string;
 }
 
 export async function addClinicPatient(

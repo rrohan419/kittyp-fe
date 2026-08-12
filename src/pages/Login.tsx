@@ -19,13 +19,14 @@ import { login, socialSso } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
-import { setActiveRole, validateAndSetUser } from '@/module/slice/AuthSlice';
+import { setActiveRole, validateAndSetUser, clearUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
 import { AppRole, getPortalPath, ROLES } from '@/utils/roles';
 import { RoleSelectModal } from '@/components/auth/RoleSelectModal';
 import { isEcommerceEnabled } from '@/config/features';
 import { validateEmail } from '@/utils/validation';
 import { resolvePreferredRole } from '@/utils/workspacePreference';
+import { clearAuthStorage } from '@/utils/authStorage';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -42,6 +43,8 @@ const Login = () => {
   const hasGuestCartItems = useSelector((state: RootState) =>
     state.cartReducer.items.length > 0 && state.cartReducer.isGuestCart
   );
+  const { user: currentUser, isAuthenticated } = useSelector((state: RootState) => state.authReducer);
+  const [switchAccount, setSwitchAccount] = useState(false);
 
   const safeRedirect = () => {
     const redirect = searchParams.get('redirect');
@@ -108,6 +111,8 @@ const Login = () => {
 
     try {
       await login({ email: email.trim().toLowerCase(), password });
+      // login() already started a fresh tab session — drop stale Redux user
+      dispatch(clearUser());
       const user = await dispatch(validateAndSetUser()).unwrap();
 
       if (isEcommerceEnabled()) {
@@ -136,6 +141,7 @@ const Login = () => {
       try {
         setLoading(true);
         await socialSso(tokenResponse);
+        dispatch(clearUser());
 
         const user = await dispatch(validateAndSetUser()).unwrap();
 
@@ -178,8 +184,45 @@ const Login = () => {
             </h1>
             <p className="text-muted-foreground mb-12 text-center">
               Sign in to your kittyp account to manage pets, clinics, and care.
+              Each browser tab can stay signed in as a different account.
             </p>
 
+            {isAuthenticated && currentUser && !switchAccount ? (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="text-xl text-center">Already signed in</CardTitle>
+                  <CardDescription className="text-center">
+                    {currentUser.email}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      const roles = (currentUser.roles || []).filter(
+                        (r): r is AppRole => typeof r === 'string'
+                      );
+                      finishAuth(roles);
+                    }}
+                  >
+                    Continue
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      clearAuthStorage();
+                      dispatch(clearUser());
+                      setSwitchAccount(true);
+                    }}
+                  >
+                    Use a different account
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {(!isAuthenticated || switchAccount) && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl font-semibold text-center">Sign In</CardTitle>
@@ -287,6 +330,7 @@ const Login = () => {
                 </p>
               </CardFooter>
             </Card>
+            )}
           </div>
         </div>
       </main>

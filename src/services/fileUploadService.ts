@@ -217,7 +217,7 @@ export const uploadPetPhotos = async (
 ): Promise<string[]> => {
   return await uploadFiles(files, {
     onProgress,
-    maxFileSize: 3 * 1024 * 1024, // 3MB for pet photos
+    maxFileSize: 5 * 1024 * 1024, // 5MB for pet photos
     allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
     maxFiles: 5
   });

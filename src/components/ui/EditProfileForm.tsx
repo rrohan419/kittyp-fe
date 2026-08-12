@@ -26,6 +26,7 @@ import { setUser } from '@/module/slice/AuthSlice';
 import { toast } from 'sonner';
 import { CheckCircle2, Pencil, X } from 'lucide-react';
 import { digitsOnlyPhone, EMAIL_REGEX, normalizeLocalPhone, PHONE_REGEX } from '@/utils/validation';
+import { setAuthItem } from '@/utils/authStorage';
 
 const formSchema = z
   .object({
@@ -255,7 +256,7 @@ const EditProfileForm = ({
       });
 
       if (userDetail.accessToken) {
-        localStorage.setItem('access_token', userDetail.accessToken);
+        setAuthItem('access_token', userDetail.accessToken);
       }
 
       // Preserve roles if API somehow omits them
@@ -265,7 +266,7 @@ const EditProfileForm = ({
         roles: userDetail.roles?.length ? userDetail.roles : user.roles,
       };
       dispatch(setUser(merged));
-      localStorage.setItem('user', JSON.stringify(merged));
+      setAuthItem('user', JSON.stringify(merged));
 
       if (values.phoneNumber?.trim()) {
         setConfirmedPhone(`${values.phoneCountryCode || ''}${values.phoneNumber.trim()}`);

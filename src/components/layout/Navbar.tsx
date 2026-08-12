@@ -21,6 +21,7 @@ import { ThemeSwitcher } from '../ui/theme-switcher';
 import { UserProfile } from '@/services/authService';
 import { isEcommerceEnabled } from '@/config/features';
 import { AppRole, getPortalHome, getRoleLabel, PORTAL_HOME } from '@/utils/roles';
+import { clearAuthStorage } from '@/utils/authStorage';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -66,21 +67,6 @@ export function Navbar() {
     closeMenu();
   }, [location.pathname]);
 
-  // Listen for storage changes (e.g., when auth is cleared by interceptor)
-  useEffect(() => {
-    const handleStorageChange = () => {
-      // Check if token was removed
-      const token = localStorage.getItem('access_token');
-      if (!token && isAuthenticated) {
-        // Token was removed, clear user state
-        dispatch(clearUser());
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [dispatch, isAuthenticated]);
-
   const handleLogout = async () => {
     if (isLoggingOut) return;
 
@@ -88,10 +74,7 @@ export function Navbar() {
       setIsLoggingOut(true);
       closeMenu();
 
-      // First, clear auth data from localStorage
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('roles');
+      clearAuthStorage();
 
       // Then dispatch actions in sequence
       await dispatch(switchToGuestCart()).unwrap();

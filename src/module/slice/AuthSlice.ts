@@ -4,6 +4,7 @@ import { UserProfile, PetProfile } from '@/services/authService';
 import { addPet, AddPet, deletePet, editPet, UpdatePet, fetchUserDetail, saveUserFcmToken } from '@/services/UserService';
 import { toast } from 'sonner';
 import type { AppRole } from '@/utils/roles';
+import { getAuthItem, removeAuthItem, setAuthItem } from '@/utils/authStorage';
 
 export interface AuthState {
   user: UserProfile | null;
@@ -25,16 +26,24 @@ const initialState: AuthState = {
   isAuthenticated: false,
   petsLoading: false,
   saving: false,
-  activeRole: (localStorage.getItem('role') as AppRole | null) || null,
-  activeClinicId: localStorage.getItem('activeClinicId') || null,
+  activeRole: (getAuthItem('role') as AppRole | null) || null,
+  activeClinicId: getAuthItem('activeClinicId') || null,
 };
 
 // Async thunk to validate token and get user
 export const validateAndSetUser = createAsyncThunk(
   'auth/validateAndSetUser',
   async (_, { rejectWithValue }) => {
+    const tokenAtStart = getAuthItem('access_token');
+    if (!tokenAtStart) {
+      return rejectWithValue('No access token');
+    }
     try {
       const user = await getCurrentUser();
+      // Another login may have replaced this tab's session while /user/me was in flight
+      if (getAuthItem('access_token') !== tokenAtStart) {
+        return rejectWithValue('Stale auth validation');
+      }
       return user;
     } catch (error) {
       return rejectWithValue(error);
@@ -144,17 +153,17 @@ export const authSlice = createSlice({
     setActiveRole: (state, action: PayloadAction<AppRole | null>) => {
       state.activeRole = action.payload;
       if (action.payload) {
-        localStorage.setItem('role', action.payload);
+        setAuthItem('role', action.payload);
       } else {
-        localStorage.removeItem('role');
+        removeAuthItem('role');
       }
     },
     setActiveClinic: (state, action: PayloadAction<string | null>) => {
       state.activeClinicId = action.payload;
       if (action.payload) {
-        localStorage.setItem('activeClinicId', action.payload);
+        setAuthItem('activeClinicId', action.payload);
       } else {
-        localStorage.removeItem('activeClinicId');
+        removeAuthItem('activeClinicId');
       }
     },
     setLoading: (state, action) => {
@@ -214,9 +223,13 @@ export const authSlice = createSlice({
       })
       .addCase(validateAndSetUser.rejected, (state, action) => {
         state.loading = false;
+        // A superseded in-flight /user/me must not wipe a newer login in this tab
+        if (action.payload === 'Stale auth validation') {
+          return;
+        }
         state.user = null;
         state.isAuthenticated = false;
-        state.error = action.payload as string || 'Authentication failed';
+        state.error = (action.payload as string) || 'Authentication failed';
       })
       // Pet management loading states
       .addCase(addPetToUser.pending, (state) => {

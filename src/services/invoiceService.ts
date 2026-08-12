@@ -42,6 +42,13 @@ export interface ConsultationInvoice {
   reason?: string;
 }
 
+/** Create response: invoice always saved; WhatsApp is best-effort. */
+export interface CreateInvoiceResult {
+  invoice: ConsultationInvoice;
+  whatsappSent: boolean;
+  whatsappError?: string | null;
+}
+
 export interface CreateTreatmentInvoicePayload {
   items: TreatmentLineItem[];
   amount?: number;
@@ -101,9 +108,12 @@ export type InvoiceFromVisitState = {
 
 export async function createConsultationInvoice(
   body: CreateTreatmentInvoicePayload
-): Promise<ConsultationInvoice> {
-  const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>('/invoice', body);
-  return res.data.data;
+): Promise<CreateInvoiceResult> {
+  const res = await axiosInstance.post<ApiSuccessResponse<CreateInvoiceResult | ConsultationInvoice>>(
+    '/invoice',
+    body
+  );
+  return normalizeCreateResult(res.data.data);
 }
 
 export async function fetchMyInvoices(): Promise<ConsultationInvoice[]> {
@@ -134,12 +144,28 @@ export async function fetchInvoicePdfUrl(uuid: string): Promise<string> {
 export async function createClinicInvoice(
   clinicUuid: string,
   body: CreateTreatmentInvoicePayload
-): Promise<ConsultationInvoice> {
-  const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
+): Promise<CreateInvoiceResult> {
+  const res = await axiosInstance.post<ApiSuccessResponse<CreateInvoiceResult | ConsultationInvoice>>(
     `/clinic/${clinicUuid}/invoices`,
     { ...body, clinicUuid }
   );
-  return res.data.data;
+  return normalizeCreateResult(res.data.data);
+}
+
+function normalizeCreateResult(data: CreateInvoiceResult | ConsultationInvoice): CreateInvoiceResult {
+  if (data && typeof data === 'object' && 'invoice' in data && (data as CreateInvoiceResult).invoice) {
+    const r = data as CreateInvoiceResult;
+    return {
+      invoice: r.invoice,
+      whatsappSent: Boolean(r.whatsappSent),
+      whatsappError: r.whatsappError ?? null,
+    };
+  }
+  return {
+    invoice: data as ConsultationInvoice,
+    whatsappSent: false,
+    whatsappError: null,
+  };
 }
 
 export async function fetchClinicInvoices(clinicUuid: string): Promise<ConsultationInvoice[]> {

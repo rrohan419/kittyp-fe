@@ -1,10 +1,11 @@
 import axiosInstance from "@/config/axionInstance";
+import { setAuthItem } from "@/utils/authStorage";
 import { PetProfile, UserProfile } from "./authService";
 
 /** Persist user without JWT — token lives only in access_token key. */
 export function persistUserProfile(user: UserProfile): UserProfile {
   const { accessToken: _omit, ...safe } = user;
-  localStorage.setItem('user', JSON.stringify(safe));
+  setAuthItem('user', JSON.stringify(safe));
   return safe as UserProfile;
 }
 

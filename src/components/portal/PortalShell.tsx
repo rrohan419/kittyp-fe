@@ -34,6 +34,7 @@ import { PortalNotifications } from '@/components/portal/PortalNotifications';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { resolveClinicSearchTarget } from '@/utils/clinicSearchNavigate';
 import { clearStuckUiLocks, installStuckUiLockGuard } from '@/utils/clearStuckUiLocks';
+import { clearAuthStorage } from '@/utils/authStorage';
 import {
   Dialog,
   DialogContent,
@@ -121,10 +122,7 @@ export function PortalShell({ config }: PortalShellProps) {
   }, [location.search]);
 
   const handleLogout = () => {
-    localStorage.removeItem('role');
-    localStorage.removeItem('activeClinicId');
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('roles');
+    clearAuthStorage();
     dispatch(clearUser());
     navigate('/login');
   };

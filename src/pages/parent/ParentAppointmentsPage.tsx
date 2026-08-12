@@ -21,8 +21,42 @@ function visitWhen(v: ClinicVisitModel): Date | null {
   return isValid(d) ? d : null;
 }
 
-function statusLabel(status: string): string {
-  return status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+function statusLabel(status: string, source?: string): string {
+  const st = (status || '').toUpperCase();
+  // Walk-ins start in WAITLIST (= clinic queue). Not a declined/deferred booking.
+  if (st === 'WAITLIST') {
+    return source === 'WALK_IN' ? 'Waiting' : 'Waiting';
+  }
+  if (st === 'CHECKED_IN') return 'Checked in';
+  if (st === 'IN_PROGRESS') return 'With doctor';
+  if (st === 'CHECKING_OUT') return 'Checking out';
+  return st.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function ProviderLines({
+  clinicName,
+  doctorName,
+  specialization,
+}: {
+  clinicName?: string | null;
+  doctorName?: string | null;
+  specialization?: string | null;
+}) {
+  const doctor = doctorName
+    ? `Dr. ${doctorName.replace(/^Dr\.?\s*/i, '')}`
+    : null;
+  const specialty = specialization?.replace(/_/g, ' ');
+  return (
+    <div className="text-sm leading-snug">
+      {clinicName ? (
+        <div className="font-medium text-foreground">{clinicName}</div>
+      ) : null}
+      {doctor ? <div className="text-muted-foreground">{doctor}</div> : (
+        <div className="text-muted-foreground">Doctor pending</div>
+      )}
+      {specialty ? <div className="text-xs text-muted-foreground">{specialty}</div> : null}
+    </div>
+  );
 }
 
 export default function ParentAppointmentsPage() {
@@ -112,16 +146,49 @@ export default function ParentAppointmentsPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Calendar className="h-6 w-6 text-primary" />
-          Appointments
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Current clinic visits, upcoming bookings, and past reports — updates live when the clinic
-          or doctor changes status.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Calendar className="h-6 w-6 text-primary" />
+            Appointments
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Current clinic visits, upcoming bookings, and past reports — updates live when the clinic
+            or doctor changes status.
+          </p>
+        </div>
+        <Button asChild>
+          <Link to="/app/book">Book appointment</Link>
+        </Button>
       </div>
+
+      {upcomingBookings.length > 0 && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Upcoming calendar</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {upcomingBookings.slice(0, 8).map((b) => {
+              const d = b.slotStart ? parseISO(b.slotStart) : null;
+              return (
+                <div key={b.uuid} className="flex items-start justify-between gap-3 text-sm border-b last:border-0 py-3">
+                  <div className="min-w-0 space-y-1">
+                    <div className="font-medium truncate">{b.petName || 'Pet'}</div>
+                    <ProviderLines
+                      clinicName={b.clinicName || 'Clinic'}
+                      doctorName={b.doctorName}
+                      specialization={b.doctorSpecialization}
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground shrink-0 text-right">
+                    {d && isValid(d) ? format(d, 'EEE d MMM · h:mm a') : '—'}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
@@ -146,8 +213,10 @@ export default function ParentAppointmentsPage() {
           {upcomingBookings.length === 0 ? (
             <Card className="border-0 shadow-sm">
               <CardContent className="py-10 text-center text-sm text-muted-foreground space-y-3">
-                <p>No upcoming scheduled bookings.</p>
-                <p className="text-xs">Walk-in visits show under Current once you arrive at the clinic.</p>
+                <p>No upcoming appointments.</p>
+                <Button asChild size="sm">
+                  <Link to="/app/book">Book an appointment</Link>
+                </Button>
               </CardContent>
             </Card>
           ) : (
@@ -225,19 +294,25 @@ function VisitCard({
         </div>
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-start justify-between gap-2">
-            <div>
+            <div className="min-w-0 space-y-1">
               <p className="font-medium">
                 {v.petName}
                 {v.chart?.assessment ? ` · ${v.chart.assessment}` : v.reasonForVisit ? ` · ${v.reasonForVisit}` : ''}
               </p>
-              <p className="text-sm text-muted-foreground">
-                {v.doctorName
-                  ? `Dr. ${v.doctorName.replace(/^Dr\.?\s*/i, '')}`
-                  : 'Doctor pending'}
-                {v.clinicName ? ` · ${v.clinicName}` : ''}
-              </p>
+              <ProviderLines
+                clinicName={v.clinicName}
+                doctorName={v.doctorName}
+                specialization={v.doctorSpecialization}
+              />
+              {v.status === 'WAITLIST' && (
+                <p className="text-xs text-muted-foreground">
+                  {v.source === 'WALK_IN'
+                    ? 'In the clinic queue — staff will call you when ready.'
+                    : 'Waiting to be seen at the clinic.'}
+                </p>
+              )}
             </div>
-            <Badge variant="secondary">{statusLabel(v.status)}</Badge>
+            <Badge variant="secondary">{statusLabel(v.status, v.source)}</Badge>
           </div>
           {v.chart?.examinationNotes && (
             <p className="text-xs text-muted-foreground line-clamp-3">
@@ -310,14 +385,19 @@ function BookingCard({ booking: b }: { booking: ClinicBookingModel }) {
             <PawPrint className="h-4 w-4 text-primary shrink-0" />
             {b.petName}
           </span>
-          <Badge variant="outline">{statusLabel(b.status || 'SCHEDULED')}</Badge>
+          <Badge variant="outline">{statusLabel(b.status || 'CONFIRMED')}</Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="text-sm text-muted-foreground space-y-1">
+      <CardContent className="text-sm text-muted-foreground space-y-2">
         <p>
           {start && isValid(start) ? format(start, 'MMM d, yyyy · h:mm a') : 'Time TBD'}
-          {b.mode ? ` · ${b.mode}` : ''}
+          {b.mode ? ` · ${b.mode.replace(/_/g, ' ')}` : ''}
         </p>
+        <ProviderLines
+          clinicName={b.clinicName}
+          doctorName={b.doctorName}
+          specialization={b.doctorSpecialization}
+        />
         {b.notes && <p className="text-xs">{b.notes}</p>}
         {b.petUuid && (
           <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>

@@ -34,6 +34,7 @@ import {
   hideClinicPet,
 } from '@/services/clinicService';
 import { PetPhoto } from '@/components/clinic/PetPhoto';
+import { PetPhotoField } from '@/components/clinic/PetPhotoField';
 import { toast } from 'sonner';
 
 const emptyPet = {
@@ -44,6 +45,7 @@ const emptyPet = {
   dateOfBirth: '',
   weight: '',
   microchipNumber: '',
+  photoUrl: '',
 };
 
 export default function ClinicOwnerProfile() {
@@ -104,6 +106,7 @@ export default function ClinicOwnerProfile() {
         dateOfBirth: petForm.dateOfBirth || undefined,
         weight: petForm.weight.trim() || undefined,
         microchipNumber: petForm.microchipNumber.trim() || undefined,
+        photoUrl: petForm.photoUrl.trim() || undefined,
       });
       toast.success(`${pet.name} added`);
       setAddOpen(false);
@@ -377,6 +380,11 @@ export default function ClinicOwnerProfile() {
                 />
               </div>
             </div>
+            <PetPhotoField
+              value={petForm.photoUrl || null}
+              onChange={(url) => setPetForm((s) => ({ ...s, photoUrl: url || '' }))}
+              disabled={saving}
+            />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setAddOpen(false)} disabled={saving}>
                 Cancel

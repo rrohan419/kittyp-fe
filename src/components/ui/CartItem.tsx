@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { CurrencyType, formatCurrency } from '@/services/cartService';
 import { updateCartItemQuantity, removeItemFromCart, addToCart, resetCart, updateCartQuantity } from '@/module/slice/CartSlice';
 import { RootState, AppDispatch } from '@/module/store/store';
+import { getAuthItem } from '@/utils/authStorage';
 
 interface CartItemProps {
   uuid: string;
@@ -35,15 +36,14 @@ export function CartItem({ uuid, name, price, image, quantity, className, curren
 
   const isLoading = Object.values(loadingStates).some(Boolean);
   
-  // Helper function to get user UUID from Redux state or localStorage
+  // Helper function to get user UUID from Redux state or auth storage
   const getUserUuid = (): string | null => {
     if (user?.uuid) {
       return user.uuid;
     }
-    // Check localStorage if user is not in Redux state
-    const accessToken = localStorage.getItem('access_token');
+    const accessToken = getAuthItem('access_token');
     if (accessToken) {
-      const storedUser = localStorage.getItem('user');
+      const storedUser = getAuthItem('user');
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);

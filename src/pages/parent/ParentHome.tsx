@@ -3,24 +3,42 @@ import { useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Link } from 'react-router-dom';
-import { PawPrint, Calendar, Heart, Apple, ArrowRight, Bell, Lightbulb, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Link, useSearchParams } from 'react-router-dom';
+import { PawPrint, Calendar, Heart, Apple, ArrowRight, Bell, Lightbulb, Loader2, Plus } from 'lucide-react';
+import { format, parseISO, isValid } from 'date-fns';
+import { toast } from 'sonner';
 import { RootState } from '@/module/store/store';
 import { calculatePetAgeForDisplay } from '@/services/UserService';
 import { ClinicVisitModel } from '@/services/clinicService';
 import { fetchMyParentVisits } from '@/services/visitService';
+import {
+  PetReminderModel,
+  PetReminderType,
+  createReminder,
+  deleteReminder,
+  fetchMyReminders,
+} from '@/services/reminderService';
 
 const ACTIVE = new Set(['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS', 'CHECKING_OUT']);
 
 export default function ParentHome() {
   const { user } = useSelector((s: RootState) => s.authReducer);
   const pets = user?.ownerPets ?? [];
+  const [searchParams, setSearchParams] = useSearchParams();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const firstName = user?.firstName || 'there';
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [loadingVisits, setLoadingVisits] = useState(true);
+  const [reminders, setReminders] = useState<PetReminderModel[]>([]);
+  const [showAddReminder, setShowAddReminder] = useState(searchParams.get('reminders') === '1');
+  const [remPet, setRemPet] = useState(searchParams.get('petId') || pets[0]?.uuid || '');
+  const [remType, setRemType] = useState<PetReminderType>('VISIT');
+  const [remDue, setRemDue] = useState('');
+  const [remNote, setRemNote] = useState('');
+  const [savingRem, setSavingRem] = useState(false);
 
   const tip = useMemo(() => {
     const tips = [
@@ -42,6 +60,63 @@ export default function ParentHome() {
       setLoadingVisits(false);
     }
   }, []);
+
+  const loadReminders = useCallback(async () => {
+    try {
+      setReminders(await fetchMyReminders());
+    } catch {
+      setReminders([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadVisits();
+    void loadReminders();
+  }, [loadVisits, loadReminders]);
+
+  useEffect(() => {
+    if (searchParams.get('reminders') === '1') {
+      setShowAddReminder(true);
+      const petId = searchParams.get('petId');
+      if (petId) setRemPet(petId);
+      searchParams.delete('reminders');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const addReminder = async () => {
+    if (!remPet || !remDue) {
+      toast.error('Pick a pet and due date/time');
+      return;
+    }
+    setSavingRem(true);
+    try {
+      await createReminder({
+        petUuid: remPet,
+        type: remType,
+        dueAt: new Date(remDue).toISOString().slice(0, 19),
+        note: remNote.trim() || undefined,
+      });
+      toast.success('Reminder saved');
+      setShowAddReminder(false);
+      setRemNote('');
+      await loadReminders();
+    } catch {
+      toast.error('Could not save reminder');
+    } finally {
+      setSavingRem(false);
+    }
+  };
+
+  const removeReminder = async (uuid: string) => {
+    try {
+      await deleteReminder(uuid);
+      setReminders((prev) => prev.filter((r) => r.uuid !== uuid));
+      toast.success('Reminder removed');
+    } catch {
+      toast.error('Could not remove reminder');
+    }
+  };
 
   useEffect(() => {
     void loadVisits();
@@ -71,9 +146,9 @@ export default function ParentHome() {
           </p>
         </div>
         <Button size="sm" asChild>
-          <Link to="/app/appointments">
+          <Link to="/app/book">
             <Calendar className="h-4 w-4 mr-2" />
-            Appointments
+            Book appointment
           </Link>
         </Button>
       </div>
@@ -275,7 +350,7 @@ export default function ParentHome() {
                   </div>
                 </div>
                 <Button size="sm" asChild>
-                  <Link to="/app/appointments">Open</Link>
+                  <Link to="/app/book">Book appointment</Link>
                 </Button>
               </div>
             )}
@@ -283,15 +358,87 @@ export default function ParentHome() {
         </Card>
 
         <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Bell className="h-4 w-4" /> Reminders
             </CardTitle>
+            <Button size="sm" variant="outline" onClick={() => setShowAddReminder((v) => !v)}>
+              <Plus className="h-4 w-4 mr-1" /> Add
+            </Button>
           </CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-xs text-muted-foreground leading-snug">
-              Vaccine and nutrition reminders will appear here once your clinic or doctor sends them.
-            </p>
+            {showAddReminder && (
+              <div className="rounded-xl border p-3 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Pet</Label>
+                    <select
+                      className="w-full h-9 rounded-md border bg-background px-2 text-sm"
+                      value={remPet}
+                      onChange={(e) => setRemPet(e.target.value)}
+                    >
+                      {pets.map((p) => (
+                        <option key={p.uuid} value={p.uuid}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Type</Label>
+                    <select
+                      className="w-full h-9 rounded-md border bg-background px-2 text-sm"
+                      value={remType}
+                      onChange={(e) => setRemType(e.target.value as PetReminderType)}
+                    >
+                      {(['VISIT', 'VACCINATION', 'INJECTION', 'CHECKUP', 'CUSTOM'] as PetReminderType[]).map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Due</Label>
+                  <Input type="datetime-local" value={remDue} onChange={(e) => setRemDue(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Note</Label>
+                  <Input value={remNote} onChange={(e) => setRemNote(e.target.value)} placeholder="Optional note" />
+                </div>
+                <Button size="sm" disabled={savingRem} onClick={() => void addReminder()}>
+                  {savingRem ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                  Save reminder
+                </Button>
+              </div>
+            )}
+            {reminders.length === 0 && !showAddReminder ? (
+              <p className="text-xs text-muted-foreground leading-snug">
+                Set reminders for visits, vaccines, injections, or checkups — we&apos;ll notify you via push and WhatsApp when due.
+              </p>
+            ) : (
+              reminders.slice(0, 6).map((r) => {
+                const due = r.dueAt ? parseISO(r.dueAt) : null;
+                return (
+                  <div key={r.uuid} className="flex items-start justify-between gap-2 text-sm border-b last:border-0 pb-2">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">
+                        {r.petName || 'Pet'} · {r.type}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {due && isValid(due) ? format(due, 'EEE d MMM · h:mm a') : r.dueAt}
+                        {r.sentAt ? ' · sent' : ''}
+                      </div>
+                      {r.note && <p className="text-xs text-muted-foreground mt-0.5 truncate">{r.note}</p>}
+                    </div>
+                    <Button size="sm" variant="ghost" className="shrink-0 h-8" onClick={() => void removeReminder(r.uuid)}>
+                      Remove
+                    </Button>
+                  </div>
+                );
+              })
+            )}
           </CardContent>
         </Card>
       </div>
@@ -301,12 +448,13 @@ export default function ParentHome() {
           <CardTitle className="text-base font-semibold">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[
               { label: 'My Pets', icon: PawPrint, to: '/app/pets' },
               { label: 'Health Log', icon: Heart, to: '/app/health' },
               { label: 'Nutrition', icon: Apple, to: '/app/nutrition' },
               { label: 'Appointments', icon: Calendar, to: '/app/appointments' },
+              { label: 'Book appointment', icon: Calendar, to: '/app/book' },
             ].map((q) => {
               const Icon = q.icon;
               return (

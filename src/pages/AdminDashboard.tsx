@@ -37,6 +37,7 @@ import { ArticleApiResponse, ArticleList } from '@/pages/Interface/PagesInterfac
 import { fetchFilteredOrders, Order } from '@/services/orderService';
 import { formatCurrency } from '@/services/cartService';
 import { getStatusColor, getStatusDisplay } from './AdminOrders';
+import { getAuthItem } from '@/utils/authStorage';
 
 const AdminDashboard = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -95,7 +96,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        const accessToken = localStorage.getItem('access_token');
+        const accessToken = getAuthItem('access_token');
         if (!accessToken) {
           setIsCheckingRole(false);
           return;
