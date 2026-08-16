@@ -1,0 +1,34 @@
+---
+description: Frontend architecture, React/TypeScript lifecycle rules, component hygiene, and state management.
+globs: **/*.{tsx,ts,jsx,js}
+alwaysApply: false
+---
+# Frontend Architecture & Clean UI Standards
+
+## 1. Component & Directory Architecture
+- **Single Responsibility:** Separate UI presentation from side effects and business logic.
+- **Custom Hook Encapsulation:** Extract API data fetching, form handling, and complex state into dedicated hooks (`use[Feature].ts`).
+- **Colocation Pattern:** Keep components, styles, tests, and local sub-components within the same feature directory.
+
+---
+
+## 2. TypeScript & Type Safety
+- **Strict Mode:** Zero usage of `any`. Use generics, union types, or `unknown` with type guards.
+- **Explicit Interfaces:** Define strict TypeScript interfaces for all component props and state slices.
+- **Contract Adherence:** Do not alter existing Prop types or add optional fields that break calling components.
+
+---
+
+## 3. UI/UX Robustness & State Machines
+Every data-driven component must explicitly handle and render four discrete states:
+1. **Loading State:** Skeletons or contextual spinners (prevent Cumulative Layout Shift / CLS).
+2. **Error State:** User-friendly fallback UI with actionable recovery (e.g., retry button).
+3. **Empty State:** Meaningful messaging when lists or datasets return empty.
+4. **Success/Data State:** The populated UI.
+
+---
+
+## 4. Performance & Styling Guidelines
+- **Rendering Optimization:** Avoid unnecessary re-renders. Keep state as local as possible.
+- **No Inline Styles:** Use established project styling (Tailwind classes or CSS Modules).
+- **Accessibility (a11y):** Use semantic HTML elements (`<main>`, `<nav>`, `<button>`, `<article>`), supply descriptive `aria-*` attributes, and maintain keyboard navigability.
