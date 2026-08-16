@@ -74,6 +74,7 @@ import ClinicStaff from './pages/clinic/ClinicStaff';
 import ClinicReports from './pages/clinic/ClinicReports';
 import ClinicSettings from './pages/clinic/ClinicSettings';
 import ClinicInvoices from './pages/clinic/ClinicInvoices';
+import ClinicRetention from './pages/clinic/ClinicRetention';
 
 // Parent Portal
 import { ParentLayout } from './pages/parent/ParentLayout';
