@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from '@/module/store/store';
 import { clearCartThunk } from "@/module/slice/CartSlice";
-import { loadRazorpayScript, handlePayment, RazorpayOptions, handlePaymentTimeout, handlePaymentCancellation } from "@/services/paymentService";
+import { loadRazorpayScript, openRazorpayCheckout, handlePaymentTimeout, isRazorpayCheckoutError } from "@/services/paymentService";
 
 
 export default function Checkout() {
@@ -56,13 +56,15 @@ export default function Checkout() {
     const [isPaymentPending, setIsPaymentPending] = useState(false);
     const [isPaymentVerifying, setIsPaymentVerifying] = useState(false);
     const [isRedirecting, setIsRedirecting] = useState(false);
+    const placedOrderNumberRef = useRef<string | null>(null);
+    const placedRazorpayOrderIdRef = useRef<string | null>(null);
 
     useEffect(() => {
-        if (items.length === 0) {
+        if (items.length === 0 && !placedOrderNumberRef.current && !isProcessingOrder && !isPaymentPending) {
             navigate("/cart");
             return;
         }
-    }, [items.length, navigate]);
+    }, [items.length, navigate, isProcessingOrder, isPaymentPending]);
 
     useEffect(() => {
         const fetchAddresses = async () => {
@@ -126,16 +128,11 @@ export default function Checkout() {
         document.body.style.width = '';
     };
 
-    const handlePaymentCleanup = async (orderId: string, reason: 'timeout' | 'cancelled') => {
+    const handlePaymentCleanup = async (orderId: string, reason: 'timeout') => {
         try {
             setIsRedirecting(true);
-            if (reason === 'timeout') {
-                await handlePaymentTimeout(orderId);
-                toast.error("Payment session timed out. Please try again.");
-            } else {
-                await handlePaymentCancellation(orderId);
-                toast.info("Payment cancelled. You can try again when ready.");
-            }
+            await handlePaymentTimeout(orderId);
+            toast.error("Payment session timed out. Please try again.");
         } catch (error) {
             console.error(`Error handling payment ${reason}:`, error);
         } finally {
@@ -301,158 +298,140 @@ export default function Checkout() {
                 shippingMethod: selectedShippingMethod || undefined
             };
 
-            let orderResponse;
-            try {
-                orderResponse = await createOrder(user.uuid, orderRequest);
-            } catch (error: any) {
-                console.error("Order creation error:", error);
-                // Clear processing states
-                setIsProcessingOrder(false);
-                setIsPaymentPending(false);
+            let orderNumber = placedOrderNumberRef.current;
+            let taxes = undefined;
 
-                // Get error message from response or fallback
-                let errorMessage = "Failed to create order";
-                if (error.response?.data?.message) {
-                    errorMessage = error.response.data.message;
-                } else if (error.message) {
-                    errorMessage = error.message;
-                }
+            if (!orderNumber) {
+                let orderResponse;
+                try {
+                    orderResponse = await createOrder(user.uuid, orderRequest);
+                } catch (error: any) {
+                    console.error("Order creation error:", error);
+                    setIsProcessingOrder(false);
+                    setIsPaymentPending(false);
 
-                // Force show the error toast
-                toast.dismiss(); // Clear any existing toasts
-                toast.error(errorMessage, {
-                    duration: 5000,
-                });
-
-                // Handle insufficient stock separately
-                if (errorMessage.includes("Insufficient stock")) {
-                    const match = errorMessage.match(/Insufficient stock for product: (.+)\. Available: (\d+)/);
-                    if (match) {
-                        const [, productName, availableQty] = match;
-                        setTimeout(() => {
-                            toast.error(`Only ${availableQty} unit(s) available for ${productName}. Please update your cart.`, {
-                                duration: 5000,
-                            });
-                        }, 100); // Slight delay to ensure both messages are seen
+                    let errorMessage = "Failed to create order";
+                    if (error.response?.data?.message) {
+                        errorMessage = error.response.data.message;
+                    } else if (error.message) {
+                        errorMessage = error.message;
                     }
+
+                    toast.dismiss();
+                    toast.error(errorMessage, {
+                        duration: 5000,
+                    });
+
+                    if (errorMessage.includes("Insufficient stock")) {
+                        const match = errorMessage.match(/Insufficient stock for product: (.+)\. Available: (\d+)/);
+                        if (match) {
+                            const [, productName, availableQty] = match;
+                            setTimeout(() => {
+                                toast.error(`Only ${availableQty} unit(s) available for ${productName}. Please update your cart.`, {
+                                    duration: 5000,
+                                });
+                            }, 100);
+                        }
+                    }
+
+                    setTimeout(() => {
+                        navigate('/cart');
+                    }, 2000);
+
+                    return;
                 }
 
-                // Navigate back to cart after a short delay
-                setTimeout(() => {
-                    navigate('/cart');
-                }, 2000);
+                if (!orderResponse.success) {
+                    setIsProcessingOrder(false);
+                    setIsPaymentPending(false);
 
-                return;
+                    toast.dismiss();
+                    toast.error(orderResponse.message || "Failed to place order", {
+                        duration: 5000,
+                    });
+
+                    setTimeout(() => {
+                        navigate('/cart');
+                    }, 2000);
+
+                    return;
+                }
+
+                orderNumber = orderResponse.data.orderNumber;
+                taxes = orderResponse.data.taxes;
+                placedOrderNumberRef.current = orderNumber;
             }
 
-            if (!orderResponse.success) {
-                setIsProcessingOrder(false);
-                setIsPaymentPending(false);
-
-                toast.dismiss(); // Clear any existing toasts
-                toast.error(orderResponse.message || "Failed to place order", {
-                    duration: 5000,
-                });
-
-                setTimeout(() => {
-                    navigate('/cart');
-                }, 2000);
-
-                return;
-            }
-
-            const { orderNumber, totalAmount } = orderResponse.data;
-
-            // Create Razorpay order
             const razorpayOrderResponse = await callRazorpayCreateOrder({
-                amount: totalAmount,
                 currency: CurrencyType.INR,
                 receipt: orderNumber,
                 notes: [`user_id:${user.uuid}`, `order_number:${orderNumber}`],
-                taxes: orderResponse.data.taxes
+                taxes,
             });
 
             if (!razorpayOrderResponse.success) {
                 throw new Error(razorpayOrderResponse.message);
             }
 
-            const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
-            if (!razorpayKey) {
-                toast.error("Payment configuration error. Please contact support.");
-                console.error("Razorpay key is missing");
-                return;
-            }
+            placedRazorpayOrderIdRef.current = razorpayOrderResponse.data.id;
 
-            // Set a 5-minute timeout for payment completion
             const timeout = setTimeout(() => {
-                if (isPaymentPending) {
-                    handlePaymentCleanup(razorpayOrderResponse.data.id, 'timeout');
+                if (isPaymentPending && placedRazorpayOrderIdRef.current) {
+                    handlePaymentCleanup(placedRazorpayOrderIdRef.current, 'timeout');
                 }
-            }, 5 * 60 * 1000); // 5 minutes
+            }, 5 * 60 * 1000);
 
             setPaymentTimeout(timeout);
 
-            const options: RazorpayOptions = {
-                key: razorpayKey,
-                amount: razorpayOrderResponse.data.amount,
-                currency: razorpayOrderResponse.data.currency,
-                name: "Kittyp Haven",
-                description: `Order #${orderNumber}`,
-                order_id: razorpayOrderResponse.data.id,
-                handler: async function (response) {
-                    try {
-                        cleanupPaymentTimeout();
-                        setIsPaymentVerifying(true);
-                        const verifyResponse = await callRazorpayVerifyPayment({
-                            orderId: response.razorpay_order_id,
-                            paymentId: response.razorpay_payment_id,
-                            signature: response.razorpay_signature
-                        });
-
-                        if (verifyResponse.success) {
-                            await dispatch(clearCartThunk(user.uuid));
-                            toast.success("Payment successful!");
-                            navigate("/profile", { state: "orders" });
-                        } else {
-                            throw new Error("Payment verification failed");
-                        }
-                    } catch (error) {
-                        console.error('Payment verification error:', error);
-                        toast.error("Payment verification failed");
-                        navigate('/cart');
-                    } finally {
-                        setIsPaymentVerifying(false);
-                    }
-                },
-                modal: {
-                    ondismiss: function () {
-                        setIsRedirecting(true);
-                        handlePaymentCleanup(razorpayOrderResponse.data.id, 'cancelled');
-                    },
-                    escape: true,
-                },
-                prefill: {
-                    name: shippingAddress.name || '',
-                    email: user.email || '',
-                    contact: shippingAddress.phoneNumber || ''
-                },
-                theme: {
-                    color: getThemeColor()
-                }
-            };
-
             try {
-                await handlePayment(options);
-            } catch (error: any) {
+                const response = await openRazorpayCheckout({
+                    amount: razorpayOrderResponse.data.amount,
+                    currency: razorpayOrderResponse.data.currency,
+                    name: "Kittyp Haven",
+                    description: `Order #${orderNumber}`,
+                    order_id: razorpayOrderResponse.data.id,
+                    prefill: {
+                        name: shippingAddress.name || '',
+                        email: user.email || '',
+                        contact: shippingAddress.phoneNumber || ''
+                    },
+                    themeColor: getThemeColor()
+                });
+
                 cleanupPaymentTimeout();
-                setIsRedirecting(true);
+                setIsPaymentVerifying(true);
+                const verifyResponse = await callRazorpayVerifyPayment({
+                    orderId: response.razorpay_order_id,
+                    paymentId: response.razorpay_payment_id,
+                    signature: response.razorpay_signature
+                });
+
+                if (verifyResponse.success) {
+                    await dispatch(clearCartThunk(user.uuid));
+                    toast.success("Payment successful!");
+                    navigate("/profile", { state: "orders" });
+                } else {
+                    throw new Error("Payment verification failed");
+                }
+            } catch (error: unknown) {
+                cleanupPaymentTimeout();
+                if (isRazorpayCheckoutError(error) && error.kind === 'dismissed') {
+                    toast.info("Payment cancelled. You can try again when ready.");
+                    setIsProcessingOrder(false);
+                    setIsPaymentPending(false);
+                    return;
+                }
                 console.error('Payment failed:', error);
-                if (error.error?.description) {
-                    toast.error(error.error.description);
+                if (isRazorpayCheckoutError(error)) {
+                    toast.error(error.message);
                 } else {
                     toast.error("Payment failed. Please try again.");
                 }
+                setIsProcessingOrder(false);
+                setIsPaymentPending(false);
                 navigate('/cart');
+            } finally {
+                setIsPaymentVerifying(false);
             }
 
         } catch (error) {

@@ -30,6 +30,9 @@ import {
 import { statusLabel } from '@/services/doctorVerificationService';
 import { toast } from 'sonner';
 import { parseApiErrorMessage, validateEmail } from '@/utils/validation';
+import { canInviteDoctors, canViewDoctorCertificates } from '@/utils/roles';
+import { useDoctorsBasePath } from '@/hooks/useDoctorsBasePath';
+import { specializationLabel } from '@/utils/specialization';
 
 function DoctorRatingLine({
   rating,
@@ -57,7 +60,10 @@ function DoctorRatingLine({
 
 export default function ClinicDoctors() {
   const navigate = useNavigate();
+  const doctorsBase = useDoctorsBasePath();
   const user = useAppSelector((s) => s.authReducer.user);
+  const canInvite = canInviteDoctors(user?.roles) && doctorsBase.startsWith('/clinic');
+  const clinicAdminContext = doctorsBase.startsWith('/clinic');
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
   const [search, setSearch] = useState('');
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
@@ -84,7 +90,7 @@ export default function ClinicDoctors() {
     try {
       const [list, pending] = await Promise.all([
         fetchClinicDoctors(clinicUuid),
-        fetchDoctorInvites(clinicUuid),
+        canInvite ? fetchDoctorInvites(clinicUuid) : Promise.resolve([] as DoctorInviteModel[]),
       ]);
       setDoctors(list);
       setInvites(pending.filter((i) => i.status === 'PENDING'));
@@ -108,7 +114,7 @@ export default function ClinicDoctors() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clinicUuid]);
+  }, [clinicUuid, canInvite]);
 
   // Personal / single-doctor clinics: open the profile directly (no tile list).
   useEffect(() => {
@@ -119,9 +125,9 @@ export default function ClinicDoctors() {
       !!user?.uuid && !!only.userUuid && user.uuid === only.userUuid;
     if (clinic?.personal || selfMatch || doctors.length === 1) {
       setAutoOpened(true);
-      navigate(`/clinic/doctors/${only.doctorUuid}`, { replace: true });
+      navigate(`${doctorsBase}/${only.doctorUuid}`, { replace: true });
     }
-  }, [loading, autoOpened, clinicUuid, doctors, clinic?.personal, user?.uuid, navigate]);
+  }, [loading, autoOpened, clinicUuid, doctors, clinic?.personal, user?.uuid, navigate, doctorsBase]);
 
   const filtered = useMemo(
     () =>
@@ -283,10 +289,12 @@ export default function ClinicDoctors() {
               : `${doctors.length} doctor${doctors.length === 1 ? '' : 's'}${clinic?.name ? ` at ${clinic.name}` : ''}`}
           </p>
         </div>
-        <Button size="sm" onClick={() => setInviteOpen(true)} disabled={!clinicUuid}>
-          <Plus className="h-4 w-4 mr-2" />
-          Invite Doctor
-        </Button>
+        {canInvite && (
+          <Button size="sm" onClick={() => setInviteOpen(true)} disabled={!clinicUuid}>
+            <Plus className="h-4 w-4 mr-2" />
+            Invite Doctor
+          </Button>
+        )}
       </div>
 
       <div className="relative max-w-md">
@@ -299,7 +307,7 @@ export default function ClinicDoctors() {
         />
       </div>
 
-      {invites.length > 0 && (
+      {canInvite && invites.length > 0 && (
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
@@ -379,7 +387,8 @@ export default function ClinicDoctors() {
         </div>
       ) : filtered.length === 0 ? (
         <p className="text-center text-muted-foreground py-16 text-sm">
-          No doctors linked to this clinic yet. Invite a doctor to get started.
+          No doctors linked to this clinic yet.
+          {canInvite ? ' Invite a doctor to get started.' : ''}
         </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -393,7 +402,7 @@ export default function ClinicDoctors() {
             return (
               <Link
                 key={d.doctorUuid || d.userUuid}
-                to={`/clinic/doctors/${d.doctorUuid}`}
+                to={`${doctorsBase}/${d.doctorUuid}`}
                 className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Card className="border-0 shadow-sm hover:shadow-md transition-shadow h-full">
@@ -405,7 +414,7 @@ export default function ClinicDoctors() {
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-foreground truncate">{d.name}</p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {(d.specialization || 'General').replace(/_/g, ' ')}
+                          {specializationLabel(d.specialization) || 'General'}
                         </p>
                         <div className="mt-1">
                           <DoctorRatingLine
@@ -446,7 +455,11 @@ export default function ClinicDoctors() {
                       </div>
                     )}
 
-                    <p className="mt-4 text-xs text-primary font-medium">View documents & patients →</p>
+                    <p className="mt-4 text-xs text-primary font-medium">
+                      {canViewDoctorCertificates(user?.roles, user?.uuid, d.userUuid, clinicAdminContext)
+                        ? 'View documents & patients →'
+                        : 'View profile →'}
+                    </p>
                   </CardContent>
                 </Card>
               </Link>
@@ -455,6 +468,7 @@ export default function ClinicDoctors() {
         </div>
       )}
 
+      {canInvite && (
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -512,7 +526,7 @@ export default function ClinicDoctors() {
               <div className="flex gap-2">
                 <Input
                   id="inviteDoctorId"
-                  placeholder="Doctor profile UUID"
+                  placeholder="6-character Doctor ID"
                   value={inviteDoctorId}
                   onChange={(e) => {
                     setInviteDoctorId(e.target.value);
@@ -547,6 +561,7 @@ export default function ClinicDoctors() {
           </form>
         </DialogContent>
       </Dialog>
+      )}
     </div>
   );
 }

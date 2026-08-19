@@ -5,7 +5,7 @@ import { store } from '@/module/store/store';
 import { setUser } from '@/module/slice/AuthSlice';
 import { fetchUserDetail } from "./UserService";
 import { TokenResponse } from "@react-oauth/google";
-import { AppRole } from "@/utils/roles";
+import { SignupRole } from "@/utils/roles";
 import { clearAuthStorage, beginNewAuthSession, getAuthItem, setAuthItem } from "@/utils/authStorage";
 
 interface SignupData {
@@ -13,7 +13,7 @@ interface SignupData {
   lastName: string;
   email: string;
   password: string;
-  roles?: AppRole[];
+  role: SignupRole;
 }
 
 interface AuthData {
@@ -81,22 +81,10 @@ export interface UserProfile {
 }
 
 export const signup = async (data: SignupData) => {
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-    return response;
-  } catch (error: any) {
-    throw error.response?.data || "Signup failed. Please try again.";
-  }
+  return postSignup('/auth/signup', data);
 };
 
-export interface SignupDoctorData extends SignupData {
+export interface SignupDoctorData extends Omit<SignupData, 'role'> {
   phoneNumber: string;
   licenseNumber?: string;
   registrationNumber: string;
@@ -113,7 +101,7 @@ export interface SignupDoctorData extends SignupData {
   inviteToken?: string;
 }
 
-export interface SignupClinicData extends SignupData {
+export interface SignupClinicData extends Omit<SignupData, 'role'> {
   clinicName: string;
   licenseNumber?: string;
   address?: string;
@@ -136,10 +124,10 @@ async function postSignup(path: string, data: unknown) {
 }
 
 export const signupDoctor = (data: SignupDoctorData) =>
-  postSignup('/auth/signup/doctor', data);
+  postSignup('/auth/signup', { ...data, role: 'DOCTOR' as const });
 
 export const signupClinic = (data: SignupClinicData) =>
-  postSignup('/auth/signup/clinic', data);
+  postSignup('/auth/signup', { ...data, role: 'CLINIC' as const });
 
 export const socialSso = async (tokenResponse: TokenResponse) => {
   try {
@@ -178,7 +166,7 @@ export const socialSso = async (tokenResponse: TokenResponse) => {
 
 }
 
-export const login = async (data: AuthData): Promise<{ token, roles }> => {
+export const login = async (data: AuthData): Promise<{ token: string; roles: string[] }> => {
 
   try {
     // Step 1: Login to get token

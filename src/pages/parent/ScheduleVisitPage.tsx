@@ -30,6 +30,8 @@ import {
   fetchParentDoctorSlots,
 } from '@/services/discoverService';
 import { isAxiosError } from 'axios';
+import { PetNameType } from '@/components/ui/PetNameType';
+import { specializationLabel } from '@/utils/specialization';
 
 type Step = 'search' | 'book';
 
@@ -93,8 +95,8 @@ function apiErrorMessage(err: unknown, fallback: string): string {
 }
 
 function specialtyLabel(value?: string | null): string | null {
-  if (!value) return null;
-  return value.replace(/_/g, ' ');
+  const label = specializationLabel(value);
+  return label || null;
 }
 
 function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
@@ -644,18 +646,28 @@ export default function ScheduleVisitPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Pet</Label>
-              <select
-                className="w-full h-10 rounded-md border bg-background px-3 text-sm"
-                value={petUuid}
-                onChange={(e) => setPetUuid(e.target.value)}
-              >
-                <option value="">Select pet</option>
-                {pets.map((p) => (
-                  <option key={p.uuid} value={p.uuid}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              {pets.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Add a pet in your profile first.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {pets.map((p) => (
+                    <button
+                      key={p.uuid}
+                      type="button"
+                      onClick={() => setPetUuid(p.uuid)}
+                      className={cn(
+                        'inline-flex items-center rounded-full border px-3 py-1.5 text-sm transition-colors',
+                        petUuid === p.uuid
+                          ? 'border-primary bg-primary/5'
+                          : 'hover:bg-muted/60'
+                      )}
+                      aria-pressed={petUuid === p.uuid}
+                    >
+                      <PetNameType name={p.name} type={p.type} />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Date</Label>

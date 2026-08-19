@@ -4,7 +4,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { PetImage } from '@/components/ui/PetImage';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Heart, Calendar, Bell, TrendingUp, Award, Activity, ShoppingBag, Lightbulb } from 'lucide-react';
@@ -21,7 +21,7 @@ import { NutritionCalendar } from '@/components/nutrition/NutritionCalender';
 import { PetBadges } from '@/components/health/PetBadges';
 import { NotificationSettings } from '@/components/health/NotificationSettings';
 import { PetProfile } from '@/services/authService';
-import { calculatePetAgeForDisplay } from '@/services/UserService';
+import { formatPetDobWithAge } from '@/utils/petAge';
 
 const PetDetail: React.FC = () => {
   const { uuid } = useParams<{ uuid: string }>();
@@ -96,15 +96,9 @@ const PetDetail: React.FC = () => {
           <Card className="mb-6">
             <CardHeader>
               <div className="flex flex-col md:flex-row md:items-center gap-4">
-                <Avatar className="w-20 h-20 border-4 border-primary/20">
-                  {(pet as any).profilePicture ? (
-                    <AvatarImage src={(pet as any).profilePicture} alt={pet.name} className="object-cover" />
-                  ) : (
-                    <AvatarFallback className="bg-primary/10 text-primary text-2xl">
-                      <Heart className="h-10 w-10" />
-                    </AvatarFallback>
-                  )}
-                </Avatar>
+                <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-primary/20 shrink-0">
+                  <PetImage pet={pet} alt={pet.name} className="h-full w-full object-cover" />
+                </div>
                 <div className="flex-1">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                     <div>
@@ -115,7 +109,7 @@ const PetDetail: React.FC = () => {
                   <div className="flex flex-wrap gap-2 mt-3">
                     {pet.dateOfBirth && (
                       <Badge variant="secondary">
-                        {calculatePetAgeForDisplay((pet as PetProfile).dateOfBirth)} old
+                        {formatPetDobWithAge((pet as PetProfile).dateOfBirth)}
                       </Badge>
                     )}
                     {(pet as any).weight && <Badge variant="secondary">{(pet as PetProfile).weight}</Badge>}

@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { handleCheckout } from "@/services/paymentService";
+import { handleCheckout, isRazorpayCheckoutError } from "@/services/paymentService";
 import { CurrencyType, callRazorpayVerifyPayment } from "@/services/cartService";
 import { UserProfile } from "@/services/authService";
 
@@ -31,9 +31,8 @@ export const reinitiatePayment = async ({
     }
 
     try {
-        // Convert the currency string to CurrencyType
         const currency = order.currency === 'INR' ? CurrencyType.INR : CurrencyType.USD;
-        
+
         const response = await handleCheckout(
             order.taxes,
             order.totalAmount,
@@ -42,42 +41,30 @@ export const reinitiatePayment = async ({
             user
         );
 
-        // Set verifying state if callback provided
         if (onVerifying) {
             onVerifying();
         }
 
-        try {
-            // Verify the payment
-            const verifyResponse = await callRazorpayVerifyPayment({
-                orderId: response.razorpay_order_id,
-                paymentId: response.razorpay_payment_id,
-                signature: response.razorpay_signature
-            });
+        const verifyResponse = await callRazorpayVerifyPayment({
+            orderId: response.razorpay_order_id,
+            paymentId: response.razorpay_payment_id,
+            signature: response.razorpay_signature,
+        });
 
-            if (verifyResponse.success) {
-                toast.success("Payment successful!");
-                if (onSuccess) {
-                    onSuccess();
-                }
-            } else {
-                throw new Error("Payment verification failed");
+        if (verifyResponse.success) {
+            toast.success("Payment successful!");
+            if (onSuccess) {
+                onSuccess();
             }
-        } catch (error) {
-            console.error("Payment verification error:", error);
-            toast.error("Payment verification failed. Please contact support if payment was deducted.");
-            throw error;
+        } else {
+            throw new Error("Payment verification failed");
         }
-    } catch (error: any) {
-        console.error("Payment process error:", error);
-        
-        // Handle different types of errors
-        if (error.error?.description) {
-            // Razorpay specific error
-            toast.error(error.error.description);
-        } else if (error.message === "Payment cancelled by user") {
+    } catch (error: unknown) {
+        if (isRazorpayCheckoutError(error) && error.kind === "dismissed") {
             toast.error("Payment was cancelled");
-        } else if (error.message === "Payment verification failed") {
+        } else if (isRazorpayCheckoutError(error) && error.kind === "failed") {
+            toast.error(error.message);
+        } else if (error instanceof Error && error.message === "Payment verification failed") {
             toast.error("Payment verification failed. Please contact support if payment was deducted.");
         } else {
             toast.error("Payment failed. Please try again.");
@@ -88,4 +75,4 @@ export const reinitiatePayment = async ({
             onComplete();
         }
     }
-}; 
+};

@@ -38,8 +38,14 @@ export interface ConsultationInvoice {
   pdfUrl?: string;
   paymentStatus?: string;
   paymentMode?: string;
+  transactionId?: string;
+  paidAmount?: number;
+  balance?: number;
+  ownerSnapshot?: string;
+  razorpayOrderId?: string;
   diagnosis?: string;
   reason?: string;
+  createdAt?: string;
 }
 
 /** Create response: invoice always saved; WhatsApp is best-effort. */
@@ -116,14 +122,27 @@ export async function createConsultationInvoice(
   return normalizeCreateResult(res.data.data);
 }
 
-export async function fetchMyInvoices(): Promise<ConsultationInvoice[]> {
-  const res = await axiosInstance.get<ApiSuccessResponse<ConsultationInvoice[]>>('/invoice/mine');
+export async function fetchMyInvoices(clinicUuid?: string): Promise<ConsultationInvoice[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ConsultationInvoice[]>>('/invoice/mine', {
+    params: clinicUuid ? { clinicUuid } : undefined,
+  });
   return res.data.data ?? [];
 }
 
 export async function generateInvoicePdf(uuid: string): Promise<ConsultationInvoice> {
   const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
     `/invoice/${uuid}/generate-pdf`
+  );
+  return res.data.data;
+}
+
+export async function markInvoicePaid(
+  uuid: string,
+  body: { paymentMode: string; transactionId?: string }
+): Promise<ConsultationInvoice> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
+    `/invoice/${uuid}/mark-paid`,
+    body
   );
   return res.data.data;
 }
@@ -181,6 +200,18 @@ export async function generateClinicInvoicePdf(
 ): Promise<ConsultationInvoice> {
   const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
     `/clinic/${clinicUuid}/invoices/${invoiceUuid}/generate-pdf`
+  );
+  return res.data.data;
+}
+
+export async function markClinicInvoicePaid(
+  clinicUuid: string,
+  invoiceUuid: string,
+  body: { paymentMode: string; transactionId?: string }
+): Promise<ConsultationInvoice> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
+    `/clinic/${clinicUuid}/invoices/${invoiceUuid}/mark-paid`,
+    body
   );
   return res.data.data;
 }

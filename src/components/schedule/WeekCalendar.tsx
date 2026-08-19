@@ -12,14 +12,18 @@ import {
   startOfWeek,
 } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { calendarBlockClass, isUrgentVisit } from '@/utils/visitUrgency';
 import {
-  DAY_START_HOUR,
-  DAY_END_HOUR,
+  doctorCalendarBlockClass,
+  doctorCalendarSwatchClass,
+  doctorDisplayName,
+  doctorUrgentStripeClass,
+} from './doctorCalendarColor';
+import {
   HOUR_PX,
   WeekCalEvent,
-  doctorColor,
   eventLayout,
-  statusTone,
+  visibleHourRange,
   withLanes,
 } from './weekCalendarUtils';
 
@@ -39,6 +43,19 @@ type Props = {
   doctors?: WeekCalendarDoctor[];
 };
 
+function eventToneLabel(
+  ev: WeekCalEvent,
+  urgent: boolean,
+  colorByDoctor: boolean,
+  doctors?: WeekCalendarDoctor[]
+): string {
+  if (!colorByDoctor) return urgent ? `Urgent visit: ${ev.title}` : `Routine visit: ${ev.title}`;
+  const name = doctorDisplayName(ev, doctors);
+  const doctorBit = name ? `Dr. ${name}` : 'Unassigned';
+  const urgency = urgent ? 'Urgent visit' : 'Routine visit';
+  return `${urgency}: ${ev.title} · ${doctorBit}`;
+}
+
 export function WeekCalendar({
   events,
   weekAnchor,
@@ -52,41 +69,59 @@ export function WeekCalendar({
   const weekEnd = endOfWeek(weekAnchor, { weekStartsOn: 1 });
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
   const today = startOfDay(new Date());
-  const hours = Array.from({ length: DAY_END_HOUR - DAY_START_HOUR }, (_, i) => DAY_START_HOUR + i);
+  const hourRange = visibleHourRange(events);
+  const hours = Array.from(
+    { length: hourRange.endHour - hourRange.startHour },
+    (_, i) => hourRange.startHour + i
+  );
   const todayEvents = events
     .filter((e) => isSameDay(e.start, today))
     .sort((a, b) => a.start.getTime() - b.start.getTime());
-  const legendDoctors = (doctors || []).filter((d) => d.doctorUuid && d.name);
+  const doctorList = doctors ?? [];
+  const colorByDoctor = doctorList.length > 0;
 
   return (
     <div>
-      {legendDoctors.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3">
-          <span className="text-xs text-muted-foreground mr-1">Doctors</span>
-          {legendDoctors.map((d) => {
-            const color = doctorColor(d.doctorUuid);
-            return (
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-3">
+        {colorByDoctor ? (
+          <>
+            {doctorList.map((d) => (
               <span
                 key={d.doctorUuid}
                 className="inline-flex items-center gap-1.5 text-xs text-foreground"
               >
                 <span
-                  className="h-2.5 w-2.5 rounded-full shrink-0 border"
-                  style={{
-                    backgroundColor: color?.bg,
-                    borderColor: color?.border,
-                  }}
+                  className={cn(
+                    'h-2.5 w-2.5 rounded-sm shrink-0 border',
+                    doctorCalendarSwatchClass(d.doctorUuid)
+                  )}
                 />
-                {d.name.replace(/^Dr\.?\s*/i, '')}
+                {d.name}
               </span>
-            );
-          })}
-          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="h-2.5 w-2.5 rounded-full shrink-0 border border-border bg-muted" />
-            Unassigned
-          </span>
-        </div>
-      )}
+            ))}
+            <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
+              <span
+                className={cn(
+                  'h-2.5 w-2.5 rounded-sm shrink-0 border border-border bg-muted',
+                  doctorUrgentStripeClass
+                )}
+              />
+              Urgent
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
+              <span className={cn('h-2.5 w-2.5 rounded-sm shrink-0 border', calendarBlockClass(false))} />
+              Routine
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
+              <span className={cn('h-2.5 w-2.5 rounded-sm shrink-0 border', calendarBlockClass(true))} />
+              Urgent
+            </span>
+          </>
+        )}
+      </div>
 
       <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
         <p className="text-sm text-muted-foreground">
@@ -176,38 +211,41 @@ export function WeekCalendar({
                       <div
                         key={h}
                         className="absolute left-0 right-0 border-b border-border/50"
-                        style={{ top: (h - DAY_START_HOUR) * HOUR_PX, height: HOUR_PX }}
+                        style={{ top: (h - hourRange.startHour) * HOUR_PX, height: HOUR_PX }}
                       />
                     ))}
                     {dayEvs.map((ev) => {
-                      const layout = eventLayout(ev, d);
+                      const layout = eventLayout(ev, d, hourRange);
                       if (!layout) return null;
-                      const color = doctorColor(ev.doctorUuid);
+                      const urgent = isUrgentVisit(ev.visit?.urgency);
+                      const tone = eventToneLabel(ev, urgent, colorByDoctor, doctors);
                       return (
                         <button
                           key={ev.id}
                           type="button"
                           onClick={() => onEventClick?.(ev)}
                           className={cn(
-                            'absolute rounded border px-1 py-0.5 text-[10px] leading-tight shadow-sm overflow-hidden z-10 text-left hover:brightness-110',
-                            !color && statusTone(ev.status)
+                            'absolute box-border rounded border px-1 py-0.5 text-[10px] leading-tight shadow-sm overflow-hidden text-left hover:brightness-110',
+                            colorByDoctor
+                              ? cn(
+                                  doctorCalendarBlockClass(ev.doctorUuid),
+                                  urgent && doctorUrgentStripeClass
+                                )
+                              : calendarBlockClass(urgent)
                           )}
                           style={{
                             top: layout.top,
                             height: layout.height,
                             left: `calc(${layout.leftPct}% + 2px)`,
                             width: `calc(${layout.widthPct}% - 4px)`,
-                            ...(color
-                              ? {
-                                  backgroundColor: color.bg,
-                                  borderColor: color.border,
-                                  color: color.text,
-                                }
-                              : {}),
+                            zIndex: 10 + ev.lane,
                           }}
-                          title={`${ev.title} · ${format(ev.start, 'p')}`}
+                          title={`${tone} · ${format(ev.start, 'p')}`}
+                          aria-label={tone}
                         >
-                          <p className="font-semibold truncate">{ev.title}</p>
+                          <p className="font-semibold truncate">
+                            {urgent ? `Urgent · ${ev.title}` : ev.title}
+                          </p>
                           <p className="opacity-90 truncate">{format(ev.start, 'h:mm a')}</p>
                         </button>
                       );
@@ -228,26 +266,25 @@ export function WeekCalendar({
           ) : (
             <div className="flex flex-wrap gap-2">
               {todayEvents.map((ev) => {
-                const color = doctorColor(ev.doctorUuid);
+                const urgent = isUrgentVisit(ev.visit?.urgency);
+                const tone = eventToneLabel(ev, urgent, colorByDoctor, doctors);
                 return (
                   <Badge
                     key={`today-${ev.id}`}
                     variant="outline"
                     className={cn(
                       'cursor-pointer text-[11px] border font-normal',
-                      !color && statusTone(ev.status)
+                      colorByDoctor
+                        ? cn(
+                            doctorCalendarBlockClass(ev.doctorUuid),
+                            urgent && doctorUrgentStripeClass
+                          )
+                        : calendarBlockClass(urgent)
                     )}
-                    style={
-                      color
-                        ? {
-                            backgroundColor: color.bg,
-                            borderColor: color.border,
-                            color: color.text,
-                          }
-                        : undefined
-                    }
                     onClick={() => onEventClick?.(ev)}
+                    aria-label={tone}
                   >
+                    {urgent ? 'Urgent · ' : 'Routine · '}
                     {ev.title} · {format(ev.start, 'h:mm a')}
                   </Badge>
                 );

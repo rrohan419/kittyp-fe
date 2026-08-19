@@ -5,7 +5,8 @@ import { RootState } from '@/module/store/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { calculatePetAgeForDisplay } from '@/services/UserService';
+import { formatPetDobWithAge } from '@/utils/petAge';
+import { PetImage } from '@/components/ui/PetImage';
 
 export const PetManagementPage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.authReducer);
@@ -48,14 +49,14 @@ export const PetManagementPage: React.FC = () => {
           {pets.map((pet) => (
             <Card key={pet.uuid} className="border-0 shadow-sm">
               <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <PawPrint className="h-7 w-7 text-primary" />
+                <div className="w-14 h-14 rounded-2xl bg-muted overflow-hidden shrink-0">
+                  <PetImage pet={pet} alt={pet.name} className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold truncate">{pet.name}</p>
                   <p className="text-xs text-muted-foreground truncate">
                     {pet.type} · {pet.breed || 'Mixed'} ·{' '}
-                    {pet.dateOfBirth ? calculatePetAgeForDisplay(pet.dateOfBirth) : '—'}
+                    {pet.dateOfBirth ? formatPetDobWithAge(pet.dateOfBirth) : '—'}
                   </p>
                   {pet.weight != null && (
                     <p className="text-xs text-muted-foreground mt-1">{pet.weight} kg</p>

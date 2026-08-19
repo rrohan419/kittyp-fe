@@ -235,7 +235,7 @@ export function Navbar() {
                     <span>Login</span>
                   </Link>
                   <Link
-                    to="/signup/parent"
+                    to="/signup"
                     className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
                     style={{ textShadow: 'none' }}
                     aria-label="Sign up"
@@ -414,7 +414,7 @@ export function Navbar() {
                     </li>
                     <li>
                       <Link
-                        to="/signup/parent"
+                        to="/signup"
                         className="block text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center"
                         style={{ textShadow: 'none' }}
                         onClick={closeMenu}

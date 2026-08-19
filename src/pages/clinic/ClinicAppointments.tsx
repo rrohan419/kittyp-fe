@@ -14,8 +14,11 @@ import { Clock, Loader2, Pencil, Plus, User } from 'lucide-react';
 import { format, parseISO, isValid, isSameDay, startOfDay, addMinutes } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { useAppSelector } from '@/module/store/hooks';
 import type { InvoiceFromVisitState } from '@/services/invoiceService';
 import { WalkInDialog } from '@/components/clinic/WalkInDialog';
+import { fetchMyDoctorProfile } from '@/services/doctorVerificationService';
+import { canInviteDoctors, resolveLockedDoctorUuid, shouldLockAssigneeDoctor } from '@/utils/roles';
 import {
   Dialog,
   DialogContent,
@@ -38,6 +41,8 @@ import {
 } from '@/services/clinicService';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { petNameWithType } from '@/utils/petType';
+import { dashboardVisitSurfaceClass, isUrgentVisit, urgentVisitBadgeClass } from '@/utils/visitUrgency';
 
 const FLOW_COLUMNS: { status: VisitStatus; title: string }[] = [
   { status: 'WAITLIST', title: 'Waitlist' },
@@ -54,7 +59,7 @@ const statusBadge: Record<string, string> = {
   COMPLETED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
   CANCELLED: 'bg-muted text-muted-foreground',
   NO_SHOW: 'bg-muted text-muted-foreground',
-  URGENT: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  URGENT: urgentVisitBadgeClass,
 };
 
 function bookingStart(b: ClinicBookingModel): Date | null {
@@ -65,10 +70,13 @@ function bookingStart(b: ClinicBookingModel): Date | null {
 
 export default function ClinicAppointments() {
   const navigate = useNavigate();
-  const { clinicUuid } = useActiveClinic();
+  const user = useAppSelector((s) => s.authReducer.user);
+  const canInvite = canInviteDoctors(user?.roles);
+  const { clinicUuid, isPersonalPractice } = useActiveClinic();
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
+  const [myDoctorUuid, setMyDoctorUuid] = useState<string | null>(null);
   const [doctorFilter, setDoctorFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -113,6 +121,31 @@ export default function ClinicAppointments() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const lockAssignee = shouldLockAssigneeDoctor(user?.roles, isPersonalPractice);
+
+  useEffect(() => {
+    if (!lockAssignee) {
+      setMyDoctorUuid(null);
+      return;
+    }
+    void fetchMyDoctorProfile()
+      .then((p) => {
+        if (p?.uuid) setMyDoctorUuid(p.uuid);
+      })
+      .catch(() => {
+        /* roster / owner fallback */
+      });
+  }, [lockAssignee]);
+
+  const lockedDoctorUuid = lockAssignee
+    ? resolveLockedDoctorUuid({
+        isPersonalPractice,
+        viewerUserUuid: user?.uuid,
+        myDoctorUuid,
+        doctors,
+      })
+    : undefined;
 
   useEffect(() => {
     if (!clinicUuid) return;
@@ -211,11 +244,14 @@ export default function ClinicAppointments() {
   const onDropVisit = async (visitUuid: string, status: VisitStatus) => {
     const visit = visits.find((v) => v.uuid === visitUuid);
     if (!visit || visit.status === status) return;
-    if (status === 'IN_PROGRESS' && !visit.doctorUuid) {
+    // Doctors (personal + clinic-affiliated) finish treatment from the chart — no board handoff.
+    if (status === 'CHECKING_OUT' && lockAssignee) return;
+    const assignee = visit.doctorUuid || lockedDoctorUuid;
+    if (status === 'IN_PROGRESS' && !assignee) {
       toast.error('Assign a doctor before moving to With doctor');
       return;
     }
-    if (status === 'COMPLETED' && !visit.doctorUuid) {
+    if (status === 'COMPLETED' && !assignee) {
       toast.error('Assign a doctor before completing the visit');
       return;
     }
@@ -248,7 +284,12 @@ export default function ClinicAppointments() {
         return;
       }
     }
-    await patch(visitUuid, { status });
+    await patch(
+      visitUuid,
+      !visit.doctorUuid && lockedDoctorUuid
+        ? { status, doctorUuid: lockedDoctorUuid }
+        : { status }
+    );
   };
 
   return (
@@ -261,7 +302,11 @@ export default function ClinicAppointments() {
             for later.
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)} disabled={!clinicUuid} aria-label="Add appointment">
+        <Button
+          onClick={() => setAddOpen(true)}
+          disabled={!clinicUuid || (lockAssignee && !lockedDoctorUuid)}
+          aria-label="Add appointment"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add
         </Button>
@@ -308,6 +353,7 @@ export default function ClinicAppointments() {
                     dragOverStatus === col.status ? 'ring-2 ring-primary/60 bg-primary/5' : ''
                   }`}
                   onDragOver={(e) => {
+                    if (lockAssignee && col.status === 'CHECKING_OUT') return;
                     e.preventDefault();
                     setDragOverStatus(col.status);
                   }}
@@ -342,7 +388,7 @@ export default function ClinicAppointments() {
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="font-medium min-w-0">
-                                {b.petName}
+                                {petNameWithType(b.petName, b.species)}
                                 <span className="text-muted-foreground font-normal">
                                   {' '}
                                   · {b.ownerName || 'Owner'}
@@ -369,16 +415,26 @@ export default function ClinicAppointments() {
                         visit={v}
                         doctors={doctors}
                         busy={actingId === v.uuid}
+                        lockAssignee={lockAssignee}
+                        lockedDoctorUuid={lockedDoctorUuid}
+                        canSendToCheckout={!lockAssignee}
+                        canInvite={canInvite}
                         onCheckIn={() => {
                           patch(v.uuid, { status: 'CHECKED_IN' });
                         }}
                         onCheckout={() => patch(v.uuid, { status: 'CHECKING_OUT' })}
                         onComplete={() => {
-                          if (!v.doctorUuid) {
+                          const assignee = v.doctorUuid || lockedDoctorUuid;
+                          if (!assignee) {
                             toast.error('Assign a doctor before completing the visit');
                             return;
                           }
-                          patch(v.uuid, { status: 'COMPLETED' });
+                          patch(
+                            v.uuid,
+                            !v.doctorUuid && lockedDoctorUuid
+                              ? { status: 'COMPLETED', doctorUuid: lockedDoctorUuid }
+                              : { status: 'COMPLETED' }
+                          );
                         }}
                         onInvoice={() => {
                           const fromVisit: InvoiceFromVisitState = {
@@ -405,7 +461,7 @@ export default function ClinicAppointments() {
                         onEdit={() => {
                           setEditVisit(v);
                           setEditForm({
-                            doctorUuid: v.doctorUuid || '',
+                            doctorUuid: v.doctorUuid || lockedDoctorUuid || '',
                             status: v.status,
                             urgency: v.urgency,
                             reasonForVisit: v.reasonForVisit || '',
@@ -452,7 +508,7 @@ export default function ClinicAppointments() {
                     <CardContent className="py-3 flex justify-between gap-2 text-sm">
                       <div>
                         <div className="font-medium">
-                          {v.petName} · {v.ownerName || 'Owner'}
+                          {petNameWithType(v.petName, v.species)} · {v.ownerName || 'Owner'}
                           {v.ownerPhone ? ` · ${v.ownerPhone}` : ''}
                         </div>
                         <div className="text-muted-foreground">
@@ -487,7 +543,7 @@ export default function ClinicAppointments() {
                     <CardContent className="py-3 text-sm flex justify-between gap-3">
                       <div>
                         <div className="font-medium">
-                          {b.petName} · {b.ownerName}
+                          {petNameWithType(b.petName, b.species)} · {b.ownerName}
                         </div>
                         <div className="text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
@@ -515,6 +571,7 @@ export default function ClinicAppointments() {
           onOpenChange={setAddOpen}
           clinicUuid={clinicUuid}
           doctors={doctors}
+          lockedDoctorUuid={lockedDoctorUuid}
           onCreated={load}
         />
       )}
@@ -527,6 +584,7 @@ export default function ClinicAppointments() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            {lockAssignee ? null : (
             <div>
               <Label>Assign doctor</Label>
               <Select
@@ -551,10 +609,13 @@ export default function ClinicAppointments() {
               </Select>
               {doctors.filter((d) => d.isActive !== false).length === 0 && (
                 <p className="text-xs text-amber-600 mt-1">
-                  No doctors on this clinic. Invite doctors first.
+                  {canInvite
+                    ? 'No doctors on this clinic. Invite doctors first.'
+                    : 'No doctors on this clinic.'}
                 </p>
               )}
             </div>
+            )}
             <div>
               <Label>Status</Label>
               <Select
@@ -565,7 +626,12 @@ export default function ClinicAppointments() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {FLOW_COLUMNS.map((c) => (
+                  {FLOW_COLUMNS.filter(
+                    (c) =>
+                      c.status !== 'CHECKING_OUT' ||
+                      !lockAssignee ||
+                      editVisit?.status === 'CHECKING_OUT'
+                  ).map((c) => (
                     <SelectItem key={c.status} value={c.status}>
                       {c.title}
                     </SelectItem>
@@ -609,11 +675,12 @@ export default function ClinicAppointments() {
               disabled={editSaving || !clinicUuid || !editVisit}
               onClick={async () => {
                 if (!clinicUuid || !editVisit) return;
-                if (editForm.status === 'IN_PROGRESS' && !editForm.doctorUuid) {
+                const assignee = editForm.doctorUuid || lockedDoctorUuid || '';
+                if (editForm.status === 'IN_PROGRESS' && !assignee) {
                   toast.error('Assign a doctor before moving to With doctor');
                   return;
                 }
-                if (editForm.status === 'COMPLETED' && !editForm.doctorUuid) {
+                if (editForm.status === 'COMPLETED' && !assignee) {
                   toast.error('Assign a doctor before completing the visit');
                   return;
                 }
@@ -639,7 +706,7 @@ export default function ClinicAppointments() {
                 setEditSaving(true);
                 try {
                   await patchClinicVisit(clinicUuid, editVisit.uuid, {
-                    doctorUuid: editForm.doctorUuid || null,
+                    doctorUuid: assignee || null,
                     status: editForm.status,
                     urgency: editForm.urgency,
                     reasonForVisit: editForm.reasonForVisit,
@@ -671,6 +738,10 @@ function VisitCard({
   visit,
   doctors,
   busy,
+  lockAssignee,
+  lockedDoctorUuid,
+  canSendToCheckout,
+  canInvite,
   onCheckIn,
   onCheckout,
   onComplete,
@@ -682,6 +753,10 @@ function VisitCard({
   visit: ClinicVisitModel;
   doctors: ClinicDoctorModel[];
   busy: boolean;
+  lockAssignee?: boolean;
+  lockedDoctorUuid?: string;
+  canSendToCheckout?: boolean;
+  canInvite?: boolean;
   onCheckIn: () => void;
   onCheckout: () => void;
   onComplete: () => void;
@@ -690,6 +765,10 @@ function VisitCard({
   onAssign: (doctorUuid: string) => void;
   onEdit: () => void;
 }) {
+  const lockedDoctor = lockedDoctorUuid
+    ? doctors.find((d) => d.doctorUuid === lockedDoctorUuid)
+    : undefined;
+  const displayDoctorName = visit.doctorName || lockedDoctor?.name || lockedDoctor?.email;
   const activeDoctors = doctors.filter((d) => d.isActive !== false && d.doctorUuid);
   const checkingOutAt = visit.checkingOutAt ? parseISO(visit.checkingOutAt) : null;
   const canLeaveCheckout =
@@ -702,12 +781,15 @@ function VisitCard({
     (checkingOutAt != null &&
       isValid(checkingOutAt) &&
       Date.now() - checkingOutAt.getTime() <= 30 * 60 * 1000);
+  const urgent = isUrgentVisit(visit.urgency);
   return (
     <div
       className={cn(
-        'rounded-md border p-2.5 space-y-2 bg-background',
+        'rounded-md border p-2.5 space-y-2',
+        dashboardVisitSurfaceClass(urgent),
         canLeaveCheckout ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
       )}
+      aria-label={urgent ? `Urgent visit: ${visit.petName}` : undefined}
       draggable={!busy && canLeaveCheckout}
       onDragStart={(e) => {
         if (!canLeaveCheckout) {
@@ -720,20 +802,20 @@ function VisitCard({
     >
       <div className="flex items-start justify-between gap-1">
         <div>
-          <div className="font-medium text-sm">{visit.petName}</div>
+          <div className="font-medium text-sm">{petNameWithType(visit.petName, visit.species)}</div>
           <div className="text-xs text-muted-foreground flex items-center gap-1">
             <User className="h-3 w-3" />
             {visit.ownerName || 'Owner'}
             {visit.ownerPhone ? ` · ${visit.ownerPhone}` : ''}
           </div>
-          {visit.doctorName && (
+          {displayDoctorName && (
             <div className="text-[11px] text-muted-foreground mt-0.5">
-              Dr. {visit.doctorName.replace(/^Dr\.?\s*/i, '')}
+              Dr. {displayDoctorName.replace(/^Dr\.?\s*/i, '')}
             </div>
           )}
         </div>
         <div className="flex items-center gap-1">
-          {visit.urgency === 'URGENT' && <Badge className={statusBadge.URGENT}>Urgent</Badge>}
+          {urgent && <Badge className={statusBadge.URGENT}>Urgent</Badge>}
           {canEditVisit ? (
             <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={onEdit} title="Edit visit">
               <Pencil className="h-3.5 w-3.5" />
@@ -756,25 +838,31 @@ function VisitCard({
           Dx: {visit.chart.assessment}
         </p>
       )}
-      <Select
-        value={visit.doctorUuid || 'none'}
-        onValueChange={(v) => onAssign(v === 'none' ? '' : v)}
-        disabled={busy || !canEditVisit}
-      >
-        <SelectTrigger className="h-8 text-xs">
-          <SelectValue placeholder="Assign doctor" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="none">Unassigned</SelectItem>
-          {activeDoctors.map((d) => (
-            <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
-              {d.name || d.email || 'Doctor'}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {activeDoctors.length === 0 && (
-        <p className="text-[10px] text-amber-600">No clinic doctors — invite under Doctors</p>
+      {lockAssignee ? null : (
+        <>
+          <Select
+            value={visit.doctorUuid || 'none'}
+            onValueChange={(v) => onAssign(v === 'none' ? '' : v)}
+            disabled={busy || !canEditVisit}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Assign doctor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Unassigned</SelectItem>
+              {activeDoctors.map((d) => (
+                <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
+                  {d.name || d.email || 'Doctor'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {activeDoctors.length === 0 && (
+            <p className="text-[10px] text-amber-600">
+              {canInvite ? 'No clinic doctors — invite under Doctors' : 'No clinic doctors assigned'}
+            </p>
+          )}
+        </>
       )}
       <div className="flex flex-wrap gap-1">
         {visit.status === 'WAITLIST' && (
@@ -782,7 +870,7 @@ function VisitCard({
             Check in
           </Button>
         )}
-        {visit.status === 'IN_PROGRESS' && (
+        {visit.status === 'IN_PROGRESS' && canSendToCheckout && (
           <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={onCheckout}>
             Move to checkout
           </Button>

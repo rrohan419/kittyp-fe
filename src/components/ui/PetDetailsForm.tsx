@@ -16,9 +16,10 @@ import {
 } from "@/components/ui/dialog";
 import { PlusCircle, Heart, Trash2, Save, Edit, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PetImage } from "@/components/ui/PetImage";
 import { PetProfile } from "@/services/authService";
-import { AddPet, UpdatePet, calculatePetAgeForDisplay } from "@/services/UserService";
+import { AddPet, UpdatePet } from "@/services/UserService";
+import { formatPetDobWithAge } from "@/utils/petAge";
 import { PetPhotoUpload } from './PetPhotoUpload';
 import { addPetToUser, removePetFromUser, updatePetInUser, setPetsLoading, setSaving } from '@/module/slice/AuthSlice';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
@@ -250,15 +251,9 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                             <CardHeader className="pb-3">
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
-                                        <Avatar className="w-12 h-12 border-2 border-primary/20">
-                                            {pet.profilePicture ? (
-                                                <AvatarImage src={pet.profilePicture} alt={pet.name} className="object-cover" />
-                                            ) : (
-                                                <AvatarFallback className="bg-primary/10 text-primary">
-                                                    <Heart className="h-6 w-6" />
-                                                </AvatarFallback>
-                                            )}
-                                        </Avatar>
+                                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20 shrink-0">
+                                            <PetImage pet={pet} alt={pet.name} className="h-full w-full object-cover" />
+                                        </div>
                                         <div>
                                             <CardTitle className="text-lg">{pet.name}</CardTitle>
                                             <CardDescription>{pet.breed || 'Mixed breed'}</CardDescription>
@@ -293,7 +288,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                             </CardHeader>
                             <CardContent className="space-y-2">
                                 <div className="flex flex-wrap gap-2">
-                                    {pet.dateOfBirth && <Badge variant="secondary">{calculatePetAgeForDisplay(pet.dateOfBirth)} old</Badge>}
+                                    {pet.dateOfBirth && <Badge variant="secondary">{formatPetDobWithAge(pet.dateOfBirth)}</Badge>}
                                     {pet.weight && <Badge variant="secondary">{pet.weight}</Badge>}
                                     {pet.activityLevel && <Badge variant="outline">{pet.activityLevel} activity</Badge>}
                                     {pet.isNeutered && <Badge variant="outline">Neutered</Badge>}

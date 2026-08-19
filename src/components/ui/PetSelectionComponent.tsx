@@ -1,7 +1,7 @@
 import { PetCarePlan } from "@/services/aiService";
 import { PetProfile } from "@/services/authService";
 import { staggerContainer, fadeUp, scaleUp } from "@/utils/animations";
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { PetImage } from '@/components/ui/PetImage';
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, PawPrint, Plus, CheckCircle, Sparkles, Wand2, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -14,7 +14,7 @@ import { Input } from "./input";
 import { Textarea } from "./textarea";
 import { useSelector } from "react-redux";
 import { RootState } from "@/module/store/store";
-import { calculatePetAgeForDisplay } from "@/services/UserService";
+import { formatPetDobWithAge } from "@/utils/petAge";
 
 interface PetSelectionProps {
   selectedPetId: string | null;
@@ -174,21 +174,15 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                 </motion.div>
               ) : savedPets.length === 1 ? (
                 <div className="rounded-xl border border-primary/20 bg-background/80 p-4 flex items-center gap-4">
-                  <Avatar className="h-16 w-16 border-2 border-primary/20">
-                    {savedPets[0].profilePicture ? (
-                      <AvatarImage src={savedPets[0].profilePicture} alt={savedPets[0].name} />
-                    ) : (
-                      <AvatarFallback className="bg-primary/10 text-primary">
-                        <PawPrint className="h-7 w-7" />
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
+                  <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-primary/20 shrink-0">
+                    <PetImage pet={savedPets[0]} alt={savedPets[0].name} className="h-full w-full object-cover" />
+                  </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-lg truncate">{savedPets[0].name}</p>
                     <p className="text-sm text-muted-foreground truncate">
                       {savedPets[0].type} · {savedPets[0].breed || 'Mixed'}
                       {savedPets[0].dateOfBirth
-                        ? ` · ${calculatePetAgeForDisplay(savedPets[0].dateOfBirth)}`
+                        ? ` · ${formatPetDobWithAge(savedPets[0].dateOfBirth)}`
                         : ''}
                     </p>
                     <div className="flex flex-wrap gap-2 mt-2">
@@ -222,19 +216,16 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                       >
                         <CardContent className="p-4">
                           <div className="flex items-center space-x-3">
-                            <Avatar className="h-14 w-14 ring-2 ring-primary/20">
-                              <AvatarImage src={pet.profilePicture} alt={pet.name} />
-                              <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
-                                {pet.name.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
+                            <div className="h-14 w-14 rounded-full overflow-hidden ring-2 ring-primary/20 shrink-0">
+                              <PetImage pet={pet} alt={pet.name} className="h-full w-full object-cover" />
+                            </div>
                             <div className="flex-1 min-w-0">
                               <h4 className="font-semibold text-base truncate">{pet.name}</h4>
                               <p className="text-sm text-muted-foreground">{pet.breed}</p>
                               <div className="flex items-center space-x-2 mt-2">
                                 {pet.dateOfBirth && (
                                   <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">
-                                    {calculatePetAgeForDisplay(pet.dateOfBirth)} old
+                                    {formatPetDobWithAge(pet.dateOfBirth)}
                                   </Badge>
                                 )}
                                 {pet.weight && (
@@ -492,7 +483,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                     </div>
                     <p className="text-sm text-primary/80">
                       <strong>{manualPetData.name}</strong> - {manualPetData.breed || 'Mixed breed'} {manualPetData.breed}
-                      {manualPetData.dateOfBirth && `, ${calculatePetAgeForDisplay(manualPetData.dateOfBirth)}`}
+                      {manualPetData.dateOfBirth && `, ${formatPetDobWithAge(manualPetData.dateOfBirth)}`}
                       {manualPetData.weight && `, ${manualPetData.weight}kg`}
                     </p>
                     <br />
@@ -540,12 +531,9 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
               <CardContent className="space-y-6">
                 {/* Pet Profile Summary */}
                 <div className="flex items-center space-x-4 p-6 bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl border border-primary/20">
-                  <Avatar className="h-20 w-20 ring-4 ring-primary/20">
-                    <AvatarImage src={selectedPet.profilePicture} alt={selectedPet.name} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                      {selectedPet.profilePicture ? selectedPet.profilePicture : selectedPet.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="h-20 w-20 rounded-full overflow-hidden ring-4 ring-primary/20 shrink-0">
+                    <PetImage pet={selectedPet} alt={selectedPet.name} className="h-full w-full object-cover" />
+                  </div>
                   <div className="flex-1">
                     <h3 className="text-2xl font-bold text-primary mb-2">{selectedPet.name}</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -558,8 +546,8 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                         <p className="font-semibold text-primary">{selectedPet.breed}</p>
                       </div>
                       <div className="bg-secondary/50 p-2 rounded-lg">
-                        <span className="text-muted-foreground">Age:</span>
-                        <p className="font-semibold text-primary">{selectedPet.dateOfBirth ? calculatePetAgeForDisplay(selectedPet.dateOfBirth) : 'Not set'}</p>
+                        <span className="text-muted-foreground">Date of birth:</span>
+                        <p className="font-semibold text-primary">{selectedPet.dateOfBirth ? formatPetDobWithAge(selectedPet.dateOfBirth) : 'Not set'}</p>
                       </div>
                       <div className="bg-secondary/50 p-2 rounded-lg">
                         <span className="text-muted-foreground">Weight:</span>

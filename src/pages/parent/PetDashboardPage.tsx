@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   Heart,
   Lightbulb,
-  PawPrint,
   Plus,
   Syringe,
   TrendingUp,
@@ -28,7 +27,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { calculatePetAgeForDisplay } from '@/services/UserService';
+import { formatPetDobWithAge } from '@/utils/petAge';
+import { PetImage } from '@/components/ui/PetImage';
 import {
   FeedingLogModel,
   PetDashboardModel,
@@ -147,14 +147,14 @@ export default function PetDashboardPage() {
 
       <Card className="border-0 shadow-sm">
         <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-            <PawPrint className="h-8 w-8 text-primary" />
+          <div className="w-16 h-16 rounded-2xl bg-muted overflow-hidden shrink-0">
+            <PetImage pet={pet} alt={pet?.name ?? 'Pet'} className="w-full h-full object-cover" />
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl font-bold truncate">{pet?.name ?? 'Pet'}</h1>
             <p className="text-sm text-muted-foreground">
               {pet?.type} · {pet?.breed || 'Mixed'}
-              {pet?.dateOfBirth ? ` · ${calculatePetAgeForDisplay(pet.dateOfBirth)}` : ''}
+              {pet?.dateOfBirth ? ` · ${formatPetDobWithAge(pet.dateOfBirth)}` : ''}
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
               <Badge variant="secondary">Active</Badge>

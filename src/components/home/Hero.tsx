@@ -95,7 +95,7 @@ export function Hero() {
                 whileTap={{ scale: 0.95 }}
               >
                 <Link
-                  to={ecommerceOn ? '/products' : '/signup/parent'}
+                  to={ecommerceOn ? '/products' : '/signup'}
                   className={cn(
                     "inline-flex items-center justify-center px-8 py-4 text-base font-semibold rounded-full",
                     "bg-primary text-primary-foreground hover:bg-primary/90",

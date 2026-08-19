@@ -1,36 +1,35 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   ArrowLeft,
   Loader2,
   Mail,
   Phone,
   Link2,
-  EyeOff,
 } from 'lucide-react';
+import { PrescriptionsTab } from '@/components/chart/PrescriptionsTab';
+import { parsePatientDashboardTab } from '@/components/chart/chartTabs';
+import { prescriptionsFromVisits } from '@/components/chart/prescriptionsFromVisits';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import {
   ClinicPetMedicalProfileModel,
   ClinicVisitModel,
   fetchClinicPetMedicalProfile,
   fetchClinicPetVisits,
-  hideClinicPet,
 } from '@/services/clinicService';
 import { PetPhoto } from '@/components/clinic/PetPhoto';
+import { formatPetDobWithAge } from '@/utils/petAge';
 import { toast } from 'sonner';
+import { saveDoctorVisitChart } from '@/services/visitService';
+import { parseApiErrorMessage } from '@/utils/validation';
+import { canEditVisitChart } from '@/utils/visitChartLock';
+
+const WRITABLE_VISIT = ['IN_PROGRESS', 'CHECKING_OUT', 'CHECKED_IN', 'WAITLIST', 'COMPLETED'];
 
 function EmptyTab({ label }: { label: string }) {
   return (
@@ -42,14 +41,19 @@ function EmptyTab({ label }: { label: string }) {
 
 export default function ClinicPatientDashboard() {
   const { petUuid = '' } = useParams();
-  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const isDoctorPortal = pathname.startsWith('/doctor');
+  const patientsPath = isDoctorPortal ? '/doctor/patients' : '/clinic/patients';
+  const patientsLabel = isDoctorPortal ? 'Patients' : 'Clients & Pets';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = parsePatientDashboardTab(searchParams.get('tab'));
   const { clinicUuid, loading: clinicLoading, error: clinicError } = useActiveClinic();
   const [profile, setProfile] = useState<ClinicPetMedicalProfileModel | null>(null);
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [hideOpen, setHideOpen] = useState(false);
-  const [hiding, setHiding] = useState(false);
+  const [rxDraft, setRxDraft] = useState('');
+  const [rxSaving, setRxSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +102,55 @@ export default function ClinicPatientDashboard() {
     };
   }, [clinicUuid, petUuid, clinicLoading]);
 
+  const prescriptionHistory = useMemo(() => prescriptionsFromVisits(visits), [visits]);
+
+  const onTabChange = (value: string) => {
+    const next = parsePatientDashboardTab(value);
+    const params = new URLSearchParams(searchParams);
+    if (next === 'timeline') params.delete('tab');
+    else params.set('tab', next);
+    setSearchParams(params, { replace: true });
+  };
+
+  const savePrescription = async () => {
+    const text = rxDraft.trim();
+    if (!text) {
+      toast.error('Write a prescription first');
+      return;
+    }
+    if (!clinicUuid) return;
+    const openVisit = [...visits]
+      .filter((v) => canEditVisitChart(v))
+      .sort((a, b) => WRITABLE_VISIT.indexOf(a.status) - WRITABLE_VISIT.indexOf(b.status))[0];
+    if (!openVisit) {
+      toast.error('Attend a visit to add a prescription');
+      return;
+    }
+    if (!canEditVisitChart(openVisit)) {
+      toast.error('Prescription can no longer be edited. More than one hour has passed since checkout.');
+      return;
+    }
+    setRxSaving(true);
+    try {
+      await saveDoctorVisitChart(openVisit.uuid, { plan: text });
+      const visitList = await fetchClinicPetVisits(clinicUuid, petUuid).catch(() => [] as ClinicVisitModel[]);
+      setVisits(visitList);
+      setRxDraft('');
+      toast.success('Prescription saved');
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: unknown }; message?: string };
+      const raw =
+        typeof ax.response?.data === 'string'
+          ? ax.response.data
+          : ax.response?.data
+            ? JSON.stringify(ax.response.data)
+            : ax.message || '';
+      toast.error(parseApiErrorMessage(raw, 'Failed to save prescription'));
+    } finally {
+      setRxSaving(false);
+    }
+  };
+
   if (clinicLoading || loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-24 text-muted-foreground">
@@ -110,9 +163,9 @@ export default function ClinicPatientDashboard() {
     return (
       <div className="p-6 max-w-3xl mx-auto space-y-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/clinic/patients">
+          <Link to={patientsPath}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to clients & pets
+            Back to {patientsLabel.toLowerCase()}
           </Link>
         </Button>
         <p className="text-muted-foreground text-sm">
@@ -123,45 +176,24 @@ export default function ClinicPatientDashboard() {
   }
 
   const { pet, owner } = profile;
-
-  const confirmHide = async () => {
-    if (!clinicUuid || !petUuid) return;
-    setHiding(true);
-    try {
-      await hideClinicPet(clinicUuid, petUuid);
-      toast.success(`${pet.name} hidden from clinic lists`, {
-        description: 'Visits and medical records are kept.',
-      });
-      setHideOpen(false);
-      navigate('/clinic/patients?tab=pets');
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Could not hide pet';
-      toast.error(message);
-    } finally {
-      setHiding(false);
-    }
-  };
+  const openVisitForRx = [...visits]
+    .filter((v) => canEditVisitChart(v))
+    .sort((a, b) => WRITABLE_VISIT.indexOf(a.status) - WRITABLE_VISIT.indexOf(b.status))[0];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center gap-3 flex-wrap">
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/clinic/patients">
+          <Link to={patientsPath}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Clients & Pets
+            {patientsLabel}
           </Link>
         </Button>
-        {owner?.ownerUuid && (
+        {owner?.ownerUuid && !isDoctorPortal && (
           <Button variant="outline" size="sm" asChild>
             <Link to={`/clinic/owners/${owner.ownerUuid}`}>View client</Link>
           </Button>
         )}
-        <Button variant="outline" size="sm" onClick={() => setHideOpen(true)}>
-          <EyeOff className="h-4 w-4 mr-2" />
-          Hide from lists
-        </Button>
       </div>
 
       <Card className="border-0 shadow-sm overflow-hidden">
@@ -184,17 +216,13 @@ export default function ClinicPatientDashboard() {
 
             <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
               <div>
-                <dt className="text-muted-foreground text-xs mb-1">Species / breed</dt>
-                <dd className="font-medium">{[pet.species, pet.breed].filter(Boolean).join(' · ') || '—'}</dd>
-              </div>
-              <div>
                 <dt className="text-muted-foreground text-xs mb-1">Gender</dt>
                 <dd className="font-medium">{pet.gender || '—'}</dd>
               </div>
               <div>
                 <dt className="text-muted-foreground text-xs mb-1">Date of birth</dt>
                 <dd className="font-medium">
-                  {pet.dateOfBirth ? format(parseISO(pet.dateOfBirth), 'MMM d, yyyy') : '—'}
+                  {pet.dateOfBirth ? formatPetDobWithAge(pet.dateOfBirth) : '—'}
                 </dd>
               </div>
               <div>
@@ -249,12 +277,12 @@ export default function ClinicPatientDashboard() {
         </div>
       </Card>
 
-      <Tabs defaultValue="timeline">
+      <Tabs value={tab} onValueChange={onTabChange}>
         <TabsList className="w-full overflow-x-auto flex flex-nowrap justify-start h-auto gap-1">
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="appointments">Visits</TabsTrigger>
-          <TabsTrigger value="vaccinations">Vaccinations</TabsTrigger>
           <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
+          <TabsTrigger value="vaccinations">Vaccinations</TabsTrigger>
           <TabsTrigger value="labs">Lab Reports</TabsTrigger>
           <TabsTrigger value="surgeries">Surgeries</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
@@ -357,9 +385,39 @@ export default function ClinicPatientDashboard() {
           )}
         </TabsContent>
 
-        <TabsContent value="prescriptions" className="mt-4">
-          <EmptyTab label="Prescriptions" />
-        </TabsContent>
+        {tab === 'prescriptions' ? (
+          <TabsContent value="prescriptions" className="mt-4">
+            <PrescriptionsTab
+              editable={!!openVisitForRx && canEditVisitChart(openVisitForRx)}
+              plan={rxDraft}
+              onPlanChange={setRxDraft}
+              onSavePrescription={savePrescription}
+              saving={rxSaving}
+              pet={{
+                name: pet.name,
+                sex: pet.gender,
+                dateOfBirth: pet.dateOfBirth,
+                species: pet.species,
+                breed: pet.breed,
+                weight: pet.weight,
+                ownerName: owner?.name || pet.ownerName,
+              }}
+              clinicUuid={clinicUuid}
+              petUuid={pet.petUuid}
+              history={prescriptionHistory}
+              thisVisit={
+                openVisitForRx
+                  ? {
+                      uuid: openVisitForRx.uuid,
+                      doctorName: openVisitForRx.doctorName,
+                      date: openVisitForRx.startedAt || openVisitForRx.createdAt,
+                    }
+                  : null
+              }
+            />
+          </TabsContent>
+        ) : null}
+
         <TabsContent value="labs" className="mt-4">
           <EmptyTab label="Lab reports" />
         </TabsContent>
@@ -389,27 +447,6 @@ export default function ClinicPatientDashboard() {
           )}
         </TabsContent>
       </Tabs>
-
-      <Dialog open={hideOpen} onOpenChange={(open) => !hiding && setHideOpen(open)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Hide {pet.name} from clinic lists?</DialogTitle>
-            <DialogDescription>
-              This pet will leave Clients & Pets. Visits, reports, and medical history stay in the
-              database and remain available from visit history.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setHideOpen(false)} disabled={hiding}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={() => void confirmHide()} disabled={hiding}>
-              {hiding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Yes, hide
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

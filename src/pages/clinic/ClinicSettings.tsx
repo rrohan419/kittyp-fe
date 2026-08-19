@@ -17,6 +17,7 @@ import { WhatsAppSettingsForm } from '@/components/whatsapp/WhatsAppSettingsForm
 import { Link } from 'react-router-dom';
 import { RootState } from '@/module/store/store';
 import { ROLES, hasAnyRole, hasRole } from '@/utils/roles';
+import { CopyableId } from '@/components/ui/CopyableId';
 
 export default function ClinicSettings() {
   const { user } = useSelector((state: RootState) => state.authReducer);
@@ -143,6 +144,18 @@ export default function ClinicSettings() {
         <p className="text-muted-foreground mt-1 text-sm">
           {clinic?.name ?? 'Manage your practice profile'} — switch branches from the top bar
         </p>
+        <div className="mt-3 space-y-2">
+          <CopyableId
+            label="Account ID"
+            value={user?.uuid}
+            hint="Sign in with this ID or your email."
+          />
+          <CopyableId
+            label="Clinic ID"
+            value={clinic?.uuid}
+            hint="Clinic owner can sign in with this ID or Account ID."
+          />
+        </div>
       </div>
 
       {isShutdown && (

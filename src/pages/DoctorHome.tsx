@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +20,6 @@ import {
   UserPlus,
   Loader2,
   Stethoscope,
-  PawPrint,
   ChevronLeft,
   ChevronRight,
   LayoutGrid,
@@ -31,7 +29,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   addDays,
   addMinutes,
-  differenceInMinutes,
   eachDayOfInterval,
   endOfWeek,
   format,
@@ -39,8 +36,6 @@ import {
   isValid,
   parseISO,
   setHours,
-  setMinutes,
-  setSeconds,
   startOfDay,
   startOfWeek,
 } from 'date-fns';
@@ -49,6 +44,7 @@ import {
   fetchMyDoctorProfile,
   statusLabel,
 } from '@/services/doctorVerificationService';
+import { formatPetDobWithAge } from '@/utils/petAge';
 import {
   DoctorInviteModel,
   HealthEventModel,
@@ -63,6 +59,7 @@ import {
   ClinicBookingModel,
   ClinicVisitModel,
   completeDoctorVisit,
+  fetchMyAttendedPatients,
   fetchMyDoctorBookings,
   fetchMyDoctorVisits,
   saveDoctorVisitChart,
@@ -74,7 +71,18 @@ import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { toast } from 'sonner';
 import { notifyInviteAddressed } from '@/components/portal/PortalNotifications';
 import { parseApiErrorMessage } from '@/utils/validation';
+import { canEditVisitChart } from '@/utils/visitChartLock';
 import { cn } from '@/lib/utils';
+import { petNameWithType } from '@/utils/petType';
+import { calendarBlockClass, isUrgentVisit } from '@/utils/visitUrgency';
+import { DashboardAppointmentRow } from '@/components/schedule/DashboardAppointmentRow';
+import {
+  HOUR_PX,
+  eventLayout,
+  visitEventTime,
+  visibleHourRange,
+  withLanes,
+} from '@/components/schedule/weekCalendarUtils';
 
 type CalEvent = {
   id: string;
@@ -97,50 +105,16 @@ type EventDetail = {
   healthEvents: HealthEventModel[];
 };
 
-const DAY_START_HOUR = 8;
-const DAY_END_HOUR = 20;
-const HOUR_PX = 48;
-
-function visitEventTime(v: ClinicVisitModel): { start: Date; end: Date } {
-  const raw =
-    v.status === 'IN_PROGRESS' || v.status === 'CHECKING_OUT'
-      ? v.startedAt || v.checkedInAt || v.createdAt
-      : v.status === 'COMPLETED'
-        ? v.completedAt || v.startedAt || v.createdAt
-        : v.checkedInAt || v.createdAt;
-  const start = raw ? parseISO(raw) : new Date();
-  return { start, end: addMinutes(start, 30) };
-}
-
-function statusTone(status: string) {
-  const s = status.toUpperCase();
-  if (s === 'IN_PROGRESS' || s === 'CONFIRMED') return 'bg-sky-500/90 text-white border-sky-600';
-  if (s === 'CHECKED_IN' || s === 'WAITLIST') return 'bg-amber-500/90 text-white border-amber-600';
-  if (s === 'CHECKING_OUT' || s === 'COMPLETED' || s === 'DONE') {
-    return 'bg-emerald-600/90 text-white border-emerald-700';
-  }
-  if (s === 'CANCELLED' || s === 'NO_SHOW') return 'bg-muted text-muted-foreground border-border';
-  return 'bg-primary/85 text-primary-foreground border-primary';
-}
-
-function withLanes(events: CalEvent[]): Array<CalEvent & { lane: number; laneCount: number }> {
-  const sorted = [...events].sort(
-    (a, b) => a.start.getTime() - b.start.getTime() || a.end.getTime() - b.end.getTime()
-  );
-  const placed: { ev: CalEvent; lane: number }[] = [];
-  for (const ev of sorted) {
-    const used = new Set(
-      placed.filter((p) => p.ev.start < ev.end && p.ev.end > ev.start).map((p) => p.lane)
-    );
-    let lane = 0;
-    while (used.has(lane)) lane += 1;
-    placed.push({ ev, lane });
-  }
-  return placed.map(({ ev, lane }) => {
-    const overlapping = placed.filter((p) => p.ev.start < ev.end && p.ev.end > ev.start);
-    const laneCount = Math.max(1, Math.max(...overlapping.map((p) => p.lane)) + 1);
-    return { ...ev, lane, laneCount };
-  });
+function chartFormFromVisit(visit: ClinicVisitModel, petWeight = '') {
+  return {
+    examinationNotes: visit.chart?.examinationNotes || '',
+    assessment: visit.chart?.assessment || '',
+    plan: visit.chart?.plan || '',
+    nextVisitNotes: visit.chart?.nextVisitNotes || '',
+    internalNotes: visit.chart?.internalNotes || '',
+    weightKg: String((visit.chart?.vitals as { weightKg?: number })?.weightKg ?? petWeight),
+    temperatureC: String((visit.chart?.vitals as { temperatureC?: number })?.temperatureC ?? ''),
+  };
 }
 
 export default function DoctorHome() {
@@ -154,6 +128,7 @@ export default function DoctorHome() {
   const [rejectingUuid, setRejectingUuid] = useState<string | null>(null);
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
+  const [patientCount, setPatientCount] = useState<number | null>(null);
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [weekAnchor, setWeekAnchor] = useState(() => startOfDay(new Date()));
   const [viewMode, setViewMode] = useState<'tiles' | 'list'>('tiles');
@@ -187,10 +162,6 @@ export default function DoctorHome() {
     [weekStart, weekEnd]
   );
   const today = useMemo(() => startOfDay(new Date()), []);
-  const hours = useMemo(
-    () => Array.from({ length: DAY_END_HOUR - DAY_START_HOUR }, (_, i) => DAY_START_HOUR + i),
-    []
-  );
 
   const loadSchedule = useCallback(async () => {
     setScheduleLoading(true);
@@ -199,15 +170,18 @@ export default function DoctorHome() {
       const to = format(weekEnd, 'yyyy-MM-dd');
       // Scope calendar to the active practice so clinic visits never appear under Personal.
       const params = { from, to, clinicUuid: clinicUuid || undefined };
-      const [v, b] = await Promise.all([
+      const [v, b, attended] = await Promise.all([
         fetchMyDoctorVisits(params),
         fetchMyDoctorBookings(params).catch(() => [] as ClinicBookingModel[]),
+        fetchMyAttendedPatients(clinicUuid || undefined).catch(() => []),
       ]);
       setVisits(v);
       setBookings(b);
+      setPatientCount(attended.length);
     } catch {
       setVisits([]);
       setBookings([]);
+      setPatientCount(null);
       toast.error('Could not load schedule');
     } finally {
       setScheduleLoading(false);
@@ -287,6 +261,19 @@ export default function DoctorHome() {
     [bookings, today, clinicUuid, isPersonalPractice]
   );
   const activeAppointments = attending.length + queue.length;
+  const urgentToday = useMemo(
+    () =>
+      practiceTodayVisits.filter(
+        (v) =>
+          isUrgentVisit(v.urgency) &&
+          v.status !== 'COMPLETED' &&
+          v.status !== 'CANCELLED' &&
+          v.status !== 'NO_SHOW' &&
+          v.status !== 'IN_PROGRESS' &&
+          v.status !== 'CHECKING_OUT'
+      ),
+    [practiceTodayVisits]
+  );
 
   const clinicLabelByUuid = useMemo(() => {
     const map = new Map<string, string>();
@@ -337,6 +324,21 @@ export default function DoctorHome() {
     }
     return events.sort((a, b) => a.start.getTime() - b.start.getTime());
   }, [visits, bookings, clinicLabelByUuid]);
+
+  const hourRange = useMemo(() => visibleHourRange(weekEvents), [weekEvents]);
+  const hours = useMemo(
+    () => Array.from({ length: hourRange.endHour - hourRange.startHour }, (_, i) => hourRange.startHour + i),
+    [hourRange]
+  );
+
+  const listEvents = useMemo(() => {
+    return [...weekEvents].sort((a, b) => {
+      const au = isUrgentVisit(a.visit?.urgency) ? 0 : 1;
+      const bu = isUrgentVisit(b.visit?.urgency) ? 0 : 1;
+      if (au !== bu) return au - bu;
+      return a.start.getTime() - b.start.getTime();
+    });
+  }, [weekEvents]);
 
   const todayEvents = useMemo(
     () => weekEvents.filter((e) => isSameDay(e.start, today)),
@@ -397,15 +399,7 @@ export default function DoctorHome() {
         const weightFromPet = eventDetail.pet?.weight ? String(eventDetail.pet.weight) : '';
         setEventDetail(null);
         setChartVisit(visit);
-        setForm({
-          examinationNotes: visit.chart?.examinationNotes || '',
-          assessment: visit.chart?.assessment || '',
-          plan: visit.chart?.plan || '',
-          nextVisitNotes: visit.chart?.nextVisitNotes || '',
-          internalNotes: visit.chart?.internalNotes || '',
-          weightKg: String((visit.chart?.vitals as { weightKg?: number })?.weightKg ?? weightFromPet),
-          temperatureC: String((visit.chart?.vitals as { temperatureC?: number })?.temperatureC ?? ''),
-        });
+        setForm(chartFormFromVisit(visit, weightFromPet));
         return;
       }
       if (!eventDetail.visit) return;
@@ -417,15 +411,7 @@ export default function DoctorHome() {
       const weightFromPet = eventDetail.pet?.weight ? String(eventDetail.pet.weight) : '';
       setEventDetail(null);
       setChartVisit(current);
-      setForm({
-        examinationNotes: current.chart?.examinationNotes || '',
-        assessment: current.chart?.assessment || '',
-        plan: current.chart?.plan || '',
-        nextVisitNotes: current.chart?.nextVisitNotes || '',
-        internalNotes: current.chart?.internalNotes || '',
-        weightKg: String((current.chart?.vitals as { weightKg?: number })?.weightKg ?? weightFromPet),
-        temperatureC: String((current.chart?.vitals as { temperatureC?: number })?.temperatureC ?? ''),
-      });
+      setForm(chartFormFromVisit(current, weightFromPet));
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { message?: string } }; message?: string };
       toast.error(ax.response?.data?.message || ax.message || 'Could not start treatment');
@@ -436,6 +422,10 @@ export default function DoctorHome() {
 
   const saveChart = async (andComplete: boolean) => {
     if (!chartVisit) return;
+    if (!canEditVisitChart(chartVisit)) {
+      toast.error('Prescription can no longer be edited. More than one hour has passed since checkout.');
+      return;
+    }
     if (andComplete && !form.assessment.trim()) {
       toast.error('Add an assessment / diagnosis before completing');
       return;
@@ -541,36 +531,29 @@ export default function DoctorHome() {
   const tileClass = 'border-0 shadow-sm hover:shadow-md transition-shadow h-full';
 
   const eventBlock = (ev: CalEvent & { lane: number; laneCount: number }, day: Date) => {
-    const dayStart = setSeconds(setMinutes(setHours(day, DAY_START_HOUR), 0), 0);
-    const dayEnd = setSeconds(setMinutes(setHours(day, DAY_END_HOUR), 0), 0);
-    const clampedStart = ev.start < dayStart ? dayStart : ev.start;
-    const clampedEnd =
-      ev.end > dayEnd ? dayEnd : ev.end > clampedStart ? ev.end : addMinutes(clampedStart, 30);
-    const topMins = differenceInMinutes(clampedStart, dayStart);
-    const durMins = Math.max(30, differenceInMinutes(clampedEnd, clampedStart));
-    if (topMins >= (DAY_END_HOUR - DAY_START_HOUR) * 60 || topMins + durMins <= 0) return null;
-    const top = (Math.max(0, topMins) / 60) * HOUR_PX;
-    const height = Math.max(28, (durMins / 60) * HOUR_PX - 2);
-    const widthPct = 100 / ev.laneCount;
-    const leftPct = widthPct * ev.lane;
+    const layout = eventLayout(ev, day, hourRange);
+    if (!layout) return null;
+    const urgent = isUrgentVisit(ev.visit?.urgency);
     return (
       <button
         key={ev.id}
         type="button"
         onClick={() => void openEvent(ev)}
         className={cn(
-          'absolute rounded border px-1 py-0.5 text-[10px] leading-tight shadow-sm overflow-hidden z-10 text-left hover:brightness-110',
-          statusTone(ev.status)
+          'absolute box-border rounded border px-1 py-0.5 text-[10px] leading-tight shadow-sm overflow-hidden text-left hover:brightness-110',
+          calendarBlockClass(urgent)
         )}
         style={{
-          top: top + 1,
-          height,
-          left: `calc(${leftPct}% + 2px)`,
-          width: `calc(${widthPct}% - 4px)`,
+          top: layout.top,
+          height: layout.height,
+          left: `calc(${layout.leftPct}% + 2px)`,
+          width: `calc(${layout.widthPct}% - 4px)`,
+          zIndex: 10 + ev.lane,
         }}
-        title={`${ev.title} · ${format(ev.start, 'p')}`}
+        title={`${urgent ? 'Urgent · ' : 'Routine · '}${ev.title} · ${format(ev.start, 'p')}`}
+        aria-label={urgent ? `Urgent visit: ${ev.title}` : `Routine visit: ${ev.title}`}
       >
-        <p className="font-semibold truncate">{ev.title}</p>
+        <p className="font-semibold truncate">{urgent ? `Urgent · ${ev.title}` : ev.title}</p>
         <p className="opacity-90 truncate">{format(ev.start, 'h:mm a')}</p>
       </button>
     );
@@ -656,35 +639,55 @@ export default function DoctorHome() {
         </Card>
       )}
 
-      {attending.length > 0 && (
-        <Card className="border-sky-200 bg-sky-50/40 dark:bg-sky-950/20">
+      {urgentToday.length > 0 && (
+        <Card className="border-rose-200 bg-rose-50/40 dark:bg-rose-950/20 dark:border-rose-800">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Currently with you</CardTitle>
+            <CardTitle className="text-base text-rose-800 dark:text-rose-200">
+              Needs attention · {urgentToday.length} urgent
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {attending.map((v) => (
-              <button
-                key={v.uuid}
-                type="button"
-                className="w-full text-left flex items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2 hover:bg-muted/40"
-                onClick={() => void openEvent({ id: v.uuid, kind: 'visit', title: v.petName, subtitle: '', start: new Date(), end: new Date(), status: v.status, visit: v })}
-              >
-                <div className="min-w-0">
-                  <p className="font-semibold truncate flex items-center gap-2">
-                    <PawPrint className="h-4 w-4 shrink-0" />
-                    {v.petName}
-                  </p>
-                  <p className="text-sm text-muted-foreground truncate">{v.ownerName || 'Owner'}</p>
-                </div>
-                <Badge className="shrink-0 bg-sky-600">In progress</Badge>
-              </button>
-            ))}
+            {urgentToday.map((v) => {
+              const { start } = visitEventTime(v);
+              return (
+                <DashboardAppointmentRow
+                  key={v.uuid}
+                  time={format(start, 'h:mm a')}
+                  title={petNameWithType(v.petName, v.species)}
+                  subtitle={v.ownerName || 'Owner'}
+                  urgent
+                  status={v.status}
+                  onClick={() =>
+                    void openEvent({
+                      id: v.uuid,
+                      kind: 'visit',
+                      title: v.petName,
+                      subtitle: '',
+                      start,
+                      end: start,
+                      status: v.status,
+                      visit: v,
+                    })
+                  }
+                />
+              );
+            })}
           </CardContent>
         </Card>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Link to="/doctor/appointments" className="block rounded-xl">
+          <Card className={cn(tileClass, 'bg-gradient-to-br from-rose-500/10 to-rose-500/5')}>
+            <CardContent className="p-5">
+              <p className="text-xs font-medium text-rose-700 dark:text-rose-300 uppercase tracking-wide">Urgent today</p>
+              <p className="text-3xl font-bold mt-2 text-rose-700 dark:text-rose-300">
+                {scheduleLoading ? '—' : urgentToday.length}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">Needs attention first</p>
+            </CardContent>
+          </Card>
+        </Link>
           <Card className={cn(tileClass, 'bg-gradient-to-br from-primary/5 to-primary/10')}>
             <CardContent className="p-5">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active today</p>
@@ -697,12 +700,11 @@ export default function DoctorHome() {
               </p>
             </CardContent>
           </Card>
-        </Link>
         <Card className={cn(tileClass, 'bg-gradient-to-br from-sky-500/5 to-sky-500/10')}>
           <CardContent className="p-5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Scheduled today</p>
             <p className="text-3xl font-bold mt-2">{scheduleLoading ? '—' : todayBookings.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">Also listed on waitlist at the clinic</p>
+            <p className="text-xs text-muted-foreground mt-1">Booked slots today</p>
           </CardContent>
         </Card>
         <Link to="/doctor/appointments" className="block rounded-xl">
@@ -710,7 +712,12 @@ export default function DoctorHome() {
             <CardContent className="p-5">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Treated today</p>
               <p className="text-3xl font-bold mt-2">{scheduleLoading ? '—' : treatedToday.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">{completedToday.length} completed</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {completedToday.length} completed
+                {treatedToday.length - completedToday.length
+                  ? ` · ${treatedToday.length - completedToday.length} checking out`
+                  : ''}
+              </p>
             </CardContent>
           </Card>
         </Link>
@@ -720,7 +727,7 @@ export default function DoctorHome() {
               <div className="flex justify-between">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Patients</p>
-                  <p className="text-3xl font-bold mt-2">{scheduleLoading ? '—' : practiceTodayVisits.length}</p>
+                  <p className="text-3xl font-bold mt-2">{scheduleLoading ? '—' : patientCount ?? 0}</p>
                 </div>
                 <Users className="h-5 w-5 text-green-600 mt-1" />
               </div>
@@ -745,6 +752,16 @@ export default function DoctorHome() {
                   : 'Active practice'}{' '}
               · {format(weekStart, 'MMM d')} – {format(weekEnd, 'MMM d')}
             </p>
+            <div className="flex items-center gap-3 mt-1.5">
+              <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
+                <span className={cn('h-2.5 w-2.5 rounded-sm shrink-0 border', calendarBlockClass(false))} />
+                Routine
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
+                <span className={cn('h-2.5 w-2.5 rounded-sm shrink-0 border', calendarBlockClass(true))} />
+                Urgent
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-1">
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setWeekAnchor((d) => addDays(d, -7))}>
@@ -768,29 +785,16 @@ export default function DoctorHome() {
               {weekEvents.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-10">No appointments this week.</p>
               ) : (
-                weekEvents.map((ev) => (
-                  <button
+                listEvents.map((ev) => (
+                  <DashboardAppointmentRow
                     key={ev.id}
-                    type="button"
+                    time={format(ev.start, 'h:mm a')}
+                    title={ev.title}
+                    subtitle={`${format(ev.start, 'EEE MMM d')} · ${ev.subtitle}`}
+                    urgent={isUrgentVisit(ev.visit?.urgency)}
+                    status={ev.status}
                     onClick={() => void openEvent(ev)}
-                    className="w-full text-left flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 hover:bg-muted/40"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {ev.title}
-                        <span className="text-muted-foreground font-normal"> · {ev.subtitle}</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(ev.start, 'EEE MMM d · p')} · {ev.kind}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={cn('shrink-0 text-[10px] border', statusTone(ev.status))}
-                    >
-                      {ev.status}
-                    </Badge>
-                  </button>
+                  />
                 ))
               )}
             </div>
@@ -847,7 +851,7 @@ export default function DoctorHome() {
                           <div
                             key={h}
                             className="absolute left-0 right-0 border-b border-border/50"
-                            style={{ top: (h - DAY_START_HOUR) * HOUR_PX, height: HOUR_PX }}
+                            style={{ top: (h - hourRange.startHour) * HOUR_PX, height: HOUR_PX }}
                           />
                         ))}
                         {dayEvs.map((ev) => eventBlock(ev, d))}
@@ -866,20 +870,17 @@ export default function DoctorHome() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Today at a glance</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
+          <CardContent className="space-y-2">
             {todayEvents.map((ev) => (
-              <button
+              <DashboardAppointmentRow
                 key={ev.id}
-                type="button"
+                time={format(ev.start, 'h:mm a')}
+                title={ev.title}
+                subtitle={ev.subtitle}
+                urgent={isUrgentVisit(ev.visit?.urgency)}
+                status={ev.status}
                 onClick={() => void openEvent(ev)}
-                className={cn(
-                  'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:opacity-90',
-                  statusTone(ev.status)
-                )}
-              >
-                <span className="font-medium">{ev.title}</span>
-                <span className="text-xs opacity-90">{format(ev.start, 'h:mm a')}</span>
-              </button>
+              />
             ))}
           </CardContent>
         </Card>
@@ -964,9 +965,12 @@ export default function DoctorHome() {
                 value={form.plan}
                 onChange={(e) => setForm((s) => ({ ...s, plan: e.target.value }))}
                 placeholder="Medications, home care, and follow-up — then finish to create the invoice"
+                disabled={!canEditVisitChart(chartVisit)}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Last clinical step before billing. Finish treatment opens the invoice for this visit.
+                {chartVisit?.status === 'CHECKING_OUT' || chartVisit?.status === 'COMPLETED'
+                  ? 'Treatment finished. Prescription is editable for one hour after checkout.'
+                  : 'Last clinical step before billing. Finish treatment opens the invoice for this visit.'}
               </p>
             </div>
             <div>
@@ -978,13 +982,19 @@ export default function DoctorHome() {
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => void saveChart(false)} disabled={busy}>
+            <Button
+              variant="outline"
+              onClick={() => void saveChart(false)}
+              disabled={busy || !canEditVisitChart(chartVisit)}
+            >
               Save
             </Button>
-            <Button onClick={() => void saveChart(true)} disabled={busy}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Finish treatment
-            </Button>
+            {chartVisit?.status !== 'CHECKING_OUT' ? (
+              <Button onClick={() => void saveChart(true)} disabled={busy}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Finish treatment
+              </Button>
+            ) : null}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1043,7 +1053,7 @@ export default function DoctorHome() {
                 {eventDetail.pet?.dateOfBirth ? (
                   <p>
                     <span className="text-muted-foreground">Date of birth:</span>{' '}
-                    {eventDetail.pet.dateOfBirth}
+                    {formatPetDobWithAge(eventDetail.pet.dateOfBirth)}
                   </p>
                 ) : null}
                 {eventDetail.pet?.weight ? (
@@ -1094,33 +1104,18 @@ export default function DoctorHome() {
               Close
             </Button>
             {eventDetail?.kind === 'visit' &&
-            (eventDetail.visit?.status === 'IN_PROGRESS' ||
-              (eventDetail.visit?.status === 'CHECKING_OUT' &&
-                (() => {
-                  const raw = eventDetail.visit?.checkingOutAt;
-                  if (!raw) return false;
-                  const at = parseISO(raw);
-                  return isValid(at) && Date.now() - at.getTime() <= 30 * 60 * 1000;
-                })())) ? (
+            (eventDetail.visit?.status === 'IN_PROGRESS' || canEditVisitChart(eventDetail.visit)) ? (
               <Button
                 onClick={() => {
                   const v = eventDetail.visit!;
                   const weightFromPet = eventDetail.pet?.weight ? String(eventDetail.pet.weight) : '';
                   setEventDetail(null);
                   setChartVisit(v);
-                  setForm({
-                    examinationNotes: v.chart?.examinationNotes || '',
-                    assessment: v.chart?.assessment || '',
-                    plan: v.chart?.plan || '',
-                    nextVisitNotes: v.chart?.nextVisitNotes || '',
-                    internalNotes: v.chart?.internalNotes || '',
-                    weightKg: String((v.chart?.vitals as { weightKg?: number })?.weightKg ?? weightFromPet),
-                    temperatureC: String((v.chart?.vitals as { temperatureC?: number })?.temperatureC ?? ''),
-                  });
+                  setForm(chartFormFromVisit(v, weightFromPet));
                 }}
                 disabled={busy}
               >
-                Continue chart
+                {eventDetail.visit?.status === 'CHECKING_OUT' ? 'Amend notes' : 'Open visit notes'}
               </Button>
             ) : eventDetail?.kind === 'visit' && eventDetail.visit?.status === 'COMPLETED' ? null : (
               <Button onClick={() => void startTreatment()} disabled={busy}>

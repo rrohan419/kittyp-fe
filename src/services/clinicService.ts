@@ -220,6 +220,7 @@ export interface ClinicBookingModel {
   uuid: string;
   petUuid: string;
   petName: string;
+  species?: string;
   ownerName: string;
   doctorUuid?: string;
   doctorName?: string | null;
@@ -575,14 +576,6 @@ export async function fetchClinicPets(clinicUuid: string, q?: string): Promise<C
   return res.data.data ?? [];
 }
 
-export async function hideClinicPet(clinicUuid: string, petUuid: string): Promise<void> {
-  await axiosInstance.post(`/clinic/${clinicUuid}/pets/${petUuid}/hide`);
-}
-
-export async function hideClinicOwner(clinicUuid: string, ownerUuid: string): Promise<void> {
-  await axiosInstance.post(`/clinic/${clinicUuid}/owners/${ownerUuid}/hide`);
-}
-
 export async function fetchClinicPetMedicalProfile(
   clinicUuid: string,
   petUuid: string
@@ -627,6 +620,7 @@ export interface ClinicVisitModel {
   clinicName?: string;
   petUuid: string;
   petName: string;
+  species?: string;
   ownerName?: string;
   ownerEmail?: string;
   ownerPhone?: string;

@@ -1,8 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, ShoppingCart, Package, FileText, Stethoscope, Building2, ArrowRight } from 'lucide-react';
+import { Users, ShoppingCart, Package, FileText, Stethoscope, Building2, ArrowRight, Activity } from 'lucide-react';
 import { isEcommerceEnabled } from '@/config/features';
+import { useAppSelector } from '@/module/store/hooks';
+import { CopyableId } from '@/components/ui/CopyableId';
 
 const stats = [
   { label: 'Total Users', value: '2,420', icon: Users, color: 'text-blue-600 bg-blue-500/10', route: '/admin/users' },
@@ -15,6 +17,7 @@ const stats = [
 
 export default function AdminHome() {
   const navigate = useNavigate();
+  const user = useAppSelector((s) => s.authReducer.user);
   const visibleStats = stats.filter((s) => !s.ecommerce || isEcommerceEnabled());
 
   return (
@@ -22,6 +25,13 @@ export default function AdminHome() {
       <div>
         <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Admin Dashboard</h1>
         <p className="text-muted-foreground mt-1 text-sm">Platform overview and quick actions</p>
+        <div className="mt-3">
+          <CopyableId
+            label="Account ID"
+            value={user?.uuid}
+            hint="Sign in with this ID or your email."
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
@@ -39,7 +49,7 @@ export default function AdminHome() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="border-0 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base font-semibold">Doctor Approvals</CardTitle>
@@ -57,6 +67,21 @@ export default function AdminHome() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">12 active clinics on the platform.</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardTitle className="text-base font-semibold">System health</CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/admin/health')} className="text-primary">View <ArrowRight className="h-3.5 w-3.5 ml-1" /></Button>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center">
+                <Activity className="h-4 w-4" />
+              </div>
+              <p className="text-sm text-muted-foreground">Donuts, trend, and every Actuator component.</p>
+            </div>
           </CardContent>
         </Card>
       </div>

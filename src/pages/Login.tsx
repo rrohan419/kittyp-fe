@@ -24,7 +24,7 @@ import { initializeUserAndCart } from '@/module/slice/CartSlice';
 import { AppRole, getPortalPath, ROLES } from '@/utils/roles';
 import { RoleSelectModal } from '@/components/auth/RoleSelectModal';
 import { isEcommerceEnabled } from '@/config/features';
-import { validateEmail } from '@/utils/validation';
+import { validateLoginIdentifier, normalizeLoginIdentifier } from '@/utils/validation';
 import { resolvePreferredRole } from '@/utils/workspacePreference';
 import { clearAuthStorage } from '@/utils/authStorage';
 
@@ -96,9 +96,9 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const emailErr = validateEmail(email);
-    if (emailErr) {
-      setErrorMessage(emailErr);
+    const idErr = validateLoginIdentifier(email);
+    if (idErr) {
+      setErrorMessage(idErr);
       setShowErrorDialog(true);
       return;
     }
@@ -110,7 +110,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      await login({ email: email.trim().toLowerCase(), password });
+      await login({ email: normalizeLoginIdentifier(email), password });
       // login() already started a fresh tab session — drop stale Redux user
       dispatch(clearUser());
       const user = await dispatch(validateAndSetUser()).unwrap();
@@ -227,21 +227,21 @@ const Login = () => {
               <CardHeader>
                 <CardTitle className="text-2xl font-semibold text-center">Sign In</CardTitle>
                 <CardDescription className="text-center">
-                  Enter your credentials to access your account
+                  Email or account, doctor, or clinic ID
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form method="post" onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">Email or ID</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="email"
                         name="username"
-                        type="email"
+                        type="text"
                         autoComplete="username"
-                        placeholder="name@example.com"
+                        placeholder="email or ID"
                         className="pl-10"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -324,7 +324,7 @@ const Login = () => {
               <CardFooter className="flex justify-center">
                 <p className="text-sm text-muted-foreground">
                   Don't have an account?{" "}
-                  <Link to="/signup/parent" className="text-primary hover:text-primary/90 font-medium">
+                  <Link to="/signup" className="text-primary hover:text-primary/90 font-medium">
                     Sign up
                   </Link>
                 </p>

@@ -57,13 +57,6 @@ export async function completeDoctorVisit(visitUuid: string): Promise<ClinicVisi
   return res.data.data;
 }
 
-export async function returnDoctorVisitToReception(visitUuid: string): Promise<ClinicVisitModel> {
-  const res = await axiosInstance.post<ApiSuccessResponse<ClinicVisitModel>>(
-    `/doctor/visits/${visitUuid}/return-to-reception`
-  );
-  return res.data.data;
-}
-
 export async function fetchParentPetVisits(petUuid: string): Promise<ClinicVisitModel[]> {
   const res = await axiosInstance.get<ApiSuccessResponse<ClinicVisitModel[]>>(`/pet/${petUuid}/visits`);
   return res.data.data ?? [];

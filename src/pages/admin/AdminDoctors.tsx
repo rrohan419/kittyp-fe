@@ -26,6 +26,7 @@ import {
   updateDoctorChecklist,
   updateDoctorStatus,
 } from '@/services/doctorVerificationService';
+import { specializationLabel } from '@/utils/specialization';
 
 const CHECKLIST: { key: ChecklistKey; label: string }[] = [
   { key: 'checkMobileOtp', label: 'Mobile OTP' },
@@ -184,7 +185,7 @@ export default function AdminDoctors() {
                         Dr. {d.firstName} {d.lastName}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {d.specialization?.replace(/_/g, ' ') ?? '—'} · {d.registrationNumber ?? '—'}
+                        {specializationLabel(d.specialization) || '—'} · {d.registrationNumber ?? '—'}
                       </p>
                       {d.clinicName && (
                         <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">

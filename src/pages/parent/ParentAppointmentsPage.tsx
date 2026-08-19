@@ -10,6 +10,8 @@ import { ratingAdjective } from '@/components/schedule/weekCalendarUtils';
 import { ClinicBookingModel, ClinicVisitModel, VisitStatus } from '@/services/clinicService';
 import { fetchMyParentBookings, fetchMyParentVisits, rateParentVisit } from '@/services/visitService';
 import { toast } from 'sonner';
+import { petNameWithType } from '@/utils/petType';
+import { specializationLabel } from '@/utils/specialization';
 
 const ACTIVE: VisitStatus[] = ['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS', 'CHECKING_OUT'];
 const DONE: VisitStatus[] = ['COMPLETED', 'CANCELLED', 'NO_SHOW'];
@@ -45,7 +47,7 @@ function ProviderLines({
   const doctor = doctorName
     ? `Dr. ${doctorName.replace(/^Dr\.?\s*/i, '')}`
     : null;
-  const specialty = specialization?.replace(/_/g, ' ');
+  const specialty = specializationLabel(specialization) || null;
   return (
     <div className="text-sm leading-snug">
       {clinicName ? (
@@ -173,7 +175,7 @@ export default function ParentAppointmentsPage() {
               return (
                 <div key={b.uuid} className="flex items-start justify-between gap-3 text-sm border-b last:border-0 py-3">
                   <div className="min-w-0 space-y-1">
-                    <div className="font-medium truncate">{b.petName || 'Pet'}</div>
+                    <div className="font-medium truncate">{petNameWithType(b.petName || 'Pet', b.species)}</div>
                     <ProviderLines
                       clinicName={b.clinicName || 'Clinic'}
                       doctorName={b.doctorName}
@@ -296,7 +298,7 @@ function VisitCard({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 space-y-1">
               <p className="font-medium">
-                {v.petName}
+                {petNameWithType(v.petName, v.species)}
                 {v.chart?.assessment ? ` · ${v.chart.assessment}` : v.reasonForVisit ? ` · ${v.reasonForVisit}` : ''}
               </p>
               <ProviderLines
@@ -383,7 +385,7 @@ function BookingCard({ booking: b }: { booking: ClinicBookingModel }) {
         <CardTitle className="text-base flex items-center justify-between gap-2">
           <span className="inline-flex items-center gap-2 truncate">
             <PawPrint className="h-4 w-4 text-primary shrink-0" />
-            {b.petName}
+            {petNameWithType(b.petName, b.species)}
           </span>
           <Badge variant="outline">{statusLabel(b.status || 'CONFIRMED')}</Badge>
         </CardTitle>

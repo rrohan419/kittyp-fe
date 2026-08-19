@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PawPrint, Calendar, Heart, Apple, ArrowRight, Bell, Lightbulb, Loader2, Plus } from 'lucide-react';
+import { PetImage } from '@/components/ui/PetImage';
 import { format, parseISO, isValid } from 'date-fns';
 import { toast } from 'sonner';
 import { RootState } from '@/module/store/store';
-import { calculatePetAgeForDisplay } from '@/services/UserService';
+import { formatPetDobWithAge } from '@/utils/petAge';
 import { ClinicVisitModel } from '@/services/clinicService';
 import { fetchMyParentVisits } from '@/services/visitService';
 import {
@@ -182,33 +183,21 @@ export default function ParentHome() {
       ) : pets.length === 1 ? (
         (() => {
           const p = pets[0];
-          const age = p.dateOfBirth ? calculatePetAgeForDisplay(p.dateOfBirth) : '—';
+          const age = p.dateOfBirth ? formatPetDobWithAge(p.dateOfBirth) : '—';
           return (
             <Card className="border-0 shadow-sm overflow-hidden">
               <div className="relative h-48 sm:h-56 bg-gradient-to-br from-primary/20 to-primary/5">
-                {p.profilePicture ? (
-                  <img
-                    src={p.profilePicture}
-                    alt={p.name}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <PawPrint className="h-20 w-20 text-primary/40" />
-                  </div>
-                )}
+                <PetImage
+                  pet={p}
+                  alt={p.name}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
               </div>
               <CardContent className="p-6 space-y-5 -mt-10 relative">
                 <div className="flex flex-col sm:flex-row sm:items-end gap-4">
                   <div className="w-20 h-20 rounded-3xl border-4 border-background bg-muted overflow-hidden shadow-md shrink-0">
-                    {p.profilePicture ? (
-                      <img src={p.profilePicture} alt={p.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-primary/10">
-                        <PawPrint className="h-10 w-10 text-primary" />
-                      </div>
-                    )}
+                    <PetImage pet={p} alt={p.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-primary uppercase tracking-wide mb-1">Your pet</p>
@@ -247,7 +236,7 @@ export default function ParentHome() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {pets.map((p) => {
-            const age = p.dateOfBirth ? calculatePetAgeForDisplay(p.dateOfBirth) : '—';
+            const age = p.dateOfBirth ? formatPetDobWithAge(p.dateOfBirth) : '—';
             return (
               <Link
                 key={p.uuid}
@@ -255,17 +244,11 @@ export default function ParentHome() {
                 className="group rounded-2xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all"
               >
                 <div className="aspect-square bg-muted relative">
-                  {p.profilePicture ? (
-                    <img
-                      src={p.profilePicture}
-                      alt={p.name}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                      <PawPrint className="h-10 w-10 text-primary/50" />
-                    </div>
-                  )}
+                  <PetImage
+                    pet={p}
+                    alt={p.name}
+                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
+                  />
                 </div>
                 <div className="p-3 space-y-0.5">
                   <p className="font-semibold text-sm truncate">{p.name}</p>

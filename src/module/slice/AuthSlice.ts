@@ -44,6 +44,9 @@ export const validateAndSetUser = createAsyncThunk(
       if (getAuthItem('access_token') !== tokenAtStart) {
         return rejectWithValue('Stale auth validation');
       }
+      if (!user) {
+        return rejectWithValue('Authentication failed');
+      }
       return user;
     } catch (error) {
       return rejectWithValue(error);

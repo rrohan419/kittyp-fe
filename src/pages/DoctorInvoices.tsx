@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { addDays, format, startOfDay } from 'date-fns';
-import { FileSpreadsheet, Plus, Trash2, FileDown, ExternalLink, Send } from 'lucide-react';
+import { FileSpreadsheet, Plus, Trash2, FileDown, ExternalLink, Send, Banknote, CheckCircle, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,12 +26,15 @@ import {
   fetchInvoicePdfUrl,
   fetchMyInvoices,
   generateInvoicePdf,
+  markInvoicePaid,
   sendInvoiceWhatsApp,
 } from '@/services/invoiceService';
 import { fetchClinicPetMedicalProfile } from '@/services/clinicService';
 import { fetchMyDoctorVisits } from '@/services/visitService';
 import { formatInr } from '@/services/availabilityService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { collectInvoicePayment, isInvoiceUnpaid, toastInvoicePaymentError } from '@/utils/collectInvoicePayment';
+import { MarkInvoicePaidDialog } from '@/components/invoice/MarkInvoicePaidDialog';
 
 const emptyItem = (): TreatmentLineItem => ({
   itemType: 'CONSULTATION',
@@ -40,6 +43,9 @@ const emptyItem = (): TreatmentLineItem => ({
   unitPrice: 500,
 });
 
+const INITIAL_INVOICE_ROWS = 10;
+const MORE_INVOICE_ROWS = 20;
+
 type LocationState = { fromVisit?: InvoiceFromVisitState } | null;
 
 export default function DoctorInvoices() {
@@ -47,14 +53,7 @@ export default function DoctorInvoices() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const hydratedRef = useRef<string | null>(null);
-  const { isPersonalPractice, loading: clinicLoading } = useActiveClinic();
-
-  useEffect(() => {
-    if (!clinicLoading && !isPersonalPractice) {
-      toast.message('Switch to Personal practice to create invoices');
-      navigate('/doctor', { replace: true });
-    }
-  }, [clinicLoading, isPersonalPractice, navigate]);
+  const { clinic, clinicUuid, isPersonalPractice, loading: clinicLoading } = useActiveClinic();
 
   const [items, setItems] = useState<TreatmentLineItem[]>([emptyItem()]);
   const [petName, setPetName] = useState('');
@@ -73,9 +72,11 @@ export default function DoctorInvoices() {
   const [paidAmount, setPaidAmount] = useState('0');
   const [paymentMode, setPaymentMode] = useState('UPI');
   const [invoices, setInvoices] = useState<ConsultationInvoice[]>([]);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_INVOICE_ROWS);
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
   const [busyUuid, setBusyUuid] = useState<string | null>(null);
+  const [markPaidInvoice, setMarkPaidInvoice] = useState<ConsultationInvoice | null>(null);
   const [hydrating, setHydrating] = useState(false);
   const [linkClinicUuid, setLinkClinicUuid] = useState<string | undefined>();
   const [linkPetUuid, setLinkPetUuid] = useState<string | undefined>();
@@ -175,16 +176,30 @@ export default function DoctorInvoices() {
   }, [location.state, location.pathname, location.search, navigate, searchParams]);
 
   const load = async () => {
+    if (clinicLoading) return;
     try {
-      setInvoices(await fetchMyInvoices());
+      setInvoices(await fetchMyInvoices(clinicUuid ?? undefined));
+      setVisibleCount(INITIAL_INVOICE_ROWS);
     } catch {
       setInvoices([]);
+      setVisibleCount(INITIAL_INVOICE_ROWS);
     }
   };
 
   useEffect(() => {
     void load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clinicLoading, clinicUuid]);
+
+  const orderedInvoices = useMemo(() => {
+    return [...invoices].sort((a, b) => {
+      const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
+      const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
+      return tb - ta;
+    });
+  }, [invoices]);
+  const visibleInvoices = orderedInvoices.slice(0, visibleCount);
+  const hiddenCount = Math.max(0, orderedInvoices.length - visibleCount);
 
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0),
@@ -257,7 +272,7 @@ export default function DoctorInvoices() {
         sgst: sgstNum,
         paidAmount: paidNum,
         currency: 'INR',
-        clinicUuid: linkClinicUuid,
+        clinicUuid: linkClinicUuid || clinicUuid || undefined,
         petUuid: linkPetUuid,
         visitUuid: linkVisitUuid,
         petName: petName.trim(),
@@ -359,12 +374,44 @@ export default function DoctorInvoices() {
     }
   };
 
+  const onCollectPayment = async (inv: ConsultationInvoice) => {
+    setBusyUuid(inv.uuid);
+    try {
+      await collectInvoicePayment(inv);
+      toast.success('Payment collected');
+      await load();
+    } catch (error) {
+      toastInvoicePaymentError(error);
+    } finally {
+      setBusyUuid(null);
+    }
+  };
+
+  const onMarkPaid = async (paymentMode: string, transactionId?: string) => {
+    if (!markPaidInvoice) {
+      return;
+    }
+    setBusyUuid(markPaidInvoice.uuid);
+    try {
+      await markInvoicePaid(markPaidInvoice.uuid, { paymentMode, transactionId });
+      toast.success('Marked as paid. PDF updated.');
+      setMarkPaidInvoice(null);
+      await load();
+    } catch (error) {
+      toastInvoicePaymentError(error);
+    } finally {
+      setBusyUuid(null);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Treatment Invoices</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Prefill from a finished visit, then Save and Send to deliver the PDF on WhatsApp.
+          {isPersonalPractice
+            ? 'Personal practice invoices. Prefill from a finished visit, then Save and Send to deliver the PDF on WhatsApp.'
+            : `Invoices for ${clinic?.name || 'this clinic'} — only visits you billed here. Switch clinics to see another branch.`}
         </p>
       </div>
 
@@ -590,10 +637,11 @@ export default function DoctorInvoices() {
           <CardTitle className="text-base">Recent invoices</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {!invoices.length ? (
+          {!orderedInvoices.length ? (
             <p className="text-sm text-muted-foreground">No invoices yet.</p>
           ) : (
-            invoices.map((inv) => (
+            <>
+            {visibleInvoices.map((inv) => (
               <div
                 key={inv.uuid}
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-muted/50 text-sm"
@@ -609,6 +657,25 @@ export default function DoctorInvoices() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge variant="secondary">{inv.status}</Badge>
+                  {isInvoiceUnpaid(inv) && (
+                    <>
+                      <Button
+                        size="sm"
+                        disabled={busyUuid === inv.uuid}
+                        onClick={() => void onCollectPayment(inv)}
+                      >
+                        <Banknote className="h-3.5 w-3.5 mr-1" /> Collect payment
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyUuid === inv.uuid}
+                        onClick={() => setMarkPaidInvoice(inv)}
+                      >
+                        <CheckCircle className="h-3.5 w-3.5 mr-1" /> Mark as paid
+                      </Button>
+                    </>
+                  )}
                   {inv.pdfUrl ? (
                     <>
                       <Button
@@ -639,10 +706,36 @@ export default function DoctorInvoices() {
                   )}
                 </div>
               </div>
-            ))
+            ))}
+            {hiddenCount > 0 && (
+              <div className="flex justify-center pt-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => setVisibleCount((n) => n + MORE_INVOICE_ROWS)}
+                >
+                  <ChevronDown className="h-4 w-4 mr-1" />
+                  Show {Math.min(MORE_INVOICE_ROWS, hiddenCount)} more
+                </Button>
+              </div>
+            )}
+            </>
           )}
         </CardContent>
       </Card>
+      <MarkInvoicePaidDialog
+        invoice={markPaidInvoice}
+        open={Boolean(markPaidInvoice)}
+        busy={Boolean(markPaidInvoice && busyUuid === markPaidInvoice.uuid)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMarkPaidInvoice(null);
+          }
+        }}
+        onConfirm={(mode, txn) => void onMarkPaid(mode, txn)}
+      />
     </div>
   );
 }

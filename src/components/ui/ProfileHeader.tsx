@@ -17,6 +17,7 @@ import { AppDispatch, RootState } from '@/module/store/store';
 import { updateUserProfile } from '@/module/slice/AuthSlice';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { CopyableId } from '@/components/ui/CopyableId';
 
 interface ProfileHeaderProps {
   ordersCount: number;
@@ -65,6 +66,12 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               <p className="text-muted-foreground">Member since {user.createdAt
                 ? format(new Date(user.createdAt), "do MMMM yyyy")
                 : "-"}</p>
+              <CopyableId
+                className="justify-center lg:justify-start"
+                label="Account ID"
+                value={user.uuid}
+                hint="Sign in with this ID or your email."
+              />
             </div>
 
             <div className="flex flex-wrap gap-6 justify-center lg:justify-start text-sm">

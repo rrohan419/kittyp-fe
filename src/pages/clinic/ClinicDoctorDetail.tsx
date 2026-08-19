@@ -20,7 +20,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { useAppSelector } from '@/module/store/hooks';
 import { ratingAdjective } from '@/components/schedule/weekCalendarUtils';
+import { formatPetDobWithAge } from '@/utils/petAge';
 import {
   ClinicDoctorDetailModel,
   ClinicDoctorModel,
@@ -28,6 +30,9 @@ import {
   fetchClinicDoctors,
 } from '@/services/clinicService';
 import { statusLabel } from '@/services/doctorVerificationService';
+import { canViewDoctorCertificates } from '@/utils/roles';
+import { specializationLabel } from '@/utils/specialization';
+import { useDoctorsBasePath } from '@/hooks/useDoctorsBasePath';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -106,6 +111,9 @@ function tenureLabel(joinedAt?: string | null): string | null {
 export default function ClinicDoctorDetail() {
   const { doctorUuid = '' } = useParams();
   const navigate = useNavigate();
+  const doctorsBase = useDoctorsBasePath();
+  const user = useAppSelector((s) => s.authReducer.user);
+  const clinicAdminContext = doctorsBase.startsWith('/clinic');
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
   const [detail, setDetail] = useState<ClinicDoctorDetailModel | null>(null);
   const [roster, setRoster] = useState<ClinicDoctorModel[]>([]);
@@ -225,7 +233,7 @@ export default function ClinicDoctorDetail() {
     return (
       <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/clinic/doctors">
+          <Link to={doctorsBase}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back to profile
           </Link>
         </Button>
@@ -235,6 +243,12 @@ export default function ClinicDoctorDetail() {
   }
 
   const verifiedCount = checks.filter((c) => Boolean(detail[c.key])).length;
+  const showFullDossier = canViewDoctorCertificates(
+    user?.roles,
+    user?.uuid,
+    detail.userUuid,
+    clinicAdminContext
+  );
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
@@ -244,7 +258,7 @@ export default function ClinicDoctorDetail() {
             variant="outline"
             size="sm"
             disabled={!prevDoctor}
-            onClick={() => prevDoctor && navigate(`/clinic/doctors/${prevDoctor.doctorUuid}`)}
+            onClick={() => prevDoctor && navigate(`${doctorsBase}/${prevDoctor.doctorUuid}`)}
             className="gap-1"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -253,13 +267,13 @@ export default function ClinicDoctorDetail() {
             </span>
           </Button>
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/clinic/doctors">All profiles</Link>
+            <Link to={doctorsBase}>All profiles</Link>
           </Button>
           <Button
             variant="outline"
             size="sm"
             disabled={!nextDoctor}
-            onClick={() => nextDoctor && navigate(`/clinic/doctors/${nextDoctor.doctorUuid}`)}
+            onClick={() => nextDoctor && navigate(`${doctorsBase}/${nextDoctor.doctorUuid}`)}
             className="gap-1"
           >
             <span className="hidden sm:inline max-w-[140px] truncate">
@@ -271,7 +285,7 @@ export default function ClinicDoctorDetail() {
       ) : (
         <div>
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/clinic/doctors">
+            <Link to={doctorsBase}>
               <ArrowLeft className="h-4 w-4 mr-1" /> Back to profile
             </Link>
           </Button>
@@ -294,7 +308,7 @@ export default function ClinicDoctorDetail() {
           <div className="min-w-0">
             <h1 className="text-2xl lg:text-3xl font-bold text-foreground truncate">{detail.name}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {(detail.specialization || 'General').replace(/_/g, ' ')}
+              {specializationLabel(detail.specialization) || 'General'}
               {clinic?.name ? ` · ${clinic.name}` : ''}
               {rosterIndex >= 0 ? ` · ${rosterIndex + 1} of ${roster.length}` : ''}
             </p>
@@ -324,14 +338,14 @@ export default function ClinicDoctorDetail() {
               >
                 {detail.isActive === false ? 'inactive' : 'active'}
               </Badge>
-              {detail.status && (
-                <Badge variant="outline" className="capitalize">
-                  {statusLabel(detail.status as Parameters<typeof statusLabel>[0])}
-                </Badge>
-              )}
               {detail.role && (
                 <Badge variant="secondary" className="capitalize">
                   {detail.role}
+                </Badge>
+              )}
+              {showFullDossier && detail.status && (
+                <Badge variant="outline" className="capitalize">
+                  {statusLabel(detail.status as Parameters<typeof statusLabel>[0])}
                 </Badge>
               )}
             </div>
@@ -356,6 +370,10 @@ export default function ClinicDoctorDetail() {
                 </p>
               </div>
               <div>
+                <p className="text-xs text-muted-foreground">Doctor ID</p>
+                <p className="font-medium font-mono tracking-wide">{detail.doctorUuid || '—'}</p>
+              </div>
+              <div>
                 <p className="text-xs text-muted-foreground">Phone</p>
                 <p className="font-medium inline-flex items-center gap-1.5">
                   <Phone className="h-3.5 w-3.5 text-muted-foreground" />
@@ -366,10 +384,12 @@ export default function ClinicDoctorDetail() {
                 <p className="text-xs text-muted-foreground">Registration no.</p>
                 <p className="font-medium">{detail.registrationNumber || '—'}</p>
               </div>
+              {showFullDossier && (
               <div>
                 <p className="text-xs text-muted-foreground">License no.</p>
                 <p className="font-medium">{detail.licenseNumber || '—'}</p>
               </div>
+              )}
               <div>
                 <p className="text-xs text-muted-foreground">Experience</p>
                 <p className="font-medium">
@@ -393,7 +413,7 @@ export default function ClinicDoctorDetail() {
                   <p className="mt-1 text-muted-foreground leading-relaxed">{detail.bio}</p>
                 </div>
               )}
-              {(detail.submittedAt || detail.reviewedAt || detail.reviewNotes) && (
+              {showFullDossier && (detail.submittedAt || detail.reviewedAt || detail.reviewNotes) && (
                 <div className="sm:col-span-2 rounded-lg bg-muted/40 px-3 py-2 space-y-1">
                   {detail.submittedAt && (
                     <p className="text-xs text-muted-foreground">
@@ -411,6 +431,7 @@ export default function ClinicDoctorDetail() {
             </CardContent>
           </Card>
 
+          {showFullDossier && (
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -433,7 +454,9 @@ export default function ClinicDoctorDetail() {
               )}
             </CardContent>
           </Card>
+          )}
 
+          {showFullDossier && (
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
@@ -498,7 +521,7 @@ export default function ClinicDoctorDetail() {
                       </div>
                       {(row.pet.weight || row.pet.microchipNumber || row.pet.dateOfBirth) && (
                         <div className="sm:col-span-2 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-                          {row.pet.dateOfBirth && <span>DOB {formatWhen(row.pet.dateOfBirth)}</span>}
+                          {row.pet.dateOfBirth && <span>DOB {formatPetDobWithAge(row.pet.dateOfBirth)}</span>}
                           {row.pet.weight && <span>Weight {row.pet.weight}</span>}
                           {row.pet.microchipNumber && <span>Chip {row.pet.microchipNumber}</span>}
                           {row.pet.globalPetId && <span>ID {row.pet.globalPetId}</span>}
@@ -510,9 +533,11 @@ export default function ClinicDoctorDetail() {
               )}
             </CardContent>
           </Card>
+          )}
         </div>
 
         <div className="space-y-6">
+          {showFullDossier ? (
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -533,6 +558,36 @@ export default function ClinicDoctorDetail() {
               ))}
             </CardContent>
           </Card>
+          ) : (
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Stethoscope className="h-4 w-4" /> At this clinic
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Role</p>
+                <p className="font-medium capitalize">{detail.role || 'Doctor'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">With clinic</p>
+                <p className="font-medium">
+                  {tenureLabel(detail.joinedAt) || formatWhen(detail.joinedAt) || '—'}
+                </p>
+              </div>
+              {detail.experienceYears != null && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Experience</p>
+                  <p className="font-medium">{detail.experienceYears} years</p>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground pt-1">
+                Credential documents and patients are visible to clinic admins and this doctor.
+              </p>
+            </CardContent>
+          </Card>
+          )}
         </div>
       </div>
     </div>

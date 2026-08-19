@@ -5,7 +5,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Stethoscope, Award, ChevronRight } from 'lucide-react';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/module/store/store';
 import { ClinicDoctorModel, fetchClinicDoctors } from '@/services/clinicService';
+import { canInviteDoctors } from '@/utils/roles';
+import { useDoctorsBasePath } from '@/hooks/useDoctorsBasePath';
+import { specializationLabel } from '@/utils/specialization';
 import { toast } from 'sonner';
 
 function tenureLabel(joinedAt?: string | null): string {
@@ -22,6 +27,9 @@ function tenureLabel(joinedAt?: string | null): string {
 }
 
 export default function ClinicStaff() {
+  const { user } = useSelector((state: RootState) => state.authReducer);
+  const canInvite = canInviteDoctors(user?.roles);
+  const doctorsBase = useDoctorsBasePath();
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +88,8 @@ export default function ClinicStaff() {
       ) : sorted.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="py-16 text-center text-sm text-muted-foreground">
-            No doctors linked to this clinic yet. Invite doctors from Profile.
+            No doctors linked to this clinic yet.
+            {canInvite ? ' Invite doctors from Profile.' : ''}
           </CardContent>
         </Card>
       ) : (
@@ -95,7 +104,7 @@ export default function ClinicStaff() {
             return (
               <Link
                 key={d.doctorUuid}
-                to={`/clinic/doctors/${d.doctorUuid}`}
+                to={`${doctorsBase}/${d.doctorUuid}`}
                 className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Card className="border-0 shadow-sm hover:shadow-md transition-shadow h-full">
@@ -108,7 +117,7 @@ export default function ClinicStaff() {
                         <p className="font-semibold text-foreground truncate">{d.name}</p>
                         <p className="text-xs text-muted-foreground truncate inline-flex items-center gap-1">
                           <Stethoscope className="h-3 w-3 shrink-0" />
-                          {(d.specialization || 'General').replace(/_/g, ' ')}
+                          {specializationLabel(d.specialization) || 'General'}
                         </p>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />

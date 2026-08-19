@@ -4,7 +4,7 @@ import { Heart, PawPrint } from 'lucide-react';
 import { RootState } from '@/module/store/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { calculatePetAgeForDisplay } from '@/services/UserService';
+import { formatPetDobWithAge } from '@/utils/petAge';
 
 export default function ParentHealthPage() {
   const { user } = useSelector((s: RootState) => s.authReducer);
@@ -49,7 +49,7 @@ export default function ParentHealthPage() {
                   <div className="min-w-0">
                     <p className="font-semibold truncate">{pet.name}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {pet.type} · {pet.dateOfBirth ? calculatePetAgeForDisplay(pet.dateOfBirth) : '—'}
+                      {pet.type} · {pet.dateOfBirth ? formatPetDobWithAge(pet.dateOfBirth) : '—'}
                     </p>
                   </div>
                 </div>

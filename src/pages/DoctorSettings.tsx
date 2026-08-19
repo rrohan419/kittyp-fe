@@ -17,12 +17,14 @@ import {
   PawPrint,
 } from 'lucide-react';
 import { useAppSelector } from '@/module/store/hooks';
+import { specializationLabel } from '@/utils/specialization';
 import {
   DoctorVerificationModel,
   fetchMyDoctorProfile,
   statusLabel,
 } from '@/services/doctorVerificationService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { CopyableId } from '@/components/ui/CopyableId';
 import {
   fetchDoctorWhatsAppSettings,
   updateDoctorWhatsAppSettings,
@@ -167,6 +169,18 @@ export default function DoctorSettings() {
             <Mail className="h-4 w-4 shrink-0" />
             <span className="text-foreground">{user?.email || profile?.email || '—'}</span>
           </div>
+          <CopyableId
+            label="Doctor ID"
+            value={profile?.uuid}
+            hint="Use this ID or your email to sign in. Clinics invite you with this ID."
+          />
+          {user?.uuid && user.uuid !== profile?.uuid ? (
+            <CopyableId
+              label="Account ID"
+              value={user.uuid}
+              hint="Also works at sign-in."
+            />
+          ) : null}
           <div className="flex items-center gap-2 text-muted-foreground">
             <Phone className="h-4 w-4 shrink-0" />
             <span className="text-foreground">
@@ -176,7 +190,7 @@ export default function DoctorSettings() {
           <div className="flex items-center gap-2 text-muted-foreground">
             <Award className="h-4 w-4 shrink-0" />
             <span className="text-foreground">
-              {profile?.specialization?.replace(/_/g, ' ') || 'Specialization not set'}
+              {specializationLabel(profile?.specialization) || 'Specialization not set'}
             </span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">

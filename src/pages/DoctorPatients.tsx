@@ -97,7 +97,13 @@ export default function DoctorPatients() {
         ownerEmail: row.ownerEmail || prev.ownerEmail,
         ownerPhone: row.ownerPhone || prev.ownerPhone,
         clinicName: row.clinicName || prev.clinicName,
-        lastAssessment: row.lastAssessment || prev.lastAssessment,
+        lastAssessment: (() => {
+          const a = row.lastVisitAt ? parseISO(row.lastVisitAt).getTime() : 0;
+          const b = prev.lastVisitAt ? parseISO(prev.lastVisitAt).getTime() : 0;
+          return a >= b
+            ? row.lastAssessment || prev.lastAssessment
+            : prev.lastAssessment || row.lastAssessment;
+        })(),
         lastVisitAt: (() => {
           const a = row.lastVisitAt ? parseISO(row.lastVisitAt).getTime() : 0;
           const b = prev.lastVisitAt ? parseISO(prev.lastVisitAt).getTime() : 0;
@@ -254,7 +260,7 @@ export default function DoctorPatients() {
                     )}
                   </div>
                   <Button variant="outline" size="sm" className="w-full mt-4" asChild>
-                    <Link to={`/clinic/pets/${p.petUuid}`}>View dashboard</Link>
+                    <Link to={`/doctor/patients/${p.petUuid}`}>View dashboard</Link>
                   </Button>
                 </CardContent>
               </Card>

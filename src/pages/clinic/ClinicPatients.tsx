@@ -26,7 +26,6 @@ import {
   User,
   Building2,
   MapPin,
-  EyeOff,
 } from 'lucide-react';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { PetPhoto } from '@/components/clinic/PetPhoto';
@@ -40,8 +39,6 @@ import {
   ensureClinicOwnerFromUser,
   fetchClinicOwners,
   fetchClinicPets,
-  hideClinicOwner,
-  hideClinicPet,
   searchPlatformUsers,
 } from '@/services/clinicService';
 import { toast } from 'sonner';
@@ -50,10 +47,6 @@ import { cn } from '@/lib/utils';
 
 type OwnerRow = ClinicOwnerModel & { clinicUuid?: string; clinicName?: string };
 type PetRow = ClinicPetListModel & { clinicUuid?: string; clinicName?: string };
-
-type HideTarget =
-  | { kind: 'owner'; clinicUuid: string; uuid: string; name: string }
-  | { kind: 'pet'; clinicUuid: string; uuid: string; name: string };
 
 const emptyForm = {
   ownerFirstName: '',
@@ -83,8 +76,6 @@ export default function ClinicPatients() {
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [hideTarget, setHideTarget] = useState<HideTarget | null>(null);
-  const [hiding, setHiding] = useState(false);
   const [selectingUserUuid, setSelectingUserUuid] = useState<string | null>(null);
 
   const set = (key: keyof typeof emptyForm, value: string) =>
@@ -277,33 +268,6 @@ export default function ClinicPatients() {
     if (value.trim()) next.set('q', value.trim());
     else next.delete('q');
     setSearchParams(next, { replace: true });
-  };
-
-  const confirmHide = async () => {
-    if (!hideTarget) return;
-    setHiding(true);
-    try {
-      if (hideTarget.kind === 'owner') {
-        await hideClinicOwner(hideTarget.clinicUuid, hideTarget.uuid);
-        toast.success(`${hideTarget.name} hidden from clinic lists`, {
-          description: 'Visits and medical records are kept.',
-        });
-      } else {
-        await hideClinicPet(hideTarget.clinicUuid, hideTarget.uuid);
-        toast.success(`${hideTarget.name} hidden from clinic lists`, {
-          description: 'Visits and medical records are kept.',
-        });
-      }
-      setHideTarget(null);
-      await reload();
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Could not hide record';
-      toast.error(message);
-    } finally {
-      setHiding(false);
-    }
   };
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -585,22 +549,6 @@ export default function ClinicPatients() {
                           <Button size="sm" asChild>
                             <Link to={`/clinic/owners/${o.ownerUuid}`}>Client profile</Link>
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-muted-foreground"
-                            onClick={() =>
-                              setHideTarget({
-                                kind: 'owner',
-                                clinicUuid: o.clinicUuid || clinicUuid!,
-                                uuid: o.ownerUuid,
-                                name: o.name || 'Client',
-                              })
-                            }
-                          >
-                            <EyeOff className="h-3.5 w-3.5 mr-1.5" />
-                            Hide
-                          </Button>
                         </div>
                       </div>
                     </div>
@@ -710,22 +658,6 @@ export default function ClinicPatients() {
                     <div className="flex flex-col gap-2">
                       <Button size="sm" asChild className="w-full">
                         <Link to={`/clinic/pets/${p.petUuid}`}>Open medical profile</Link>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full text-muted-foreground"
-                        onClick={() =>
-                          setHideTarget({
-                            kind: 'pet',
-                            clinicUuid: p.clinicUuid || clinicUuid!,
-                            uuid: p.petUuid,
-                            name: p.name || 'Pet',
-                          })
-                        }
-                      >
-                        <EyeOff className="h-3.5 w-3.5 mr-1.5" />
-                        Hide from lists
                       </Button>
                     </div>
                   </CardContent>
@@ -848,31 +780,6 @@ export default function ClinicPatients() {
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!hideTarget} onOpenChange={(open) => !open && !hiding && setHideTarget(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {hideTarget?.kind === 'owner'
-                ? `Hide ${hideTarget.name} from clinic lists?`
-                : `Hide ${hideTarget?.name} from clinic lists?`}
-            </DialogTitle>
-            <DialogDescription>
-              They will no longer appear in Clients & Pets for this clinic. Visits, reports, and
-              medical history stay in the database and remain available from history.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setHideTarget(null)} disabled={hiding}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={() => void confirmHide()} disabled={hiding}>
-              {hiding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Yes, hide
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

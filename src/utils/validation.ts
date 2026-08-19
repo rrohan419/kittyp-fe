@@ -19,6 +19,27 @@ export function validateEmail(email: string, required = true): string | null {
   return null;
 }
 
+/** 6-character public id (users, doctors, clinics). */
+export const PUBLIC_ID_REGEX = /^[A-Za-z0-9]{6}$/;
+/** Legacy UUID still present on some accounts before backfill. */
+const LEGACY_UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+export function validateLoginIdentifier(value: string): string | null {
+  const v = value.trim();
+  if (!v) return 'Email or ID is required';
+  if (v.includes('@')) return validateEmail(v);
+  if (PUBLIC_ID_REGEX.test(v) || LEGACY_UUID_REGEX.test(v)) return null;
+  return 'Enter your email or account, doctor, or clinic ID';
+}
+
+/** Emails lowercased; 6-char IDs uppercased; legacy UUIDs unchanged. */
+export function normalizeLoginIdentifier(value: string): string {
+  const v = value.trim();
+  if (v.includes('@')) return v.toLowerCase();
+  if (PUBLIC_ID_REGEX.test(v)) return v.toUpperCase();
+  return v;
+}
+
 /**
  * Normalize to India 10-digit local number.
  * Handles paste of +91…, 91…, 0…, and spaces/dashes.

@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Calendar, Users, Stethoscope, Activity, Sparkles } from 'lucide-react';
+import { Calendar, Users, Stethoscope, Activity, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   addDays,
@@ -19,6 +19,7 @@ import {
   startOfWeek,
   endOfWeek,
   isWithinInterval,
+  isSameDay,
 } from 'date-fns';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import {
@@ -33,8 +34,11 @@ import {
   fetchClinicVisits,
 } from '@/services/clinicService';
 import { WeekCalendar } from '@/components/schedule/WeekCalendar';
-import { WeekCalEvent, buildWeekEvents } from '@/components/schedule/weekCalendarUtils';
+import { WeekCalEvent, buildWeekEvents, visitEventTime } from '@/components/schedule/weekCalendarUtils';
+import { DashboardAppointmentRow } from '@/components/schedule/DashboardAppointmentRow';
 import { cn } from '@/lib/utils';
+import { petNameWithType } from '@/utils/petType';
+import { isUrgentVisit } from '@/utils/visitUrgency';
 
 export default function ClinicHome() {
   const { clinic, clinicUuid, loading: clinicLoading } = useActiveClinic();
@@ -119,7 +123,27 @@ export default function ClinicHome() {
     return buildWeekEvents(weekVisits, weekBookings);
   }, [visits, bookings, weekStart, weekEnd]);
 
+  const urgentToday = useMemo(() => {
+    const today = startOfDay(new Date());
+    return visits
+      .filter((v) => {
+        if (!isUrgentVisit(v.urgency)) return false;
+        if (v.status === 'COMPLETED' || v.status === 'CANCELLED' || v.status === 'NO_SHOW') return false;
+        return isSameDay(visitEventTime(v).start, today);
+      })
+      .sort((a, b) => visitEventTime(a).start.getTime() - visitEventTime(b).start.getTime());
+  }, [visits]);
+
   const stats = [
+    {
+      label: 'Urgent today',
+      value: urgentToday.length,
+      sub: 'Needs attention first',
+      icon: AlertTriangle,
+      to: '/clinic/appointments',
+      color: 'from-rose-500/10 to-rose-500/5',
+      iconColor: 'bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300',
+    },
     {
       label: 'Profile',
       value: doctors.length,
@@ -215,6 +239,43 @@ export default function ClinicHome() {
           );
         })}
       </div>
+
+      {urgentToday.length > 0 && (
+        <Card className="relative border-rose-200 bg-rose-50/40 dark:bg-rose-950/20 dark:border-rose-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-rose-800 dark:text-rose-200">
+              Needs attention · {urgentToday.length} urgent
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {urgentToday.map((v) => {
+              const { start } = visitEventTime(v);
+              return (
+                <DashboardAppointmentRow
+                  key={v.uuid}
+                  time={format(start, 'h:mm a')}
+                  title={petNameWithType(v.petName, v.species)}
+                  subtitle={[v.ownerName || 'Owner', v.doctorName].filter(Boolean).join(' · ')}
+                  urgent
+                  status={v.status}
+                  onClick={() =>
+                    setSelected({
+                      id: `visit-${v.uuid}`,
+                      kind: 'visit',
+                      title: v.petName,
+                      subtitle: v.ownerName || 'Owner',
+                      start,
+                      end: start,
+                      status: v.status,
+                      visit: v,
+                    })
+                  }
+                />
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-0 shadow-sm overflow-hidden">
         <CardHeader className="pb-2">

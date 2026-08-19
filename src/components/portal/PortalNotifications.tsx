@@ -26,7 +26,7 @@ import {
   remindDoctorInvite,
 } from '@/services/clinicService';
 import { fetchMyDoctorVisits } from '@/services/visitService';
-import { ROLES, hasAnyRole } from '@/utils/roles';
+import { ROLES, canInviteDoctors, hasAnyRole } from '@/utils/roles';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -102,6 +102,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
   const [showAll, setShowAll] = useState(false);
 
   const isDoctor = hasAnyRole(user?.roles, [ROLES.DOCTOR]);
+  const canManageInvites = canInviteDoctors(user?.roles);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -153,7 +154,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
         }
       }
 
-      if (portal === 'clinic' && clinicUuid) {
+      if (portal === 'clinic' && clinicUuid && canManageInvites) {
         const invites = await fetchDoctorInvites(clinicUuid).catch(() => [] as DoctorInviteModel[]);
 
         for (const inv of invites.slice(0, 20)) {
@@ -220,7 +221,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
     } finally {
       setLoading(false);
     }
-  }, [portal, clinicUuid, clinic?.name, basePath, isDoctor]);
+  }, [portal, clinicUuid, clinic?.name, basePath, isDoctor, canManageInvites]);
 
   useEffect(() => {
     if (open) void load();
@@ -447,7 +448,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
           )}
         </div>
         <div className="p-2 border-t border-border bg-muted/30 flex gap-2 flex-wrap">
-          {portal === 'clinic' && (
+          {portal === 'clinic' && canManageInvites && (
             <Button
               variant={filter === 'invites' ? 'secondary' : 'ghost'}
               size="sm"

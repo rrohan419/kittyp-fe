@@ -9,6 +9,7 @@ import {
 import { fetchMyDoctorProfile } from '@/services/doctorVerificationService';
 import { VetAvailability, VetProfile } from '@/types/scheduling';
 import { useAppSelector } from '@/module/store/hooks';
+import { specializationLabel } from '@/utils/specialization';
 import { toast } from 'sonner';
 
 export default function DoctorAvailability() {
@@ -45,7 +46,7 @@ export default function DoctorAvailability() {
         setVetProfile({
           id: availability.doctorUuid,
           fullName: `Dr. ${fullName}`,
-          specialization: profile?.specialization?.replace(/_/g, ' '),
+          specialization: specializationLabel(profile?.specialization) || undefined,
           consultationPrice: scheduleAvg(availability.weeklySchedule),
           isVerified: profile?.status === 'VERIFIED' || profile?.status === 'PUBLISHED',
         });

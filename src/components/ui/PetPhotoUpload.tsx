@@ -235,7 +235,7 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             onChange={handleFileInputChange}
             className="hidden"
             disabled={disabled || isUploading}

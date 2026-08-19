@@ -33,10 +33,12 @@ import {
   searchPlatformUsers,
   VisitUrgency,
 } from '@/services/clinicService';
+import { fetchParentDoctorSlots } from '@/services/discoverService';
 import { digitsOnlyPhone, validateEmail, validatePhone } from '@/utils/validation';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PetPhotoField } from '@/components/clinic/PetPhotoField';
+import { PetNameType } from '@/components/ui/PetNameType';
 
 type Props = {
   open: boolean;
@@ -82,6 +84,11 @@ export function snapToHalfHour(date: Date): Date {
     return setMinutes(rounded, 30);
   }
   return setMinutes(addHours(rounded, 1), 0);
+}
+
+function slotMinuteKey(raw: string): string {
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
+  return match ? match[1] : raw;
 }
 
 /** Default schedule start: ~3 hours from now, snapped to half hour. */
@@ -241,9 +248,9 @@ export function AddAppointmentDialog({
     }
   }, [open, lockedDoctorUuid]);
 
-  /** Clinic path: proactive busy check when doctor + date/time are set. */
+  /** Block times outside doctor hours or already booked. Runs for clinic and locked doctor. */
   useEffect(() => {
-    if (!open || hideDoctorSelect || timing !== 'schedule') {
+    if (!open || timing !== 'schedule') {
       setBusyHint(null);
       return;
     }
@@ -258,23 +265,45 @@ export function AddAppointmentDialog({
           const raw = new Date(`${form.slotDate}T${form.slotTime}`);
           if (Number.isNaN(raw.getTime())) return;
           const snapped = snapToHalfHour(raw);
-          const startIso = format(snapped, "yyyy-MM-dd'T'HH:mm:ss");
-          const endIso = format(addMinutes(snapped, 30), "yyyy-MM-dd'T'HH:mm:ss");
-          const busy = await fetchDoctorBusySlots(clinicUuid, resolvedDoctorUuid, {
-            from: startIso,
-            to: endIso,
-          });
+          const startKey = slotMinuteKey(format(snapped, "yyyy-MM-dd'T'HH:mm:ss"));
+          const free = await fetchParentDoctorSlots(clinicUuid, resolvedDoctorUuid, form.slotDate);
           if (cancelled) return;
-          if (busy.length > 0) {
-            const next = snapToHalfHour(addMinutes(snapped, 30));
-            setBusyHint(
-              `Doctor not available at ${format(snapped, 'h:mm a')} — try ${format(next, 'h:mm a')}`
-            );
-          } else {
-            setBusyHint(null);
+          if (free.length === 0) {
+            setBusyHint('Doctor has no availability on this day');
+            return;
           }
+          const openSlot = free.some((s) => slotMinuteKey(s) === startKey);
+          if (!openSlot) {
+            setBusyHint(
+              `Doctor not available at ${format(snapped, 'h:mm a')} — outside working hours or already booked`
+            );
+            return;
+          }
+          setBusyHint(null);
         } catch {
-          if (!cancelled) setBusyHint(null);
+          if (cancelled) return;
+          try {
+            const raw = new Date(`${form.slotDate}T${form.slotTime}`);
+            if (Number.isNaN(raw.getTime())) return;
+            const snapped = snapToHalfHour(raw);
+            const startIso = format(snapped, "yyyy-MM-dd'T'HH:mm:ss");
+            const endIso = format(addMinutes(snapped, 30), "yyyy-MM-dd'T'HH:mm:ss");
+            const busy = await fetchDoctorBusySlots(clinicUuid, resolvedDoctorUuid, {
+              from: startIso,
+              to: endIso,
+            });
+            if (cancelled) return;
+            if (busy.length > 0) {
+              const next = snapToHalfHour(addMinutes(snapped, 30));
+              setBusyHint(
+                `Doctor not available at ${format(snapped, 'h:mm a')} — try ${format(next, 'h:mm a')}`
+              );
+            } else {
+              setBusyHint(null);
+            }
+          } catch {
+            if (!cancelled) setBusyHint(null);
+          }
         }
       })();
     }, 350);
@@ -282,15 +311,7 @@ export function AddAppointmentDialog({
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [
-    open,
-    hideDoctorSelect,
-    timing,
-    resolvedDoctorUuid,
-    form.slotDate,
-    form.slotTime,
-    clinicUuid,
-  ]);
+  }, [open, timing, resolvedDoctorUuid, form.slotDate, form.slotTime, clinicUuid]);
 
   const set = (key: keyof typeof emptyNew, value: string) => {
     setForm((s) => ({ ...s, [key]: value }));
@@ -318,7 +339,7 @@ export function AddAppointmentDialog({
 
   const selectPet = (p: ClinicPetListModel) => {
     setSelectedPet(p);
-    setPetSearch(`${p.name} · ${p.ownerName || 'Owner'}${p.ownerPhone ? ` · ${p.ownerPhone}` : ''}`);
+    setPetSearch('');
     setHits([]);
   };
 
@@ -492,6 +513,11 @@ export function AddAppointmentDialog({
     }
   };
 
+  const assignedDoctor = activeDoctors.find((d) => d.doctorUuid === resolvedDoctorUuid);
+  const assignedDoctorLabel = assignedDoctor
+    ? assignedDoctor.name || assignedDoctor.email || 'Doctor'
+    : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto sm:max-w-2xl">
@@ -532,93 +558,75 @@ export function AddAppointmentDialog({
 
         {mode === 'existing' ? (
           <div className="space-y-3 mt-1">
-            <div>
-              <Label>Search pet or owner</Label>
-              <div className="relative mt-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  className="pl-8 pr-9"
-                  placeholder="Type name, phone, or email..."
-                  value={petSearch}
-                  readOnly={!!selectedPet}
-                  autoFocus
-                  onChange={(e) => {
-                    if (selectedPet) return;
-                    setPetSearch(e.target.value);
-                  }}
-                />
-                {selectedPet && (
+            {selectedPet ? (
+              <div>
+                <Label>Pet</Label>
+                <div className="mt-1 flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
+                  <PetNameType name={selectedPet.name} type={selectedPet.species} />
                   <button
                     type="button"
-                    className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
+                    className="text-muted-foreground hover:text-foreground"
                     onClick={clearSelectedPet}
                     aria-label="Clear selection"
                   >
                     <X className="h-4 w-4" />
                   </button>
-                )}
-              </div>
-              {selectedPet && (
-                <div className="mt-2">
-                  <Badge variant="secondary" className="gap-1 py-1.5 px-2.5">
-                    Selected: {selectedPet.name} · {selectedPet.ownerName || 'Owner'}
-                  </Badge>
                 </div>
-              )}
-            </div>
-            {selectedPet ? null : searching ? (
-              <div className="flex justify-center py-6">
-                <Loader2 className="h-5 w-5 animate-spin" />
               </div>
             ) : (
-              <div className="border rounded-md max-h-52 overflow-y-auto divide-y">
-                {hits.length === 0 ? (
-                  <p className="p-3 text-sm text-muted-foreground">
-                    {debouncedQ
-                      ? 'No matching KittyP users, pets, or owners — try New patient'
-                      : 'Start typing to search KittyP users and clinic patients'}
-                  </p>
+              <div>
+                <Label>Search pet or owner</Label>
+                <div className="relative mt-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    className="pl-8"
+                    placeholder="Type name, phone, or email..."
+                    value={petSearch}
+                    autoFocus
+                    onChange={(e) => setPetSearch(e.target.value)}
+                  />
+                </div>
+                {searching ? (
+                  <div className="flex justify-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  </div>
                 ) : (
-                  hits.map((hit) =>
-                    hit.kind === 'user' ? (
-                      <button
-                        key={`user-${hit.user.userUuid}`}
-                        type="button"
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
-                        onClick={() => void selectPlatformUser(hit.user)}
-                      >
-                        <div className="font-medium flex items-center gap-2">
-                          {hit.user.name}
-                          <Badge variant="secondary" className="text-[10px]">
-                            KittyP
-                          </Badge>
-                          {hit.user.alreadyClient ? (
-                            <Badge variant="outline" className="text-[10px]">
-                              Client · add pet
-                            </Badge>
-                          ) : null}
-                        </div>
-                        <div className="text-muted-foreground text-xs">{hit.user.email || '—'}</div>
-                        <div className="text-[10px] font-mono text-muted-foreground mt-0.5 break-all">
-                          Owner ID: {hit.user.userUuid}
-                        </div>
-                      </button>
+                  <div className="border rounded-md max-h-52 overflow-y-auto divide-y mt-2">
+                    {hits.length === 0 ? (
+                      <p className="p-3 text-sm text-muted-foreground">
+                        {debouncedQ
+                          ? 'No matching KittyP users, pets, or owners — try New patient'
+                          : 'Start typing to search KittyP users and clinic patients'}
+                      </p>
                     ) : (
-                      <button
-                        key={hit.pet.petUuid}
-                        type="button"
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
-                        onClick={() => selectPet(hit.pet)}
-                      >
-                        <div className="font-medium">{hit.pet.name}</div>
-                        <div className="text-muted-foreground text-xs">
-                          {hit.pet.ownerName}
-                          {hit.pet.ownerPhone ? ` · ${hit.pet.ownerPhone}` : ''}
-                          {hit.pet.ownerEmail ? ` · ${hit.pet.ownerEmail}` : ''}
-                        </div>
-                      </button>
-                    )
-                  )
+                      hits.map((hit) =>
+                        hit.kind === 'user' ? (
+                          <button
+                            key={`user-${hit.user.userUuid}`}
+                            type="button"
+                            className="w-full text-left px-3 py-2.5 text-sm hover:bg-muted/60"
+                            onClick={() => void selectPlatformUser(hit.user)}
+                          >
+                            <div className="font-medium flex items-center gap-2">
+                              {hit.user.name}
+                              <Badge variant="secondary" className="text-[10px] font-normal">
+                                KittyP
+                              </Badge>
+                            </div>
+                          </button>
+                        ) : (
+                          <button
+                            key={hit.pet.petUuid}
+                            type="button"
+                            className="w-full text-left px-3 py-2.5 text-sm hover:bg-muted/60"
+                            onClick={() => selectPet(hit.pet)}
+                          >
+                            <PetNameType name={hit.pet.name} type={hit.pet.species} />
+                          </button>
+                        )
+                      )
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -852,6 +860,27 @@ export function AddAppointmentDialog({
             </p>
           )}
         </div>
+
+        {(mode === 'existing'
+          ? Boolean(selectedPet)
+          : Boolean(form.petName.trim() || form.ownerFirstName.trim())) ? (
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm space-y-0.5">
+            <p className="text-xs font-medium text-muted-foreground">Summary</p>
+            {mode === 'existing' ? (
+              <PetNameType name={selectedPet?.name} type={selectedPet?.species} />
+            ) : (
+              <PetNameType name={form.petName} type={form.petType} />
+            )}
+            <p className="text-xs text-muted-foreground">
+              {timing === 'now'
+                ? 'Here now'
+                : form.slotDate && form.slotTime && !Number.isNaN(new Date(`${form.slotDate}T${form.slotTime}`).getTime())
+                  ? format(snapToHalfHour(new Date(`${form.slotDate}T${form.slotTime}`)), 'PPp')
+                  : 'Time TBD'}
+              {resolvedDoctorUuid ? ` · ${assignedDoctorLabel || 'Doctor'}` : ''}
+            </p>
+          </div>
+        ) : null}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>

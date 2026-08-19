@@ -18,6 +18,7 @@ import {
   User,
   MoreHorizontal,
   ShieldCheck,
+  Activity,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { getAuthItem } from '@/utils/authStorage';
@@ -124,6 +125,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Dashboard', path: '/clinic', icon: LayoutDashboard, end: true },
       { label: 'Appointments', path: '/clinic/appointments', icon: Calendar },
       { label: 'Clients', path: '/clinic/patients', icon: PawPrint },
+      { label: 'Doctors', path: '/clinic/doctors', icon: Stethoscope },
       { label: 'Billing', path: '/clinic/invoices', icon: Package },
       { label: 'Settings', path: '/clinic/settings', icon: Settings },
     ],
@@ -149,6 +151,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Orders', path: '/admin/orders', icon: ShoppingCart },
       { label: 'Products', path: '/admin/products', icon: Package },
       { label: 'Articles', path: '/admin/articles', icon: FileText },
+      { label: 'Health', path: '/admin/health', icon: Activity },
       { label: 'Settings', path: '/admin/settings', icon: Settings },
     ],
     bottomTabs: [
@@ -173,6 +176,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Orders', path: '/admin/orders', icon: ShoppingCart },
       { label: 'Products', path: '/admin/products', icon: Package },
       { label: 'Articles', path: '/admin/articles', icon: FileText },
+      { label: 'Health', path: '/admin/health', icon: Activity },
       { label: 'Settings', path: '/admin/settings', icon: Settings },
     ],
     bottomTabs: [
