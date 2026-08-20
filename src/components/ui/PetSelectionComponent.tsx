@@ -24,6 +24,7 @@ interface PetSelectionProps {
   petsLoading?: boolean;
   petsLabel?: string;
   emptyHint?: string;
+  allowManualEntry?: boolean;
   onGenerateRecommendation: (manualPetData?: PetProfile) => void;
   isGenerating: boolean;
   recommendations: PetCarePlan;
@@ -36,6 +37,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
   petsLoading = false,
   petsLabel,
   emptyHint,
+  allowManualEntry = true,
   onGenerateRecommendation,
   isGenerating,
   recommendations
@@ -107,7 +109,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
             <CardDescription>{listDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Toggle between saved pets and manual entry */}
+            {allowManualEntry && (
             <div className="flex space-x-2 mb-6">
               <Button
                 variant={!useManualEntry ? "default" : "outline"}
@@ -133,6 +135,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                 Enter Manually
               </Button>
             </div>
+            )}
 
             {!useManualEntry ? (
               // Saved Pets Section

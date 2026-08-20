@@ -38,7 +38,6 @@ import AdminArticles from './pages/AdminArticles';
 import AdminOrders from './pages/AdminOrders';
 import AdminProducts from './pages/AdminProducts';
 import AdminUsers from './pages/AdminUsers';
-import AIAssistant from './pages/AIAssistant';
 import { VetConsultation } from './pages/VetConsultation';
 import { VetDashboardPage } from './pages/VetDashboardPage';
 import ParentAppointmentsPage from './pages/parent/ParentAppointmentsPage';
@@ -87,6 +86,7 @@ import DoctorBlog from './pages/DoctorBlog';
 import DoctorArticleEditor from './pages/DoctorArticleEditor';
 import DoctorInvoices from './pages/DoctorInvoices';
 import DoctorNutrition from './pages/DoctorNutrition';
+import DoctorNutritionGenerate from './pages/DoctorNutritionGenerate';
 import ParentHealthPage from './pages/parent/ParentHealthPage';
 import PetParentNutritionTracker from './components/nutrition/PetParentNutritionTracker';
 
@@ -181,7 +181,7 @@ export const router = createBrowserRouter(
         },
         {
           path: "ai-assistant",
-          element: <PageTransition><AIAssistant /></PageTransition>,
+          element: <Navigate to="/doctor/nutrition/new" replace />,
         },
         {
           path: "doctor-signup",
@@ -336,6 +336,10 @@ export const router = createBrowserRouter(
             {
               path: "nutrition",
               element: <PageTransition><DoctorNutrition /></PageTransition>,
+            },
+            {
+              path: "nutrition/new",
+              element: <PageTransition><DoctorNutritionGenerate /></PageTransition>,
             },
             {
               path: "blog",

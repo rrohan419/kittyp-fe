@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Apple, CheckCircle2, Send, Eye } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import { Apple, CheckCircle2, Send, Eye, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { RootState } from '@/module/store/store';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,16 +18,17 @@ import {
 } from '@/components/ui/dialog';
 import { NutritionPlanPreview } from '@/components/nutrition/NutritionPlanPreview';
 import {
-  approveNutritionPlan,
   fetchFilteredNutritionPlans,
   planResponseToPetCarePlan,
-  sendNutritionPlan,
+  updateNutritionPlan,
   type NutritionPlan,
 } from '@/services/petNutritionService';
 import type { PetCarePlan } from '@/services/aiService';
+import { defaultEnvironmentData } from '@/services/aiService';
 import { PetParentNutritionTracker } from '@/components/nutrition/PetParentNutritionTracker';
 
 export default function DoctorNutrition() {
+  const user = useSelector((s: RootState) => s.authReducer.user);
   const [plans, setPlans] = useState<NutritionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [reviewPlan, setReviewPlan] = useState<NutritionPlan | null>(null);
@@ -35,14 +39,16 @@ export default function DoctorNutrition() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const page = await fetchFilteredNutritionPlans(0, 30, {});
+      const page = await fetchFilteredNutritionPlans(0, 30, {
+        userUuid: user?.uuid,
+      });
       setPlans(page.models ?? []);
     } catch {
       toast.error('Failed to load nutrition plans');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.uuid]);
 
   useEffect(() => {
     void load();
@@ -53,28 +59,18 @@ export default function DoctorNutrition() {
     setEditablePlan(planResponseToPetCarePlan(plan));
   };
 
-  const handleApprove = async (uuid: string) => {
+  const handleSaveEdits = async (uuid: string) => {
+    if (!editablePlan || reviewPlan?.uuid !== uuid) return;
     setBusyUuid(uuid);
     try {
-      await approveNutritionPlan(uuid);
-      toast.success('Plan approved');
+      await updateNutritionPlan(uuid, {
+        recommendationResponse: editablePlan,
+        environmentDataDto: editablePlan.environment ?? defaultEnvironmentData,
+      });
+      toast.success('Edits saved');
       await load();
     } catch {
-      toast.error('Approve failed');
-    } finally {
-      setBusyUuid(null);
-    }
-  };
-
-  const handleSend = async (uuid: string) => {
-    setBusyUuid(uuid);
-    try {
-      await sendNutritionPlan(uuid);
-      toast.success('Plan sent to pet parent (30-day schedule created)');
-      setReviewPlan(null);
-      await load();
-    } catch {
-      toast.error('Send failed');
+      toast.error('Failed to save edits');
     } finally {
       setBusyUuid(null);
     }
@@ -92,29 +88,37 @@ export default function DoctorNutrition() {
         <div>
           <h1 className="text-2xl font-bold">Nutrition plans</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Review AI 30-day plans, approve, and dispatch to pet parents.
+            Generate a plan for a patient, review it, and save a draft.
           </p>
         </div>
         <Button asChild>
-          <Link to="/ai-assistant">
+          <Link to="/doctor/nutrition/new">
             <CheckCircle2 className="h-4 w-4 mr-1.5" />
             Generate plan
           </Link>
         </Button>
       </div>
 
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          Approve and send to parent are coming soon. For now, generate a plan, review or edit it, and save a
+          draft. Pet parents will receive plans from here in a later update.
+        </AlertDescription>
+      </Alert>
+
       <Card className="border-0 shadow-sm">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Apple className="h-4 w-4" /> Inbox
           </CardTitle>
-          <CardDescription>Draft and approved plans awaiting send.</CardDescription>
+          <CardDescription>Saved drafts you can review and edit.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : draftOrApproved.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pending plans. Generate one in AI Assistant.</p>
+            <p className="text-sm text-muted-foreground">No pending plans. Generate one for a patient.</p>
           ) : (
             draftOrApproved.map((plan) => (
               <div
@@ -139,16 +143,16 @@ export default function DoctorNutrition() {
                     <Button
                       size="sm"
                       variant="secondary"
-                      disabled={busyUuid === plan.uuid}
-                      onClick={() => void handleApprove(plan.uuid)}
+                      disabled
+                      title="Approve will be available in a later update"
                     >
                       Approve
                     </Button>
                   )}
                   <Button
                     size="sm"
-                    disabled={busyUuid === plan.uuid}
-                    onClick={() => void handleSend(plan.uuid)}
+                    disabled
+                    title="Sending to the pet parent will be available in a later update"
                   >
                     <Send className="h-3.5 w-3.5 mr-1" />
                     Send to parent
@@ -198,7 +202,7 @@ export default function DoctorNutrition() {
           <DialogHeader>
             <DialogTitle>Review &amp; edit nutrition plan</DialogTitle>
             <DialogDescription>
-              Adjust the AI plan before approving or sending to the pet parent.
+              Adjust the plan and save your edits. Approve and send to parent will be available later.
             </DialogDescription>
           </DialogHeader>
           {editablePlan && (
@@ -217,14 +221,14 @@ export default function DoctorNutrition() {
                 <Button
                   variant="secondary"
                   disabled={busyUuid === reviewPlan.uuid}
-                  onClick={() => void handleApprove(reviewPlan.uuid)}
+                  onClick={() => void handleSaveEdits(reviewPlan.uuid)}
                 >
+                  {busyUuid === reviewPlan.uuid ? 'Saving…' : 'Save edits'}
+                </Button>
+                <Button variant="secondary" disabled title="Approve will be available in a later update">
                   Approve
                 </Button>
-                <Button
-                  disabled={busyUuid === reviewPlan.uuid}
-                  onClick={() => void handleSend(reviewPlan.uuid)}
-                >
+                <Button disabled title="Sending to the pet parent will be available in a later update">
                   <Send className="h-4 w-4 mr-1.5" />
                   Send to parent
                 </Button>

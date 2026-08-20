@@ -117,6 +117,7 @@ export const fetchFilteredNutritionPlans = async (
     isActive?: boolean;
     status?: string;
     doctorUserUuid?: string;
+    userUuid?: string;
     searchText?: string;
   } = {}
 ): Promise<PaginationModel<NutritionPlan>> => {
@@ -128,6 +129,7 @@ export const fetchFilteredNutritionPlans = async (
   if (options.isActive !== undefined) params.set('isActive', String(options.isActive));
   if (options.status) params.set('status', options.status);
   if (options.doctorUserUuid) params.set('doctorUserUuid', options.doctorUserUuid);
+  if (options.userUuid) params.set('userUuid', options.userUuid);
   if (options.searchText) params.set('searchText', options.searchText);
 
   const response = await axiosInstance.post<WrappedPaginationResponse<NutritionPlan>>(
@@ -146,6 +148,20 @@ export const approveNutritionPlan = async (uuid: string): Promise<NutritionPlan>
 export const sendNutritionPlan = async (uuid: string): Promise<NutritionPlan> => {
   const res = await axiosInstance.post<ApiSuccessResponse<NutritionPlan>>(
     `/ai/nutrition/plans/${uuid}/send`
+  );
+  return res.data.data;
+};
+
+export const updateNutritionPlan = async (
+  uuid: string,
+  body: {
+    recommendationResponse: PetCarePlan;
+    environmentDataDto?: PetCarePlan['environment'];
+  }
+): Promise<NutritionPlan> => {
+  const res = await axiosInstance.patch<ApiSuccessResponse<NutritionPlan>>(
+    `/ai/nutrition/plans/${uuid}`,
+    body
   );
   return res.data.data;
 };
