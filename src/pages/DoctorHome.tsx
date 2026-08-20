@@ -261,18 +261,28 @@ export default function DoctorHome() {
     [bookings, today, clinicUuid, isPersonalPractice]
   );
   const activeAppointments = attending.length + queue.length;
+  const attendedPetUuids = useMemo(() => {
+    const ids = new Set<string>();
+    for (const v of practiceTodayVisits) {
+      if (
+        (v.status === 'IN_PROGRESS' || v.status === 'CHECKING_OUT' || v.status === 'COMPLETED') &&
+        v.petUuid
+      ) {
+        ids.add(v.petUuid);
+      }
+    }
+    return ids;
+  }, [practiceTodayVisits]);
   const urgentToday = useMemo(
     () =>
       practiceTodayVisits.filter(
         (v) =>
           isUrgentVisit(v.urgency) &&
-          v.status !== 'COMPLETED' &&
-          v.status !== 'CANCELLED' &&
-          v.status !== 'NO_SHOW' &&
-          v.status !== 'IN_PROGRESS' &&
-          v.status !== 'CHECKING_OUT'
+          v.status === 'WAITLIST' &&
+          !!v.petUuid &&
+          !attendedPetUuids.has(v.petUuid)
       ),
-    [practiceTodayVisits]
+    [practiceTodayVisits, attendedPetUuids]
   );
 
   const clinicLabelByUuid = useMemo(() => {
@@ -621,7 +631,16 @@ export default function DoctorHome() {
                   {inv.clinicName} · {inv.doctorName || 'Doctor'}
                 </span>
                 <div className="flex gap-2">
-                  <Button size="sm" disabled={!!acceptingUuid} onClick={() => void handleAccept(inv)}>
+                  <Button
+                    size="sm"
+                    disabled={!!acceptingUuid || !isVerified}
+                    onClick={() => void handleAccept(inv)}
+                    title={
+                      isVerified
+                        ? undefined
+                        : 'Certificates must be verified by admin before you can join a clinic'
+                    }
+                  >
                     {acceptingUuid === inv.uuid ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Accept'}
                   </Button>
                   <Button
@@ -635,6 +654,11 @@ export default function DoctorHome() {
                 </div>
               </div>
             ))}
+            {!isVerified ? (
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                Certificates must be verified by admin before you can join a clinic.
+              </p>
+            ) : null}
           </CardContent>
         </Card>
       )}

@@ -3,9 +3,8 @@ import { useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Building2, AlertTriangle, Plus, Power, MapPin } from 'lucide-react';
+import { Building2, AlertTriangle, Plus, Power, MapPin, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { shutdownClinic, reopenClinic, updateClinic } from '@/services/clinicService';
@@ -14,6 +13,13 @@ import {
   updateClinicWhatsAppSettings,
 } from '@/services/invoiceService';
 import { WhatsAppSettingsForm } from '@/components/whatsapp/WhatsAppSettingsForm';
+import { ClinicHoursDisplay, ClinicHoursEditor } from '@/components/clinic/ClinicHoursEditor';
+import {
+  type ClinicHourDay,
+  defaultClinicHours,
+  parseOperatingHours,
+  serializeOperatingHours,
+} from '@/utils/clinicHours';
 import { Link } from 'react-router-dom';
 import { RootState } from '@/module/store/store';
 import { ROLES, hasAnyRole, hasRole } from '@/utils/roles';
@@ -34,6 +40,27 @@ export default function ClinicSettings() {
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [savingLocation, setSavingLocation] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [name, setName] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [hours, setHours] = useState<ClinicHourDay[]>([]);
+  const [legacyHours, setLegacyHours] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!clinic || editingProfile) return;
+    setName(clinic.name ?? '');
+    setLicenseNumber(clinic.licenseNumber ?? '');
+    setEmail(clinic.email ?? '');
+    setPhone(clinic.phone ?? '');
+    setAddress(clinic.address ?? '');
+    const parsed = parseOperatingHours(clinic.operatingHours);
+    setHours(parsed.days);
+    setLegacyHours(parsed.legacyText);
+  }, [clinic, editingProfile]);
 
   useEffect(() => {
     setCity(clinic?.city ?? '');
@@ -137,6 +164,44 @@ export default function ClinicSettings() {
     }
   };
 
+  const saveProfile = async () => {
+    if (!clinicUuid || !clinic) return;
+    if (!name.trim()) {
+      toast.error('Practice name is required');
+      return;
+    }
+    const lat = latitude.trim() === '' ? clinic.latitude ?? null : Number(latitude);
+    const lng = longitude.trim() === '' ? clinic.longitude ?? null : Number(longitude);
+    if ((lat != null && !Number.isFinite(lat)) || (lng != null && !Number.isFinite(lng))) {
+      toast.error('Latitude and longitude must be numbers');
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      await updateClinic(clinicUuid, {
+        name: name.trim(),
+        licenseNumber: licenseNumber.trim() || undefined,
+        address: address.trim() || undefined,
+        phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
+        timezone: clinic.timezone,
+        operatingHours: serializeOperatingHours(hours),
+        city: city.trim() || undefined,
+        latitude: lat,
+        longitude: lng,
+        profileImageUrl: clinic.profileImageUrl || undefined,
+      });
+      await refresh();
+      setEditingProfile(false);
+      setLegacyHours(null);
+      toast.success('Practice profile saved');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save practice profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
       <div>
@@ -146,14 +211,9 @@ export default function ClinicSettings() {
         </p>
         <div className="mt-3 space-y-2">
           <CopyableId
-            label="Account ID"
-            value={user?.uuid}
-            hint="Sign in with this ID or your email."
-          />
-          <CopyableId
             label="Clinic ID"
             value={clinic?.uuid}
-            hint="Clinic owner can sign in with this ID or Account ID."
+            hint="Sign in with this ID or your email."
           />
         </div>
       </div>
@@ -166,8 +226,22 @@ export default function ClinicSettings() {
       )}
 
       <Card className="border-0 shadow-sm">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
           <CardTitle className="text-base">Practice Profile</CardTitle>
+          {canManageLocation && !isShutdown && !editingProfile && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (!hours.length) setHours(defaultClinicHours());
+                setEditingProfile(true);
+              }}
+            >
+              <Pencil className="h-3.5 w-3.5 mr-1" />
+              Edit
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
@@ -178,11 +252,19 @@ export default function ClinicSettings() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Practice Name</Label>
-              <Input value={clinic?.name ?? ''} readOnly />
+              <Input
+                value={editingProfile ? name : clinic?.name ?? ''}
+                readOnly={!editingProfile}
+                onChange={(e) => setName(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>License Number</Label>
-              <Input value={clinic?.licenseNumber ?? ''} readOnly />
+              <Input
+                value={editingProfile ? licenseNumber : clinic?.licenseNumber ?? ''}
+                readOnly={!editingProfile}
+                onChange={(e) => setLicenseNumber(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Practice type</Label>
@@ -198,21 +280,54 @@ export default function ClinicSettings() {
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input type="email" value={clinic?.email ?? ''} readOnly />
+              <Input
+                type="email"
+                value={editingProfile ? email : clinic?.email ?? ''}
+                readOnly={!editingProfile}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>
-              <Input type="tel" value={clinic?.phone ?? ''} readOnly />
+              <Input
+                type="tel"
+                value={editingProfile ? phone : clinic?.phone ?? ''}
+                readOnly={!editingProfile}
+                onChange={(e) => setPhone(e.target.value)}
+              />
             </div>
           </div>
           <div className="space-y-2">
             <Label>Address</Label>
-            <Input value={clinic?.address ?? ''} readOnly />
+            <Input
+              value={editingProfile ? address : clinic?.address ?? ''}
+              readOnly={!editingProfile}
+              onChange={(e) => setAddress(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <Label>Operating Hours</Label>
-            <Textarea rows={4} value={clinic?.operatingHours ?? ''} readOnly className="resize-none" />
+            {editingProfile ? (
+              <ClinicHoursEditor value={hours} onChange={setHours} disabled={savingProfile} />
+            ) : (
+              <ClinicHoursDisplay days={hours} legacyText={legacyHours} />
+            )}
           </div>
+          {editingProfile && (
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" onClick={() => void saveProfile()} disabled={savingProfile}>
+                {savingProfile ? 'Saving…' : 'Save'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={savingProfile}
+                onClick={() => setEditingProfile(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
           <p className={`text-xs ${isShutdown ? 'text-red-700 font-medium' : 'text-muted-foreground'}`}>
             Status: {clinic?.status ?? '—'}
           </p>

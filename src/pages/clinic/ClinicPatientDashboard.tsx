@@ -11,6 +11,7 @@ import {
   Mail,
   Phone,
   Link2,
+  Pencil,
 } from 'lucide-react';
 import { PrescriptionsTab } from '@/components/chart/PrescriptionsTab';
 import { parsePatientDashboardTab } from '@/components/chart/chartTabs';
@@ -23,11 +24,14 @@ import {
   fetchClinicPetVisits,
 } from '@/services/clinicService';
 import { PetPhoto } from '@/components/clinic/PetPhoto';
+import { ClinicPetEditDialog } from '@/components/clinic/ClinicPetEditDialog';
 import { formatPetDobWithAge } from '@/utils/petAge';
 import { toast } from 'sonner';
 import { saveDoctorVisitChart } from '@/services/visitService';
 import { parseApiErrorMessage } from '@/utils/validation';
 import { canEditVisitChart } from '@/utils/visitChartLock';
+import { canInviteDoctors } from '@/utils/roles';
+import { useAppSelector } from '@/module/store/hooks';
 
 const WRITABLE_VISIT = ['IN_PROGRESS', 'CHECKING_OUT', 'CHECKED_IN', 'WAITLIST', 'COMPLETED'];
 
@@ -45,6 +49,8 @@ export default function ClinicPatientDashboard() {
   const isDoctorPortal = pathname.startsWith('/doctor');
   const patientsPath = isDoctorPortal ? '/doctor/patients' : '/clinic/patients';
   const patientsLabel = isDoctorPortal ? 'Patients' : 'Clients & Pets';
+  const user = useAppSelector((s) => s.authReducer.user);
+  const canEditMicrochip = canInviteDoctors(user?.roles) && !isDoctorPortal;
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = parsePatientDashboardTab(searchParams.get('tab'));
   const { clinicUuid, loading: clinicLoading, error: clinicError } = useActiveClinic();
@@ -54,6 +60,7 @@ export default function ClinicPatientDashboard() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [rxDraft, setRxDraft] = useState('');
   const [rxSaving, setRxSaving] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,6 +108,12 @@ export default function ClinicPatientDashboard() {
       cancelled = true;
     };
   }, [clinicUuid, petUuid, clinicLoading]);
+
+  const reloadProfile = async () => {
+    if (!clinicUuid || !petUuid) return;
+    const data = await fetchClinicPetMedicalProfile(clinicUuid, petUuid);
+    setProfile(data);
+  };
 
   const prescriptionHistory = useMemo(() => prescriptionsFromVisits(visits), [visits]);
 
@@ -202,6 +215,18 @@ export default function ClinicPatientDashboard() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl font-semibold tracking-tight">{pet.name}</h1>
+                {clinicUuid && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    aria-label="Edit pet details"
+                    onClick={() => setEditOpen(true)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                )}
                 <Badge className="bg-primary/10 text-primary hover:bg-primary/10 border-0">Patient</Badge>
                 {owner?.linked && (
                   <Badge variant="secondary" className="gap-1">
@@ -447,6 +472,17 @@ export default function ClinicPatientDashboard() {
           )}
         </TabsContent>
       </Tabs>
+
+      {clinicUuid && (
+        <ClinicPetEditDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          clinicUuid={clinicUuid}
+          pet={pet}
+          onSaved={reloadProfile}
+          canEditMicrochip={canEditMicrochip}
+        />
+      )}
     </div>
   );
 }

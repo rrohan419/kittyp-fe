@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { notifyInviteAddressed } from '@/components/portal/PortalNotifications';
 import { ROLES, hasAnyRole } from '@/utils/roles';
 import { parseApiErrorMessage } from '@/utils/validation';
+import { fetchMyDoctorProfile, isPracticeReady, statusLabel } from '@/services/doctorVerificationService';
 
 export default function ClinicInviteAccept() {
   const [params] = useSearchParams();
@@ -29,6 +30,8 @@ export default function ClinicInviteAccept() {
   const [accepting, setAccepting] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [practiceReady, setPracticeReady] = useState(true);
+  const [doctorStatusLabel, setDoctorStatusLabel] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +54,18 @@ export default function ClinicInviteAccept() {
       cancelled = true;
     };
   }, [token]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    void fetchMyDoctorProfile()
+      .then((p) => {
+        setPracticeReady(isPracticeReady(p?.status));
+        setDoctorStatusLabel(p?.status ? statusLabel(p.status) : null);
+      })
+      .catch(() => {
+        setPracticeReady(false);
+      });
+  }, [isAuthenticated]);
 
   const redirectLogin = `/login?redirect=${encodeURIComponent(`/clinic-invite/accept?token=${token}`)}`;
   const redirectSignup = `/signup/doctor?inviteToken=${encodeURIComponent(token)}`;
@@ -191,7 +206,17 @@ export default function ClinicInviteAccept() {
                             Responding as <strong>{user?.email}</strong>. You must be signed in with the invited
                             email ({preview.email}).
                           </p>
-                          <Button className="w-full" onClick={handleAccept} disabled={accepting || rejecting}>
+                          {!practiceReady ? (
+                            <p className="text-sm text-amber-700 dark:text-amber-300">
+                              Certificates must be verified by admin before you can join a clinic
+                              {doctorStatusLabel ? ` (current: ${doctorStatusLabel})` : ''}.
+                            </p>
+                          ) : null}
+                          <Button
+                            className="w-full"
+                            onClick={handleAccept}
+                            disabled={accepting || rejecting || !practiceReady}
+                          >
                             {accepting ? 'Joining…' : 'Accept invitation'}
                           </Button>
                           <Button

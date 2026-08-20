@@ -292,6 +292,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                     {pet.weight && <Badge variant="secondary">{pet.weight}</Badge>}
                                     {pet.activityLevel && <Badge variant="outline">{pet.activityLevel} activity</Badge>}
                                     {pet.isNeutered && <Badge variant="outline">Neutered</Badge>}
+                                    {pet.microchipNumber && <Badge variant="outline">Chip {pet.microchipNumber}</Badge>}
                                 </div>
                                 {pet.healthConditions && (
                                     <p className="text-sm text-muted-foreground">

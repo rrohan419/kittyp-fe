@@ -174,13 +174,6 @@ export default function DoctorSettings() {
             value={profile?.uuid}
             hint="Use this ID or your email to sign in. Clinics invite you with this ID."
           />
-          {user?.uuid && user.uuid !== profile?.uuid ? (
-            <CopyableId
-              label="Account ID"
-              value={user.uuid}
-              hint="Also works at sign-in."
-            />
-          ) : null}
           <div className="flex items-center gap-2 text-muted-foreground">
             <Phone className="h-4 w-4 shrink-0" />
             <span className="text-foreground">

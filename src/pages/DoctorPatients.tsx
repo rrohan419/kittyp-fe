@@ -1,20 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { addDays, format, parseISO, isValid, startOfDay } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, PawPrint, Mail } from 'lucide-react';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
-import { ClinicBookingModel, ClinicVisitModel } from '@/services/clinicService';
-import {
-  AttendedPatientModel,
-  fetchMyAttendedPatients,
-  fetchMyDoctorBookings,
-  fetchMyDoctorVisits,
-} from '@/services/visitService';
-
-const OPEN_VISIT = new Set(['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS']);
+import { AttendedPatientModel, fetchMyAttendedPatients } from '@/services/visitService';
 
 type ClientRow = {
   petUuid: string;
@@ -25,7 +17,6 @@ type ClientRow = {
   clinicName?: string | null;
   lastAssessment?: string | null;
   lastVisitAt?: string | null;
-  nextSlot?: string | null;
   visitCount?: number;
 };
 
@@ -33,8 +24,6 @@ export default function DoctorPatients() {
   const { clinicUuid, clinic } = useActiveClinic();
   const [search, setSearch] = useState('');
   const [patients, setPatients] = useState<AttendedPatientModel[]>([]);
-  const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
-  const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [loading, setLoading] = useState(true);
 
   /** Scope patient roster to the active practice (personal vs clinic branch). */
@@ -43,33 +32,16 @@ export default function DoctorPatients() {
   useEffect(() => {
     let cancelled = false;
     setPatients([]);
-    setBookings([]);
-    setVisits([]);
     (async () => {
       setLoading(true);
       try {
-        const today = startOfDay(new Date());
-        const from = format(today, 'yyyy-MM-dd');
-        const to = format(addDays(today, 30), 'yyyy-MM-dd');
-        const [attended, upcoming, mine] = await Promise.all([
-          fetchMyAttendedPatients(practiceClinicUuid),
-          fetchMyDoctorBookings({ from, to, clinicUuid: practiceClinicUuid }).catch(
-            () => [] as ClinicBookingModel[]
-          ),
-          fetchMyDoctorVisits({ from, to: from, clinicUuid: practiceClinicUuid }).catch(
-            () => [] as ClinicVisitModel[]
-          ),
-        ]);
+        const attended = await fetchMyAttendedPatients(practiceClinicUuid);
         if (!cancelled) {
           setPatients(attended);
-          setBookings(upcoming);
-          setVisits(mine);
         }
       } catch {
         if (!cancelled) {
           setPatients([]);
-          setBookings([]);
-          setVisits([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -80,46 +52,10 @@ export default function DoctorPatients() {
     };
   }, [practiceClinicUuid]);
 
-  const clients = useMemo(() => {
-    const map = new Map<string, ClientRow>();
-    const upsert = (row: ClientRow) => {
-      if (!row.petUuid) return;
-      const prev = map.get(row.petUuid);
-      if (!prev) {
-        map.set(row.petUuid, row);
-        return;
-      }
-      map.set(row.petUuid, {
-        ...prev,
-        ...row,
-        petName: row.petName || prev.petName,
-        ownerName: row.ownerName || prev.ownerName,
-        ownerEmail: row.ownerEmail || prev.ownerEmail,
-        ownerPhone: row.ownerPhone || prev.ownerPhone,
-        clinicName: row.clinicName || prev.clinicName,
-        lastAssessment: (() => {
-          const a = row.lastVisitAt ? parseISO(row.lastVisitAt).getTime() : 0;
-          const b = prev.lastVisitAt ? parseISO(prev.lastVisitAt).getTime() : 0;
-          return a >= b
-            ? row.lastAssessment || prev.lastAssessment
-            : prev.lastAssessment || row.lastAssessment;
-        })(),
-        lastVisitAt: (() => {
-          const a = row.lastVisitAt ? parseISO(row.lastVisitAt).getTime() : 0;
-          const b = prev.lastVisitAt ? parseISO(prev.lastVisitAt).getTime() : 0;
-          return a >= b ? row.lastVisitAt || prev.lastVisitAt : prev.lastVisitAt;
-        })(),
-        nextSlot: (() => {
-          const a = row.nextSlot ? parseISO(row.nextSlot).getTime() : Number.POSITIVE_INFINITY;
-          const b = prev.nextSlot ? parseISO(prev.nextSlot).getTime() : Number.POSITIVE_INFINITY;
-          return a <= b ? row.nextSlot || prev.nextSlot : prev.nextSlot;
-        })(),
-        visitCount: Math.max(row.visitCount || 0, prev.visitCount || 0),
-      });
-    };
-
-    for (const p of patients) {
-      upsert({
+  const clients = useMemo<ClientRow[]>(() => {
+    return patients
+      .filter((p) => p.petUuid)
+      .map((p) => ({
         petUuid: p.petUuid,
         petName: p.petName,
         ownerName: p.ownerName,
@@ -129,44 +65,9 @@ export default function DoctorPatients() {
         lastAssessment: p.lastAssessment,
         lastVisitAt: p.lastVisitAt,
         visitCount: p.visitCount,
-      });
-    }
-    for (const v of visits) {
-      if (!v.petUuid) continue;
-      if (!OPEN_VISIT.has(v.status) && v.status !== 'CHECKING_OUT' && v.status !== 'COMPLETED') continue;
-      upsert({
-        petUuid: v.petUuid,
-        petName: v.petName,
-        ownerName: v.ownerName,
-        ownerEmail: v.ownerEmail,
-        ownerPhone: v.ownerPhone,
-        clinicName: v.clinicName,
-        lastAssessment: v.chart?.assessment,
-        lastVisitAt: v.completedAt || v.startedAt || v.checkedInAt || v.createdAt,
-      });
-    }
-    const cutoff = Date.now() - 60 * 60 * 1000;
-    for (const b of bookings) {
-      if (!b.petUuid || !b.slotStart) continue;
-      const status = (b.status || '').toUpperCase();
-      if (['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(status)) continue;
-      const start = parseISO(b.slotStart);
-      if (!isValid(start) || start.getTime() < cutoff) continue;
-      upsert({
-        petUuid: b.petUuid,
-        petName: b.petName,
-        ownerName: b.ownerName,
-        clinicName: b.clinicName,
-        nextSlot: b.slotStart,
-      });
-    }
-
-    return [...map.values()].sort((a, b) => {
-      const an = (a.petName || '').toLowerCase();
-      const bn = (b.petName || '').toLowerCase();
-      return an.localeCompare(bn);
-    });
-  }, [patients, visits, bookings]);
+      }))
+      .sort((a, b) => (a.petName || '').toLowerCase().localeCompare((b.petName || '').toLowerCase()));
+  }, [patients]);
 
   const filtered = useMemo(
     () =>
@@ -184,10 +85,10 @@ export default function DoctorPatients() {
         <h1 className="text-2xl font-bold text-foreground">Patients</h1>
         <p className="text-muted-foreground mt-1 text-sm">
           {clinic?.personal
-            ? 'Patients enrolled on your personal practice, plus those you’ve treated.'
+            ? 'Pets you treated on your personal practice.'
             : clinic
-              ? `${clinic.name} — patients and clients`
-              : 'Your patients and clients'}
+              ? `${clinic.name} — pets you treated, plus pets that already visited this clinic`
+              : 'Pets you treated, plus pets that visited a clinic you belong to'}
           {!loading ? ` · ${filtered.length}` : ''}
         </p>
       </div>
@@ -208,15 +109,14 @@ export default function DoctorPatients() {
         <Card className="border-0 shadow-sm">
           <CardContent className="py-16 text-center text-muted-foreground">
             {clinic?.personal
-              ? 'No patients yet. They appear when a parent books your personal practice, or after you treat them.'
-              : 'No patients yet. They appear when assigned, booked, or after you treat them.'}
+              ? 'No patients yet. They appear after you treat them.'
+              : 'No patients yet. They appear after you treat them, or after they visit a clinic you belong to.'}
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((p) => {
             const last = p.lastVisitAt ? parseISO(p.lastVisitAt) : null;
-            const next = p.nextSlot ? parseISO(p.nextSlot) : null;
             return (
               <Card key={p.petUuid} className="border-0 shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-5">
@@ -245,11 +145,6 @@ export default function DoctorPatients() {
                     {p.lastAssessment && (
                       <p className="text-muted-foreground line-clamp-2">
                         Last Dx: <span className="text-foreground">{p.lastAssessment}</span>
-                      </p>
-                    )}
-                    {next && isValid(next) && (
-                      <p className="text-muted-foreground">
-                        Next: <span className="text-foreground">{format(next, 'MMM d · p')}</span>
                       </p>
                     )}
                     {last && isValid(last) && (

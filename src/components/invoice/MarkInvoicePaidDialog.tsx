@@ -59,7 +59,7 @@ export function MarkInvoicePaidDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Mark as paid</DialogTitle>
+          <DialogTitle>PAID</DialogTitle>
           <DialogDescription>
             Record cash, UPI, card, or bank payment. Invoice PDF updates with this mode and reference.
           </DialogDescription>
@@ -105,7 +105,7 @@ export function MarkInvoicePaidDialog({
             disabled={busy || !invoice}
             onClick={() => onConfirm(paymentMode, transactionId.trim() || undefined)}
           >
-            Mark as paid
+            PAID
           </Button>
         </DialogFooter>
       </DialogContent>

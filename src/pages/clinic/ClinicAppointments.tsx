@@ -16,9 +16,11 @@ import { useNavigate } from 'react-router-dom';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
 import type { InvoiceFromVisitState } from '@/services/invoiceService';
+import { fetchClinicInvoicePdfUrl } from '@/services/invoiceService';
+import { InvoicePdfDialog } from '@/components/invoice/InvoicePdfDialog';
 import { WalkInDialog } from '@/components/clinic/WalkInDialog';
 import { BookingEditDialog } from '@/components/clinic/BookingEditDialog';
-import { fetchMyDoctorProfile } from '@/services/doctorVerificationService';
+import { fetchMyDoctorProfile, isPracticeReady, statusLabel } from '@/services/doctorVerificationService';
 import { canInviteDoctors, resolveLockedDoctorUuid, shouldLockAssigneeDoctor } from '@/utils/roles';
 import {
   Dialog,
@@ -39,15 +41,21 @@ import {
   fetchClinicDoctors,
   fetchClinicVisits,
   patchClinicVisit,
+  isClinicActivated,
+  CLINIC_NOT_ACTIVATED_MESSAGE,
 } from '@/services/clinicService';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { petNameWithType } from '@/utils/petType';
-import { dashboardVisitSurfaceClass, isUrgentVisit, urgentVisitBadgeClass } from '@/utils/visitUrgency';
+import {
+  attendedVisitSurfaceClass,
+  dashboardVisitSurfaceClass,
+  isUrgentVisit,
+  urgentVisitBadgeClass,
+} from '@/utils/visitUrgency';
 
 const FLOW_COLUMNS: { status: VisitStatus; title: string }[] = [
   { status: 'WAITLIST', title: 'Waitlist' },
-  { status: 'CHECKED_IN', title: 'Checked in' },
   { status: 'IN_PROGRESS', title: 'With doctor' },
   { status: 'CHECKING_OUT', title: 'Checkout' },
 ];
@@ -85,11 +93,14 @@ export default function ClinicAppointments() {
   const navigate = useNavigate();
   const user = useAppSelector((s) => s.authReducer.user);
   const canInvite = canInviteDoctors(user?.roles);
-  const { clinicUuid, isPersonalPractice } = useActiveClinic();
+  const { clinicUuid, clinic, isPersonalPractice } = useActiveClinic();
+  const clinicActivated = isClinicActivated(clinic?.status);
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
   const [myDoctorUuid, setMyDoctorUuid] = useState<string | null>(null);
+  const [practiceReady, setPracticeReady] = useState(true);
+  const [doctorStatusLabel, setDoctorStatusLabel] = useState<string | null>(null);
   const [doctorFilter, setDoctorFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -104,6 +115,15 @@ export default function ClinicAppointments() {
   });
   const [editSaving, setEditSaving] = useState(false);
   const [dragOverStatus, setDragOverStatus] = useState<VisitStatus | null>(null);
+  const [previewInvoiceUuid, setPreviewInvoiceUuid] = useState<string | null>(null);
+
+  const fetchPreviewUrl = useCallback(
+    (uuid: string) => {
+      if (!clinicUuid) return Promise.reject(new Error('No clinic'));
+      return fetchClinicInvoicePdfUrl(clinicUuid, uuid);
+    },
+    [clinicUuid]
+  );
 
   const load = useCallback(async () => {
     if (!clinicUuid) {
@@ -141,14 +161,18 @@ export default function ClinicAppointments() {
   useEffect(() => {
     if (!lockAssignee) {
       setMyDoctorUuid(null);
+      setPracticeReady(true);
+      setDoctorStatusLabel(null);
       return;
     }
     void fetchMyDoctorProfile()
       .then((p) => {
         if (p?.uuid) setMyDoctorUuid(p.uuid);
+        setPracticeReady(isPracticeReady(p?.status));
+        setDoctorStatusLabel(p?.status ? statusLabel(p.status) : null);
       })
       .catch(() => {
-        /* roster / owner fallback */
+        setPracticeReady(true);
       });
   }, [lockAssignee]);
 
@@ -189,7 +213,9 @@ export default function ClinicAppointments() {
   }, [visits, doctorFilter]);
 
   const byStatus = (status: VisitStatus) =>
-    filteredVisits.filter((v) => v.status === status);
+    filteredVisits.filter((v) =>
+      status === 'WAITLIST' ? v.status === 'WAITLIST' || v.status === 'CHECKED_IN' : v.status === status
+    );
 
   const completedToday = filteredVisits.filter((v) => v.status === 'COMPLETED');
 
@@ -315,10 +341,27 @@ export default function ClinicAppointments() {
             Today&apos;s visit board and upcoming appointments. Use + to check someone in or schedule
             for later.
           </p>
+          {lockAssignee && !practiceReady ? (
+            <p className="text-sm text-amber-700 dark:text-amber-300 mt-2">
+              Certificates must be verified by admin before you can take appointments
+              {doctorStatusLabel ? ` (current: ${doctorStatusLabel})` : ''}.
+            </p>
+          ) : null}
+          {clinic && !clinicActivated ? (
+            <p className="text-sm text-amber-700 dark:text-amber-300 mt-2">
+              {CLINIC_NOT_ACTIVATED_MESSAGE}
+              {clinic.status ? ` (current: ${clinic.status})` : ''}.
+            </p>
+          ) : null}
         </div>
         <Button
           onClick={() => setAddOpen(true)}
-          disabled={!clinicUuid || (lockAssignee && !lockedDoctorUuid)}
+          disabled={
+            !clinicUuid ||
+            !clinicActivated ||
+            (lockAssignee && !lockedDoctorUuid) ||
+            (lockAssignee && !practiceReady)
+          }
           aria-label="Add appointment"
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -359,7 +402,7 @@ export default function ClinicAppointments() {
           </TabsList>
 
           <TabsContent value="flow" className="mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {FLOW_COLUMNS.map((col) => (
                 <Card
                   key={col.status}
@@ -448,7 +491,17 @@ export default function ClinicAppointments() {
                         canSendToCheckout={!lockAssignee}
                         canInvite={canInvite}
                         onCheckIn={() => {
-                          patch(v.uuid, { status: 'CHECKED_IN' });
+                          const assignee = v.doctorUuid || lockedDoctorUuid;
+                          if (!assignee) {
+                            toast.error('Assign a doctor before moving to With doctor');
+                            return;
+                          }
+                          patch(
+                            v.uuid,
+                            !v.doctorUuid && lockedDoctorUuid
+                              ? { status: 'IN_PROGRESS', doctorUuid: lockedDoctorUuid }
+                              : { status: 'IN_PROGRESS' }
+                          );
                         }}
                         onCheckout={() => patch(v.uuid, { status: 'CHECKING_OUT' })}
                         onComplete={() => {
@@ -465,6 +518,10 @@ export default function ClinicAppointments() {
                           );
                         }}
                         onInvoice={() => {
+                          if (v.invoiceUuid) {
+                            setPreviewInvoiceUuid(v.invoiceUuid);
+                            return;
+                          }
                           const fromVisit: InvoiceFromVisitState = {
                             visitUuid: v.uuid,
                             clinicUuid: v.clinicUuid || clinicUuid || undefined,
@@ -490,7 +547,7 @@ export default function ClinicAppointments() {
                           setEditVisit(v);
                           setEditForm({
                             doctorUuid: v.doctorUuid || lockedDoctorUuid || '',
-                            status: v.status,
+                            status: v.status === 'CHECKED_IN' ? 'WAITLIST' : v.status,
                             urgency: v.urgency,
                             reasonForVisit: v.reasonForVisit || '',
                           });
@@ -531,7 +588,10 @@ export default function ClinicAppointments() {
                       e.dataTransfer.setData('text/visit-uuid', v.uuid);
                       e.dataTransfer.effectAllowed = 'move';
                     }}
-                    className={canReopen ? 'cursor-grab active:cursor-grabbing' : undefined}
+                    className={cn(
+                      attendedVisitSurfaceClass,
+                      canReopen ? 'cursor-grab active:cursor-grabbing' : undefined
+                    )}
                   >
                     <CardContent className="py-3 flex justify-between gap-2 text-sm">
                       <div>
@@ -785,6 +845,14 @@ export default function ClinicAppointments() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <InvoicePdfDialog
+        open={Boolean(previewInvoiceUuid)}
+        invoiceUuid={previewInvoiceUuid}
+        onOpenChange={(open) => {
+          if (!open) setPreviewInvoiceUuid(null);
+        }}
+        fetchUrl={fetchPreviewUrl}
+      />
     </div>
   );
 }
@@ -824,7 +892,12 @@ function VisitCard({
     ? doctors.find((d) => d.doctorUuid === lockedDoctorUuid)
     : undefined;
   const displayDoctorName = visit.doctorName || lockedDoctor?.name || lockedDoctor?.email;
-  const activeDoctors = doctors.filter((d) => d.isActive !== false && d.doctorUuid);
+  const activeDoctors = doctors.filter(
+    (d) =>
+      d.isActive !== false &&
+      d.doctorUuid &&
+      (isPracticeReady(d.status) || d.doctorUuid === visit.doctorUuid)
+  );
   const checkingOutAt = visit.checkingOutAt ? parseISO(visit.checkingOutAt) : null;
   const canLeaveCheckout =
     visit.status !== 'CHECKING_OUT' ||
@@ -837,11 +910,12 @@ function VisitCard({
       isValid(checkingOutAt) &&
       Date.now() - checkingOutAt.getTime() <= 30 * 60 * 1000);
   const urgent = isUrgentVisit(visit.urgency);
+  const attended = visit.status === 'CHECKING_OUT' || visit.status === 'COMPLETED';
   return (
     <div
       className={cn(
         'rounded-md border p-2.5 space-y-2',
-        dashboardVisitSurfaceClass(urgent),
+        attended ? attendedVisitSurfaceClass : dashboardVisitSurfaceClass(urgent),
         canLeaveCheckout ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
       )}
       aria-label={urgent ? `Urgent visit: ${visit.petName}` : undefined}
@@ -920,11 +994,11 @@ function VisitCard({
         </>
       )}
       <div className="flex flex-wrap gap-1">
-        {visit.status === 'WAITLIST' && (
+        {visit.status === 'WAITLIST' || visit.status === 'CHECKED_IN' ? (
           <Button size="sm" variant="secondary" className="h-7 text-xs" disabled={busy} onClick={onCheckIn}>
-            Check in
+            With doctor
           </Button>
-        )}
+        ) : null}
         {visit.status === 'IN_PROGRESS' && canSendToCheckout && (
           <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={onCheckout}>
             Move to checkout
@@ -944,7 +1018,7 @@ function VisitCard({
         )}
         {(visit.status === 'COMPLETED' || visit.status === 'CHECKING_OUT') && visit.invoiceUuid && (
           <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={onInvoice}>
-            Invoice
+            View invoice
           </Button>
         )}
         {visit.status === 'COMPLETED' && !visit.invoiceUuid && (

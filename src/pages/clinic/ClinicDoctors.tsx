@@ -26,6 +26,8 @@ import {
   lookupDoctorByUuid,
   remindDoctorInvite,
   revokeDoctorInvite,
+  isClinicActivated,
+  CLINIC_NOT_ACTIVATED_MESSAGE,
 } from '@/services/clinicService';
 import { statusLabel } from '@/services/doctorVerificationService';
 import { toast } from 'sonner';
@@ -65,6 +67,7 @@ export default function ClinicDoctors() {
   const canInvite = canInviteDoctors(user?.roles) && doctorsBase.startsWith('/clinic');
   const clinicAdminContext = doctorsBase.startsWith('/clinic');
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
+  const clinicActivated = isClinicActivated(clinic?.status);
   const [search, setSearch] = useState('');
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
   const [invites, setInvites] = useState<DoctorInviteModel[]>([]);
@@ -142,6 +145,10 @@ export default function ClinicDoctors() {
     e.stopPropagation();
     if (!clinicUuid) {
       toast.error('Select a clinic first, then try inviting again');
+      return;
+    }
+    if (!clinicActivated) {
+      toast.error(CLINIC_NOT_ACTIVATED_MESSAGE);
       return;
     }
 
@@ -288,9 +295,14 @@ export default function ClinicDoctors() {
               ? 'Loading…'
               : `${doctors.length} doctor${doctors.length === 1 ? '' : 's'}${clinic?.name ? ` at ${clinic.name}` : ''}`}
           </p>
+          {canInvite && clinic && !clinicActivated ? (
+            <p className="text-sm text-amber-700 dark:text-amber-300 mt-2">
+              {CLINIC_NOT_ACTIVATED_MESSAGE}
+            </p>
+          ) : null}
         </div>
         {canInvite && (
-          <Button size="sm" onClick={() => setInviteOpen(true)} disabled={!clinicUuid}>
+          <Button size="sm" onClick={() => setInviteOpen(true)} disabled={!clinicUuid || !clinicActivated}>
             <Plus className="h-4 w-4 mr-2" />
             Invite Doctor
           </Button>

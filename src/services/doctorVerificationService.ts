@@ -136,6 +136,10 @@ export function statusLabel(status: DoctorStatus | string | null | undefined): s
     .join(' ');
 }
 
+export function isPracticeReady(status?: DoctorStatus | string | null): boolean {
+  return status === 'VERIFIED' || status === 'PUBLISHED';
+}
+
 export function isChecklistItemApplicable(doctor: DoctorVerificationModel, key: ChecklistKey): boolean {
   switch (key) {
     case 'checkGovernmentId':

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { addDays, format, startOfDay } from 'date-fns';
-import { FileSpreadsheet, Plus, Trash2, FileDown, ExternalLink, Send, Banknote, CheckCircle, ChevronDown } from 'lucide-react';
+import { FileSpreadsheet, Plus, Trash2, FileDown, ExternalLink, Send, Banknote, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -43,8 +43,8 @@ const emptyItem = (): TreatmentLineItem => ({
   unitPrice: 500,
 });
 
-const INITIAL_INVOICE_ROWS = 10;
-const MORE_INVOICE_ROWS = 20;
+const INITIAL_INVOICE_ROWS = 5;
+const MORE_INVOICE_ROWS = 10;
 
 type LocationState = { fromVisit?: InvoiceFromVisitState } | null;
 
@@ -124,7 +124,9 @@ export default function DoctorInvoices() {
 
   useEffect(() => {
     const state = location.state as LocationState;
+    const invoiceQ = searchParams.get('invoice');
     const visitQ = searchParams.get('visit') || undefined;
+    if (invoiceQ) return;
     const key = state?.fromVisit?.visitUuid || visitQ;
     if (!key || hydratedRef.current === key) return;
     hydratedRef.current = key;
@@ -178,11 +180,12 @@ export default function DoctorInvoices() {
   const load = async () => {
     if (clinicLoading) return;
     try {
-      setInvoices(await fetchMyInvoices(clinicUuid ?? undefined));
-      setVisibleCount(INITIAL_INVOICE_ROWS);
+      const list = await fetchMyInvoices(clinicUuid ?? undefined);
+      setInvoices(list);
+      setVisibleCount(list.length);
     } catch {
       setInvoices([]);
-      setVisibleCount(INITIAL_INVOICE_ROWS);
+      setVisibleCount(0);
     }
   };
 
@@ -190,6 +193,24 @@ export default function DoctorInvoices() {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clinicLoading, clinicUuid]);
+
+  useEffect(() => {
+    const invoiceQ = searchParams.get('invoice');
+    if (!invoiceQ || hydratedRef.current === `invoice:${invoiceQ}`) return;
+    if (clinicLoading) return;
+    hydratedRef.current = `invoice:${invoiceQ}`;
+    void (async () => {
+      setBusyUuid(invoiceQ);
+      try {
+        const url = await fetchInvoicePdfUrl(invoiceQ);
+        window.open(url, '_blank');
+      } catch {
+        toast.error('PDF not available yet — generate it first');
+      } finally {
+        setBusyUuid(null);
+      }
+    })();
+  }, [searchParams, clinicLoading]);
 
   const orderedInvoices = useMemo(() => {
     return [...invoices].sort((a, b) => {
@@ -634,7 +655,14 @@ export default function DoctorInvoices() {
 
       <Card className="border-0 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base">Recent invoices</CardTitle>
+          <CardTitle className="text-base">
+            Previous invoices
+            {orderedInvoices.length ? (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                {orderedInvoices.length} {orderedInvoices.length === 1 ? 'invoice' : 'invoices'}
+              </span>
+            ) : null}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {!orderedInvoices.length ? (
@@ -652,11 +680,12 @@ export default function DoctorInvoices() {
                     {inv.notes ? ` · ${inv.notes}` : ''}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {formatInr(Number(inv.amount))} · {inv.paymentStatus || inv.status}
+                    {formatInr(Number(inv.amount))} ·{' '}
+                    {inv.paymentStatus || (inv.status === 'ISSUED' ? 'UNPAID' : inv.status)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Badge variant="secondary">{inv.status}</Badge>
+                  {inv.status !== 'ISSUED' ? <Badge variant="secondary">{inv.status}</Badge> : null}
                   {isInvoiceUnpaid(inv) && (
                     <>
                       <Button
@@ -672,7 +701,7 @@ export default function DoctorInvoices() {
                         disabled={busyUuid === inv.uuid}
                         onClick={() => setMarkPaidInvoice(inv)}
                       >
-                        <CheckCircle className="h-3.5 w-3.5 mr-1" /> Mark as paid
+                        <CheckCircle className="h-3.5 w-3.5 mr-1" /> PAID
                       </Button>
                     </>
                   )}
@@ -689,10 +718,11 @@ export default function DoctorInvoices() {
                       <Button
                         size="sm"
                         variant="secondary"
+                        aria-label="Send WhatsApp"
                         disabled={busyUuid === inv.uuid}
                         onClick={() => void onSendWhatsApp(inv.uuid)}
                       >
-                        <Send className="h-3.5 w-3.5 mr-1" /> WhatsApp
+                        <Send className="h-3.5 w-3.5" />
                       </Button>
                     </>
                   ) : (
@@ -707,18 +737,32 @@ export default function DoctorInvoices() {
                 </div>
               </div>
             ))}
-            {hiddenCount > 0 && (
-              <div className="flex justify-center pt-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground"
-                  onClick={() => setVisibleCount((n) => n + MORE_INVOICE_ROWS)}
-                >
-                  <ChevronDown className="h-4 w-4 mr-1" />
-                  Show {Math.min(MORE_INVOICE_ROWS, hiddenCount)} more
-                </Button>
+            {(hiddenCount > 0 || visibleCount > INITIAL_INVOICE_ROWS) && (
+              <div className="flex justify-center gap-2 pt-1">
+                {hiddenCount > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                    onClick={() => setVisibleCount((n) => n + MORE_INVOICE_ROWS)}
+                  >
+                    <ChevronDown className="h-4 w-4 mr-1" />
+                    Show {Math.min(MORE_INVOICE_ROWS, hiddenCount)} more
+                  </Button>
+                )}
+                {visibleCount > INITIAL_INVOICE_ROWS && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                    onClick={() => setVisibleCount(INITIAL_INVOICE_ROWS)}
+                  >
+                    <ChevronUp className="h-4 w-4 mr-1" />
+                    Collapse
+                  </Button>
+                )}
               </div>
             )}
             </>

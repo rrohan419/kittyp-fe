@@ -306,6 +306,33 @@ export async function fetchMyClinics(): Promise<ClinicModel[]> {
   return res.data.data ?? [];
 }
 
+export async function fetchAdminClinics(): Promise<ClinicModel[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ClinicModel[]>>('/admin/clinics');
+  return res.data.data ?? [];
+}
+
+export async function fetchAdminClinic(uuid: string): Promise<ClinicModel> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ClinicModel>>(`/admin/clinics/${uuid}`);
+  return res.data.data;
+}
+
+export async function updateAdminClinicStatus(
+  uuid: string,
+  status: 'VERIFIED' | 'REJECTED'
+): Promise<ClinicModel> {
+  const res = await axiosInstance.patch<ApiSuccessResponse<ClinicModel>>(`/admin/clinics/${uuid}/status`, {
+    status,
+  });
+  return res.data.data;
+}
+
+export const CLINIC_NOT_ACTIVATED_MESSAGE =
+  'This clinic must be verified by admin before appointments, bookings, or adding doctors.';
+
+export function isClinicActivated(status?: string | null): boolean {
+  return status === 'VERIFIED';
+}
+
 export async function fetchUserClinics(): Promise<ClinicModel[]> {
   const res = await axiosInstance.get<ApiSuccessResponse<ClinicModel[]>>('/user/clinics');
   return res.data.data ?? [];
@@ -582,6 +609,27 @@ export async function fetchClinicPetMedicalProfile(
 ): Promise<ClinicPetMedicalProfileModel> {
   const res = await axiosInstance.get<ApiSuccessResponse<ClinicPetMedicalProfileModel>>(
     `/clinic/${clinicUuid}/pets/${petUuid}`
+  );
+  return res.data.data;
+}
+
+export async function updateClinicPet(
+  clinicUuid: string,
+  petUuid: string,
+  payload: {
+    name: string;
+    species?: string;
+    breed?: string;
+    gender?: string;
+    dateOfBirth?: string;
+    weight?: string;
+    microchipNumber?: string;
+    photoUrl?: string;
+  }
+): Promise<ClinicPetListModel> {
+  const res = await axiosInstance.patch<ApiSuccessResponse<ClinicPetListModel>>(
+    `/clinic/${clinicUuid}/pets/${petUuid}`,
+    payload
   );
   return res.data.data;
 }

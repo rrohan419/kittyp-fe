@@ -8,6 +8,12 @@ const KNOWN_TYPES: Record<string, string> = {
   other: 'Other',
 };
 
+/** `male` / `female` for selects. Mixed-case stored values still match. */
+export function normalizePetGender(raw?: string | null): string {
+  const value = raw?.trim().toLowerCase();
+  return value === 'male' || value === 'female' ? value : '';
+}
+
 /** Normalize stored pet type for display. Blank stays blank; unknown values keep stored text. */
 export function formatPetType(raw?: string | null): string {
   const value = raw?.trim();

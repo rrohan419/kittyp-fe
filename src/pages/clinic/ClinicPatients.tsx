@@ -7,6 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -752,7 +759,18 @@ export default function ClinicPatients() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="petGender">Gender</Label>
-                  <Input id="petGender" value={form.petGender} onChange={(e) => set('petGender', e.target.value)} />
+                  <Select
+                    value={form.petGender || undefined}
+                    onValueChange={(value) => set('petGender', value)}
+                  >
+                    <SelectTrigger id="petGender">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="petDateOfBirth">Date of birth</Label>

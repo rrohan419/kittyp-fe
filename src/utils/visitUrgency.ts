@@ -13,6 +13,10 @@ export const routineVisitSurfaceClass =
 export const urgentVisitSurfaceClass =
   'border-rose-300 bg-rose-50 dark:bg-rose-950/40 dark:border-rose-700 border-l-4 border-l-rose-600';
 
+/** Treated / completed — emerald, not sky routine and not rose urgent. */
+export const attendedVisitSurfaceClass =
+  'border-emerald-200/80 bg-emerald-50/70 dark:bg-emerald-950/25 dark:border-emerald-800 border-l-4 border-l-emerald-500';
+
 export function dashboardVisitSurfaceClass(urgent: boolean): string {
   return urgent ? urgentVisitSurfaceClass : routineVisitSurfaceClass;
 }

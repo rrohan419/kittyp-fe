@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Heart,
   Lightbulb,
+  Pencil,
   Plus,
   Syringe,
   TrendingUp,
@@ -40,6 +41,8 @@ import {
   logPetWeight,
 } from '@/services/petDashboardService';
 import { PetHealthTimeline } from '@/components/health/PetHealthTimeline';
+import { OwnerPetEditDialog } from '@/components/ui/OwnerPetEditDialog';
+import { PetProfile } from '@/services/authService';
 
 export default function PetDashboardPage() {
   const { petId } = useParams<{ petId: string }>();
@@ -53,6 +56,7 @@ export default function PetDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [weightInput, setWeightInput] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const load = async () => {
     if (!petId) return;
@@ -80,6 +84,7 @@ export default function PetDashboardPage() {
   }, [petId]);
 
   const pet = dashboard?.pet ?? profilePet;
+  const editablePet: PetProfile | undefined = profilePet ?? dashboard?.pet;
   const chartData = useMemo(
     () =>
       [...weights]
@@ -151,7 +156,21 @@ export default function PetDashboardPage() {
             <PetImage pet={pet} alt={pet?.name ?? 'Pet'} className="w-full h-full object-cover" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold truncate">{pet?.name ?? 'Pet'}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold truncate">{pet?.name ?? 'Pet'}</h1>
+              {editablePet && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  aria-label="Edit pet details"
+                  onClick={() => setEditOpen(true)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">
               {pet?.type} · {pet?.breed || 'Mixed'}
               {pet?.dateOfBirth ? ` · ${formatPetDobWithAge(pet.dateOfBirth)}` : ''}
@@ -162,6 +181,9 @@ export default function PetDashboardPage() {
                 <Badge variant="outline">{dashboard?.latestWeight?.weight ?? pet?.weight} kg</Badge>
               )}
               {pet?.gender && <Badge variant="outline">{pet.gender}</Badge>}
+              {pet?.microchipNumber && (
+                <Badge variant="outline">Chip {pet.microchipNumber}</Badge>
+              )}
             </div>
           </div>
           <Button asChild className="shrink-0">
@@ -337,6 +359,15 @@ export default function PetDashboardPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {editablePet && (
+        <OwnerPetEditDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          pet={editablePet}
+          onSaved={load}
+        />
+      )}
     </div>
   );
 }

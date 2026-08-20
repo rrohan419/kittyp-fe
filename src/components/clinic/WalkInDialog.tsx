@@ -34,6 +34,7 @@ import {
   VisitUrgency,
 } from '@/services/clinicService';
 import { fetchParentDoctorSlots } from '@/services/discoverService';
+import { isPracticeReady } from '@/services/doctorVerificationService';
 import { digitsOnlyPhone, validateEmail, validatePhone } from '@/utils/validation';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -122,8 +123,14 @@ export function AddAppointmentDialog({
   const [busyHint, setBusyHint] = useState<string | null>(null);
 
   const activeDoctors = useMemo(
-    () => doctors.filter((d) => d.isActive !== false && d.doctorUuid),
-    [doctors]
+    () =>
+      doctors.filter(
+        (d) =>
+          d.isActive !== false &&
+          d.doctorUuid &&
+          (isPracticeReady(d.status) || d.doctorUuid === lockedDoctorUuid)
+      ),
+    [doctors, lockedDoctorUuid]
   );
 
   const resolvedDoctorUuid = lockedDoctorUuid || form.doctorUuid;

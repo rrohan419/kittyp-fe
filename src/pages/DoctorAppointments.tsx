@@ -26,6 +26,8 @@ import {
   ClinicDoctorModel,
   ClinicVisitModel,
   fetchClinicDoctors,
+  isClinicActivated,
+  CLINIC_NOT_ACTIVATED_MESSAGE,
 } from '@/services/clinicService';
 import { WalkInDialog } from '@/components/clinic/WalkInDialog';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
@@ -40,13 +42,16 @@ import {
 } from '@/services/visitService';
 import { DashboardAppointmentRow } from '@/components/schedule/DashboardAppointmentRow';
 import { petNameWithType } from '@/utils/petType';
-import { isUrgentVisit } from '@/utils/visitUrgency';
-import { fetchMyDoctorProfile } from '@/services/doctorVerificationService';
+import { attendedVisitSurfaceClass, isUrgentVisit } from '@/utils/visitUrgency';
+import { cn } from '@/lib/utils';
+import { fetchMyDoctorProfile, isPracticeReady, statusLabel } from '@/services/doctorVerificationService';
 import { resolveLockedDoctorUuid } from '@/utils/roles';
 import { toast } from 'sonner';
 import { parseApiErrorMessage } from '@/utils/validation';
 import { canEditVisitChart } from '@/utils/visitChartLock';
 import type { InvoiceFromVisitState } from '@/services/invoiceService';
+import { fetchInvoicePdfUrl } from '@/services/invoiceService';
+import { InvoicePdfDialog } from '@/components/invoice/InvoicePdfDialog';
 
 type ApptRow =
   | { kind: 'booking'; booking: ClinicBookingModel; sortAt: number }
@@ -56,10 +61,13 @@ export default function DoctorAppointments() {
   const navigate = useNavigate();
   const user = useAppSelector((s) => s.authReducer.user);
   const { clinicUuid, clinic, isPersonalPractice } = useActiveClinic();
+  const clinicActivated = isClinicActivated(clinic?.status);
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
   const [myDoctorUuid, setMyDoctorUuid] = useState<string | null>(null);
+  const [practiceReady, setPracticeReady] = useState(true);
+  const [doctorStatusLabel, setDoctorStatusLabel] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [chartVisit, setChartVisit] = useState<ClinicVisitModel | null>(null);
@@ -68,6 +76,9 @@ export default function DoctorAppointments() {
   const [vitals, setVitals] = useState<ChartVitalsSlice>(EMPTY_VITALS);
   const [notes, setNotes] = useState<ChartNotesSlice>(EMPTY_NOTES);
   const [plan, setPlan] = useState('');
+  const [previewInvoiceUuid, setPreviewInvoiceUuid] = useState<string | null>(null);
+
+  const fetchPreviewUrl = useCallback((uuid: string) => fetchInvoicePdfUrl(uuid), []);
 
   /** Scope to active practice — personal never mixes clinic-branch appointments. */
   const load = useCallback(async () => {
@@ -100,6 +111,8 @@ export default function DoctorAppointments() {
     void fetchMyDoctorProfile()
       .then((p) => {
         if (p?.uuid) setMyDoctorUuid(p.uuid);
+        setPracticeReady(isPracticeReady(p?.status));
+        setDoctorStatusLabel(p?.status ? statusLabel(p.status) : null);
       })
       .catch(() => {
         /* keep last known uuid */
@@ -279,8 +292,23 @@ export default function DoctorAppointments() {
                 : 'Your assigned appointments.'}{' '}
             Attend a patient, finish treatment, then invoice.
           </p>
+          {!practiceReady ? (
+            <p className="text-sm text-amber-700 dark:text-amber-300 mt-2">
+              Certificates must be verified by admin before you can take appointments
+              {doctorStatusLabel ? ` (current: ${doctorStatusLabel})` : ''}.
+            </p>
+          ) : null}
+          {clinic && !clinicActivated ? (
+            <p className="text-sm text-amber-700 dark:text-amber-300 mt-2">
+              {CLINIC_NOT_ACTIVATED_MESSAGE}
+              {clinic.status ? ` (current: ${clinic.status})` : ''}.
+            </p>
+          ) : null}
         </div>
-        <Button onClick={() => setAddOpen(true)} disabled={!clinicUuid || !lockedDoctorUuid}>
+        <Button
+          onClick={() => setAddOpen(true)}
+          disabled={!clinicUuid || !lockedDoctorUuid || !practiceReady || !clinicActivated}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add
         </Button>
@@ -310,7 +338,11 @@ export default function DoctorAppointments() {
                   subtitle={[b.ownerName || 'Owner', b.notes, b.clinicName].filter(Boolean).join(' · ')}
                   status="Scheduled"
                   action={
-                    <Button size="sm" onClick={() => void attendFromBooking(b.uuid)} disabled={busy}>
+                    <Button
+                      size="sm"
+                      onClick={() => void attendFromBooking(b.uuid)}
+                      disabled={busy || !practiceReady || !clinicActivated}
+                    >
                       Attend
                     </Button>
                   }
@@ -327,9 +359,17 @@ export default function DoctorAppointments() {
                 subtitle={[v.ownerName, v.ownerPhone, v.reasonForVisit].filter(Boolean).join(' · ')}
                 urgent={isUrgentVisit(v.urgency)}
                 status={v.status}
-                onClick={() => void openChart(v)}
+                onClick={
+                  (practiceReady && clinicActivated) || v.status === 'IN_PROGRESS'
+                    ? () => void openChart(v)
+                    : undefined
+                }
                 action={
-                  <Button size="sm" onClick={() => void openChart(v)} disabled={busy}>
+                  <Button
+                    size="sm"
+                    onClick={() => void openChart(v)}
+                    disabled={busy || ((!practiceReady || !clinicActivated) && v.status !== 'IN_PROGRESS')}
+                  >
                     {v.status === 'IN_PROGRESS' ? 'Open chart' : 'Attend'}
                   </Button>
                 }
@@ -338,7 +378,7 @@ export default function DoctorAppointments() {
           })}
 
           {treated.map((v) => (
-            <Card key={`treated-${v.uuid}`}>
+            <Card key={`treated-${v.uuid}`} className={cn('border', attendedVisitSurfaceClass)}>
               <CardContent className="py-3 flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">
@@ -355,32 +395,41 @@ export default function DoctorAppointments() {
                     {v.status === 'CHECKING_OUT' ? 'Checkout' : 'Completed'}
                   </Badge>
                   {isPersonalPractice &&
-                    (!v.clinicUuid || v.clinicUuid === clinicUuid) && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      const fromVisit: InvoiceFromVisitState = {
-                        visitUuid: v.uuid,
-                        clinicUuid: v.clinicUuid,
-                        petUuid: v.petUuid,
-                        petName: v.petName,
-                        ownerName: v.ownerName || undefined,
-                        ownerPhone: v.ownerPhone || undefined,
-                        ownerEmail: v.ownerEmail || undefined,
-                        reason: v.reasonForVisit || undefined,
-                        diagnosis: v.chart?.assessment || undefined,
-                        doctorNotes: v.chart?.plan || undefined,
-                        nextVisitNotes: v.chart?.nextVisitNotes || undefined,
-                      };
-                      navigate(`/doctor/invoices?visit=${encodeURIComponent(v.uuid)}`, {
-                        state: { fromVisit },
-                      });
-                    }}
-                  >
-                    Invoice
-                  </Button>
-                  )}
+                    (!v.clinicUuid || v.clinicUuid === clinicUuid) &&
+                    (v.invoiceUuid ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setPreviewInvoiceUuid(v.invoiceUuid as string)}
+                      >
+                        View invoice
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const fromVisit: InvoiceFromVisitState = {
+                            visitUuid: v.uuid,
+                            clinicUuid: v.clinicUuid,
+                            petUuid: v.petUuid,
+                            petName: v.petName,
+                            ownerName: v.ownerName || undefined,
+                            ownerPhone: v.ownerPhone || undefined,
+                            ownerEmail: v.ownerEmail || undefined,
+                            reason: v.reasonForVisit || undefined,
+                            diagnosis: v.chart?.assessment || undefined,
+                            doctorNotes: v.chart?.plan || undefined,
+                            nextVisitNotes: v.chart?.nextVisitNotes || undefined,
+                          };
+                          navigate(`/doctor/invoices?visit=${encodeURIComponent(v.uuid)}`, {
+                            state: { fromVisit },
+                          });
+                        }}
+                      >
+                        Create invoice
+                      </Button>
+                    ))}
                 </div>
               </CardContent>
             </Card>
@@ -398,6 +447,15 @@ export default function DoctorAppointments() {
           onCreated={load}
         />
       )}
+
+      <InvoicePdfDialog
+        open={Boolean(previewInvoiceUuid)}
+        invoiceUuid={previewInvoiceUuid}
+        onOpenChange={(open) => {
+          if (!open) setPreviewInvoiceUuid(null);
+        }}
+        fetchUrl={fetchPreviewUrl}
+      />
 
       <Dialog open={!!chartVisit} onOpenChange={(o) => !o && setChartVisit(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">

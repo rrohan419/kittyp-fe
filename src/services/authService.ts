@@ -58,6 +58,7 @@ export interface PetProfile {
   healthConditions: string;
   allergies: string;
   isNeutered: boolean;
+  microchipNumber?: string;
   createdAt: string
 }
 

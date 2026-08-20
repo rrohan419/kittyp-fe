@@ -57,6 +57,7 @@ export interface UpdatePet {
   uuid: string;
   name: string;
   profilePicture: string;
+  type?: string;
   breed: string;
   // age: string;
   dateOfBirth: string;

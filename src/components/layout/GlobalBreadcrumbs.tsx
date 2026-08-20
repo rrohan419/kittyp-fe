@@ -51,6 +51,8 @@ const breadcrumbConfig: BreadcrumbConfig = {
   '/admin/articles': { label: 'Article Management' },
   '/admin/articles/new': { label: 'New Article' },
   '/admin/articles/edit': { label: 'Edit Article', dynamic: true },
+  '/admin/organizations': { label: 'Organizations' },
+  '/admin/doctors': { label: 'Doctor Verification' },
   '/privacy': { label: 'Privacy Policy' },
   '/terms': { label: 'Terms of Service' },
   '/sitemap': { label: 'Sitemap' },

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PetImage } from '@/components/ui/PetImage';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Heart, Calendar, Bell, TrendingUp, Award, Activity, ShoppingBag, Lightbulb } from 'lucide-react';
+import { ArrowLeft, Heart, Calendar, Bell, TrendingUp, Award, Activity, ShoppingBag, Lightbulb, Pencil } from 'lucide-react';
 import { useNutrition } from '@/hooks/useNutrition';
 import { DailyDetails } from '@/components/nutrition/DailyDetails';
 import { ProgressCharts } from '@/components/nutrition/ProgressCharts';
@@ -22,6 +22,7 @@ import { PetBadges } from '@/components/health/PetBadges';
 import { NotificationSettings } from '@/components/health/NotificationSettings';
 import { PetProfile } from '@/services/authService';
 import { formatPetDobWithAge } from '@/utils/petAge';
+import { OwnerPetEditDialog } from '@/components/ui/OwnerPetEditDialog';
 
 const PetDetail: React.FC = () => {
   const { uuid } = useParams<{ uuid: string }>();
@@ -29,6 +30,7 @@ const PetDetail: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.authReducer);
   // const { pets, selectedPet, setSelectedPetId } = usePetManagement(user?.uuid || '');
   const [activeTab, setActiveTab] = React.useState('nutrition');
+  const [editOpen, setEditOpen] = React.useState(false);
   const pets = user?.ownerPets || [];
   const {
     nutritionPlan,
@@ -101,9 +103,21 @@ const PetDetail: React.FC = () => {
                 </div>
                 <div className="flex-1">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                    <div>
+                    <div className="flex items-start gap-2">
+                      <div>
                       <CardTitle className="text-3xl mb-2">{pet.name}</CardTitle>
                       <p className="text-muted-foreground">{(pet as any).breed || (pet as any).species}</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        aria-label="Edit pet details"
+                        onClick={() => setEditOpen(true)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-3">
@@ -114,6 +128,9 @@ const PetDetail: React.FC = () => {
                     )}
                     {(pet as any).weight && <Badge variant="secondary">{(pet as PetProfile).weight}</Badge>}
                     {(pet as any).gender && <Badge variant="outline">{(pet as PetProfile).gender}</Badge>}
+                    {(pet as PetProfile).microchipNumber && (
+                      <Badge variant="outline">Chip {(pet as PetProfile).microchipNumber}</Badge>
+                    )}
                   </div>
                 </div>
               </div>
@@ -307,6 +324,11 @@ const PetDetail: React.FC = () => {
           </Tabs>
         </div>
       </div>
+      <OwnerPetEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        pet={pet as PetProfile}
+      />
       <Footer />
     </>
   );
