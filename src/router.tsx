@@ -74,6 +74,8 @@ import ClinicReports from './pages/clinic/ClinicReports';
 import ClinicSettings from './pages/clinic/ClinicSettings';
 import ClinicInvoices from './pages/clinic/ClinicInvoices';
 import ClinicRetention from './pages/clinic/ClinicRetention';
+import ClinicBlog from './pages/clinic/ClinicBlog';
+import ClinicArticleEditor from './pages/clinic/ClinicArticleEditor';
 
 // Parent Portal
 import { ParentLayout } from './pages/parent/ParentLayout';
@@ -428,6 +430,18 @@ export const router = createBrowserRouter(
             {
               path: "invoices",
               element: <PageTransition><ClinicInvoices /></PageTransition>,
+            },
+            {
+              path: "blog",
+              element: <PageTransition><ClinicBlog /></PageTransition>,
+            },
+            {
+              path: "blog/new",
+              element: <PageTransition><ClinicArticleEditor /></PageTransition>,
+            },
+            {
+              path: "blog/edit/:slug",
+              element: <PageTransition><ClinicArticleEditor /></PageTransition>,
             },
             {
               path: "settings",
