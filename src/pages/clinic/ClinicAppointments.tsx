@@ -17,6 +17,7 @@ import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
 import type { InvoiceFromVisitState } from '@/services/invoiceService';
 import { WalkInDialog } from '@/components/clinic/WalkInDialog';
+import { BookingEditDialog } from '@/components/clinic/BookingEditDialog';
 import { fetchMyDoctorProfile } from '@/services/doctorVerificationService';
 import { canInviteDoctors, resolveLockedDoctorUuid, shouldLockAssigneeDoctor } from '@/utils/roles';
 import {
@@ -68,6 +69,18 @@ function bookingStart(b: ClinicBookingModel): Date | null {
   return isValid(d) ? d : null;
 }
 
+function isEditableBooking(
+  b: ClinicBookingModel,
+  lockAssignee: boolean,
+  lockedDoctorUuid?: string
+): boolean {
+  const status = (b.status || '').toUpperCase();
+  if (!['PENDING', 'CONFIRMED'].includes(status)) return false;
+  if (lockAssignee && !lockedDoctorUuid) return false;
+  if (lockAssignee && b.doctorUuid && b.doctorUuid !== lockedDoctorUuid) return false;
+  return true;
+}
+
 export default function ClinicAppointments() {
   const navigate = useNavigate();
   const user = useAppSelector((s) => s.authReducer.user);
@@ -82,6 +95,7 @@ export default function ClinicAppointments() {
   const [addOpen, setAddOpen] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
   const [editVisit, setEditVisit] = useState<ClinicVisitModel | null>(null);
+  const [editBooking, setEditBooking] = useState<ClinicBookingModel | null>(null);
   const [editForm, setEditForm] = useState({
     doctorUuid: '',
     status: 'WAITLIST' as VisitStatus,
@@ -381,6 +395,7 @@ export default function ClinicAppointments() {
                       todayScheduledBookings.map((b) => {
                         const start = bookingStart(b);
                         const doc = doctorName(b.doctorUuid);
+                        const canEdit = isEditableBooking(b, lockAssignee, lockedDoctorUuid);
                         return (
                           <div
                             key={`booking-${b.uuid}`}
@@ -394,9 +409,22 @@ export default function ClinicAppointments() {
                                   · {b.ownerName || 'Owner'}
                                 </span>
                               </div>
-                              <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200 shrink-0">
-                                Scheduled
-                              </Badge>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
+                                  Scheduled
+                                </Badge>
+                                {canEdit ? (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0"
+                                    title="Edit appointment"
+                                    onClick={() => setEditBooking(b)}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                ) : null}
+                              </div>
                             </div>
                             <div className="text-xs text-muted-foreground flex items-center gap-1">
                               <Clock className="h-3 w-3" />
@@ -538,6 +566,7 @@ export default function ClinicAppointments() {
               upcomingBookings.map((b) => {
                 const start = bookingStart(b);
                 const doc = doctorName(b.doctorUuid);
+                const canEdit = isEditableBooking(b, lockAssignee, lockedDoctorUuid);
                 return (
                   <Card key={b.uuid}>
                     <CardContent className="py-3 text-sm flex justify-between gap-3">
@@ -555,7 +584,20 @@ export default function ClinicAppointments() {
                           <div className="text-muted-foreground text-xs mt-0.5">{b.notes}</div>
                         ) : null}
                       </div>
-                      <Badge variant="outline">{b.status}</Badge>
+                      <div className="flex items-start gap-1">
+                        <Badge variant="outline">{b.status}</Badge>
+                        {canEdit ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            title="Edit appointment"
+                            onClick={() => setEditBooking(b)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        ) : null}
+                      </div>
                     </CardContent>
                   </Card>
                 );
@@ -573,6 +615,19 @@ export default function ClinicAppointments() {
           doctors={doctors}
           lockedDoctorUuid={lockedDoctorUuid}
           onCreated={load}
+        />
+      )}
+
+      {clinicUuid && (
+        <BookingEditDialog
+          open={!!editBooking}
+          onOpenChange={(o) => !o && setEditBooking(null)}
+          clinicUuid={clinicUuid}
+          booking={editBooking}
+          doctors={doctors}
+          lockAssignee={lockAssignee}
+          lockedDoctorUuid={lockedDoctorUuid}
+          onSaved={load}
         />
       )}
 

@@ -718,6 +718,24 @@ export async function createClinicBooking(
   return res.data.data;
 }
 
+export async function patchClinicBooking(
+  clinicUuid: string,
+  bookingUuid: string,
+  payload: {
+    doctorUuid?: string;
+    slotStart?: string;
+    notes?: string;
+    status?: 'CANCELLED' | 'NO_SHOW';
+    mode?: 'IN_PERSON' | 'VIDEO';
+  }
+): Promise<ClinicBookingModel> {
+  const res = await axiosInstance.patch<ApiSuccessResponse<ClinicBookingModel>>(
+    `/clinic/${clinicUuid}/bookings/${bookingUuid}`,
+    payload
+  );
+  return res.data.data;
+}
+
 export async function patchClinicVisit(
   clinicUuid: string,
   visitUuid: string,

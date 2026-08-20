@@ -111,8 +111,9 @@ export const shouldLockAssigneeDoctor = (
   roles: string[] | undefined,
   isPersonalPractice: boolean
 ): boolean => {
+  if (hasAnyRole(roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF])) return false;
   if (isPersonalPractice) return true;
-  return hasRole(roles, ROLES.DOCTOR) && !hasAnyRole(roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF]);
+  return hasRole(roles, ROLES.DOCTOR);
 };
 
 /** Personal: owner affiliation, else profile/self. Doctor actor: own profile or roster self. */

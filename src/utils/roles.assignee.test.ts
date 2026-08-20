@@ -24,9 +24,16 @@ const other: AssigneeDoctorRef = {
 };
 
 describe('shouldLockAssigneeDoctor', () => {
-  it('locks personal practice for any role', () => {
-    assert.equal(shouldLockAssigneeDoctor([ROLES.CLINIC_ADMIN], true), true);
-    assert.equal(shouldLockAssigneeDoctor([ROLES.CLINIC_STAFF], true), true);
+  it('does not lock clinic admin or staff even on personal practice', () => {
+    assert.equal(shouldLockAssigneeDoctor([ROLES.CLINIC_ADMIN], true), false);
+    assert.equal(shouldLockAssigneeDoctor([ROLES.CLINIC_STAFF], true), false);
+    assert.equal(
+      shouldLockAssigneeDoctor([ROLES.DOCTOR, ROLES.CLINIC_ADMIN], true),
+      false
+    );
+  });
+
+  it('locks doctor on personal practice', () => {
     assert.equal(shouldLockAssigneeDoctor([ROLES.DOCTOR], true), true);
   });
 
