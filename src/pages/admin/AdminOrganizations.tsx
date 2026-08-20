@@ -50,7 +50,7 @@ export default function AdminOrganizations() {
         return list[0] ?? null;
       });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load clinics');
+      toast.error(parseApiErrorMessage(e, 'Failed to load clinics'));
       setClinics([]);
       setSelected(null);
     } finally {

@@ -291,6 +291,10 @@ export default function ClinicAppointments() {
       toast.error('Assign a doctor before moving to With doctor');
       return;
     }
+    if (status === 'CHECKING_OUT' && !assignee) {
+      toast.error('Assign a doctor before moving to Checkout');
+      return;
+    }
     if (status === 'COMPLETED' && !assignee) {
       toast.error('Assign a doctor before completing the visit');
       return;
@@ -503,7 +507,14 @@ export default function ClinicAppointments() {
                               : { status: 'IN_PROGRESS' }
                           );
                         }}
-                        onCheckout={() => patch(v.uuid, { status: 'CHECKING_OUT' })}
+                        onCheckout={() => {
+                          const assignee = v.doctorUuid || lockedDoctorUuid;
+                          if (!assignee) {
+                            toast.error('Assign a doctor before moving to Checkout');
+                            return;
+                          }
+                          patch(v.uuid, { status: 'CHECKING_OUT' });
+                        }}
                         onComplete={() => {
                           const assignee = v.doctorUuid || lockedDoctorUuid;
                           if (!assignee) {
@@ -795,6 +806,10 @@ export default function ClinicAppointments() {
                   toast.error('Assign a doctor before moving to With doctor');
                   return;
                 }
+                if (editForm.status === 'CHECKING_OUT' && !assignee) {
+                  toast.error('Assign a doctor before moving to Checkout');
+                  return;
+                }
                 if (editForm.status === 'COMPLETED' && !assignee) {
                   toast.error('Assign a doctor before completing the visit');
                   return;
@@ -911,17 +926,20 @@ function VisitCard({
       Date.now() - checkingOutAt.getTime() <= 30 * 60 * 1000);
   const urgent = isUrgentVisit(visit.urgency);
   const attended = visit.status === 'CHECKING_OUT' || visit.status === 'COMPLETED';
+  const waiting = visit.status === 'WAITLIST' || visit.status === 'CHECKED_IN';
+  const hasDoctor = Boolean(visit.doctorUuid || lockedDoctorUuid);
+  const canDrag = !busy && canLeaveCheckout && (!waiting || hasDoctor);
   return (
     <div
       className={cn(
         'rounded-md border p-2.5 space-y-2',
         attended ? attendedVisitSurfaceClass : dashboardVisitSurfaceClass(urgent),
-        canLeaveCheckout ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
+        canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
       )}
       aria-label={urgent ? `Urgent visit: ${visit.petName}` : undefined}
-      draggable={!busy && canLeaveCheckout}
+      draggable={canDrag}
       onDragStart={(e) => {
-        if (!canLeaveCheckout) {
+        if (!canDrag) {
           e.preventDefault();
           return;
         }

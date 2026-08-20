@@ -98,11 +98,22 @@ export function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html, HTML_ALLOWLIST);
 }
 
-/** Parse Spring / API error bodies into a readable message. */
-export function parseApiErrorMessage(raw: string, fallback = 'Something went wrong'): string {
-  if (!raw?.trim()) return fallback;
+/** Parse Spring / API error bodies, Axios errors, or raw strings into a readable message. */
+export function parseApiErrorMessage(raw: unknown, fallback = 'Something went wrong'): string {
+  if (raw == null) return fallback;
+  if (typeof raw === 'object') {
+    const ax = raw as { response?: { data?: unknown }; message?: string };
+    if (ax.response?.data !== undefined) {
+      return parseApiErrorMessage(ax.response.data, fallback);
+    }
+    if (typeof ax.message === 'string' && ax.message.trim()) {
+      return ax.message;
+    }
+  }
+  const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
+  if (!text?.trim() || text === '{}' || text === 'null') return fallback;
   try {
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(text);
     if (typeof parsed?.message === 'string' && parsed.message.trim()) return parsed.message;
     if (Array.isArray(parsed?.errors) && parsed.errors[0]?.defaultMessage) {
       return parsed.errors.map((e: { defaultMessage?: string }) => e.defaultMessage).filter(Boolean).join('. ');
@@ -111,5 +122,5 @@ export function parseApiErrorMessage(raw: string, fallback = 'Something went wro
   } catch {
     // not JSON
   }
-  return raw.length > 200 ? fallback : raw;
+  return text.length > 200 ? fallback : text;
 }

@@ -15,6 +15,7 @@ import AdminHome from '@/pages/admin/AdminHome';
 import AdminSystemHealth from '@/pages/admin/AdminSystemHealth';
 import AdminDoctors from '@/pages/admin/AdminDoctors';
 import AdminOrganizations from '@/pages/admin/AdminOrganizations';
+import AdminSettings from '@/pages/admin/AdminSettings';
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import MyOrders from "@/pages/MyOrders";
@@ -31,7 +32,6 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import VerifyResetCode from "@/pages/VerifyResetCode";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
-import ComingSoon from "@/components/portal/ComingSoon";
 import App from './App';
 import { PageTransition } from './components/layout/PageTransition';
 import AdminArticles from './pages/AdminArticles';
@@ -503,7 +503,7 @@ export const router = createBrowserRouter(
             },
             {
               path: "settings",
-              element: <PageTransition><ComingSoon title="Admin Settings" backTo="/admin" /></PageTransition>,
+              element: <PageTransition><AdminSettings /></PageTransition>,
             },
           ]
         },
