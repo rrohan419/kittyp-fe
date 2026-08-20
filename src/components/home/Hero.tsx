@@ -112,14 +112,14 @@ export function Hero() {
                 whileTap={{ scale: 0.95 }}
               >
                 <Link
-                  to="/ai-assistant"
+                  to="/app/nutrition"
                   className={cn(
                     "inline-flex items-center justify-center px-8 py-4 text-base font-semibold rounded-full",
                     "bg-secondary text-secondary-foreground hover:bg-secondary/90",
                     "transition-colors duration-200"
                   )}
                 >
-                  AI Pet Assistant
+                  Pet nutrition
                 </Link>
               </motion.div>
             </motion.div>

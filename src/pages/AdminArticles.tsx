@@ -1,18 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search, Plus, Edit, Eye, FileText, Calendar, Clock } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { fetchArticles } from '@/services/articleService';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ensureMyAuthor, fetchArticles } from '@/services/articleService';
 import { ArticleList, ArticleStatus } from './Interface/PagesInterface';
 
-const AdminArticles = () => {
+export type ArticleDashboardProps = {
+  basePath?: string;
+  ownArticlesOnly?: boolean;
+  title?: string;
+  description?: string;
+};
+
+const AdminArticles = ({
+  basePath = '/admin/articles',
+  ownArticlesOnly = false,
+  title = 'Article Management',
+  description = 'Manage your blog content and publications',
+}: ArticleDashboardProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [articles, setArticles] = useState<ArticleList[]>([]);
@@ -31,14 +41,20 @@ const AdminArticles = () => {
   const loadArticles = useCallback(async () => {
     setIsLoading(true);
     try {
+      let authorId: number | null = null;
+      if (ownArticlesOnly) {
+        const author = await ensureMyAuthor();
+        authorId = author.id;
+      }
       const response = await fetchArticles({
         page: 1,
-        size: 50, // Increased size to load more articles at once for admin view
+        size: 50,
         body: {
           name: null,
           isRandom: null,
           articleStatus: null,
-          tags : [],
+          tags: [],
+          authorId,
         },
       });
       setArticles(response.data.models);
@@ -47,7 +63,7 @@ const AdminArticles = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [ownArticlesOnly]);
 
   useEffect(() => {
     loadArticles();
@@ -57,14 +73,15 @@ const AdminArticles = () => {
   const adminArticles = articles.map(article => ({
     ...article,
     status: article.status as ArticleStatus,
-    authorName: article.author.name,
-    tagsText: article.tags.join(', ')
+    authorName: article.author?.name || '',
+    tags: article.tags || [],
+    tagsText: (article.tags || []).join(', ')
   }));
 
   const filteredArticles = adminArticles.filter(article => {
     const matchesSearch = 
-      article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      article.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      article.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      article.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       article.authorName.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = filterStatus === 'all' || article.status === filterStatus;
@@ -73,19 +90,16 @@ const AdminArticles = () => {
   });
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      
-      <main className="flex-1 pt-24 pb-16 bg-gray-50 dark:bg-gray-900">
-        <div className="container px-4 md:px-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+        <div>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 mb-8">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Article Management</h1>
+              <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
               <p className="text-muted-foreground">
-                Manage your blog content and publications
+                {description}
               </p>
             </div>
-            <Button onClick={() => navigate('/admin/articles/new')}>
+            <Button onClick={() => navigate(`${basePath}/new`)}>
               <Plus className="h-4 w-4 mr-2" />
               New Article
             </Button>
@@ -212,7 +226,7 @@ const AdminArticles = () => {
                               <Button 
                                 variant="outline" 
                                 size="sm"
-                                onClick={() => navigate(`/article/${article.slug}`)}
+                                onClick={() => navigate(`/articles/${article.slug}`)}
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View
@@ -220,7 +234,7 @@ const AdminArticles = () => {
                               <Button 
                                 variant="outline" 
                                 size="sm"
-                                onClick={() => navigate(`/admin/articles/edit/${article.slug}`)}
+                                onClick={() => navigate(`${basePath}/edit/${article.slug}`)}
                               >
                                 <Edit className="h-3 w-3 mr-1" />
                                 Edit
@@ -236,9 +250,6 @@ const AdminArticles = () => {
             </CardContent>
           </Card>
         </div>
-      </main>
-
-      <Footer />
     </div>
   );
 };

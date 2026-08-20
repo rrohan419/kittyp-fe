@@ -12,6 +12,7 @@ import {
   Phone,
   Link2,
   Pencil,
+  Apple,
 } from 'lucide-react';
 import { PrescriptionsTab } from '@/components/chart/PrescriptionsTab';
 import { parsePatientDashboardTab } from '@/components/chart/chartTabs';
@@ -237,6 +238,14 @@ export default function ClinicPatientDashboard() {
               <p className="text-sm text-muted-foreground mt-1.5">
                 {[pet.species, pet.breed].filter(Boolean).join(' · ') || 'Pet'}
               </p>
+              {isDoctorPortal && (
+                <Button variant="outline" size="sm" className="mt-3" asChild>
+                  <Link to={`/doctor/nutrition/new?petUuid=${pet.petUuid}`}>
+                    <Apple className="h-4 w-4 mr-1.5" />
+                    Create nutrition plan
+                  </Link>
+                </Button>
+              )}
             </div>
 
             <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">

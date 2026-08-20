@@ -103,7 +103,6 @@ export function Navbar() {
   const navLinks = [
     { name: 'Home', path: '/' },
     ...(ecommerceOn ? [{ name: 'Products', path: '/products' }] : []),
-    { name: 'AI Assistant', path: '/ai-assistant' },
     { name: 'How to Use', path: '/how-to-use' },
     { name: 'Articles', path: '/articles' },
     { name: 'Contact', path: '/contact' },
