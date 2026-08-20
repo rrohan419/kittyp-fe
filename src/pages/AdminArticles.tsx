@@ -27,6 +27,7 @@ const AdminArticles = ({
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [articles, setArticles] = useState<ArticleList[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const navigate = useNavigate();
 
   const getStatusColor = (status: string) => {
@@ -40,6 +41,7 @@ const AdminArticles = ({
 
   const loadArticles = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       let authorId: number | null = null;
       if (ownArticlesOnly) {
@@ -60,6 +62,7 @@ const AdminArticles = ({
       setArticles(response.data.models);
     } catch (error) {
       console.error('Error loading articles:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -148,14 +151,27 @@ const AdminArticles = ({
                   <TableBody>
                     {isLoading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-10">
-                          Loading articles...
+                        <TableCell colSpan={7} className="py-10">
+                          <div className="space-y-2" aria-busy="true" aria-label="Loading articles">
+                            <div className="h-10 rounded bg-muted animate-pulse" />
+                            <div className="h-10 rounded bg-muted animate-pulse" />
+                            <div className="h-10 rounded bg-muted animate-pulse" />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : loadError ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-10 space-y-3">
+                          <p className="text-sm text-muted-foreground">Could not load articles.</p>
+                          <Button size="sm" variant="outline" onClick={() => void loadArticles()}>
+                            Retry
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ) : filteredArticles.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-10">
-                          No articles found
+                        <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                          No articles match this search.
                         </TableCell>
                       </TableRow>
                     ) : (

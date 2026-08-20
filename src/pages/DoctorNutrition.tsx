@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { Apple, CheckCircle2, Send, Eye, Info } from 'lucide-react';
+import { format } from 'date-fns';
+import { Apple, CheckCircle2, Plus, Send, Eye, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { RootState } from '@/module/store/store';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,10 +14,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { NutritionPlanPreview } from '@/components/nutrition/NutritionPlanPreview';
 import {
+  approveNutritionPlan,
   fetchFilteredNutritionPlans,
   planResponseToPetCarePlan,
+  sendNutritionPlan,
   updateNutritionPlan,
   type NutritionPlan,
 } from '@/services/petNutritionService';
@@ -27,28 +37,47 @@ import type { PetCarePlan } from '@/services/aiService';
 import { defaultEnvironmentData } from '@/services/aiService';
 import { PetParentNutritionTracker } from '@/components/nutrition/PetParentNutritionTracker';
 
+function petName(plan: NutritionPlan): string {
+  return plan.nutritionRecommendationResponse?.petProfileSummary?.name?.trim() || 'Patient';
+}
+
+function formatWhen(value?: string | null): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return format(date, 'd MMM yyyy, h:mm a');
+}
+
+function statusLabel(status?: string): string {
+  if (!status || status === 'DRAFT') return 'Draft';
+  if (status === 'APPROVED') return 'Approved';
+  if (status === 'SENT') return 'Sent';
+  return status;
+}
+
 export default function DoctorNutrition() {
-  const user = useSelector((s: RootState) => s.authReducer.user);
   const [plans, setPlans] = useState<NutritionPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [reviewPlan, setReviewPlan] = useState<NutritionPlan | null>(null);
   const [editablePlan, setEditablePlan] = useState<PetCarePlan | null>(null);
   const [busyUuid, setBusyUuid] = useState<string | null>(null);
   const [trackerPetUuid, setTrackerPetUuid] = useState<string | null>(null);
+  const [sendTarget, setSendTarget] = useState<NutritionPlan | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
-      const page = await fetchFilteredNutritionPlans(0, 30, {
-        userUuid: user?.uuid,
-      });
+      const page = await fetchFilteredNutritionPlans(0, 30, {});
       setPlans(page.models ?? []);
     } catch {
+      setLoadError(true);
       toast.error('Failed to load nutrition plans');
     } finally {
       setLoading(false);
     }
-  }, [user?.uuid]);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -59,20 +88,53 @@ export default function DoctorNutrition() {
     setEditablePlan(planResponseToPetCarePlan(plan));
   };
 
-  const handleSaveEdits = async (uuid: string) => {
-    if (!editablePlan || reviewPlan?.uuid !== uuid) return;
+  const runBusy = async (uuid: string, work: () => Promise<void>) => {
     setBusyUuid(uuid);
     try {
-      await updateNutritionPlan(uuid, {
-        recommendationResponse: editablePlan,
-        environmentDataDto: editablePlan.environment ?? defaultEnvironmentData,
-      });
-      toast.success('Edits saved');
+      await work();
       await load();
-    } catch {
-      toast.error('Failed to save edits');
     } finally {
       setBusyUuid(null);
+    }
+  };
+
+  const handleSaveEdits = async (uuid: string) => {
+    if (!editablePlan || reviewPlan?.uuid !== uuid) return;
+    try {
+      await runBusy(uuid, async () => {
+        await updateNutritionPlan(uuid, {
+          recommendationResponse: editablePlan,
+          environmentDataDto: editablePlan.environment ?? defaultEnvironmentData,
+        });
+        toast.success('Edits saved');
+      });
+    } catch {
+      toast.error('Failed to save edits');
+    }
+  };
+
+  const handleApprove = async (plan: NutritionPlan) => {
+    try {
+      await runBusy(plan.uuid, async () => {
+        await approveNutritionPlan(plan.uuid);
+        toast.success(`Approved plan for ${petName(plan)}`);
+        setReviewPlan(null);
+      });
+    } catch {
+      toast.error('Failed to approve plan');
+    }
+  };
+
+  const handleSend = async (plan: NutritionPlan) => {
+    try {
+      await runBusy(plan.uuid, async () => {
+        await sendNutritionPlan(plan.uuid);
+        toast.success(`Sent plan to ${petName(plan)}'s parent`);
+        setReviewPlan(null);
+        setSendTarget(null);
+      });
+    } catch {
+      toast.error('Failed to send plan');
     }
   };
 
@@ -88,37 +150,46 @@ export default function DoctorNutrition() {
         <div>
           <h1 className="text-2xl font-bold">Nutrition plans</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Generate a plan for a patient, review it, and save a draft.
+            Generate, review, approve, and send a plan to the pet parent.
           </p>
         </div>
         <Button asChild>
           <Link to="/doctor/nutrition/new">
-            <CheckCircle2 className="h-4 w-4 mr-1.5" />
+            <Plus className="h-4 w-4 mr-1.5" />
             Generate plan
           </Link>
         </Button>
       </div>
-
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
-          Approve and send to parent are coming soon. For now, generate a plan, review or edit it, and save a
-          draft. Pet parents will receive plans from here in a later update.
-        </AlertDescription>
-      </Alert>
 
       <Card className="border-0 shadow-sm">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Apple className="h-4 w-4" /> Inbox
           </CardTitle>
-          <CardDescription>Saved drafts you can review and edit.</CardDescription>
+          <CardDescription>Drafts and approved plans waiting to be sent.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <div className="space-y-3" aria-busy="true" aria-label="Loading plans">
+              {[0, 1, 2].map((key) => (
+                <div key={key} className="h-20 rounded-lg bg-muted animate-pulse" />
+              ))}
+            </div>
+          ) : loadError ? (
+            <div className="flex flex-col items-start gap-3 py-4">
+              <p className="text-sm text-muted-foreground">Could not load plans.</p>
+              <Button size="sm" variant="outline" onClick={() => void load()}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                Retry
+              </Button>
+            </div>
           ) : draftOrApproved.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pending plans. Generate one for a patient.</p>
+            <div className="py-6 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">No pending plans.</p>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/doctor/nutrition/new">Generate one for a patient</Link>
+              </Button>
+            </div>
           ) : (
             draftOrApproved.map((plan) => (
               <div
@@ -126,12 +197,15 @@ export default function DoctorNutrition() {
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-border rounded-lg p-3"
               >
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium">{plan.planName}</p>
-                    <Badge variant="secondary">{plan.status || 'DRAFT'}</Badge>
+                    <Badge variant={plan.status === 'APPROVED' ? 'default' : 'secondary'}>
+                      {statusLabel(plan.status)}
+                    </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Pet {plan.petUuid.slice(0, 8)}… · {plan.generationTimestamp}
+                    {petName(plan)}
+                    {formatWhen(plan.generationTimestamp) ? ` · ${formatWhen(plan.generationTimestamp)}` : ''}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -143,16 +217,17 @@ export default function DoctorNutrition() {
                     <Button
                       size="sm"
                       variant="secondary"
-                      disabled
-                      title="Approve will be available in a later update"
+                      disabled={busyUuid === plan.uuid}
+                      onClick={() => void handleApprove(plan)}
                     >
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                       Approve
                     </Button>
                   )}
                   <Button
                     size="sm"
-                    disabled
-                    title="Sending to the pet parent will be available in a later update"
+                    disabled={busyUuid === plan.uuid}
+                    onClick={() => setSendTarget(plan)}
                   >
                     <Send className="h-3.5 w-3.5 mr-1" />
                     Send to parent
@@ -167,15 +242,26 @@ export default function DoctorNutrition() {
       <Card className="border-0 shadow-sm">
         <CardHeader>
           <CardTitle className="text-base">Sent plans</CardTitle>
-          <CardDescription>Parents can track progress; you can view feeding logs on the pet dashboard.</CardDescription>
+          <CardDescription>Parents can log meals; you can watch progress here.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
-          {sent.length === 0 ? (
+          {loading ? (
+            <div className="h-12 rounded-lg bg-muted animate-pulse" />
+          ) : sent.length === 0 ? (
             <p className="text-sm text-muted-foreground">No sent plans yet.</p>
           ) : (
             sent.map((plan) => (
-              <div key={plan.uuid} className="flex items-center justify-between gap-2 text-sm">
-                <span className="font-medium">{plan.planName}</span>
+              <div
+                key={plan.uuid}
+                className="flex items-center justify-between gap-2 border border-border rounded-lg p-3 text-sm"
+              >
+                <div>
+                  <p className="font-medium">{plan.planName}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {petName(plan)}
+                    {formatWhen(plan.sentAt) ? ` · sent ${formatWhen(plan.sentAt)}` : ''}
+                  </p>
+                </div>
                 <Button size="sm" variant="ghost" onClick={() => setTrackerPetUuid(plan.petUuid)}>
                   View tracker
                 </Button>
@@ -189,7 +275,7 @@ export default function DoctorNutrition() {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Parent nutrition progress</DialogTitle>
-            <DialogDescription>Bi-directional visibility into the 30-day feeding log.</DialogDescription>
+            <DialogDescription>30-day feeding log for this patient.</DialogDescription>
           </DialogHeader>
           {trackerPetUuid && (
             <PetParentNutritionTracker embedded petUuid={trackerPetUuid} readOnly />
@@ -202,7 +288,7 @@ export default function DoctorNutrition() {
           <DialogHeader>
             <DialogTitle>Review &amp; edit nutrition plan</DialogTitle>
             <DialogDescription>
-              Adjust the plan and save your edits. Approve and send to parent will be available later.
+              Adjust the plan, save, approve, then send it to the pet parent.
             </DialogDescription>
           </DialogHeader>
           {editablePlan && (
@@ -225,10 +311,19 @@ export default function DoctorNutrition() {
                 >
                   {busyUuid === reviewPlan.uuid ? 'Saving…' : 'Save edits'}
                 </Button>
-                <Button variant="secondary" disabled title="Approve will be available in a later update">
-                  Approve
-                </Button>
-                <Button disabled title="Sending to the pet parent will be available in a later update">
+                {reviewPlan.status !== 'APPROVED' && (
+                  <Button
+                    variant="secondary"
+                    disabled={busyUuid === reviewPlan.uuid}
+                    onClick={() => void handleApprove(reviewPlan)}
+                  >
+                    Approve
+                  </Button>
+                )}
+                <Button
+                  disabled={busyUuid === reviewPlan.uuid}
+                  onClick={() => setSendTarget(reviewPlan)}
+                >
                   <Send className="h-4 w-4 mr-1.5" />
                   Send to parent
                 </Button>
@@ -237,6 +332,31 @@ export default function DoctorNutrition() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!sendTarget} onOpenChange={(open) => !open && setSendTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send this plan to the parent?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {sendTarget
+                ? `${petName(sendTarget)}'s parent will see this plan and can log meals against it. You cannot edit it after sending.`
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!sendTarget || busyUuid === sendTarget?.uuid}
+              onClick={(event) => {
+                event.preventDefault();
+                if (sendTarget) void handleSend(sendTarget);
+              }}
+            >
+              Send
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

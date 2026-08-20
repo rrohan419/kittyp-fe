@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Info, Save, Send } from 'lucide-react';
+import { ArrowLeft, Save, Send } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { toast } from 'sonner';
 import { RootState } from '@/module/store/store';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import UserLocationDisplay from '@/components/ui/UserLocationDisplay';
@@ -21,6 +20,7 @@ import {
   type LocationData,
   type PetCarePlan,
 } from '@/services/aiService';
+import { fetchFilteredNutritionPlans, sendNutritionPlan } from '@/services/petNutritionService';
 
 export default function DoctorNutritionGenerate() {
   const navigate = useNavigate();
@@ -65,7 +65,7 @@ export default function DoctorNutritionGenerate() {
     try {
       const recommendation = await generateNutritionRecommendation(pet, user.uuid, location);
       setPlan(recommendation);
-      toast.success(`Plan generated for ${pet.name}. Review and edit it, then save a draft.`);
+      toast.success(`Plan generated for ${pet.name}. Review it, then save or send.`);
     } catch (error: unknown) {
       const aiError = handleAIError(error);
       toast.error(aiError.userMessage || aiError.message);
@@ -104,6 +104,32 @@ export default function DoctorNutritionGenerate() {
     }
   };
 
+  const handleSaveAndSend = async () => {
+    if (!selectedPet) {
+      toast.error('Select a patient first');
+      return;
+    }
+    setSaving(true);
+    try {
+      await persistPlan();
+      const page = await fetchFilteredNutritionPlans(0, 5, { petUuid: selectedPet.uuid });
+      const latest = page.models?.[0];
+      if (!latest?.uuid) {
+        toast.success('Draft saved. Send it from the nutrition inbox.');
+        navigate('/doctor/nutrition');
+        return;
+      }
+      await sendNutritionPlan(latest.uuid);
+      toast.success(`Plan sent for ${selectedPet.name}`);
+      navigate('/doctor/nutrition');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to send plan';
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -116,18 +142,10 @@ export default function DoctorNutritionGenerate() {
           </Button>
           <h1 className="text-2xl font-bold mt-2">Generate nutrition plan</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Create an AI plan for a patient, review it, and save a draft.
+            Create an AI plan for a patient, review it, then save a draft or send it to the parent.
           </p>
         </div>
       </div>
-
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
-          Sending a plan to the pet parent is coming soon. Save a draft for now; approve and send will be
-          added in a later update.
-        </AlertDescription>
-      </Alert>
 
       <PetSelectionComponent
         selectedPetId={selectedPetId}
@@ -178,9 +196,9 @@ export default function DoctorNutritionGenerate() {
               <Save className="h-4 w-4 mr-1.5" />
               {saving ? 'Saving…' : 'Save draft'}
             </Button>
-            <Button disabled title="Sending to the pet parent will be available in a later update">
+            <Button disabled={saving} onClick={() => void handleSaveAndSend()}>
               <Send className="h-4 w-4 mr-1.5" />
-              Save and send to parent
+              {saving ? 'Sending…' : 'Save and send to parent'}
             </Button>
           </div>
         </>
