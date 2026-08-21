@@ -9,7 +9,7 @@ import { CopyableId } from '@/components/ui/CopyableId';
 const stats = [
   { label: 'Total Users', value: '2,420', icon: Users, color: 'text-blue-600 bg-blue-500/10', route: '/admin/users' },
   { label: 'Pending Doctors', value: '4', icon: Stethoscope, color: 'text-amber-600 bg-amber-500/10', route: '/admin/doctors' },
-  { label: 'Organizations', value: '12', icon: Building2, color: 'text-violet-600 bg-violet-500/10', route: '/admin/organizations' },
+  { label: 'Clinics', value: '12', icon: Building2, color: 'text-violet-600 bg-violet-500/10', route: '/admin/clinics' },
   { label: 'Orders', value: '845', icon: ShoppingCart, color: 'text-green-600 bg-green-500/10', route: '/admin/orders', ecommerce: true },
   { label: 'Products', value: '12', icon: Package, color: 'text-pink-600 bg-pink-500/10', route: '/admin/products', ecommerce: true },
   { label: 'Articles', value: '6', icon: FileText, color: 'text-cyan-600 bg-cyan-500/10', route: '/admin/articles' },
@@ -62,8 +62,8 @@ export default function AdminHome() {
 
         <Card className="border-0 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base font-semibold">Organizations</CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/admin/organizations')} className="text-primary">View <ArrowRight className="h-3.5 w-3.5 ml-1" /></Button>
+            <CardTitle className="text-base font-semibold">Clinics</CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/admin/clinics')} className="text-primary">View <ArrowRight className="h-3.5 w-3.5 ml-1" /></Button>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">12 active clinics on the platform.</p>

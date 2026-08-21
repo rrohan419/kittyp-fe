@@ -470,8 +470,12 @@ export const router = createBrowserRouter(
               element: <PageTransition><AdminDoctors /></PageTransition>,
             },
             {
-              path: "organizations",
+              path: "clinics",
               element: <PageTransition><AdminOrganizations /></PageTransition>,
+            },
+            {
+              path: "organizations",
+              element: <Navigate to="/admin/clinics" replace />,
             },
             {
               path: "orders",

@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Building2, Loader2, MapPin, Phone, Mail } from 'lucide-react';
+import { Building2, Loader2, MapPin, Phone, Mail, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   ClinicModel,
@@ -20,12 +20,19 @@ import { CopyableId } from '@/components/ui/CopyableId';
 import { ClinicHoursDisplay } from '@/components/clinic/ClinicHoursEditor';
 import { parseOperatingHours } from '@/utils/clinicHours';
 import { parseApiErrorMessage } from '@/utils/validation';
+import { matchesQuery } from '@/utils/search';
+import { Input } from '@/components/ui/input';
+
+function clinicStatus(status?: string | null): string {
+  return (status ?? 'PENDING').toUpperCase();
+}
 
 function statusBadgeClass(status?: string) {
-  if (status === 'VERIFIED') {
+  const normalized = clinicStatus(status);
+  if (normalized === 'VERIFIED') {
     return 'bg-green-100 text-green-700 border-0 text-[10px]';
   }
-  if (status === 'SHUTDOWN' || status === 'REJECTED') {
+  if (normalized === 'SHUTDOWN' || normalized === 'REJECTED') {
     return 'bg-red-100 text-red-700 border-0 text-[10px]';
   }
   return 'bg-amber-100 text-amber-700 border-0 text-[10px]';
@@ -34,7 +41,8 @@ function statusBadgeClass(status?: string) {
 export default function AdminOrganizations() {
   const [clinics, setClinics] = useState<ClinicModel[]>([]);
   const [selected, setSelected] = useState<ClinicModel | null>(null);
-  const [filter, setFilter] = useState<string>('PENDING');
+  const [filter, setFilter] = useState<string>('ALL');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -63,8 +71,24 @@ export default function AdminOrganizations() {
   }, []);
 
   const visible = useMemo(
-    () => (filter === 'ALL' ? clinics : clinics.filter((c) => c.status === filter)),
-    [clinics, filter]
+    () =>
+      clinics.filter((c) => {
+        const statusOk = filter === 'ALL' || clinicStatus(c.status) === filter;
+        return (
+          statusOk &&
+          matchesQuery(
+            search,
+            c.name,
+            c.city,
+            c.address,
+            c.email,
+            c.phone,
+            c.licenseNumber,
+            c.uuid
+          )
+        );
+      }),
+    [clinics, filter, search]
   );
 
   useEffect(() => {
@@ -82,8 +106,9 @@ export default function AdminOrganizations() {
     setSaving(true);
     try {
       const updated = await updateAdminClinicStatus(selected.uuid, status);
-      setSelected(updated);
       setClinics((prev) => prev.map((c) => (c.uuid === updated.uuid ? updated : c)));
+      setSelected(updated);
+      setFilter(status);
       toast.success(status === 'VERIFIED' ? 'Clinic verified' : 'Clinic rejected');
     } catch (e: unknown) {
       toast.error(parseApiErrorMessage(e, 'Failed to update clinic status'));
@@ -93,13 +118,14 @@ export default function AdminOrganizations() {
   };
 
   const hours = selected ? parseOperatingHours(selected.operatingHours) : null;
-  const canVerify = selected && selected.status !== 'SHUTDOWN';
+  const selectedStatus = selected ? clinicStatus(selected.status) : '';
+  const canVerify = selected && selectedStatus !== 'SHUTDOWN';
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Organizations</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Clinics</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Verify a clinic before it can take appointments, bookings, or invite doctors.
           </p>
@@ -118,6 +144,16 @@ export default function AdminOrganizations() {
         </Select>
       </div>
 
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search clinics by name, city, email, phone, license…"
+          className="pl-9"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…
@@ -125,7 +161,7 @@ export default function AdminOrganizations() {
       ) : visible.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-10 text-center text-muted-foreground text-sm">
-            No clinics in this status.
+            {search.trim() ? 'No clinics match this search.' : 'No clinics in this status.'}
           </CardContent>
         </Card>
       ) : (
@@ -150,7 +186,7 @@ export default function AdminOrganizations() {
                     </p>
                   </div>
                   <Badge variant="secondary" className={statusBadgeClass(clinic.status)}>
-                    {clinic.status ?? 'unknown'}
+                    {clinicStatus(clinic.status)}
                   </Badge>
                 </CardContent>
               </Card>
@@ -201,7 +237,7 @@ export default function AdminOrganizations() {
                     {selected.whatsappConfigured ? 'Configured' : 'Not set'}
                   </p>
                   <p>
-                    <span className="text-muted-foreground">Status:</span> {selected.status || '—'}
+                    <span className="text-muted-foreground">Status:</span> {selectedStatus || '—'}
                   </p>
                 </div>
                 {hours && (
@@ -214,7 +250,7 @@ export default function AdminOrganizations() {
                   <div className="flex flex-wrap gap-2 pt-2">
                     <Button
                       size="sm"
-                      disabled={saving || selected.status === 'VERIFIED'}
+                      disabled={saving || selectedStatus === 'VERIFIED'}
                       onClick={() => void setStatus('VERIFIED')}
                     >
                       Approve Verified
@@ -222,7 +258,7 @@ export default function AdminOrganizations() {
                     <Button
                       size="sm"
                       variant="destructive"
-                      disabled={saving || selected.status === 'REJECTED'}
+                      disabled={saving || selectedStatus === 'REJECTED'}
                       onClick={() => void setStatus('REJECTED')}
                     >
                       Reject

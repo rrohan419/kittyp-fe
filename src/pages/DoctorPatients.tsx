@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Search, PawPrint, Mail } from 'lucide-react';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { AttendedPatientModel, fetchMyAttendedPatients } from '@/services/visitService';
+import { matchesQuery } from '@/utils/search';
 
 type ClientRow = {
   petUuid: string;
@@ -72,9 +73,7 @@ export default function DoctorPatients() {
   const filtered = useMemo(
     () =>
       clients.filter((p) =>
-        `${p.petName} ${p.ownerName ?? ''} ${p.ownerEmail ?? ''} ${p.ownerPhone ?? ''}`
-          .toLowerCase()
-          .includes(search.toLowerCase())
+        matchesQuery(search, p.petName, p.ownerName, p.ownerEmail, p.ownerPhone, p.clinicName)
       ),
     [clients, search]
   );

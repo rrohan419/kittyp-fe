@@ -14,6 +14,8 @@ import { toast } from 'sonner';
 import { useAppSelector } from '@/module/store/hooks';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useDebounce } from '@/hooks/useDebounce';
+import { matchesQuery } from '@/utils/search';
 
 interface PaginationState {
   models: UserProfile[];
@@ -21,6 +23,18 @@ interface PaginationState {
   isLast: boolean;
   totalElements: number;
   totalPages: number;
+}
+
+const STAFF_ROLES = new Set([
+  'ROLE_DOCTOR',
+  'ROLE_CLINIC_ADMIN',
+  'ROLE_CLINIC_STAFF',
+  'ROLE_ADMIN',
+  'ROLE_MODERATOR',
+]);
+
+function isStaffAccount(user: UserProfile): boolean {
+  return (user.roles ?? []).some((role) => STAFF_ROLES.has(role));
 }
 
 const AdminUsers = () => {
@@ -33,6 +47,7 @@ const AdminUsers = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 300);
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
@@ -51,7 +66,7 @@ const AdminUsers = () => {
   const loadUsers = async (page: number = currentPage) => {
     try {
       setIsLoading(true);
-      const data = await fetchAllUsers(page);
+      const data = await fetchAllUsers(page, 10, debouncedSearch);
       setPaginationState(data);
     } catch (error) {
       console.error('Error loading users:', error);
@@ -62,8 +77,12 @@ const AdminUsers = () => {
   };
 
   useEffect(() => {
-    loadUsers();
-  }, [currentPage]);
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    loadUsers(currentPage);
+  }, [currentPage, debouncedSearch]);
 
   useEffect(() => {
     if (editUser) {
@@ -123,17 +142,22 @@ const AdminUsers = () => {
   };
 
   const filteredUsers = paginationState.models.filter(user => {
-    const matchesSearch =
-      user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = matchesQuery(
+      searchTerm,
+      user.firstName,
+      user.lastName,
+      `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
+      user.email,
+      user.phoneNumber,
+      user.uuid
+    );
 
     const matchesStatus =
       filterStatus === 'all' ||
       (filterStatus === 'active' && user.enabled) ||
       (filterStatus === 'inactive' && !user.enabled);
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && !isStaffAccount(user);
   });
 
   if (isLoading) {
@@ -163,7 +187,7 @@ const AdminUsers = () => {
             <div>
               <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
               <p className="text-muted-foreground">
-                Manage users, roles, and permissions
+                Manage pet owners. Doctors and clinics have their own pages.
               </p>
             </div>
             <Button>
@@ -174,12 +198,12 @@ const AdminUsers = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Users</CardTitle>
+              <CardTitle>Pet owners</CardTitle>
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   <Input
-                    placeholder="Search users..."
+                    placeholder="Search pet owners..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"

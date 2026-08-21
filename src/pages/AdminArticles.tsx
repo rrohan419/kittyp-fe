@@ -9,6 +9,8 @@ import { Search, Plus, Edit, Eye, FileText, Calendar, Clock } from 'lucide-react
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ensureMyAuthor, fetchArticles } from '@/services/articleService';
 import { ArticleList, ArticleStatus } from './Interface/PagesInterface';
+import { useDebounce } from '@/hooks/useDebounce';
+import { matchesQuery } from '@/utils/search';
 
 export type ArticleDashboardProps = {
   basePath?: string;
@@ -24,6 +26,7 @@ const AdminArticles = ({
   description = 'Manage your blog content and publications',
 }: ArticleDashboardProps) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 300);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [articles, setArticles] = useState<ArticleList[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -52,7 +55,7 @@ const AdminArticles = ({
         page: 1,
         size: 50,
         body: {
-          name: null,
+          name: debouncedSearch.trim() || null,
           isRandom: null,
           articleStatus: null,
           tags: [],
@@ -66,7 +69,7 @@ const AdminArticles = ({
     } finally {
       setIsLoading(false);
     }
-  }, [ownArticlesOnly]);
+  }, [ownArticlesOnly, debouncedSearch]);
 
   useEffect(() => {
     loadArticles();
@@ -82,10 +85,14 @@ const AdminArticles = ({
   }));
 
   const filteredArticles = adminArticles.filter(article => {
-    const matchesSearch = 
-      article.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      article.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      article.authorName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = matchesQuery(
+      searchTerm,
+      article.title,
+      article.category,
+      article.authorName,
+      article.slug,
+      article.tagsText
+    );
     
     const matchesStatus = filterStatus === 'all' || article.status === filterStatus;
 

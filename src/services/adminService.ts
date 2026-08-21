@@ -33,9 +33,20 @@ interface AdminDashboardData {
   articleCount : number;
 }
 
-export const fetchAllUsers = async (pageNumber: number = 1, pageSize: number = 10): Promise<PaginationModel<UserProfile>> => {
+export const fetchAllUsers = async (
+  pageNumber: number = 1,
+  pageSize: number = 10,
+  q: string = ''
+): Promise<PaginationModel<UserProfile>> => {
   const response = await axiosInstance.get<WrappedPaginationResponse<UserProfile>>(
-    `/admin/users?pageNumber=${pageNumber}&pageSize=${pageSize}`
+    '/admin/users',
+    {
+      params: {
+        pageNumber,
+        pageSize,
+        q: q.trim() || undefined,
+      },
+    }
   );
   return response.data.data;
 };

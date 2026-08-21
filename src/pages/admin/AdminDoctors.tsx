@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -13,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Building2, Check, ExternalLink, Loader2, Stethoscope } from 'lucide-react';
+import { Building2, Check, ExternalLink, Loader2, Search, Stethoscope } from 'lucide-react';
 import {
   ChecklistKey,
   DoctorStatus,
@@ -27,6 +28,7 @@ import {
   updateDoctorStatus,
 } from '@/services/doctorVerificationService';
 import { specializationLabel } from '@/utils/specialization';
+import { matchesQuery } from '@/utils/search';
 
 const CHECKLIST: { key: ChecklistKey; label: string }[] = [
   { key: 'checkMobileOtp', label: 'Mobile OTP' },
@@ -56,6 +58,7 @@ function DocLink({ href, label }: { href?: string; label: string }) {
 
 export default function AdminDoctors() {
   const [filter, setFilter] = useState<DoctorStatus | 'ALL'>('DOCUMENTS_SUBMITTED');
+  const [search, setSearch] = useState('');
   const [doctors, setDoctors] = useState<DoctorVerificationModel[]>([]);
   const [selected, setSelected] = useState<DoctorVerificationModel | null>(null);
   const [notes, setNotes] = useState('');
@@ -86,6 +89,36 @@ export default function AdminDoctors() {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
+
+  const visible = useMemo(
+    () =>
+      doctors.filter((d) =>
+        matchesQuery(
+          search,
+          d.firstName,
+          d.lastName,
+          `${d.firstName ?? ''} ${d.lastName ?? ''}`.trim(),
+          d.email,
+          d.phoneNumber,
+          d.registrationNumber,
+          d.clinicName,
+          d.clinicAddress,
+          specializationLabel(d.specialization),
+          d.uuid
+        )
+      ),
+    [doctors, search]
+  );
+
+  useEffect(() => {
+    if (!selected) {
+      setSelected(visible[0] ?? null);
+      return;
+    }
+    if (!visible.some((d) => d.uuid === selected.uuid)) {
+      setSelected(visible[0] ?? null);
+    }
+  }, [visible, selected]);
 
   const toggleCheck = async (key: ChecklistKey, value: boolean) => {
     if (!selected) return;
@@ -150,20 +183,30 @@ export default function AdminDoctors() {
         </Select>
       </div>
 
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search doctors by name, email, clinic, registration…"
+          className="pl-9"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…
         </div>
-      ) : doctors.length === 0 ? (
+      ) : visible.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-10 text-center text-muted-foreground text-sm">
-            No doctors in this status.
+            {search.trim() ? 'No doctors match this search.' : 'No doctors in this status.'}
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <div className="lg:col-span-2 space-y-3">
-            {doctors.map((d) => {
+            {visible.map((d) => {
               const initials = `${d.firstName?.[0] ?? ''}${d.lastName?.[0] ?? ''}`.toUpperCase() || 'DR';
               return (
                 <Card

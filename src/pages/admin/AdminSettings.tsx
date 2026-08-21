@@ -18,7 +18,7 @@ import { isEcommerceEnabled } from '@/config/features';
 const LINKS: { label: string; path: string; description: string; icon: typeof Users; ecommerce?: boolean }[] = [
   { label: 'Users', path: '/admin/users', description: 'Accounts and roles', icon: Users },
   { label: 'Doctors', path: '/admin/doctors', description: 'Verification checklist', icon: Stethoscope },
-  { label: 'Organizations', path: '/admin/organizations', description: 'Verify clinics', icon: Building2 },
+  { label: 'Clinics', path: '/admin/clinics', description: 'Verify clinics', icon: Building2 },
   { label: 'Articles', path: '/admin/articles', description: 'Publish and edit', icon: FileText },
   { label: 'System health', path: '/admin/health', description: 'Runtime and resources', icon: Activity },
 ];

@@ -16,6 +16,7 @@ import { Plus, Search, Mail, Loader2, UserPlus, Trash2, ChevronRight, Star } fro
 import { Link, useNavigate } from 'react-router-dom';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
+import { matchesQuery } from '@/utils/search';
 import { ratingAdjective } from '@/components/schedule/weekCalendarUtils';
 import {
   ClinicDoctorModel,
@@ -135,7 +136,7 @@ export default function ClinicDoctors() {
   const filtered = useMemo(
     () =>
       doctors.filter((d) =>
-        `${d.name} ${d.specialization || ''} ${d.email || ''}`.toLowerCase().includes(search.toLowerCase())
+        matchesQuery(search, d.name, d.specialization, d.email, d.doctorUuid, d.userUuid)
       ),
     [doctors, search]
   );
