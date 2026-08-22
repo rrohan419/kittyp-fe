@@ -1,6 +1,5 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,7 +56,6 @@ const PetDetail: React.FC = () => {
   if (!pet) {
     return (
       <>
-        <Navbar />
         <div className="min-h-screen bg-background pt-20">
           <div className="container mx-auto px-4 py-12">
             <Card>
@@ -81,7 +79,6 @@ const PetDetail: React.FC = () => {
 
   return (
     <>
-      <Navbar />
       <div className="min-h-screen bg-background pt-20">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
           {/* Header */}

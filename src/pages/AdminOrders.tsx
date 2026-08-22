@@ -1,6 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -370,16 +368,12 @@ const AdminOrders = () => {
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
-
-      <main className="flex-1 pt-20 pb-16">
-        <div className="container px-4 md:px-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           {/* Header Section */}
-          <div className="flex flex-col space-y-4 mb-6">
+          <div className="flex flex-col space-y-4">
             <div className="space-y-2">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Order Management</h1>
-              <p className="text-sm md:text-base text-muted-foreground">
+              <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Order Management</h1>
+              <p className="text-sm text-muted-foreground">
                 Track and manage customer orders efficiently
               </p>
             </div>
@@ -693,7 +687,6 @@ const AdminOrders = () => {
               </Card>
             </div>
           </div>
-        </div>
 
         {/* View Order Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
@@ -924,9 +917,6 @@ const AdminOrders = () => {
             </div>
           </DialogContent>
         </Dialog>
-      </main>
-
-      <Footer />
     </div>
   );
 };

@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -162,31 +160,21 @@ const AdminUsers = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-1 pt-24 pb-16 bg-gray-50 dark:bg-gray-900">
-          <div className="container px-4 md:px-6 flex items-center justify-center h-[60vh]">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-muted-foreground">Loading users...</p>
-            </div>
-          </div>
-        </main>
-        <Footer />
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto flex items-center justify-center min-h-[50vh]">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading users...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-
-      <main className="flex-1 pt-24 pb-16 bg-gray-50 dark:bg-gray-900">
-        <div className="container px-4 md:px-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 mb-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">User Management</h1>
+              <p className="text-muted-foreground text-sm mt-1">
                 Manage pet owners. Doctors and clinics have their own pages.
               </p>
             </div>
@@ -401,10 +389,6 @@ const AdminUsers = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </main>
-
-      <Footer />
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>

@@ -35,7 +35,6 @@ export function Navbar() {
   // Get auth state from AuthSlice
   const { user, isAuthenticated: authIsAuthenticated, loading: authLoading, activeRole } = useSelector((state: RootState) => state.authReducer);
   const isAuthenticated = authIsAuthenticated && !isLoggingOut;
-  const userRole = user?.roles?.includes('ROLE_ADMIN') ? 'ROLE_ADMIN' : null;
   const portalPath =
     (activeRole && PORTAL_HOME[activeRole]) ||
     getPortalHome(user?.roles);
@@ -114,11 +113,6 @@ export function Navbar() {
     return false;
   };
 
-  const navigateToAdmin = () => {
-    navigate('/admin');
-    closeMenu();
-  };
-
   return (
     <>
       <header
@@ -163,23 +157,6 @@ export function Navbar() {
                 </li>
               ))}
 
-              {userRole === 'ROLE_ADMIN' && (
-                <li>
-                  <button
-                    onClick={navigateToAdmin}
-                    className={cn(
-                      "text-sm font-medium transition-colors flex items-center text-foreground",
-                      isActive('/admin')
-                        ? "text-primary"
-                        : "hover:text-primary"
-                    )}
-                    style={{ textShadow: 'none' }}
-                  >
-                    <LayoutDashboard size={16} className="mr-2" />
-                    Admin
-                  </button>
-                </li>
-              )}
               {isAuthenticated && portalLabel && portalPath && portalPath !== '/login' && (
                 <li>
                   <Link
@@ -290,24 +267,6 @@ export function Navbar() {
                     </Link>
                   </li>
                 ))}
-
-                {userRole === 'ROLE_ADMIN' && (
-                  <li>
-                    <button
-                      onClick={navigateToAdmin}
-                      className={cn(
-                        "w-full text-left text-sm font-medium transition-colors flex items-center text-foreground",
-                        isActive('/admin')
-                          ? "text-primary"
-                          : "hover:text-primary"
-                      )}
-                      style={{ textShadow: 'none' }}
-                    >
-                      <LayoutDashboard size={16} className="mr-2" />
-                      Admin Dashboard
-                    </button>
-                  </li>
-                )}
 
                 {isAuthenticated && portalLabel && portalPath && portalPath !== '/login' && (
                   <li>

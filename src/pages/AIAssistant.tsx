@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -864,10 +863,9 @@ export default function AIAssistant() {
 
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 relative overflow-hidden">
         <FloatingParticles />
-        <Navbar />
 
         <motion.div
-          className="container mx-auto px-4 py-8 relative z-10"
+          className="container mx-auto px-4 py-8 pt-24 relative z-10"
           initial="hidden"
           animate="visible"
           variants={staggerContainer(0.1)}
