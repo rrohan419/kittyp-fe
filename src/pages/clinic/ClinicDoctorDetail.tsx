@@ -199,20 +199,8 @@ export default function ClinicDoctorDetail() {
         label: 'Registration number',
         submitted: Boolean(detail.registrationNumber),
       },
-      { key: 'checkClinicAddress', label: 'Clinic address check' },
-      { key: 'checkGoogleMapsMatch', label: 'Google Maps match' },
-      {
-        key: 'checkClinicPhotos',
-        label: 'Clinic photos',
-        submitted: Boolean(detail.clinicPhotosUrls),
-      },
     ];
   }, [detail]);
-
-  const clinicPhotoLinks = (detail?.clinicPhotosUrls || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
 
   const initials = (detail?.name || '?')
     .split(' ')
@@ -445,13 +433,6 @@ export default function ClinicDoctorDetail() {
                 label="Registration certificate"
               />
               <DocLink href={detail.governmentIdUrl} label="Government ID" />
-              {clinicPhotoLinks.length === 0 ? (
-                <DocLink href={undefined} label="Clinic photos" />
-              ) : (
-                clinicPhotoLinks.map((url, i) => (
-                  <DocLink key={url} href={url} label={`Clinic photo ${i + 1}`} />
-                ))
-              )}
             </CardContent>
           </Card>
           )}

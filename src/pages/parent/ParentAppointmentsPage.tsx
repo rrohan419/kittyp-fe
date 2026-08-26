@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format, parseISO, isValid, isFuture, isPast } from 'date-fns';
-import { Calendar, Loader2, PawPrint, Star, Stethoscope } from 'lucide-react';
+import { Calendar, Loader2, PawPrint, Star, Stethoscope, Video } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { fetchMyParentBookings, fetchMyParentVisits, rateParentVisit } from '@/s
 import { toast } from 'sonner';
 import { petNameWithType } from '@/utils/petType';
 import { specializationLabel } from '@/utils/specialization';
+import { consultPath, isVideoConsult } from '@/utils/consult';
 
 const ACTIVE: VisitStatus[] = ['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS', 'CHECKING_OUT'];
 const DONE: VisitStatus[] = ['COMPLETED', 'CANCELLED', 'NO_SHOW'];
@@ -401,11 +402,21 @@ function BookingCard({ booking: b }: { booking: ClinicBookingModel }) {
           specialization={b.doctorSpecialization}
         />
         {b.notes && <p className="text-xs">{b.notes}</p>}
-        {b.petUuid && (
-          <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
-            <Link to={`/app/pets/${b.petUuid}`}>Open pet</Link>
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          {isVideoConsult(b.mode) && (
+            <Button size="sm" asChild>
+              <Link to={consultPath(b.uuid, 'parent')}>
+                <Video className="h-4 w-4 mr-1" />
+                Join video
+              </Link>
+            </Button>
+          )}
+          {b.petUuid && (
+            <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
+              <Link to={`/app/pets/${b.petUuid}`}>Open pet</Link>
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

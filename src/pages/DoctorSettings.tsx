@@ -126,11 +126,6 @@ export default function DoctorSettings() {
 
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Doctor';
   const isVerified = profile?.status === 'VERIFIED' || profile?.status === 'PUBLISHED';
-  const clinicPhotos = (profile?.clinicPhotosUrls || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
   if (loading) {
     return (
       <div className="p-6 lg:p-8 flex items-center justify-center text-muted-foreground">
@@ -196,8 +191,8 @@ export default function DoctorSettings() {
             <Building2 className="h-4 w-4 shrink-0" />
             <span className="text-foreground">
               {profile?.clinicName
-                ? `${profile.clinicName}${profile.clinicAddress ? ` · ${profile.clinicAddress}` : ''}`
-                : 'Independent (no clinic)'}
+                ? `Affiliated: ${profile.clinicName}`
+                : 'Personal account · online consultations'}
             </span>
           </div>
         </CardContent>
@@ -295,14 +290,10 @@ export default function DoctorSettings() {
           <CheckRow label="Degree certificate" ok={!!profile?.checkDegree} />
           <CheckRow label="Registration certificate" ok={!!profile?.checkRegistrationCertificate} />
           <CheckRow label="Government ID" ok={!!profile?.checkGovernmentId} />
-          {profile?.requiresClinicChecks && (
-            <>
-              <CheckRow label="Clinic address" ok={!!profile?.checkClinicAddress} />
-              <CheckRow label="Registration number" ok={!!profile?.checkRegistrationNumber} />
-              <CheckRow label="Google Maps match" ok={!!profile?.checkGoogleMapsMatch} />
-              <CheckRow label="Clinic photos" ok={!!profile?.checkClinicPhotos} />
-            </>
-          )}
+          <CheckRow label="Registration number" ok={!!profile?.checkRegistrationNumber} />
+          <p className="text-xs text-muted-foreground pt-1">
+            Clinic address and clinic photos are verified on the clinic account, not here.
+          </p>
         </CardContent>
       </Card>
 
@@ -317,13 +308,6 @@ export default function DoctorSettings() {
           <DocLink href={profile?.degreeCertificateUrl} label="Degree certificate" />
           <DocLink href={profile?.registrationCertificateUrl} label="Registration / license certificate" />
           <DocLink href={profile?.governmentIdUrl} label="Government ID" />
-          {clinicPhotos.length === 0 ? (
-            <DocLink href={null} label="Clinic photos" />
-          ) : (
-            clinicPhotos.map((url, i) => (
-              <DocLink key={`${url}-${i}`} href={url} label={`Clinic photo ${i + 1}`} />
-            ))
-          )}
         </CardContent>
       </Card>
     </div>

@@ -5,14 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Switch } from '@/components/ui/switch';
-import { CalendarIcon, Clock } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { HealthEvent } from '@/types/health';
+import { formatIsoDate, parseIsoDate } from '@/utils/isoDate';
 
 interface AddHealthEventDialogProps {
   isOpen: boolean;
@@ -243,30 +241,15 @@ export const AddHealthEventDialog: React.FC<AddHealthEventDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label>Date *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !formData.date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.date ? format(formData.date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={formData.date}
-                  onSelect={(date) => date && setFormData(prev => ({ ...prev, date }))}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
+            <Label htmlFor="health-event-date">Date *</Label>
+            <DatePicker
+              id="health-event-date"
+              value={formatIsoDate(formData.date)}
+              onChange={(value) => {
+                const date = parseIsoDate(value);
+                if (date) setFormData((prev) => ({ ...prev, date }));
+              }}
+            />
           </div>
 
           <div className="space-y-2">
@@ -347,30 +330,15 @@ export const AddHealthEventDialog: React.FC<AddHealthEventDialogProps> = ({
 
         {(formData.type === 'vaccination' || formData.type === 'deworming' || formData.type === 'medication') && (
           <div className="space-y-2">
-            <Label>Next Due Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !formData.nextDue && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.nextDue ? format(formData.nextDue, "PPP") : <span>Set next due date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={formData.nextDue}
-                  onSelect={(date) => setFormData(prev => ({ ...prev, nextDue: date }))}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
+            <Label htmlFor="health-event-next-due">Next Due Date</Label>
+            <DatePicker
+              id="health-event-next-due"
+              value={formData.nextDue ? formatIsoDate(formData.nextDue) : ''}
+              onChange={(value) =>
+                setFormData((prev) => ({ ...prev, nextDue: parseIsoDate(value) ?? null }))
+              }
+              placeholder="Set next due date"
+            />
           </div>
         )}
 

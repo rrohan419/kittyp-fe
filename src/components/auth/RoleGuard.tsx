@@ -4,7 +4,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/module/store/store';
 import { setActiveRole } from '@/module/slice/AuthSlice';
-import { AppRole, hasAnyRole, getPortalHome, ROLES } from '@/utils/roles';
+import { AppRole, canSwitchWorkspace, hasAnyRole, getPortalHome, ROLES } from '@/utils/roles';
 
 interface RoleGuardProps {
   allowed: AppRole | AppRole[];
@@ -44,8 +44,8 @@ export function RoleGuard({ allowed, children }: RoleGuardProps) {
 
   const roles = (user.roles || []).filter((r): r is AppRole => typeof r === 'string');
 
-  // Multi-role accounts must pick a session context — except doctors default to doctor portal.
-  if (roles.length > 1 && !activeRole) {
+  // Multi-workspace accounts must pick a session context — except doctors default to doctor portal.
+  if (canSwitchWorkspace(roles) && !activeRole) {
     if (roles.includes(ROLES.DOCTOR) && allowedRoles.includes(ROLES.DOCTOR)) {
       return <SyncActiveRole role={ROLES.DOCTOR}>{children}</SyncActiveRole>;
     }

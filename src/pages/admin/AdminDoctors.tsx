@@ -37,9 +37,6 @@ const CHECKLIST: { key: ChecklistKey; label: string }[] = [
   { key: 'checkDegree', label: 'Degree' },
   { key: 'checkRegistrationCertificate', label: 'Registration Certificate' },
   { key: 'checkRegistrationNumber', label: 'Registration Number' },
-  { key: 'checkClinicAddress', label: 'Clinic Address' },
-  { key: 'checkGoogleMapsMatch', label: 'Google Maps match' },
-  { key: 'checkClinicPhotos', label: 'Clinic photos' },
 ];
 
 function DocLink({ href, label }: { href?: string; label: string }) {
@@ -288,12 +285,8 @@ export default function AdminDoctors() {
                     {selected.registrationNumber || '—'}
                   </p>
                   <p>
-                    <span className="text-muted-foreground">Clinic:</span>{' '}
-                    {selected.clinicName || 'Independent (no clinic)'}
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Address:</span>{' '}
-                    {selected.clinicAddress || '—'}
+                    <span className="text-muted-foreground">Affiliation:</span>{' '}
+                    {selected.clinicName || 'Personal account (online consultation)'}
                   </p>
                   <DocLink href={selected.degreeCertificateUrl} label="Degree certificate" />
                   <DocLink
@@ -301,21 +294,14 @@ export default function AdminDoctors() {
                     label="Registration certificate"
                   />
                   <DocLink href={selected.governmentIdUrl} label="Government ID" />
-                  {selected.clinicPhotosUrls
-                    ?.split(',')
-                    .filter(Boolean)
-                    .map((url, i) => (
-                      <DocLink key={url} href={url} label={`Clinic photo ${i + 1}`} />
-                    ))}
                 </div>
 
                 <div className="space-y-3">
                   <p className="text-sm font-medium">Admin Verification Checklist</p>
-                  {!selected.requiresClinicChecks && (
-                    <p className="text-xs text-muted-foreground">
-                      No clinic association — clinic address, Maps, and photo checks are skipped.
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Verify the doctor&apos;s credentials only. Clinic address, maps, and photos are
+                    reviewed on the clinic account.
+                  </p>
                   {applicableChecks.map((c) => (
                     <div key={c.key} className="flex items-center gap-3">
                       <Checkbox

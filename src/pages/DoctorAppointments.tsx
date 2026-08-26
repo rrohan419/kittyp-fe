@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { addDays, format, isValid, parseISO, startOfDay } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, Video } from 'lucide-react';
 import { VisitChartTabs } from '@/components/chart/VisitChartTabs';
 import { chartSlicesFromVisit } from '@/components/chart/chartSlices';
 import {
@@ -42,6 +42,7 @@ import {
 } from '@/services/visitService';
 import { DashboardAppointmentRow } from '@/components/schedule/DashboardAppointmentRow';
 import { petNameWithType } from '@/utils/petType';
+import { consultPath, isVideoConsult } from '@/utils/consult';
 import { attendedVisitSurfaceClass, isUrgentVisit } from '@/utils/visitUrgency';
 import { cn } from '@/lib/utils';
 import { fetchMyDoctorProfile, isPracticeReady, statusLabel } from '@/services/doctorVerificationService';
@@ -286,9 +287,9 @@ export default function DoctorAppointments() {
           <h1 className="text-2xl font-bold">Appointments</h1>
           <p className="text-sm text-muted-foreground">
             {clinic?.personal
-              ? 'Your bookings and visits across clinics.'
+              ? "You're on Personal — online consults."
               : clinic?.name
-                ? `Appointments for ${clinic.name}.`
+                ? `You're at ${clinic.name} — clinic visits only.`
                 : 'Your assigned appointments.'}{' '}
             Attend a patient, finish treatment, then invoice.
           </p>
@@ -338,13 +339,23 @@ export default function DoctorAppointments() {
                   subtitle={[b.ownerName || 'Owner', b.notes, b.clinicName].filter(Boolean).join(' · ')}
                   status="Scheduled"
                   action={
-                    <Button
-                      size="sm"
-                      onClick={() => void attendFromBooking(b.uuid)}
-                      disabled={busy || !practiceReady || !clinicActivated}
-                    >
-                      Attend
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {isVideoConsult(b.mode) && (
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to={consultPath(b.uuid, 'doctor')}>
+                            <Video className="h-4 w-4 mr-1" />
+                            Join video
+                          </Link>
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        onClick={() => void attendFromBooking(b.uuid)}
+                        disabled={busy || !practiceReady || !clinicActivated}
+                      >
+                        Attend
+                      </Button>
+                    </div>
                   }
                 />
               );

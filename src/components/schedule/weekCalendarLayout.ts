@@ -1,4 +1,4 @@
-import { addDays, addMinutes, differenceInMinutes, setHours, setMinutes, setSeconds } from 'date-fns';
+import { addDays, addMinutes, differenceInMinutes, setHours, setMinutes, setSeconds, startOfDay } from 'date-fns';
 
 export const DAY_START_HOUR = 8;
 export const DAY_END_HOUR = 20;
@@ -96,4 +96,10 @@ export function eventLayout(
   const widthPct = 100 / ev.laneCount;
   const leftPct = widthPct * ev.lane;
   return { top, height, leftPct, widthPct };
+}
+
+/** Map a click inside an hour cell to a :00 or :30 start on that day. */
+export function slotStartFromHourClick(day: Date, hour: number, offsetY: number, cellHeight = HOUR_PX): Date {
+  const minutes = offsetY >= cellHeight / 2 ? 30 : 0;
+  return setSeconds(setMinutes(setHours(startOfDay(day), hour), minutes), 0);
 }

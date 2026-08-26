@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Bookmark } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,17 +18,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { CopyableId } from '@/components/ui/CopyableId';
 
-interface ProfileHeaderProps {
-  ordersCount: number;
-  onOrdersClick?: () => void;
-
-}
-
-const ProfileHeader: React.FC<ProfileHeaderProps> = ({
-  onOrdersClick,
-  ordersCount
-}) => {
-
+const ProfileHeader: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.authReducer);
   const [open, setOpen] = useState(false);
@@ -72,16 +61,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 value={user.uuid}
                 hint="Sign in with this ID or your email."
               />
-            </div>
-
-            <div className="flex flex-wrap gap-6 justify-center lg:justify-start text-sm">
-              <span className="inline-flex items-center gap-2 hover-lift cursor-pointer"
-                onClick={onOrdersClick}>
-                <div className="p-2 rounded-full bg-accent">
-                  <Bookmark className="h-4 w-4 text-primary" />
-                </div>
-                <span><strong>{ordersCount}</strong> Orders</span>
-              </span>
             </div>
           </div>
 

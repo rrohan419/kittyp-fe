@@ -21,7 +21,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { setActiveRole, validateAndSetUser, clearUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
-import { AppRole, getPortalPath, ROLES } from '@/utils/roles';
+import { AppRole, canSwitchWorkspace, getPortalPath, ROLES } from '@/utils/roles';
 import { RoleSelectModal } from '@/components/auth/RoleSelectModal';
 import { isEcommerceEnabled } from '@/config/features';
 import { validateLoginIdentifier, normalizeLoginIdentifier } from '@/utils/validation';
@@ -82,7 +82,7 @@ const Login = () => {
       return;
     }
 
-    if (appRoles.length > 1) {
+    if (canSwitchWorkspace(appRoles)) {
       dispatch(setActiveRole(null));
       setPendingRoles(appRoles);
       setRoleModalOpen(true);
@@ -323,7 +323,7 @@ const Login = () => {
               </CardContent>
               <CardFooter className="flex justify-center">
                 <p className="text-sm text-muted-foreground">
-                  Don't have an account?{" "}
+                  Don&apos;t have an account?{" "}
                   <Link to="/signup" className="text-primary hover:text-primary/90 font-medium">
                     Sign up
                   </Link>

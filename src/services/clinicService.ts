@@ -11,7 +11,7 @@ export interface ClinicModel {
   timezone?: string;
   operatingHours?: string;
   status?: string;
-  /** True when the current user owns this clinic (personal practice). */
+  /** True when this row is the doctor's personal (online) practice. */
   personal?: boolean;
   /** Phase 0 tenancy: parent Organization uuid */
   organizationUuid?: string | null;
@@ -234,6 +234,7 @@ export interface ClinicBookingModel {
   notes?: string;
   clinicUuid?: string;
   clinicName?: string;
+  videoJoinUrl?: string | null;
 }
 
 export interface RetentionAlertModel {
@@ -512,23 +513,31 @@ export async function fetchClinicPatientDetail(
   return res.data.data;
 }
 
-export async function fetchClinicOwners(clinicUuid: string, q?: string): Promise<ClinicOwnerModel[]> {
+export async function fetchClinicOwners(
+  clinicUuid: string,
+  q?: string,
+  opts?: { by?: 'emailOrId' }
+): Promise<ClinicOwnerModel[]> {
   const res = await axiosInstance.get<ApiSuccessResponse<ClinicOwnerModel[]>>(
     `/clinic/${clinicUuid}/owners`,
-    { params: q ? { q } : undefined }
+    { params: { ...(q ? { q } : {}), ...(opts?.by ? { by: opts.by } : {}) } }
   );
   return res.data.data ?? [];
 }
 
 export async function searchPlatformUsers(
   clinicUuid: string,
-  q: string
+  q: string,
+  opts?: { by?: 'emailOrId' }
 ): Promise<PlatformUserSearchModel[]> {
   const query = q.trim();
   if (query.length < 3) return [];
   const res = await axiosInstance.get<ApiSuccessResponse<PlatformUserSearchModel[]>>(
     `/clinic/${clinicUuid}/users/search`,
-    { params: { q: query }, headers: { 'Cache-Control': 'no-cache' } }
+    {
+      params: { q: query, ...(opts?.by ? { by: opts.by } : {}) },
+      headers: { 'Cache-Control': 'no-cache' },
+    }
   );
   return res.data.data ?? [];
 }
@@ -595,10 +604,14 @@ export async function addPetToClinicOwner(
   return res.data.data;
 }
 
-export async function fetchClinicPets(clinicUuid: string, q?: string): Promise<ClinicPetListModel[]> {
+export async function fetchClinicPets(
+  clinicUuid: string,
+  q?: string,
+  opts?: { by?: 'emailOrId' }
+): Promise<ClinicPetListModel[]> {
   const res = await axiosInstance.get<ApiSuccessResponse<ClinicPetListModel[]>>(
     `/clinic/${clinicUuid}/pets`,
-    { params: q ? { q } : undefined }
+    { params: { ...(q ? { q } : {}), ...(opts?.by ? { by: opts.by } : {}) } }
   );
   return res.data.data ?? [];
 }

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -312,11 +313,13 @@ export default function ClinicOwnerProfile() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Date of birth</Label>
-                <Input
-                  type="date"
+                <Label htmlFor="clinic-owner-pet-dob">Date of birth</Label>
+                <DatePicker
+                  id="clinic-owner-pet-dob"
                   value={petForm.dateOfBirth}
-                  onChange={(e) => setPetForm((s) => ({ ...s, dateOfBirth: e.target.value }))}
+                  onChange={(dateOfBirth) => setPetForm((s) => ({ ...s, dateOfBirth }))}
+                  placeholder="Select date of birth"
+                  disableFuture
                 />
               </div>
             </div>

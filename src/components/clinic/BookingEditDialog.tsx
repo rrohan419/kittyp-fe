@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -220,11 +221,12 @@ export function BookingEditDialog({
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label htmlFor="booking-edit-date">Date</Label>
-              <Input
+              <DatePicker
                 id="booking-edit-date"
-                type="date"
                 value={slotDate}
-                onChange={(e) => setSlotDate(e.target.value)}
+                onChange={setSlotDate}
+                placeholder="Select date"
+                disablePast
               />
             </div>
             <div>

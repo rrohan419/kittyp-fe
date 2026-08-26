@@ -24,6 +24,7 @@ import {
   ChevronRight,
   LayoutGrid,
   List,
+  Video,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -42,17 +43,22 @@ import {
 import {
   DoctorVerificationModel,
   fetchMyDoctorProfile,
+  isPracticeReady,
   statusLabel,
 } from '@/services/doctorVerificationService';
 import { formatPetDobWithAge } from '@/utils/petAge';
 import {
   DoctorInviteModel,
   HealthEventModel,
+  ClinicDoctorModel,
   ClinicPetListModel,
   acceptInvite,
+  fetchClinicDoctors,
   fetchClinicPetMedicalProfile,
   fetchClinicPetVisits,
   fetchMyPendingInvites,
+  isClinicActivated,
+  CLINIC_NOT_ACTIVATED_MESSAGE,
   rejectInvite,
 } from '@/services/clinicService';
 import {
@@ -74,11 +80,15 @@ import { parseApiErrorMessage } from '@/utils/validation';
 import { canEditVisitChart } from '@/utils/visitChartLock';
 import { cn } from '@/lib/utils';
 import { petNameWithType } from '@/utils/petType';
+import { consultPath, isVideoConsult } from '@/utils/consult';
 import { calendarBlockClass, isUrgentVisit } from '@/utils/visitUrgency';
 import { DashboardAppointmentRow } from '@/components/schedule/DashboardAppointmentRow';
+import { WalkInDialog } from '@/components/clinic/WalkInDialog';
+import { resolveLockedDoctorUuid } from '@/utils/roles';
 import {
   HOUR_PX,
   eventLayout,
+  slotStartFromHourClick,
   visitEventTime,
   visibleHourRange,
   withLanes,
@@ -135,6 +145,9 @@ export default function DoctorHome() {
   const [chartVisit, setChartVisit] = useState<ClinicVisitModel | null>(null);
   const [eventDetail, setEventDetail] = useState<EventDetail | null>(null);
   const [busy, setBusy] = useState(false);
+  const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addSlot, setAddSlot] = useState<Date | null>(null);
   const [form, setForm] = useState({
     examinationNotes: '',
     assessment: '',
@@ -151,6 +164,31 @@ export default function DoctorHome() {
     ? `Dr. ${[user.firstName, user.lastName].filter(Boolean).join(' ')}`
     : 'Doctor';
   const isVerified = profile?.status === 'VERIFIED' || profile?.status === 'PUBLISHED';
+  const clinicActivated = isClinicActivated(clinic?.status);
+  const practiceReady = isPracticeReady(profile?.status);
+  const lockedDoctorUuid = resolveLockedDoctorUuid({
+    isPersonalPractice,
+    viewerUserUuid: user?.uuid,
+    myDoctorUuid: profile?.uuid,
+    doctors,
+  });
+
+  const bookCalendarSlot = (start: Date) => {
+    if (!clinicUuid || clinic?.status === 'SHUTDOWN') {
+      toast.error('This practice cannot take new appointments');
+      return;
+    }
+    if (!clinicActivated) {
+      toast.error(CLINIC_NOT_ACTIVATED_MESSAGE);
+      return;
+    }
+    if (!practiceReady || !lockedDoctorUuid) {
+      toast.error('Certificates must be verified by admin before you can take appointments');
+      return;
+    }
+    setAddSlot(start);
+    setAddOpen(true);
+  };
 
   const weekStart = useMemo(
     () => startOfWeek(weekAnchor, { weekStartsOn: 1 }),
@@ -170,18 +208,23 @@ export default function DoctorHome() {
       const to = format(weekEnd, 'yyyy-MM-dd');
       // Scope calendar to the active practice so clinic visits never appear under Personal.
       const params = { from, to, clinicUuid: clinicUuid || undefined };
-      const [v, b, attended] = await Promise.all([
+      const [v, b, attended, docs] = await Promise.all([
         fetchMyDoctorVisits(params),
         fetchMyDoctorBookings(params).catch(() => [] as ClinicBookingModel[]),
         fetchMyAttendedPatients(clinicUuid || undefined).catch(() => []),
+        clinicUuid
+          ? fetchClinicDoctors(clinicUuid).catch(() => [] as ClinicDoctorModel[])
+          : Promise.resolve([] as ClinicDoctorModel[]),
       ]);
       setVisits(v);
       setBookings(b);
       setPatientCount(attended.length);
+      setDoctors(docs);
     } catch {
       setVisits([]);
       setBookings([]);
       setPatientCount(null);
+      setDoctors([]);
       toast.error('Could not load schedule');
     } finally {
       setScheduleLoading(false);
@@ -548,7 +591,10 @@ export default function DoctorHome() {
       <button
         key={ev.id}
         type="button"
-        onClick={() => void openEvent(ev)}
+        onClick={(e) => {
+          e.stopPropagation();
+          void openEvent(ev);
+        }}
         className={cn(
           'absolute box-border rounded border px-1 py-0.5 text-[10px] leading-tight shadow-sm overflow-hidden text-left hover:brightness-110',
           calendarBlockClass(urgent)
@@ -578,9 +624,9 @@ export default function DoctorHome() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {clinic?.personal
-              ? 'Personal practice'
+              ? "You're on Personal — online consults."
               : clinic?.name
-                ? clinic.name
+                ? `You're at ${clinic.name} — clinic visits only.`
                 : 'Your schedule'}
             {profile?.status ? ` · ${statusLabel(profile.status)}` : ''}
             {isVerified ? ' · Verified' : ''}
@@ -628,7 +674,7 @@ export default function DoctorHome() {
             {invites.map((inv) => (
               <div key={inv.uuid} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                 <span>
-                  {inv.clinicName} · {inv.doctorName || 'Doctor'}
+                  {inv.clinicName} added you
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -775,6 +821,7 @@ export default function DoctorHome() {
                   ? `${clinic.name} only`
                   : 'Active practice'}{' '}
               · {format(weekStart, 'MMM d')} – {format(weekEnd, 'MMM d')}
+              {' · Click an empty time to book'}
             </p>
             <div className="flex items-center gap-3 mt-1.5">
               <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
@@ -872,10 +919,16 @@ export default function DoctorHome() {
                         style={{ height: hours.length * HOUR_PX }}
                       >
                         {hours.map((h) => (
-                          <div
+                          <button
                             key={h}
-                            className="absolute left-0 right-0 border-b border-border/50"
+                            type="button"
+                            className="absolute left-0 right-0 border-b border-border/50 hover:bg-primary/10 focus-visible:bg-primary/15 focus-visible:outline-none"
                             style={{ top: (h - hourRange.startHour) * HOUR_PX, height: HOUR_PX }}
+                            onClick={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              bookCalendarSlot(slotStartFromHourClick(d, h, e.clientY - rect.top));
+                            }}
+                            aria-label={`Book ${format(d, 'EEE MMM d')} at ${format(setHours(d, h), 'h a')}`}
                           />
                         ))}
                         {dayEvs.map((ev) => eventBlock(ev, d))}
@@ -1127,6 +1180,14 @@ export default function DoctorHome() {
             <Button variant="outline" onClick={() => setEventDetail(null)}>
               Close
             </Button>
+            {eventDetail?.kind === 'booking' && isVideoConsult(eventDetail.booking?.mode) && eventDetail.booking?.uuid ? (
+              <Button variant="outline" asChild>
+                <Link to={consultPath(eventDetail.booking.uuid, 'doctor')}>
+                  <Video className="h-4 w-4 mr-1" />
+                  Join video
+                </Link>
+              </Button>
+            ) : null}
             {eventDetail?.kind === 'visit' &&
             (eventDetail.visit?.status === 'IN_PROGRESS' || canEditVisitChart(eventDetail.visit)) ? (
               <Button
@@ -1150,6 +1211,20 @@ export default function DoctorHome() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {clinicUuid && (
+        <WalkInDialog
+          open={addOpen}
+          onOpenChange={(o) => {
+            setAddOpen(o);
+            if (!o) setAddSlot(null);
+          }}
+          clinicUuid={clinicUuid}
+          doctors={doctors}
+          lockedDoctorUuid={lockedDoctorUuid}
+          initialSlotStart={addSlot}
+          onCreated={loadSchedule}
+        />
+      )}
     </div>
   );
 }

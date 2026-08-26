@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft,
-  Loader2,
   Mail,
   Phone,
   Link2,
@@ -27,6 +26,7 @@ import {
 import { PetPhoto } from '@/components/clinic/PetPhoto';
 import { ClinicPetEditDialog } from '@/components/clinic/ClinicPetEditDialog';
 import { formatPetDobWithAge } from '@/utils/petAge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { saveDoctorVisitChart } from '@/services/visitService';
 import { parseApiErrorMessage } from '@/utils/validation';
@@ -167,8 +167,20 @@ export default function ClinicPatientDashboard() {
 
   if (clinicLoading || loading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-24 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading pet profile…
+      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+        <Skeleton className="h-8 w-28" />
+        <Card className="border-0 shadow-sm overflow-hidden">
+          <div className="flex flex-col md:flex-row">
+            <div className="flex-1 p-5 sm:p-8 space-y-4">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-64" />
+              <Skeleton className="h-4 w-40" />
+            </div>
+            <Skeleton className="h-48 md:h-auto md:w-56 rounded-none" />
+          </div>
+        </Card>
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-48 w-full" />
       </div>
     );
   }

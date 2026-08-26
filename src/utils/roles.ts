@@ -17,10 +17,29 @@ export const isSignupRole = (value: string | null | undefined): value is SignupR
   value === 'USER' || value === 'DOCTOR' || value === 'CLINIC';
 
 export const SIGNUP_ROLE_LABELS: Record<SignupRole, string> = {
-  USER: 'User',
+  USER: 'Pet parent',
   DOCTOR: 'Doctor',
   CLINIC: 'Clinic',
 };
+
+/** Public marketing/nav links — three signups, never one generic button. */
+export const PUBLIC_SIGNUP_PATHS = [
+  {
+    to: '/signup',
+    label: 'Pet parent',
+    description: 'Book clinics and doctors',
+  },
+  {
+    to: '/signup/doctor',
+    label: 'Veterinarian',
+    description: 'Online practice on Kittyp',
+  },
+  {
+    to: '/signup/clinic-admin',
+    label: 'Clinic / hospital',
+    description: 'Register your clinic',
+  },
+] as const;
 
 export const hasRole = (roles: string[] | undefined, role: AppRole): boolean =>
   Array.isArray(roles) && roles.includes(role);
@@ -51,6 +70,21 @@ export const getPortalHome = (roles?: string[]): string => {
 export const getPortalPath = (role: AppRole): string => {
   return PORTAL_HOME[role] ?? '/login';
 };
+
+/** Distinct portal URLs for a user's roles (clinic admin + staff count as one). */
+export const portalHomesForRoles = (roles?: string[]): string[] => {
+  if (!roles?.length) return [];
+  const homes = new Set<string>();
+  for (const role of roles) {
+    const home = PORTAL_HOME[role];
+    if (home) homes.add(home);
+  }
+  return [...homes];
+};
+
+/** True when the user has two or more distinct workspaces (not merely two role strings). */
+export const canSwitchWorkspace = (roles?: string[]): boolean =>
+  portalHomesForRoles(roles).length > 1;
 
 export const getRoleLabel = (role: AppRole): string => {
   switch (role) {

@@ -42,6 +42,7 @@ import { VetConsultation } from './pages/VetConsultation';
 import { VetDashboardPage } from './pages/VetDashboardPage';
 import ParentAppointmentsPage from './pages/parent/ParentAppointmentsPage';
 import ScheduleVisitPage from './pages/parent/ScheduleVisitPage';
+import JitsiConsultPage from './pages/JitsiConsultPage';
 import { PetManagementPage } from './pages/PetManagementPage';
 import PetDetail from './pages/PetDetails';
 import ClinicInviteAccept from './pages/ClinicInviteAccept';
@@ -52,7 +53,6 @@ import DoctorHome from './pages/DoctorHome';
 import DoctorAppointments from './pages/DoctorAppointments';
 import DoctorAvailability from './pages/DoctorAvailability';
 import DoctorPatients from './pages/DoctorPatients';
-import DoctorCreateClinic from './pages/DoctorCreateClinic';
 import DoctorMessages from './pages/DoctorMessages';
 import DoctorAnalytics from './pages/DoctorAnalytics';
 import DoctorSettings from './pages/DoctorSettings';
@@ -264,6 +264,10 @@ export const router = createBrowserRouter(
               element: <PageTransition><ParentAppointmentsPage /></PageTransition>,
             },
             {
+              path: "consult/:bookingUuid",
+              element: <PageTransition><JitsiConsultPage /></PageTransition>,
+            },
+            {
               path: "book",
               element: <PageTransition><ScheduleVisitPage /></PageTransition>,
             },
@@ -310,6 +314,10 @@ export const router = createBrowserRouter(
               element: <PageTransition><DoctorAppointments /></PageTransition>,
             },
             {
+              path: "consult/:bookingUuid",
+              element: <PageTransition><JitsiConsultPage /></PageTransition>,
+            },
+            {
               path: "availability",
               element: <PageTransition><DoctorAvailability /></PageTransition>,
             },
@@ -331,7 +339,7 @@ export const router = createBrowserRouter(
             },
             {
               path: "clinics/new",
-              element: <PageTransition><DoctorCreateClinic /></PageTransition>,
+              element: <Navigate to="/doctor" replace />,
             },
             {
               path: "nutrition",
@@ -374,7 +382,7 @@ export const router = createBrowserRouter(
         {
           path: "clinic",
           element: (
-            <RoleGuard allowed={[ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF, ROLES.DOCTOR]}>
+            <RoleGuard allowed={[ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF]}>
               <PageTransition><ClinicLayout /></PageTransition>
             </RoleGuard>
           ),

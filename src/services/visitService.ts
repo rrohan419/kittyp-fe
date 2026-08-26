@@ -139,4 +139,24 @@ export async function startDoctorBookingTreatment(bookingUuid: string): Promise<
   return res.data.data;
 }
 
+export type VideoJoinInfo = {
+  bookingUuid: string;
+  roomName: string;
+  domain: string;
+  joinUrl: string;
+  displayName?: string;
+};
+
+export async function fetchBookingVideo(
+  bookingUuid: string,
+  portal: 'parent' | 'doctor'
+): Promise<VideoJoinInfo> {
+  const path =
+    portal === 'doctor'
+      ? `/doctor/bookings/${bookingUuid}/video`
+      : `/user/bookings/${bookingUuid}/video`;
+  const res = await axiosInstance.get<ApiSuccessResponse<VideoJoinInfo>>(path);
+  return res.data.data;
+}
+
 export type { ClinicVisitModel, VisitChartModel, ClinicBookingModel };

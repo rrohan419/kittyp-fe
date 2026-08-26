@@ -1,20 +1,18 @@
+import { useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { PawPrint, Plus } from 'lucide-react';
 import { RootState } from '@/module/store/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { formatPetDobWithAge } from '@/utils/petAge';
 import { PetImage } from '@/components/ui/PetImage';
+import { OwnerPetEditDialog } from '@/components/ui/OwnerPetEditDialog';
 
 export const PetManagementPage: React.FC = () => {
   const { user } = useSelector((s: RootState) => s.authReducer);
   const pets = user?.ownerPets ?? [];
-
-  if (pets.length === 1) {
-    return <Navigate to={`/app/pets/${pets[0].uuid}`} replace />;
-  }
+  const [addOpen, setAddOpen] = useState(false);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
@@ -25,11 +23,9 @@ export const PetManagementPage: React.FC = () => {
             Open a pet dashboard for health history, nutrition logging, and trends.
           </p>
         </div>
-        <Button asChild size="sm">
-          <Link to="/app/profile">
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add pet
-          </Link>
+        <Button size="sm" onClick={() => setAddOpen(true)}>
+          <Plus className="h-4 w-4 mr-1.5" />
+          Add pet
         </Button>
       </div>
 
@@ -38,9 +34,10 @@ export const PetManagementPage: React.FC = () => {
           <CardContent className="p-10 text-center space-y-3">
             <PawPrint className="h-10 w-10 mx-auto text-muted-foreground" />
             <p className="font-semibold">No pets yet</p>
-            <p className="text-sm text-muted-foreground">Add a pet from your profile to get started.</p>
-            <Button asChild>
-              <Link to="/app/profile">Go to Profile</Link>
+            <p className="text-sm text-muted-foreground">Add a pet to start health, nutrition, and bookings.</p>
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              Add pet
             </Button>
           </CardContent>
         </Card>
@@ -70,6 +67,8 @@ export const PetManagementPage: React.FC = () => {
           ))}
         </div>
       )}
+
+      <OwnerPetEditDialog open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 };

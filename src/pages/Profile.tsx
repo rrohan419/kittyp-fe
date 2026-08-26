@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ProfileHeader from '@/components/ui/ProfileHeader';
-import OrderHistory from '@/components/ui/OrderHistory';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Footer } from '@/components/layout/Footer';
 import { format } from 'date-fns';
@@ -9,18 +8,22 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/module/store/store';
 import { validateAndSetUser } from '@/module/slice/AuthSlice';
-import { useOrderCount } from '@/hooks/useOrderCount';
 import FavoritesSection from '@/components/ui/FavoritesSection';
 import { findAllSavedAddress } from '@/services/addressService';
-import PetDetailsForm from '@/components/ui/PetDetailsForm';
 import { Button } from '@/components/ui/button';
 import { AddressModal } from '@/components/ui/AddressModal';
 import EditProfileForm from '@/components/ui/EditProfileForm';
 import { getAuthItem } from '@/utils/authStorage';
 
+const PROFILE_TABS = ['favorites', 'details'] as const;
+type ProfileTab = (typeof PROFILE_TABS)[number];
+
+function resolveProfileTab(value: string | null | undefined): ProfileTab {
+  return value === 'details' ? 'details' : 'favorites';
+}
+
 const Profile: React.FC = () => {
   const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
-  const { totalOrderCount, isLoading: ordersLoading } = useOrderCount(user?.uuid);
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
@@ -35,13 +38,10 @@ const Profile: React.FC = () => {
     }
   }, [dispatch, isAuthenticated, loading, navigate, location.pathname]);
 
-  const [savedAddresses, setSavedAddresses] = React.useState<any[]>([]);
-
   useEffect(() => {
     const fetchAddresses = async () => {
       if (user?.uuid) {
-        const addresses = await findAllSavedAddress(user.uuid);
-        // console.log("db saved address", addresses);
+        await findAllSavedAddress(user.uuid);
       }
     };
     fetchAddresses();
@@ -58,26 +58,22 @@ const Profile: React.FC = () => {
     return null;
   }
 
-  // Get the active tab from URL params or a string state (ignore object states like { from: ... })
   const urlParams = new URLSearchParams(location.search);
   const tabParam = urlParams.get('tab');
   const stateTab = typeof location.state === 'string' ? location.state : undefined;
-  const defaultTab = (tabParam || stateTab || 'pets');
+  const defaultTab = resolveProfileTab(tabParam || stateTab);
   const tabsRef = useRef<HTMLDivElement | null>(null);
 
-  // State to track the current tab
-  const [currentTab, setCurrentTab] = useState(defaultTab);
+  const [currentTab, setCurrentTab] = useState<ProfileTab>(defaultTab);
 
-  // Handle tab changes and URL synchronization
   useEffect(() => {
     setCurrentTab(defaultTab);
   }, [defaultTab]);
 
   const handleTabChange = (value: string) => {
-    setCurrentTab(value);
-    // Update URL when tab changes
-    const newUrl = `/profile?tab=${value}`;
-    navigate(newUrl, { replace: true });
+    const next = resolveProfileTab(value);
+    setCurrentTab(next);
+    navigate(`${location.pathname}?tab=${next}`, { replace: true });
   };
 
   return (
@@ -85,30 +81,17 @@ const Profile: React.FC = () => {
       <div className="container mx-auto max-w-7xl mt-8 px-4">
         <div className="space-y-8 py-6 md:py-12">
           <div className="space-y-8 py-8 md:py-12">
-            <ProfileHeader
-              onOrdersClick={() => handleTabChange("orders")}
-              ordersCount={ordersLoading ? null : totalOrderCount}
-            />
+            <ProfileHeader />
 
             <div className="space-y-8" ref={tabsRef}>
             <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full animate-fade-in">
-            <TabsList className="mb-6 w-full grid grid-cols-4 bg-accent text-accent-foreground">
-                <TabsTrigger value="pets">My Pets</TabsTrigger>
+            <TabsList className="mb-6 w-full grid grid-cols-2 bg-accent text-accent-foreground">
                   <TabsTrigger value="favorites">Favorites</TabsTrigger>
-                  <TabsTrigger value="orders">Orders</TabsTrigger>
                   <TabsTrigger value="details">Account</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="pets" className="animate-fade-in">
-                  <PetDetailsForm />
-                </TabsContent>
-
                 <TabsContent value="favorites" className="animate-fade-in">
                   <FavoritesSection />
-                </TabsContent>
-
-                <TabsContent value="orders" className="animate-fade-in">
-                  <OrderHistory userUuid={user.uuid} />
                 </TabsContent>
 
                 <TabsContent value="details" className="animate-fade-in">

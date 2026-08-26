@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { RootState } from '@/module/store/store';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -352,7 +353,7 @@ export default function ScheduleVisitPage() {
         petUuid,
         slotStart,
         notes: notes.trim() || undefined,
-        mode: 'IN_PERSON',
+        mode: clinic.personal ? 'VIDEO' : 'IN_PERSON',
       });
       toast.success('Appointment booked');
       navigate('/app/appointments');
@@ -391,7 +392,7 @@ export default function ScheduleVisitPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Book appointment</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Search a clinic or doctor, then pick a slot for your pet
+            Clinics are in-person hospitals. Doctors are personal online consults.
           </p>
         </div>
       </div>
@@ -424,7 +425,7 @@ export default function ScheduleVisitPage() {
                 listFilter === 'doctors' && 'border-primary text-primary bg-primary/5'
               )}
               onClick={() => setListFilter((f) => (f === 'doctors' ? 'all' : 'doctors'))}
-              title="Show personal doctors"
+              title="Doctors — online consults"
               aria-label="Filter doctors"
               aria-pressed={listFilter === 'doctors'}
             >
@@ -439,7 +440,7 @@ export default function ScheduleVisitPage() {
                 listFilter === 'clinics' && 'border-primary text-primary bg-primary/5'
               )}
               onClick={() => setListFilter((f) => (f === 'clinics' ? 'all' : 'clinics'))}
-              title="Show clinics"
+              title="Clinics — in-person visits"
               aria-label="Filter clinics"
               aria-pressed={listFilter === 'clinics'}
             >
@@ -670,12 +671,13 @@ export default function ScheduleVisitPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label>Date</Label>
-              <Input
-                type="date"
+              <Label htmlFor="schedule-visit-date">Date</Label>
+              <DatePicker
+                id="schedule-visit-date"
                 value={date}
-                min={format(new Date(), 'yyyy-MM-dd')}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={setDate}
+                placeholder="Select appointment date"
+                disablePast
               />
             </div>
             <div className="space-y-2">

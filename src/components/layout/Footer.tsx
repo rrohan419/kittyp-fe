@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Instagram, TwitterIcon, FacebookIcon, LinkedinIcon } from 'lucide-react';
 import { isEcommerceEnabled } from '@/config/features';
+import { PUBLIC_SIGNUP_PATHS } from '@/utils/roles';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -131,7 +132,23 @@ export function Footer() {
             </ul>
           </div>
           
-          <div className="md:col-span-4 space-y-4">
+          <div className="md:col-span-2 space-y-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">
+              Join Kittyp
+            </h3>
+            <ul className="space-y-2">
+              {PUBLIC_SIGNUP_PATHS.map((item) => (
+                <li key={item.to}>
+                  <Link to={item.to} className="text-muted-foreground hover:text-primary transition-colors">
+                    <span className="block text-foreground/90">{item.label}</span>
+                    <span className="block text-xs">{item.description}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="md:col-span-2 space-y-4">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">
               Subscribe
             </h3>

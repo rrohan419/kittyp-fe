@@ -28,7 +28,7 @@ import { selectCartItems } from '@/module/slice/CartSlice';
 import { NavItem, PortalConfig } from '@/config/portal';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { clearUser, setActiveRole } from '@/module/slice/AuthSlice';
-import { AppRole, ROLES, hasAnyRole } from '@/utils/roles';
+import { AppRole, ROLES, canSwitchWorkspace, hasAnyRole } from '@/utils/roles';
 import { ClinicSwitcher } from '@/components/clinic/ClinicSwitcher';
 import { PortalNotifications } from '@/components/portal/PortalNotifications';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
@@ -75,6 +75,12 @@ function resolvePortalUser(
   };
 }
 
+function initialSidebarCollapsed() {
+  if (typeof window === 'undefined') return false;
+  const w = window.innerWidth;
+  return w >= 1024 && w < 1280;
+}
+
 export function PortalShell({ config }: PortalShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -82,11 +88,11 @@ export function PortalShell({ config }: PortalShellProps) {
   const cartItems = useSelector(selectCartItems);
   const { user } = useSelector((s: RootState) => s.authReducer);
   const itemCount = cartItems.reduce((sum, it) => sum + (it.quantity || 0), 0);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(initialSidebarCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [headerSearch, setHeaderSearch] = useState('');
-  const canSwitchRole = (user?.roles?.length ?? 0) > 1;
+  const canSwitchRole = canSwitchWorkspace(user?.roles);
   const displayUser = useMemo(() => resolvePortalUser(config, user), [config, user]);
   const showClinicSwitcher = hasAnyRole(user?.roles, [
     ROLES.DOCTOR,
@@ -102,7 +108,6 @@ export function PortalShell({ config }: PortalShellProps) {
       const w = window.innerWidth;
       if (w >= 1024 && w < 1280) setCollapsed(true);
     };
-    handler();
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
   }, []);

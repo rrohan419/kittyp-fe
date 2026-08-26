@@ -146,9 +146,8 @@ export function isChecklistItemApplicable(doctor: DoctorVerificationModel, key: 
       return doctor.requiresGovernmentIdCheck;
     case 'checkClinicAddress':
     case 'checkGoogleMapsMatch':
-      return doctor.requiresClinicChecks;
     case 'checkClinicPhotos':
-      return doctor.requiresClinicPhotosCheck;
+      return false;
     default:
       return true;
   }
@@ -161,10 +160,7 @@ export function allApplicableChecksPassed(doctor: DoctorVerificationModel): bool
     'checkGovernmentId',
     'checkDegree',
     'checkRegistrationCertificate',
-    'checkClinicAddress',
     'checkRegistrationNumber',
-    'checkGoogleMapsMatch',
-    'checkClinicPhotos',
   ];
   return keys.every((key) => !isChecklistItemApplicable(doctor, key) || Boolean(doctor[key]));
 }

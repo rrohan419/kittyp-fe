@@ -8,13 +8,13 @@ interface PageTransitionProps {
 export function PageTransition({ children }: PageTransitionProps) {
   return (
     <motion.div
-      className="w-full min-h-screen"
+      className="w-full"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{
-        duration: 0.2,
-        ease: "easeInOut"
+        duration: 0.12,
+        ease: "easeOut"
       }}
     >
       {children}

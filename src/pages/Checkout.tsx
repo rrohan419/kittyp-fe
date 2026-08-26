@@ -409,7 +409,7 @@ export default function Checkout() {
                 if (verifyResponse.success) {
                     await dispatch(clearCartThunk(user.uuid));
                     toast.success("Payment successful!");
-                    navigate("/profile", { state: "orders" });
+                    navigate("/app/orders");
                 } else {
                     throw new Error("Payment verification failed");
                 }

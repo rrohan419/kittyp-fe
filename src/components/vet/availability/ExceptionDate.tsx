@@ -4,13 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from '@/components/ui/calendar';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Plus, Trash2, AlertTriangle, Coffee } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { formatIsoDate, parseIsoDate } from '@/utils/isoDate';
 
 interface ExceptionDate {
   id: string;
@@ -139,34 +139,22 @@ export const ExceptionDates: React.FC<ExceptionDatesProps> = ({
             {/* Date Selection */}
             <div className="space-y-4">
               <div>
-                <Label>Select Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Select date'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 overflow-hidden" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={setSelectedDate}
-                      disabled={(date) => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        return date < today;
-                      }}
-                      modifiers={{
-                        exception: (date) => isDateException(date),
-                      }}
-                      modifiersClassNames={{
-                        exception: 'bg-destructive/15 text-destructive font-medium',
-                      }}
-                      className="rounded-md"
-                    />
-                  </PopoverContent>
-                </Popover>
+                <Label htmlFor="exception-date">Select Date</Label>
+                <DatePicker
+                  id="exception-date"
+                  value={selectedDate ? formatIsoDate(selectedDate) : ''}
+                  onChange={(value) => setSelectedDate(parseIsoDate(value))}
+                  placeholder="Select date"
+                  disablePast
+                  calendarProps={{
+                    modifiers: {
+                      exception: (date) => isDateException(date),
+                    },
+                    modifiersClassNames: {
+                      exception: 'bg-destructive/15 text-destructive font-medium',
+                    },
+                  }}
+                />
               </div>
 
               {/* Exception Type */}

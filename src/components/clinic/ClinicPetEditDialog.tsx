@@ -1,6 +1,7 @@
 import { useEffect, useState, FormEvent } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -207,11 +208,12 @@ export function ClinicPetEditDialog({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="clinic-pet-dob">Date of birth</Label>
-              <Input
+              <DatePicker
                 id="clinic-pet-dob"
-                type="date"
                 value={form.dateOfBirth}
-                onChange={(e) => setForm((s) => ({ ...s, dateOfBirth: e.target.value }))}
+                onChange={(dateOfBirth) => setForm((s) => ({ ...s, dateOfBirth }))}
+                placeholder="Select date of birth"
+                disableFuture
                 disabled={saving}
               />
             </div>

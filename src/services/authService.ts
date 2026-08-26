@@ -91,13 +91,10 @@ export interface SignupDoctorData extends Omit<SignupData, 'role'> {
   registrationNumber: string;
   specialization?: string;
   experience?: number;
-  clinicName?: string;
-  clinicAddress?: string;
   professionalSummary?: string;
   degreeCertificateUrl: string;
   registrationCertificateUrl: string;
   governmentIdUrl?: string;
-  clinicPhotosUrls?: string;
   photoUrl?: string;
   inviteToken?: string;
 }

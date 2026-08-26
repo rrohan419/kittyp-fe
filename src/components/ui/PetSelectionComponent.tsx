@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./card";
+import { DatePicker } from "./date-picker";
 import { Input } from "./input";
 import { Textarea } from "./textarea";
 import { useSelector } from "react-redux";
@@ -159,7 +160,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                   </p>
                   {user && !pets ? (
                     <Button asChild variant="outline" size="lg" className="mr-4">
-                      <a href="/profile?tab=pets">
+                      <a href="/app/pets">
                         <Plus className="h-4 w-4 mr-2" />
                         Add Pet Profile
                       </a>
@@ -380,13 +381,13 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                   </div>
                   <div>
                     <Label htmlFor="petDob" className="text-primary font-medium">Date of Birth</Label>
-                    <Input
+                    <DatePicker
                       id="petDob"
-                      type="date"
                       value={manualPetData.dateOfBirth}
-                      onChange={(e) => setManualPetData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
-                      placeholder="YYYY-MM-DD"
-                      className="border-primary/20 focus:border-primary"
+                      onChange={(dateOfBirth) => setManualPetData(prev => ({ ...prev, dateOfBirth }))}
+                      placeholder="Select date of birth"
+                      disableFuture
+                      className="border-primary/20"
                     />
                   </div>
                   <div>

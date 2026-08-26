@@ -119,6 +119,7 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
 
   const handleCancel = () => {
     setPreviewPhotos([]);
+    setSelectedFiles([]);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -167,6 +168,7 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
                   />
                 </div>
                 <Button
+                  type="button"
                   variant="destructive"
                   size="sm"
                   className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -187,6 +189,7 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
             {canAddMore && !isUploading && (
               <div className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center hover:border-primary/50 transition-colors">
                 <Button
+                  type="button"
                   variant="ghost"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={disabled}
@@ -214,12 +217,14 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
           {previewPhotos.length > 0 && (
             <div className="flex space-x-2">
               <Button
+                type="button"
                 onClick={handleUpload}
                 disabled={isUploading}
               >
                 {isUploading ? 'Uploading...' : 'Save Photos'}
               </Button>
               <Button
+                type="button"
                 onClick={handleCancel}
                 variant="outline"
                 disabled={isUploading}

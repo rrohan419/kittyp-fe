@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { setHours, setMinutes, setSeconds, startOfDay } from 'date-fns';
-import { HOUR_PX, eventLayout, visibleHourRange, withLanes } from './weekCalendarLayout.ts';
+import { HOUR_PX, eventLayout, slotStartFromHourClick, visibleHourRange, withLanes } from './weekCalendarLayout.ts';
 
 function at(day: Date, hour: number, minute = 0) {
   return setSeconds(setMinutes(setHours(day, hour), minute), 0);
@@ -80,5 +80,17 @@ describe('visibleHourRange', () => {
     ]);
     assert.equal(range.startHour, 0);
     assert.equal(range.endHour, 20);
+  });
+});
+
+describe('slotStartFromHourClick', () => {
+  it('snaps the top half of an hour cell to :00 and the bottom to :30', () => {
+    const day = startOfDay(new Date('2026-08-19T00:00:00'));
+    const top = slotStartFromHourClick(day, 10, 10);
+    const bottom = slotStartFromHourClick(day, 10, HOUR_PX / 2);
+    assert.equal(top.getHours(), 10);
+    assert.equal(top.getMinutes(), 0);
+    assert.equal(bottom.getHours(), 10);
+    assert.equal(bottom.getMinutes(), 30);
   });
 });

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { setActiveRole } from '@/module/slice/AuthSlice';
-import { AppRole, getContinueAsLabel, getPortalPath, getRoleLabel } from '@/utils/roles';
+import { AppRole, canSwitchWorkspace, getContinueAsLabel, getPortalPath, getRoleLabel, PORTAL_HOME } from '@/utils/roles';
 import {
   clearDefaultWorkspace,
   getDefaultWorkspace,
@@ -32,6 +32,16 @@ const SelectRole = () => {
   }, [rolesFromState, authState.user?.roles]);
   const [saveAsDefault, setSaveAsDefault] = useState(() => !!getDefaultWorkspace());
 
+  const workspaceRoles = useMemo(() => {
+    const seen = new Set<string>();
+    return effectiveRoles.filter((role) => {
+      const home = PORTAL_HOME[role];
+      if (!home || seen.has(home)) return false;
+      seen.add(home);
+      return true;
+    });
+  }, [effectiveRoles]);
+
   useEffect(() => {
     if (!authState.isAuthenticated || !authState.user) {
       navigate('/login', { replace: true });
@@ -44,8 +54,8 @@ const SelectRole = () => {
       return;
     }
 
-    if (effectiveRoles.length === 1) {
-      const singleRole = effectiveRoles[0];
+    if (workspaceRoles.length === 1) {
+      const singleRole = workspaceRoles[0];
       dispatch(setActiveRole(singleRole));
       navigate(getPortalPath(singleRole), { replace: true });
       return;
@@ -61,7 +71,7 @@ const SelectRole = () => {
       dispatch(setActiveRole(preferred));
       navigate(getPortalPath(preferred), { replace: true });
     }
-  }, [effectiveRoles, navigate, dispatch, rolesFromState]);
+  }, [effectiveRoles, workspaceRoles, navigate, dispatch, rolesFromState]);
 
   const handleRoleSelect = (role: AppRole) => {
     dispatch(setActiveRole(role));
@@ -78,7 +88,7 @@ const SelectRole = () => {
     return null;
   }
 
-  if (effectiveRoles.length <= 1) {
+  if (!canSwitchWorkspace(effectiveRoles) || workspaceRoles.length <= 1) {
     return null;
   }
 
@@ -94,7 +104,7 @@ const SelectRole = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {effectiveRoles.map((role) => (
+              {workspaceRoles.map((role) => (
                 <Button
                   key={role}
                   variant="secondary"

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +41,11 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PetPhotoField } from '@/components/clinic/PetPhotoField';
 import { PetNameType } from '@/components/ui/PetNameType';
+import {
+  APPOINTMENT_SEARCH_MIN,
+  matchesEmailOrGeneratedId,
+  normalizeAppointmentSearchQuery,
+} from '@/utils/appointmentPatientSearch';
 
 type Props = {
   open: boolean;
@@ -49,6 +55,8 @@ type Props = {
   onCreated: () => void;
   /** When set (doctor portal), hide Assign doctor and always use this UUID. */
   lockedDoctorUuid?: string;
+  /** Prefill Schedule with this slot (calendar click). */
+  initialSlotStart?: Date | null;
 };
 
 type TimingMode = 'now' | 'schedule';
@@ -108,6 +116,7 @@ export function AddAppointmentDialog({
   doctors,
   onCreated,
   lockedDoctorUuid,
+  initialSlotStart,
 }: Props) {
   const hideDoctorSelect = Boolean(lockedDoctorUuid);
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
@@ -136,7 +145,7 @@ export function AddAppointmentDialog({
   const resolvedDoctorUuid = lockedDoctorUuid || form.doctorUuid;
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(petSearch.trim()), 250);
+    const t = setTimeout(() => setDebouncedQ(normalizeAppointmentSearchQuery(petSearch)), 250);
     return () => clearTimeout(t);
   }, [petSearch]);
 
@@ -146,15 +155,19 @@ export function AddAppointmentDialog({
     }
     let cancelled = false;
     (async () => {
+      const q = debouncedQ.trim();
+      if (q.length < APPOINTMENT_SEARCH_MIN) {
+        setHits([]);
+        setSearching(false);
+        return;
+      }
       setSearching(true);
       try {
-        const q = debouncedQ || undefined;
+        const emailOrId = { by: 'emailOrId' as const };
         const [pets, owners, users] = await Promise.all([
-          fetchClinicPets(clinicUuid, q),
-          fetchClinicOwners(clinicUuid, q),
-          debouncedQ.length >= 3
-            ? searchPlatformUsers(clinicUuid, debouncedQ)
-            : Promise.resolve([]),
+          fetchClinicPets(clinicUuid, q, emailOrId),
+          fetchClinicOwners(clinicUuid, q, emailOrId),
+          searchPlatformUsers(clinicUuid, q, emailOrId),
         ]);
         if (cancelled) return;
         const petHits: SearchHit[] = pets.slice(0, 30).map((pet) => ({ kind: 'pet', pet }));
@@ -219,7 +232,30 @@ export function AddAppointmentDialog({
           seenUser.add(hit.user.userUuid);
           merged.push(hit);
         }
-        setHits(merged.slice(0, 40));
+        const byEmailOrId = merged.filter((hit) => {
+          if (hit.kind === 'user') {
+            return matchesEmailOrGeneratedId(q, hit.user.email, hit.user.userUuid);
+          }
+          if (hit.kind === 'owner') {
+            return matchesEmailOrGeneratedId(
+              q,
+              hit.owner.email,
+              hit.owner.ownerUuid,
+              hit.pet.petUuid,
+              hit.pet.globalPetId,
+              hit.pet.patientNumber
+            );
+          }
+          return matchesEmailOrGeneratedId(
+            q,
+            hit.pet.ownerEmail,
+            hit.pet.ownerUuid,
+            hit.pet.petUuid,
+            hit.pet.globalPetId,
+            hit.pet.patientNumber
+          );
+        });
+        setHits(byEmailOrId.slice(0, 40));
       } catch (err) {
         console.error('Appointment patient search failed', err);
         if (!cancelled) {
@@ -246,14 +282,25 @@ export function AddAppointmentDialog({
       setTiming('now');
       setFieldErrors({});
       setBusyHint(null);
-    } else {
+      return;
+    }
+    if (initialSlotStart && !Number.isNaN(initialSlotStart.getTime())) {
+      const snapped = snapToHalfHour(initialSlotStart);
+      setTiming('schedule');
       setForm((s) => ({
         ...s,
-        ...defaultScheduleParts(),
+        slotDate: format(snapped, 'yyyy-MM-dd'),
+        slotTime: format(snapped, 'HH:mm'),
         doctorUuid: lockedDoctorUuid || s.doctorUuid,
       }));
+      return;
     }
-  }, [open, lockedDoctorUuid]);
+    setForm((s) => ({
+      ...s,
+      ...defaultScheduleParts(),
+      doctorUuid: lockedDoctorUuid || s.doctorUuid,
+    }));
+  }, [open, lockedDoctorUuid, initialSlotStart]);
 
   /** Block times outside doctor hours or already booked. Runs for clinic and locked doctor. */
   useEffect(() => {
@@ -582,12 +629,12 @@ export function AddAppointmentDialog({
               </div>
             ) : (
               <div>
-                <Label>Search pet or owner</Label>
+                <Label>Search by email or ID</Label>
                 <div className="relative mt-1">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     className="pl-8"
-                    placeholder="Type name, phone, or email..."
+                    placeholder="Owner email, pet ID, or patient number..."
                     value={petSearch}
                     autoFocus
                     onChange={(e) => setPetSearch(e.target.value)}
@@ -601,9 +648,9 @@ export function AddAppointmentDialog({
                   <div className="border rounded-md max-h-52 overflow-y-auto divide-y mt-2">
                     {hits.length === 0 ? (
                       <p className="p-3 text-sm text-muted-foreground">
-                        {debouncedQ
-                          ? 'No matching KittyP users, pets, or owners — try New patient'
-                          : 'Start typing to search KittyP users and clinic patients'}
+                        {debouncedQ.trim().length >= APPOINTMENT_SEARCH_MIN
+                          ? 'No match for that email or ID — try New patient'
+                          : 'Type at least 3 characters of an email or generated ID'}
                       </p>
                     ) : (
                       hits.map((hit) =>
@@ -615,11 +662,16 @@ export function AddAppointmentDialog({
                             onClick={() => void selectPlatformUser(hit.user)}
                           >
                             <div className="font-medium flex items-center gap-2">
-                              {hit.user.name}
+                              {hit.user.email || hit.user.name}
                               <Badge variant="secondary" className="text-[10px] font-normal">
                                 KittyP
                               </Badge>
                             </div>
+                            {hit.user.userUuid ? (
+                              <p className="text-[11px] text-muted-foreground font-mono truncate">
+                                {hit.user.userUuid}
+                              </p>
+                            ) : null}
                           </button>
                         ) : (
                           <button
@@ -629,6 +681,14 @@ export function AddAppointmentDialog({
                             onClick={() => selectPet(hit.pet)}
                           >
                             <PetNameType name={hit.pet.name} type={hit.pet.species} />
+                            <p className="text-xs text-muted-foreground truncate">
+                              {hit.kind === 'owner' ? hit.owner.email : hit.pet.ownerEmail}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground font-mono truncate">
+                              {[hit.pet.patientNumber, hit.pet.globalPetId || hit.pet.petUuid]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </p>
                           </button>
                         )
                       )
@@ -833,11 +893,13 @@ export function AddAppointmentDialog({
               )}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label>Date</Label>
-                  <Input
-                    type="date"
+                  <Label htmlFor="walk-in-date">Date</Label>
+                  <DatePicker
+                    id="walk-in-date"
                     value={form.slotDate}
-                    onChange={(e) => set('slotDate', e.target.value)}
+                    onChange={(slotDate) => set('slotDate', slotDate)}
+                    placeholder="Select date"
+                    disablePast
                   />
                   {fieldErrors.slotDate && (
                     <p className="text-xs text-destructive mt-1">{fieldErrors.slotDate}</p>

@@ -163,17 +163,18 @@ const Signup = () => {
             {role === 'USER' && (
               <>
                 <h1 className="text-4xl font-bold mb-4 text-center text-foreground">
-                  Create an Account
+                  Pet parent account
                 </h1>
                 <p className="text-muted-foreground mb-12 text-center">
-                  Join kittyp to track your pet&apos;s health and wellness.
+                  Create a pet parent account to book clinics and doctors, and keep your pet&apos;s
+                  records in one place.
                 </p>
 
                 <Card>
                   <CardHeader className="flex flex-col items-center justify-center text-center">
-                    <CardTitle className="text-2xl font-semibold">Sign Up</CardTitle>
+                    <CardTitle className="text-2xl font-semibold">Sign up as a pet parent</CardTitle>
                     <CardDescription>
-                      Create your account to get started
+                      Pets, bookings, nutrition, and records — not a clinic or doctor dashboard.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>

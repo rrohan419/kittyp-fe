@@ -125,6 +125,18 @@ const SitemapXml = () => {
         <priority>0.5</priority>
     </url>
     <url>
+        <loc>${baseUrl}/signup/doctor</loc>
+        <lastmod>${currentDate}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+    <url>
+        <loc>${baseUrl}/signup/clinic-admin</loc>
+        <lastmod>${currentDate}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+    <url>
         <loc>${baseUrl}/profile</loc>
         <lastmod>${currentDate}</lastmod>
         <changefreq>monthly</changefreq>

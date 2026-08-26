@@ -32,6 +32,8 @@ import {
   fetchClinicPatients,
   fetchClinicStats,
   fetchClinicVisits,
+  isClinicActivated,
+  CLINIC_NOT_ACTIVATED_MESSAGE,
 } from '@/services/clinicService';
 import { WeekCalendar } from '@/components/schedule/WeekCalendar';
 import { WeekCalEvent, buildWeekEvents, visitEventTime } from '@/components/schedule/weekCalendarUtils';
@@ -39,6 +41,8 @@ import { DashboardAppointmentRow } from '@/components/schedule/DashboardAppointm
 import { cn } from '@/lib/utils';
 import { petNameWithType } from '@/utils/petType';
 import { isUrgentVisit } from '@/utils/visitUrgency';
+import { WalkInDialog } from '@/components/clinic/WalkInDialog';
+import { toast } from 'sonner';
 
 export default function ClinicHome() {
   const { clinic, clinicUuid, loading: clinicLoading } = useActiveClinic();
@@ -50,6 +54,9 @@ export default function ClinicHome() {
   const [loading, setLoading] = useState(true);
   const [weekAnchor, setWeekAnchor] = useState(() => startOfDay(new Date()));
   const [selected, setSelected] = useState<WeekCalEvent | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addSlot, setAddSlot] = useState<Date | null>(null);
+  const clinicActivated = isClinicActivated(clinic?.status);
 
   const weekStart = useMemo(
     () => startOfWeek(weekAnchor, { weekStartsOn: 1 }),
@@ -292,7 +299,8 @@ export default function ClinicHome() {
           </CardTitle>
           {!clinic?.personal && (
             <p className="text-sm text-muted-foreground">
-              Visits and scheduled appointments for this branch. Click a slot for details.
+              Visits and scheduled appointments for this branch. Click an empty time to book, or a
+              slot for details.
             </p>
           )}
         </CardHeader>
@@ -303,7 +311,19 @@ export default function ClinicHome() {
             onWeekAnchorChange={setWeekAnchor}
             loading={loading}
             onEventClick={setSelected}
-            emptyLabel="No visits or bookings this week — use Appointments to add one."
+            onSlotClick={(start) => {
+              if (!clinicUuid || clinic?.status === 'SHUTDOWN') {
+                toast.error('This clinic cannot take new appointments');
+                return;
+              }
+              if (!clinicActivated) {
+                toast.error(CLINIC_NOT_ACTIVATED_MESSAGE);
+                return;
+              }
+              setAddSlot(start);
+              setAddOpen(true);
+            }}
+            emptyLabel="No visits or bookings this week — click an empty time to book."
             doctors={
               clinic?.personal
                 ? undefined
@@ -314,6 +334,20 @@ export default function ClinicHome() {
           />
         </CardContent>
       </Card>
+
+      {clinicUuid && (
+        <WalkInDialog
+          open={addOpen}
+          onOpenChange={(o) => {
+            setAddOpen(o);
+            if (!o) setAddSlot(null);
+          }}
+          clinicUuid={clinicUuid}
+          doctors={doctors}
+          initialSlotStart={addSlot}
+          onCreated={load}
+        />
+      )}
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <DialogContent className="max-w-md">

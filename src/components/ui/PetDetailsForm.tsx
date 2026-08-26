@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -396,13 +397,13 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
 
                             <div className="space-y-2">
                                 <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                                <Input
+                                <DatePicker
                                     id="dateOfBirth"
-                                    type="date"
                                     value={petForm.dateOfBirth}
-                                    onChange={(e) => setPetForm({ ...petForm, dateOfBirth: e.target.value })}
-                                    placeholder="YYYY-MM-DD"
-                                    className="border-primary/20 focus:border-primary"
+                                    onChange={(dateOfBirth) => setPetForm({ ...petForm, dateOfBirth })}
+                                    placeholder="Select date of birth"
+                                    disableFuture
+                                    className="border-primary/20"
                                 />
                             </div>
 

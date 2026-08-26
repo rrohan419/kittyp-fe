@@ -2,6 +2,7 @@ import { useEffect, useState, FormEvent } from 'react';
 import { Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -20,8 +21,8 @@ import {
 } from '@/components/ui/dialog';
 import { PetPhotoUpload } from '@/components/ui/PetPhotoUpload';
 import { PetProfile } from '@/services/authService';
-import { UpdatePet } from '@/services/UserService';
-import { updatePetInUser } from '@/module/slice/AuthSlice';
+import { AddPet, UpdatePet } from '@/services/UserService';
+import { addPetToUser, updatePetInUser } from '@/module/slice/AuthSlice';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { normalizePetGender } from '@/utils/petType';
 
@@ -80,7 +81,7 @@ function formFromPet(pet: PetProfile): PetForm {
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  pet: PetProfile;
+  pet?: PetProfile | null;
   onSaved?: () => Promise<void> | void;
 };
 
@@ -88,11 +89,11 @@ export function OwnerPetEditDialog({ open, onOpenChange, pet, onSaved }: Props) 
   const dispatch = useAppDispatch();
   const saving = useAppSelector((state) => state.authReducer.saving);
   const [form, setForm] = useState<PetForm>(emptyForm);
+  const isEdit = !!pet?.uuid;
 
   useEffect(() => {
-    if (open) {
-      setForm(formFromPet(pet));
-    }
+    if (!open) return;
+    setForm(pet ? formFromPet(pet) : emptyForm);
   }, [open, pet]);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -101,22 +102,40 @@ export function OwnerPetEditDialog({ open, onOpenChange, pet, onSaved }: Props) 
       return;
     }
     try {
-      const updatePetDto: UpdatePet = {
-        uuid: pet.uuid,
-        name: form.name,
-        profilePicture: form.profilePicture,
-        type: form.type,
-        breed: form.breed,
-        dateOfBirth: form.dateOfBirth,
-        weight: formatWeightForSave(form.weight),
-        activityLevel: form.activityLevel,
-        gender: form.gender,
-        currentFoodBrand: form.currentFoodBrand,
-        healthConditions: form.healthConditions,
-        allergies: form.allergies,
-        isNeutered: form.isNeutered === 'yes',
-      };
-      await dispatch(updatePetInUser(updatePetDto)).unwrap();
+      if (isEdit && pet) {
+        const updatePetDto: UpdatePet = {
+          uuid: pet.uuid,
+          name: form.name,
+          profilePicture: form.profilePicture,
+          type: form.type,
+          breed: form.breed,
+          dateOfBirth: form.dateOfBirth,
+          weight: formatWeightForSave(form.weight),
+          activityLevel: form.activityLevel,
+          gender: form.gender,
+          currentFoodBrand: form.currentFoodBrand,
+          healthConditions: form.healthConditions,
+          allergies: form.allergies,
+          isNeutered: form.isNeutered === 'yes',
+        };
+        await dispatch(updatePetInUser(updatePetDto)).unwrap();
+      } else {
+        const addPetDto: AddPet = {
+          name: form.name,
+          profilePicture: form.profilePicture,
+          type: form.type,
+          breed: form.breed,
+          dateOfBirth: form.dateOfBirth,
+          weight: formatWeightForSave(form.weight),
+          activityLevel: form.activityLevel,
+          gender: form.gender,
+          currentFoodBrand: form.currentFoodBrand,
+          healthConditions: form.healthConditions,
+          allergies: form.allergies,
+          isNeutered: form.isNeutered === 'yes',
+        };
+        await dispatch(addPetToUser({ petDto: addPetDto })).unwrap();
+      }
       onOpenChange(false);
       await onSaved?.();
     } catch {
@@ -128,13 +147,13 @@ export function OwnerPetEditDialog({ open, onOpenChange, pet, onSaved }: Props) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit {pet.name}</DialogTitle>
+          <DialogTitle>{isEdit ? `Edit ${pet?.name ?? 'pet'}` : 'Add pet'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex flex-col items-center space-y-4 py-2">
             <PetPhotoUpload
               currentPhotos={form.profilePicture ? [form.profilePicture] : []}
-              petUuid={pet.uuid}
+              petUuid={isEdit ? pet?.uuid : undefined}
               onUploadComplete={(urls) => {
                 setForm((s) => ({ ...s, profilePicture: urls[0] || '' }));
               }}
@@ -185,11 +204,12 @@ export function OwnerPetEditDialog({ open, onOpenChange, pet, onSaved }: Props) 
             </div>
             <div className="space-y-2">
               <Label htmlFor="owner-pet-dob">Date of Birth</Label>
-              <Input
+              <DatePicker
                 id="owner-pet-dob"
-                type="date"
                 value={form.dateOfBirth}
-                onChange={(e) => setForm((s) => ({ ...s, dateOfBirth: e.target.value }))}
+                onChange={(dateOfBirth) => setForm((s) => ({ ...s, dateOfBirth }))}
+                placeholder="Select date of birth"
+                disableFuture
                 disabled={saving}
               />
             </div>
@@ -255,15 +275,17 @@ export function OwnerPetEditDialog({ open, onOpenChange, pet, onSaved }: Props) 
             </div>
           </div>
 
+          {isEdit && pet.microchipNumber ? (
           <div className="space-y-2">
             <Label htmlFor="owner-pet-microchip">Microchip</Label>
             <Input
               id="owner-pet-microchip"
-              value={pet.microchipNumber || '—'}
+              value={pet.microchipNumber}
               readOnly
               disabled
             />
           </div>
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="owner-pet-food">Current Food Brand</Label>
@@ -301,7 +323,7 @@ export function OwnerPetEditDialog({ open, onOpenChange, pet, onSaved }: Props) 
             </Button>
             <Button type="submit" disabled={saving || !form.name.trim()}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? 'Saving...' : isEdit ? 'Save' : 'Add pet'}
             </Button>
           </DialogFooter>
         </form>

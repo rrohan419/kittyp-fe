@@ -33,8 +33,10 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
   const { clinics, clinic, loading, refresh } = useActiveClinic();
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
-  const canAddClinic = hasAnyRole(user?.roles, [ROLES.CLINIC_ADMIN, ROLES.DOCTOR]);
   const onDoctorPortal = location.pathname.startsWith('/doctor');
+  // Only clinic accounts create clinics. Doctors never register a clinic from this switcher.
+  const canAddClinic =
+    !onDoctorPortal && hasAnyRole(user?.roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF]);
   // Personal practice is doctor-only. Clinic portal only switches branches.
   const showPersonal = onDoctorPortal;
 
@@ -67,7 +69,7 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
 
   if (loading) {
     return (
-      <Button variant="outline" size="sm" disabled className={className}>
+      <Button variant="outline" size="sm" disabled className={cn('min-w-[140px]', className)}>
         <Building2 className="h-4 w-4 mr-2" />
         Loading…
       </Button>
@@ -78,12 +80,16 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
     return (
       <div className={cn('flex items-center gap-2', className)}>
         <Button variant="outline" size="sm" disabled>
-          <Building2 className="h-4 w-4 mr-2" />
-          {onDoctorPortal ? 'No practices yet' : 'No branches yet'}
+          {onDoctorPortal ? (
+            <UserRound className="h-4 w-4 mr-2" />
+          ) : (
+            <Building2 className="h-4 w-4 mr-2" />
+          )}
+          {onDoctorPortal ? 'Personal' : 'No branches yet'}
         </Button>
         {canAddClinic && (
           <Button variant="default" size="sm" asChild>
-            <Link to={onDoctorPortal ? '/doctor/clinics/new' : '/clinic/clinics/new'}>
+            <Link to="/clinic/clinics/new">
               <Plus className="h-4 w-4 mr-1" />
               Add
             </Link>
@@ -94,12 +100,9 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
   }
 
   const isShutdown = clinic?.status === 'SHUTDOWN';
-  const addClinicPath = hasAnyRole(user?.roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF])
-    ? '/clinic/clinics/new'
-    : '/doctor/clinics/new';
   const triggerName =
     showPersonal && clinic?.personal
-      ? `Personal${clinic.name ? ` · ${clinic.name}` : ''}`
+      ? 'Personal'
       : clinic?.name ?? (onDoctorPortal ? 'Select practice' : 'Select branch');
 
   return (
@@ -148,7 +151,7 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <DropdownMenuLabel>
-            {onDoctorPortal ? 'Your practices' : 'Practice branches'}
+            {onDoctorPortal ? 'Switch practice' : 'Practice branches'}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           {ordered.map((item) => {
@@ -158,7 +161,7 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
               showPersonal && item.personal ? 'Personal' : item.name || 'Practice';
             const secondary =
               showPersonal && item.personal
-                ? item.kittypPracticeId || item.organizationUuid || ''
+                ? 'Online consults'
                 : [item.address, item.kittypPracticeId || item.organizationUuid]
                     .filter(Boolean)
                     .join(' · ');
@@ -178,11 +181,6 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="truncate text-sm font-medium">{label}</p>
-                    {showPersonal && item.personal && (
-                      <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">
-                        Personal
-                      </Badge>
-                    )}
                     {itemShutdown && (
                       <Badge
                         variant="outline"
@@ -203,9 +201,9 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link to={addClinicPath} className="cursor-pointer">
+                <Link to="/clinic/clinics/new" className="cursor-pointer">
                   <Plus className="h-4 w-4 mr-2" />
-                  {onDoctorPortal ? 'Add practice' : 'Add branch'}
+                  Add branch
                 </Link>
               </DropdownMenuItem>
             </>

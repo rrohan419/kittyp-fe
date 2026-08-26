@@ -92,8 +92,6 @@ const DoctorSignupForm = () => {
   const [specialization, setSpecialization] = useState('');
   const [registrationNumber, setRegistrationNumber] = useState('');
   const [yearsOfExperience, setYearsOfExperience] = useState('');
-  const [clinicName, setClinicName] = useState('');
-  const [clinicAddress, setClinicAddress] = useState('');
   const [bio, setBio] = useState('');
   const [invitedClinicName, setInvitedClinicName] = useState('');
 
@@ -127,7 +125,6 @@ const DoctorSignupForm = () => {
   const [degreeFile, setDegreeFile] = useState<File | null>(null);
   const [registrationCertFile, setRegistrationCertFile] = useState<File | null>(null);
   const [governmentIdFile, setGovernmentIdFile] = useState<File | null>(null);
-  const [clinicPhotoFiles, setClinicPhotoFiles] = useState<File[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
@@ -241,10 +238,6 @@ const DoctorSignupForm = () => {
       toast.error('Degree and registration certificate uploads are required');
       return;
     }
-    if (!inviteToken && !clinicAddress.trim()) {
-      toast.error('Clinic address is required for verification');
-      return;
-    }
 
     setLoading(true);
     try {
@@ -257,11 +250,6 @@ const DoctorSignupForm = () => {
       if (governmentIdFile) {
         [governmentIdUrl] = await uploadSignupDocuments([governmentIdFile], email.trim());
       }
-      let clinicPhotosUrls: string | undefined;
-      if (clinicPhotoFiles.length > 0) {
-        const urls = await uploadSignupDocuments(clinicPhotoFiles, email.trim());
-        clinicPhotosUrls = urls.join(',');
-      }
 
       await signupDoctor({
         firstName,
@@ -273,13 +261,10 @@ const DoctorSignupForm = () => {
         licenseNumber: registrationNumber.trim(),
         specialization,
         experience: yearsOfExperience ? Number(yearsOfExperience) : undefined,
-        clinicName: inviteToken ? undefined : clinicName.trim() || undefined,
-        clinicAddress: inviteToken ? undefined : clinicAddress.trim(),
         professionalSummary: bio.trim() || undefined,
         degreeCertificateUrl,
         registrationCertificateUrl,
         governmentIdUrl,
-        clinicPhotosUrls,
         inviteToken: inviteToken || undefined,
       });
 
@@ -306,8 +291,8 @@ const DoctorSignupForm = () => {
         </h1>
         <p className="text-muted-foreground mt-2 max-w-md mx-auto">
           {inviteToken && invitedClinicName
-            ? `Joining ${invitedClinicName} via invitation. OTP-verified signup with mandatory credentials.`
-            : 'OTP-verified signup with mandatory credentials. Manual review before your Verified badge.'}
+            ? `Joining ${invitedClinicName} via invitation. This is your personal doctor account — you only verify your own credentials.`
+            : 'Create a personal doctor account for online consultations. Clinics register and verify separately.'}
         </p>
       </div>
 
@@ -556,8 +541,8 @@ const DoctorSignupForm = () => {
                   <CardHeader>
                     <CardTitle className="text-xl">Professional Documents</CardTitle>
                     <CardDescription>
-                      Registration number and certificates are mandatory. Admin review is required before
-                      Verified.
+                      Upload your veterinary credentials. Admin reviews your documents only — clinic
+                      address and clinic photos are not part of doctor verification.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -594,52 +579,35 @@ const DoctorSignupForm = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="experience">Years of Experience</Label>
-                          <div className="relative">
-                            <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="experience"
-                              type="number"
-                              min="0"
-                              max="60"
-                              placeholder="5"
-                              className="pl-10"
-                              value={yearsOfExperience}
-                              onChange={(e) => setYearsOfExperience(e.target.value)}
-                            />
-                          </div>
+                      {inviteToken && invitedClinicName && (
+                        <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm">
+                          <p className="font-medium flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-primary" />
+                            Joining {invitedClinicName}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            You will be affiliated with this clinic after signup. The clinic is verified
+                            separately; you only submit your own documents here.
+                          </p>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="clinicName">
-                            {inviteToken ? 'Joining clinic' : 'Clinic / Hospital Name'}
-                          </Label>
-                          <div className="relative">
-                            <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="clinicName"
-                              placeholder="Happy Paws Clinic"
-                              className="pl-10"
-                              value={inviteToken ? invitedClinicName : clinicName}
-                              onChange={(e) => setClinicName(e.target.value)}
-                              readOnly={!!inviteToken}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {!inviteToken && (
-                      <div className="space-y-2">
-                        <Label htmlFor="clinicAddress">Clinic Address (optional)</Label>
-                        <Input
-                          id="clinicAddress"
-                          placeholder="Full address if associated with a clinic"
-                          value={clinicAddress}
-                          onChange={(e) => setClinicAddress(e.target.value)}
-                        />
-                      </div>
                       )}
+
+                      <div className="space-y-2">
+                        <Label htmlFor="experience">Years of Experience</Label>
+                        <div className="relative">
+                          <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="experience"
+                            type="number"
+                            min="0"
+                            max="60"
+                            placeholder="5"
+                            className="pl-10"
+                            value={yearsOfExperience}
+                            onChange={(e) => setYearsOfExperience(e.target.value)}
+                          />
+                        </div>
+                      </div>
 
                       <div className="space-y-2">
                         <Label htmlFor="bio">Professional Bio</Label>
@@ -687,18 +655,6 @@ const DoctorSignupForm = () => {
                             onChange={(e) => setGovernmentIdFile(e.target.files?.[0] ?? null)}
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="clinicPhotos">Clinic photos (recommended)</Label>
-                          <Input
-                            id="clinicPhotos"
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            onChange={(e) =>
-                              setClinicPhotoFiles(e.target.files ? Array.from(e.target.files) : [])
-                            }
-                          />
-                        </div>
                       </div>
 
                       <div className="flex gap-3">
@@ -739,8 +695,8 @@ const DoctorSignupForm = () => {
             </div>
             <DialogTitle className="text-center">Documents Submitted</DialogTitle>
             <DialogDescription className="text-center">
-              Your application is in the verification pipeline. You can sign in now; the Verified badge
-              appears only after admin checklist approval.
+              Your personal doctor account is created. Admin will review your documents before the
+              Verified badge. Clinic practices are registered and verified separately.
             </DialogDescription>
           </DialogHeader>
           <ol className="space-y-2 my-2">

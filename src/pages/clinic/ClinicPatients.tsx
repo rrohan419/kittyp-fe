@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -774,11 +775,12 @@ export default function ClinicPatients() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="petDateOfBirth">Date of birth</Label>
-                  <Input
+                  <DatePicker
                     id="petDateOfBirth"
-                    type="date"
                     value={form.petDateOfBirth}
-                    onChange={(e) => set('petDateOfBirth', e.target.value)}
+                    onChange={(petDateOfBirth) => set('petDateOfBirth', petDateOfBirth)}
+                    placeholder="Select date of birth"
+                    disableFuture
                   />
                 </div>
               </div>

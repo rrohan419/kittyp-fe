@@ -11,7 +11,6 @@ import {
   DialogPortal,
   DialogOverlay
 } from '@/components/ui/dialog';
-import { Button } from '../ui/button';
 import { CartSidebar } from './CartSidebar';
 import { switchToGuestCart } from '@/module/slice/CartSlice';
 import { clearUser } from '@/module/slice/AuthSlice';

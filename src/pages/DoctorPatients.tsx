@@ -8,6 +8,7 @@ import { Search, PawPrint, Mail } from 'lucide-react';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { AttendedPatientModel, fetchMyAttendedPatients } from '@/services/visitService';
 import { matchesQuery } from '@/utils/search';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type ClientRow = {
   petUuid: string;
@@ -83,12 +84,14 @@ export default function DoctorPatients() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Patients</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          {clinic?.personal
-            ? 'Pets you treated on your personal practice.'
-            : clinic
-              ? `${clinic.name} — pets you treated, plus pets that already visited this clinic`
+            {clinic
+              ? clinic.personal
+                ? "You're on Personal — online consults."
+                : `You're at ${clinic.name} — clinic visits only.`
               : 'Pets you treated, plus pets that visited a clinic you belong to'}
-          {!loading ? ` · ${filtered.length}` : ''}
+          <span className="inline-block min-w-[2.5rem]">
+            {loading ? '' : ` · ${filtered.length}`}
+          </span>
         </p>
       </div>
 
@@ -103,12 +106,28 @@ export default function DoctorPatients() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading patients…</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="border-0 shadow-sm">
+              <CardContent className="p-5 space-y-4">
+                <div className="flex items-start gap-3">
+                  <Skeleton className="h-12 w-12 rounded-2xl shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-3 w-36" />
+                  </div>
+                </div>
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-9 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="py-16 text-center text-muted-foreground">
             {clinic?.personal
-              ? 'No patients yet. They appear after you treat them.'
+              ? 'No patients yet. Pets appear after a parent books an online consult with you, or after you attend them.'
               : 'No patients yet. They appear after you treat them, or after they visit a clinic you belong to.'}
           </CardContent>
         </Card>

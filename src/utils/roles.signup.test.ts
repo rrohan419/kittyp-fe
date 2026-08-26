@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { isSignupRole, SIGNUP_ROLES, SIGNUP_ROLE_LABELS } from './roles.ts';
+import { canSwitchWorkspace, isSignupRole, PUBLIC_SIGNUP_PATHS, ROLES, SIGNUP_ROLES, SIGNUP_ROLE_LABELS } from './roles.ts';
 
 describe('signup role allowlist', () => {
   it('only allows USER, DOCTOR, CLINIC', () => {
@@ -31,5 +31,29 @@ describe('signup role allowlist', () => {
 
   it('does not expose admin labels on the signup toggle', () => {
     assert.deepEqual(Object.keys(SIGNUP_ROLE_LABELS).sort(), ['CLINIC', 'DOCTOR', 'USER']);
+    assert.equal(SIGNUP_ROLE_LABELS.USER, 'Pet parent');
+    assert.equal(SIGNUP_ROLE_LABELS.DOCTOR, 'Doctor');
+    assert.equal(SIGNUP_ROLE_LABELS.CLINIC, 'Clinic');
+  });
+
+  it('exposes three public signup paths', () => {
+    assert.deepEqual(
+      PUBLIC_SIGNUP_PATHS.map((item) => item.to),
+      ['/signup', '/signup/doctor', '/signup/clinic-admin']
+    );
+  });
+});
+
+describe('canSwitchWorkspace', () => {
+  it('treats clinic admin and staff as one portal', () => {
+    assert.equal(canSwitchWorkspace([ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF]), false);
+  });
+
+  it('allows switching when doctor and pet parent portals both exist', () => {
+    assert.equal(canSwitchWorkspace([ROLES.DOCTOR, ROLES.USER]), true);
+  });
+
+  it('does not switch for a doctor-only account', () => {
+    assert.equal(canSwitchWorkspace([ROLES.DOCTOR]), false);
   });
 });

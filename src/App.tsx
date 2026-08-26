@@ -116,10 +116,15 @@ function App() {
         <TooltipProvider>
           <AuthInitializer>
             <WithOptionalCart>
-              <div className={cn(
-                "min-h-screen bg-background transition-opacity duration-200",
-                isLoading && "opacity-75"
-              )}>
+              <div className={cn("min-h-screen bg-background")}>
+                {isLoading ? (
+                  <div
+                    className="fixed top-0 left-0 right-0 z-[100] h-0.5 bg-primary/20 pointer-events-none"
+                    aria-hidden
+                  >
+                    <div className="h-full w-1/3 bg-primary animate-pulse" />
+                  </div>
+                ) : null}
                 {!inPortal && (
                   <div className="fixed top-0 left-0 right-0 z-50">
                     <Navbar />

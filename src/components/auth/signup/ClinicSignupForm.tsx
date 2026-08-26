@@ -134,7 +134,8 @@ const ClinicSignupForm = () => {
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold">Register Your Clinic</h1>
         <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-          Bring your veterinary practice onto kittyp — manage doctors, appointments, and patients in one place.
+          Register the hospital as its own account, then invite doctors. Clinic verification is
+          separate from individual doctor credentials.
         </p>
       </div>
 

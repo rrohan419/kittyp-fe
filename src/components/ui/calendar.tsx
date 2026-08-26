@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
@@ -11,17 +11,31 @@ function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  captionLayout = "label",
+  hideNavigation,
   ...props
 }: CalendarProps) {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      captionLayout={captionLayout}
+      hideNavigation={hideNavigation}
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row gap-4 relative",
         month: "flex flex-col gap-4",
-        month_caption: "flex justify-center items-center h-8 relative px-8",
-        caption_label: "text-sm font-medium",
+        month_caption: cn(
+          "flex justify-center items-center h-8 relative",
+          !hideNavigation && "px-8"
+        ),
+        caption_label: cn(
+          "text-sm font-medium",
+          captionLayout !== "label" && "flex items-center gap-1"
+        ),
+        dropdowns: "flex items-center justify-center gap-1 h-8",
+        dropdown_root:
+          "relative rounded-md border border-input bg-background px-2 py-1",
+        dropdown: "absolute inset-0 opacity-0 cursor-pointer",
         nav: "absolute inset-x-0 top-0 flex items-center justify-between px-1 z-10",
         button_previous: cn(
           buttonVariants({ variant: "outline" }),
@@ -53,12 +67,15 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Chevron: ({ orientation }) =>
-          orientation === "left" ? (
-            <ChevronLeft className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          ),
+        Chevron: ({ orientation, className, ...rest }) => {
+          const Icon =
+            orientation === "left"
+              ? ChevronLeft
+              : orientation === "right"
+                ? ChevronRight
+                : ChevronDown;
+          return <Icon className={cn("h-4 w-4", className)} {...rest} />;
+        },
       }}
       {...props}
     />

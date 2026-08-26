@@ -21,6 +21,7 @@ export {
   HOUR_PX,
   dayBounds,
   eventLayout,
+  slotStartFromHourClick,
   visibleHourRange,
   withLanes,
 } from './weekCalendarLayout';
