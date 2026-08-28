@@ -330,30 +330,30 @@ const Index = () => {
                 <h2 className="mt-2 text-3xl font-bold text-foreground">Pet products</h2>
                 <p className="mt-4 text-muted-foreground">
                   Adjacent to the clinic — supplies for pet parents who already trust Kittyp for care.
-                </p>
-              </div>
-              <Link
-                to="/products"
-                className="mt-6 md:mt-0 inline-flex items-center text-primary hover:text-primary/90 font-medium"
-              >
-                View all products
-                <ArrowRight size={16} className="ml-2" />
-              </Link>
+              </p>
             </div>
+            <Link
+              to="/products"
+              className="mt-6 md:mt-0 inline-flex items-center text-primary hover:text-primary/90 font-medium"
+            >
+              View all products
+              <ArrowRight size={16} className="ml-2" />
+            </Link>
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-              {featuredProducts.map((product, index) => (
-                <ProductCard
-                  key={`home-product-card-product-uuid-${product.uuid}`}
-                  product={product}
-                  index={index}
-                  className="animate-fade-up"
-                  isFavorite={favoriteProductIds.includes(product.uuid)}
-                  onToggleFavorite={() => handleToggleFavorite(product.uuid)}
-                />
-              ))}
-            </div>
-          </section>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+            {featuredProducts.map((product, index) => (
+              <ProductCard
+                key={`home-product-card-product-uuid-${product.uuid}`}
+                product={product}
+                index={index}
+                className="animate-fade-up"
+                isFavorite={favoriteProductIds.includes(product.uuid)}
+                onToggleFavorite={() => handleToggleFavorite(product.uuid)}
+              />
+            ))}
+          </div>
+        </section>
         )}
 
         <section className="py-16 md:py-24 bg-muted">
@@ -376,41 +376,41 @@ const Index = () => {
             </div>
 
             {featuredArticle.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {featuredArticle.map((post, index) => (
-                  <Link
-                    key={`post.id-${post.slug}`}
-                    to={`/article/${post.slug}`}
-                    className={cn(
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {featuredArticle.map((post, index) => (
+                <Link
+                  key={`post.id-${post.slug}`}
+                  to={`/article/${post.slug}`}
+                  className={cn(
                       'group bg-card rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300'
-                    )}
-                    style={{ animationDelay: `${index * 100 + 200}ms` }}
-                  >
-                    <div className="aspect-[16/9] relative overflow-hidden">
-                      <img
+                  )}
+                  style={{ animationDelay: `${index * 100 + 200}ms` }}
+                >
+                  <div className="aspect-[16/9] relative overflow-hidden">
+                    <img
                         src={post.coverImage || '/home/pet-parent.png'}
-                        alt={post.title}
+                      alt={post.title}
                         className="w-full h-full object-cover"
                         loading="lazy"
-                      />
-                    </div>
-                    <div className="p-6">
-                      <span className="text-sm text-muted-foreground">{post.date}</span>
-                      <h3 className="mt-2 text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {post.title}
-                      </h3>
+                    />
+                  </div>
+                  <div className="p-6">
+                    <span className="text-sm text-muted-foreground">{post.date}</span>
+                    <h3 className="mt-2 text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
+                      {post.title}
+                    </h3>
                       <p className="mt-3 text-muted-foreground">{post.excerpt}</p>
-                      <div className="mt-4 inline-flex items-center text-primary font-medium">
-                        Read more
+                    <div className="mt-4 inline-flex items-center text-primary font-medium">
+                      Read more
                         <ArrowRight
                           size={14}
                           className="ml-1 transition-transform duration-300 group-hover:translate-x-1"
                         />
                       </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
             ) : (
               !isLoading && (
                 <p className="text-muted-foreground text-sm">New articles will show up here.</p>

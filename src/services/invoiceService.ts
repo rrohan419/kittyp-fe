@@ -236,6 +236,40 @@ export async function fetchClinicInvoicePdfUrl(
   return res.data.data.url;
 }
 
+/** Pet-owner view of a consultation invoice (no Razorpay ids). */
+export interface OwnerInvoice {
+  uuid: string;
+  invoiceNumber?: string | null;
+  visitUuid?: string | null;
+  petUuid?: string | null;
+  clinicName?: string | null;
+  doctorName?: string | null;
+  status?: string | null;
+  paymentStatus?: string | null;
+  amount?: number | null;
+  paidAmount?: number | null;
+  currency?: string | null;
+  diagnosis?: string | null;
+  reason?: string | null;
+  doctorNotes?: string | null;
+  nextVisitNotes?: string | null;
+  pdfAvailable?: boolean;
+  consultationDate?: string | null;
+  createdAt?: string | null;
+}
+
+export async function fetchOwnerPetInvoices(petUuid: string): Promise<OwnerInvoice[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<OwnerInvoice[]>>(`/pet/${petUuid}/invoices`);
+  return res.data.data ?? [];
+}
+
+export async function fetchOwnerInvoicePdfUrl(petUuid: string, invoiceUuid: string): Promise<string> {
+  const res = await axiosInstance.get<ApiSuccessResponse<{ url: string }>>(
+    `/pet/${petUuid}/invoices/${invoiceUuid}/pdf`
+  );
+  return res.data.data.url;
+}
+
 export async function fetchDoctorWhatsAppSettings(): Promise<{
   whatsappConfigured: boolean;
   phoneNumberId: string;

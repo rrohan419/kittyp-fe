@@ -41,8 +41,10 @@ import {
   logPetWeight,
 } from '@/services/petDashboardService';
 import { PetHealthTimeline } from '@/components/health/PetHealthTimeline';
+import { OwnerPetRecords } from '@/components/health/OwnerPetRecords';
 import { OwnerPetEditDialog } from '@/components/ui/OwnerPetEditDialog';
 import { PetProfile } from '@/services/authService';
+import { fetchOwnerPetInvoices, OwnerInvoice } from '@/services/invoiceService';
 
 export default function PetDashboardPage() {
   const { petId } = useParams<{ petId: string }>();
@@ -53,6 +55,7 @@ export default function PetDashboardPage() {
   const [dashboard, setDashboard] = useState<PetDashboardModel | null>(null);
   const [weights, setWeights] = useState<WeightLogModel[]>([]);
   const [logs, setLogs] = useState<FeedingLogModel[]>([]);
+  const [invoices, setInvoices] = useState<OwnerInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [weightInput, setWeightInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -62,14 +65,16 @@ export default function PetDashboardPage() {
     if (!petId) return;
     setLoading(true);
     try {
-      const [dash, wh, fl] = await Promise.all([
+      const [dash, wh, fl, bills] = await Promise.all([
         fetchPetDashboard(petId),
         fetchWeightHistory(petId),
         fetchFeedingLogs(petId),
+        fetchOwnerPetInvoices(petId).catch(() => [] as OwnerInvoice[]),
       ]);
       setDashboard(dash);
       setWeights(wh);
       setLogs(fl);
+      setInvoices(bills);
     } catch {
       setDashboard(null);
       toast.error('Could not load pet dashboard');
@@ -205,9 +210,10 @@ export default function PetDashboardPage() {
       )}
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 h-auto gap-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="health">Health</TabsTrigger>
+          <TabsTrigger value="records">Records</TabsTrigger>
           <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
         </TabsList>
@@ -281,6 +287,10 @@ export default function PetDashboardPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="records" className="space-y-4 mt-4">
+          {petId && <OwnerPetRecords petId={petId} invoices={invoices} loading={loading} />}
         </TabsContent>
 
         <TabsContent value="nutrition" className="space-y-4 mt-4">

@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Loader2, Stethoscope } from 'lucide-react';
+import { Calendar, FileText, Loader2, Stethoscope } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { ClinicVisitModel, VisitStatus } from '@/services/clinicService';
 import { fetchParentPetVisits } from '@/services/visitService';
+import { OwnerInvoice, fetchOwnerInvoicePdfUrl, fetchOwnerPetInvoices } from '@/services/invoiceService';
+import { InvoicePdfDialog } from '@/components/invoice/InvoicePdfDialog';
 
 interface PetHealthTimelineProps {
   petId: string;
@@ -74,22 +77,43 @@ function statusBadgeClass(status: VisitStatus): string {
   }
 }
 
+function invoiceForVisit(v: ClinicVisitModel, invoices: OwnerInvoice[]): OwnerInvoice | undefined {
+  return (
+    invoices.find((inv) => inv.visitUuid && inv.visitUuid === v.uuid) ||
+    invoices.find((inv) => v.invoiceUuid && inv.uuid === v.invoiceUuid)
+  );
+}
+
 export const PetHealthTimeline: React.FC<PetHealthTimelineProps> = ({
   petId,
   petName,
   pollMs = 15000,
 }) => {
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
+  const [invoices, setInvoices] = useState<OwnerInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'current' | 'history' | 'all'>('current');
+  const [pdfUuid, setPdfUuid] = useState<string | null>(null);
+
+  const fetchPdf = useCallback(
+    (invoiceUuid: string) => fetchOwnerInvoicePdfUrl(petId, invoiceUuid),
+    [petId]
+  );
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      const list = await fetchParentPetVisits(petId);
+      const [list, bills] = await Promise.all([
+        fetchParentPetVisits(petId),
+        fetchOwnerPetInvoices(petId).catch(() => [] as OwnerInvoice[]),
+      ]);
       setVisits(list);
+      setInvoices(bills);
     } catch {
-      if (!quiet) setVisits([]);
+      if (!quiet) {
+        setVisits([]);
+        setInvoices([]);
+      }
     } finally {
       if (!quiet) setLoading(false);
     }
@@ -120,9 +144,14 @@ export const PetHealthTimeline: React.FC<PetHealthTimelineProps> = ({
 
   const renderVisit = (v: ClinicVisitModel) => {
     const when = visitWhen(v);
-    const showReport = Boolean(
-      v.chart?.assessment || v.chart?.examinationNotes || v.chart?.plan
-    );
+    const invoice = invoiceForVisit(v, invoices);
+    const diagnosis = v.chart?.assessment?.trim() || invoice?.diagnosis?.trim() || '';
+    const doctorNotes =
+      v.chart?.examinationNotes?.trim() || invoice?.doctorNotes?.trim() || '';
+    const plan = v.chart?.plan?.trim() || '';
+    const nextVisit =
+      v.chart?.nextVisitNotes?.trim() || invoice?.nextVisitNotes?.trim() || '';
+    const showReport = Boolean(diagnosis || doctorNotes || plan || nextVisit || invoice);
     return (
       <Card key={v.uuid} className="border-0 shadow-sm">
         <CardContent className="p-4 flex gap-3">
@@ -133,7 +162,7 @@ export const PetHealthTimeline: React.FC<PetHealthTimelineProps> = ({
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="font-medium">
-                  {v.chart?.assessment || v.reasonForVisit || 'Clinic visit'}
+                  {diagnosis || v.reasonForVisit || 'Clinic visit'}
                 </p>
                 <p className="text-sm text-muted-foreground mt-0.5">{doctorLine(v)}</p>
                 {v.clinicName && (
@@ -146,31 +175,57 @@ export const PetHealthTimeline: React.FC<PetHealthTimelineProps> = ({
             </div>
             {showReport && (
               <>
-                {v.chart?.assessment && (
+                {diagnosis && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground">Diagnosis</p>
-                    <p className="text-sm">{v.chart.assessment}</p>
+                    <p className="text-sm whitespace-pre-wrap">{diagnosis}</p>
                   </div>
                 )}
-                {v.chart?.examinationNotes && (
+                {doctorNotes && (
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground">Report</p>
-                    <p className="text-sm whitespace-pre-wrap">{v.chart.examinationNotes}</p>
+                    <p className="text-xs font-medium text-muted-foreground">Doctor&apos;s notes</p>
+                    <p className="text-sm whitespace-pre-wrap">{doctorNotes}</p>
                   </div>
                 )}
-                {v.chart?.plan && (
+                {plan && (
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground">Plan</p>
-                    <p className="text-sm">{v.chart.plan}</p>
+                    <p className="text-xs font-medium text-muted-foreground">Prescription / plan</p>
+                    <p className="text-sm whitespace-pre-wrap">{plan}</p>
+                  </div>
+                )}
+                {nextVisit && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Next visit</p>
+                    <p className="text-sm whitespace-pre-wrap">{nextVisit}</p>
                   </div>
                 )}
               </>
             )}
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Calendar className="h-3 w-3" />
-              {when ? format(when, 'MMM d, yyyy · h:mm a') : '—'}
-              {v.source === 'WALK_IN' ? ' · Walk-in' : ''}
-            </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {when ? format(when, 'MMM d, yyyy · h:mm a') : '—'}
+                {v.source === 'WALK_IN' ? ' · Walk-in' : ''}
+              </p>
+              {invoice && (
+                invoice.pdfAvailable ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-7 text-xs"
+                    onClick={() => setPdfUuid(invoice.uuid)}
+                  >
+                    <FileText className="h-3.5 w-3.5 mr-1" />
+                    Invoice PDF
+                  </Button>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] font-normal">
+                    Invoice {invoice.paymentStatus || invoice.status || 'issued'}
+                  </Badge>
+                )
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -186,7 +241,7 @@ export const PetHealthTimeline: React.FC<PetHealthTimelineProps> = ({
       <CardHeader>
         <CardTitle className="text-lg">{petName}&apos;s clinic visits & reports</CardTitle>
         <p className="text-sm text-muted-foreground font-normal">
-          Updates when the clinic or doctor moves your pet through the visit flow.
+          Diagnosis, doctor&apos;s notes, and the invoice PDF after payment — kept on this pet.
         </p>
       </CardHeader>
       <CardContent>
@@ -218,7 +273,7 @@ export const PetHealthTimeline: React.FC<PetHealthTimelineProps> = ({
               <div className="space-y-3">
                 {history.length
                   ? history.map(renderVisit)
-                  : empty('No past visits yet. Completed visits include diagnosis and report.')}
+                  : empty('No past visits yet. Completed visits include notes and invoices.')}
               </div>
             </TabsContent>
             <TabsContent value="all" className="mt-4">
@@ -233,6 +288,14 @@ export const PetHealthTimeline: React.FC<PetHealthTimelineProps> = ({
           </Tabs>
         )}
       </CardContent>
+      <InvoicePdfDialog
+        open={!!pdfUuid}
+        invoiceUuid={pdfUuid}
+        onOpenChange={(open) => {
+          if (!open) setPdfUuid(null);
+        }}
+        fetchUrl={fetchPdf}
+      />
     </Card>
   );
 };

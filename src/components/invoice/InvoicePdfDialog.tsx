@@ -35,7 +35,7 @@ export function InvoicePdfDialog({ open, invoiceUuid, onOpenChange, fetchUrl }: 
       })
       .catch(() => {
         if (!cancelled) {
-          toast.error('PDF not available yet — generate it first');
+          toast.error('PDF not available yet');
           onOpenChange(false);
         }
       })
