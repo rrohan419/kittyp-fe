@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" role="img" aria-label="bowl">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E7F6F2"/>
+      <stop offset="100%" stop-color="#A8E6CF"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" rx="28" fill="url(#bg)"/>
+  <circle cx="320" cy="80" r="54" fill="#ffffff" fill-opacity=".12"/>
+  <circle cx="60" cy="420" r="70" fill="#ffffff" fill-opacity=".10"/>
+
+  <ellipse cx="200" cy="300" rx="110" ry="40" fill="#2A9D8F"/>
+  <path d="M90 250 q0 90 110 90 q110 0 110 -90" fill="#2A9D8F"/>
+  <ellipse cx="200" cy="250" rx="110" ry="35" fill="#40B5A6"/>
+  <ellipse cx="200" cy="250" rx="78" ry="22" fill="#E9F8F4"/>
+  <circle cx="175" cy="248" r="6" fill="#F4A261"/>
+  <circle cx="195" cy="252" r="5" fill="#E76F51"/>
+  <circle cx="215" cy="247" r="6" fill="#F4A261"/>
+  <text x="200" y="420" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#1D6F66">Bowls</text>
+
+</svg>

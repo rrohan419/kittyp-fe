@@ -1,4 +1,5 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
+import '@/utils/authStorage';
 import cartReducer from '../slice/CartSlice';
 import dummyReducer from '../slice/DummySlice';
 import adminReducer from '../slice/AdminSlice';
@@ -7,16 +8,19 @@ import authReducer from '../slice/AuthSlice';
 import favoritesReducer from '../slice/FavoritesSlice';
 import orderReducer from '../slice/OrderSlice';
 import adminProductReducer from '../slice/AdminProductSlice';
+import schedulingReducer from '../slice/SchedulingSlice';
 import { persistReducer, persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
-import storage from 'redux-persist/lib/storage';
+import storageSession from 'redux-persist/lib/storage/session';
 // import schedularReducer from '../slice/SchedulingSlice';
 // import vetReducer from '../slice/VetSlice';
 
 
 const persistConfig = {
     key: 'root',
-    storage,
-    whitelist: ['cartReducer', 'authReducer', 'favoritesReducer'] // Removed 'user' since it's now part of authReducer
+    storage: storageSession,
+    // Auth lives in sessionStorage via authStorage — do not persist authReducer
+    // or a shared localStorage blob can rehydrate the wrong user into a tab.
+    whitelist: ['cartReducer', 'favoritesReducer'],
 };
 
 const rootReducer = combineReducers({
@@ -27,9 +31,8 @@ const rootReducer = combineReducers({
     authReducer,
     favoritesReducer,
     orderReducer,
-    // schedular: schedularReducer,
+    scheduling: schedulingReducer,
     adminProducts: adminProductReducer,
-    // vet: vetReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
@@ -49,4 +52,4 @@ export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 
 export const persistor = persistStore(store);
-export { store }; 
+export { store };

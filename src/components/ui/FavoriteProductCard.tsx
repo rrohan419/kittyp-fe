@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, ShoppingCart, X, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { FavoriteProduct } from '@/services/favoritesService';
+import { FavoriteProduct, ProductStatus } from '@/services/favoritesService';
 import { formatCurrency } from '@/services/cartService';
 
 interface FavoriteProductCardProps {
@@ -12,9 +12,12 @@ interface FavoriteProductCardProps {
 }
 
 export function FavoriteProductCard({ product, onToggleFavorite, className }: FavoriteProductCardProps) {
+  const isActive = product.status?.toLowerCase() === ProductStatus.ACTIVE.toLowerCase();
+
   return (
     <div className={cn(
       "group relative bg-card rounded-xl border border-border shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden",
+      !isActive && "opacity-60 cursor-not-allowed",
       className
     )}>
       {/* Remove from favorites button */}
@@ -26,7 +29,22 @@ export function FavoriteProductCard({ product, onToggleFavorite, className }: Fa
         <X className="h-4 w-4" />
       </button>
 
-      <Link to={`/product/${product.uuid}`} className="block">
+      {/* Out of Stock Badge */}
+      {!isActive && (
+        <div className="absolute top-3 left-12 z-10">
+          <span className="inline-block px-3 py-1 text-xs font-semibold bg-destructive text-destructive-foreground rounded-md shadow-md">
+            Out of Stock
+          </span>
+        </div>
+      )}
+
+      {/* Overlay for non-active products */}
+      {!isActive && (
+        <div className="absolute inset-0 bg-black/30 z-[5] pointer-events-none" />
+      )}
+
+      {isActive ? (
+        <Link to={`/product/${product.uuid}`} className="block">
         {/* Image Section */}
         <div className="aspect-[4/3] relative overflow-hidden bg-muted">
           <img
@@ -88,6 +106,49 @@ export function FavoriteProductCard({ product, onToggleFavorite, className }: Fa
           </div>
         </div>
       </Link>
+      ) : (
+        <div className="block">
+          {/* Image Section */}
+          <div className="aspect-[4/3] relative overflow-hidden bg-muted">
+            <img
+              src={product.imageUrls?.[0] || "/placeholder.svg"}
+              alt={product.name}
+              className="w-full h-full object-cover"
+            />
+            
+            {/* Category badge */}
+            <div className="absolute bottom-3 left-3">
+              <span className="inline-block px-2 py-1 text-xs font-medium bg-background/90 text-foreground rounded-md backdrop-blur-sm">
+                {product.category}
+              </span>
+            </div>
+          </div>
+
+          {/* Content Section */}
+          <div className="p-4 space-y-3">
+            {/* Title */}
+            <h3 className="font-semibold text-foreground line-clamp-2 leading-tight">
+              {product.name}
+            </h3>
+            
+            {/* Description */}
+            <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+              {product.description}
+            </p>
+            
+            {/* Price */}
+            <div className="flex items-center justify-between pt-2">
+              <div className="space-y-1">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-lg font-bold text-foreground">
+                    {formatCurrency(product.price, product.currency)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Favorite indicator */}
       <div className="absolute top-3 left-3 p-1.5 bg-pink-500/90 text-white rounded-full backdrop-blur-sm">

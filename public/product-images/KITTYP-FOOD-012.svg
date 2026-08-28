@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" role="img" aria-label="Puppy Kibble">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFF3D6"/>
+      <stop offset="100%" stop-color="#FFD59E"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" rx="28" fill="url(#g)"/>
+  <circle cx="330" cy="70" r="50" fill="#fff" fill-opacity=".14"/>
+  <circle cx="50" cy="430" r="70" fill="#fff" fill-opacity=".10"/>
+  
+    <path d="M130 165 h140 l18 180 h-176 z" fill="#F4A261"/>
+    <rect x="125" y="150" width="150" height="30" rx="8" fill="#E76F51"/>
+    <circle cx="200" cy="250" r="32" fill="#FFF3D6"/>
+    <text x="200" y="258" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="800" fill="#9C4300">K</text>
+  
+  <text x="200" y="400" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="26" font-weight="750" fill="#1f2937">Puppy Kibble</text>
+  <text x="200" y="432" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="16" fill="#4b5563">Starter</text>
+</svg>

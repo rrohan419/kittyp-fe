@@ -97,11 +97,13 @@ export type UpdateOrderStatusPayload = {
 };
 
 export type RazorpayOrderRequestPayload = {
-  amount: number;
-  currency: CurrencyType;
-  receipt: string;
-  notes: string[];
-  taxes: Taxes;
+  amount?: number;
+  currency?: CurrencyType;
+  receipt?: string;
+  notes?: string[];
+  taxes?: Taxes;
+  invoiceUuid?: string;
+  source?: 'STORE_ORDER' | 'TREATMENT_INVOICE';
 }
 
 export type RazorpayVerifyRequestPayLoad = {
@@ -253,7 +255,7 @@ export const clearCart = async (userUuid: string): Promise<ApiSuccessResponse<vo
 export type OrderRequest = {
     billingAddress: AddressModel;
     shippingAddress: AddressModel;
-    shippingMethod: ShippingMethod;
+    shippingMethod?: ShippingMethod | "";
 };
 
 export type OrderResponse = {

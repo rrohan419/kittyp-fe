@@ -36,6 +36,11 @@ const breadcrumbConfig: BreadcrumbConfig = {
   '/profile': { label: 'Profile' },
   '/login': { label: 'Login' },
   '/signup': { label: 'Sign Up' },
+  '/signup/parent': { label: 'Pet Parent Sign Up' },
+  '/signup/doctor': { label: 'Veterinarian Sign Up' },
+  '/signup/clinic-admin': { label: 'Clinic Sign Up' },
+  '/doctor-signup': { label: 'Veterinarian Sign Up' },
+  '/clinic-signup': { label: 'Clinic Sign Up' },
   '/forgot-password': { label: 'Forgot Password' },
   '/verify-reset-code': { label: 'Verify Code' },
   '/reset-password': { label: 'Reset Password' },
@@ -46,6 +51,9 @@ const breadcrumbConfig: BreadcrumbConfig = {
   '/admin/articles': { label: 'Article Management' },
   '/admin/articles/new': { label: 'New Article' },
   '/admin/articles/edit': { label: 'Edit Article', dynamic: true },
+  '/admin/clinics': { label: 'Clinics' },
+  '/admin/organizations': { label: 'Clinics' },
+  '/admin/doctors': { label: 'Doctor Verification' },
   '/privacy': { label: 'Privacy Policy' },
   '/terms': { label: 'Terms of Service' },
   '/sitemap': { label: 'Sitemap' },
@@ -64,6 +72,7 @@ export function GlobalBreadcrumbs() {
   const params = useParams();
   const pathnames = location.pathname.split('/').filter((x) => x);
   const { currentProduct: product } = useAppSelector((state) => state.productReducer);
+  const { user } = useAppSelector((state) => state.authReducer);
 
   // Don't show breadcrumbs on home page
   if (location.pathname === '/') {
@@ -136,6 +145,35 @@ export function GlobalBreadcrumbs() {
           isLast: true,
         });
         
+        skipNext = true;
+        return;
+      }
+
+      // Special handling for pet detail pages
+      if (pathname === 'pet' && index + 1 < pathnames.length) {
+        // Add Profile as the parent
+        breadcrumbs.push({
+          label: 'Profile',
+          path: '/profile',
+          icon: undefined,
+          isLast: false,
+        });
+
+        // Resolve pet name from user pets if available
+        const petUuid = pathnames[index + 1];
+        const ownerPets = (user as any)?.ownerPets as Array<any> | undefined;
+        const petName =
+          ownerPets?.find((p) => p?.uuid === petUuid)?.name ||
+          decodeURIComponent(petUuid);
+
+        currentPath += `/${petUuid}`;
+        breadcrumbs.push({
+          label: petName,
+          path: currentPath,
+          icon: undefined,
+          isLast: true,
+        });
+
         skipNext = true;
         return;
       }

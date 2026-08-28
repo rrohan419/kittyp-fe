@@ -9,6 +9,19 @@ export interface FavoriteProduct {
   category: string;
   imageUrls: string[];
   currency: CurrencyType;
+  status: ProductStatus;
+}
+
+export enum ProductStatus{
+  ACTIVE = "active",
+  INACTIVE = "inactive",
+  OUT_OF_STOCK = "out_of_stock",
+  // DISCONTINUED = "discontinued",
+  // RESTOCKING = "restocking",
+  // PRE_ORDER = "pre_order",
+  // BACKORDER = "backorder",
+  // CANCELLED = "cancelled",
+  // RETURNED = "returned",
 }
 
 export interface FavoritesResponse {

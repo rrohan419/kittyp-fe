@@ -48,6 +48,18 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
       return;
     }
 
+    const maxBytes = 5 * 1024 * 1024;
+    for (const file of fileArray) {
+      if (file.size > maxBytes) {
+        toast.error(`${file.name} is over 5MB — choose a smaller photo`);
+        return;
+      }
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        toast.error('Use JPEG, PNG, or WebP only');
+        return;
+      }
+    }
+
     try {
       const previews = await Promise.all(
         fileArray.map(file => fileToBase64(file))
@@ -107,6 +119,7 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
 
   const handleCancel = () => {
     setPreviewPhotos([]);
+    setSelectedFiles([]);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -155,6 +168,7 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
                   />
                 </div>
                 <Button
+                  type="button"
                   variant="destructive"
                   size="sm"
                   className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -175,6 +189,7 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
             {canAddMore && !isUploading && (
               <div className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center hover:border-primary/50 transition-colors">
                 <Button
+                  type="button"
                   variant="ghost"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={disabled}
@@ -202,12 +217,14 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
           {previewPhotos.length > 0 && (
             <div className="flex space-x-2">
               <Button
+                type="button"
                 onClick={handleUpload}
                 disabled={isUploading}
               >
                 {isUploading ? 'Uploading...' : 'Save Photos'}
               </Button>
               <Button
+                type="button"
                 onClick={handleCancel}
                 variant="outline"
                 disabled={isUploading}
@@ -223,7 +240,7 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             onChange={handleFileInputChange}
             className="hidden"
             disabled={disabled || isUploading}
@@ -231,7 +248,7 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
 
           {/* Help Text */}
           <p className="text-xs text-muted-foreground mt-4">
-            Supported formats: JPEG, PNG, WebP (Max 3MB per photo, up to {maxPhotos} photos)
+            Supported formats: JPEG, PNG, WebP (Max 5MB per photo, up to {maxPhotos} photos)
           </p>
         </CardContent>
       </Card>

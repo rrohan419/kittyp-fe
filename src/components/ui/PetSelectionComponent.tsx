@@ -1,7 +1,7 @@
 import { PetCarePlan } from "@/services/aiService";
 import { PetProfile } from "@/services/authService";
 import { staggerContainer, fadeUp, scaleUp } from "@/utils/animations";
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { PetImage } from '@/components/ui/PetImage';
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, PawPrint, Plus, CheckCircle, Sparkles, Wand2, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -10,16 +10,22 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./card";
+import { DatePicker } from "./date-picker";
 import { Input } from "./input";
 import { Textarea } from "./textarea";
 import { useSelector } from "react-redux";
 import { RootState } from "@/module/store/store";
+import { formatPetDobWithAge } from "@/utils/petAge";
 
 interface PetSelectionProps {
   selectedPetId: string | null;
   setSelectedPetId: (id: string | null) => void;
-  // savedPets: PetProfile[];
-  // user: any;
+  /** When provided (doctor / clinic flows), overrides Redux ownerPets. */
+  pets?: PetProfile[];
+  petsLoading?: boolean;
+  petsLabel?: string;
+  emptyHint?: string;
+  allowManualEntry?: boolean;
   onGenerateRecommendation: (manualPetData?: PetProfile) => void;
   isGenerating: boolean;
   recommendations: PetCarePlan;
@@ -28,8 +34,11 @@ interface PetSelectionProps {
 export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
   selectedPetId,
   setSelectedPetId,
-  // savedPets,
-  // user,
+  pets,
+  petsLoading = false,
+  petsLabel,
+  emptyHint,
+  allowManualEntry = true,
   onGenerateRecommendation,
   isGenerating,
   recommendations
@@ -41,7 +50,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
     profilePicture: '',
     type: '',
     breed: '',
-    age: '',
+    dateOfBirth: '',
     weight: '',
     activityLevel: 'low',
     gender: 'male',
@@ -51,18 +60,32 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
     isNeutered: true,
     createdAt: '',
   });
-  const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
-  const savedPets = user?.ownerPets || [];
+  const { user } = useSelector((state: RootState) => state.authReducer);
+  const savedPets = pets ?? user?.ownerPets ?? [];
+  const listTitle = petsLabel || (savedPets.length === 1 && !useManualEntry ? 'Your Pet' : 'Choose Your Pet');
+  const listDescription =
+    petsLabel
+      ? 'Select a patient or enter details manually for personalized nutrition analysis'
+      : savedPets.length === 1 && !useManualEntry
+        ? 'Using your pet profile for personalized recommendations'
+        : 'Select a saved pet or enter details manually for personalized nutrition analysis';
 
-  // Clear selectedPetId if the selected pet no longer exists
+  // Clear selectedPetId if the selected pet no longer exists; auto-select sole pet
   useEffect(() => {
+    if (savedPets.length === 1 && !useManualEntry) {
+      const only = savedPets[0].uuid;
+      if (selectedPetId !== only) {
+        setSelectedPetId(only);
+      }
+      return;
+    }
     if (selectedPetId && selectedPetId !== 'manual-entry') {
       const petExists = savedPets.some(pet => pet.uuid === selectedPetId);
       if (!petExists) {
         setSelectedPetId(null);
       }
     }
-  }, [savedPets, selectedPetId, setSelectedPetId]);
+  }, [savedPets, selectedPetId, setSelectedPetId, useManualEntry]);
 
   const selectedPet = savedPets.find(pet => pet.uuid === selectedPetId) ||
     (useManualEntry ? { ...manualPetData, id: 'manual' } : null);
@@ -81,15 +104,13 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                 <Heart className="h-5 w-5 text-primary" />
               </motion.div>
               <span className="bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                Choose Your Pet
+                {listTitle}
               </span>
             </CardTitle>
-            <CardDescription>
-              Select a saved pet or enter details manually for personalized nutrition analysis
-            </CardDescription>
+            <CardDescription>{listDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Toggle between saved pets and manual entry */}
+            {allowManualEntry && (
             <div className="flex space-x-2 mb-6">
               <Button
                 variant={!useManualEntry ? "default" : "outline"}
@@ -100,7 +121,8 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                 className="flex-1 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
               >
                 <PawPrint className="h-4 w-4 mr-2" />
-                Saved Pets {savedPets.length > 0 && `(${savedPets.length})`}
+                {pets ? 'Patients' : 'Saved Pets'}{' '}
+                {savedPets.length > 0 && `(${savedPets.length})`}
               </Button>
               <Button
                 variant={useManualEntry ? "default" : "outline"}
@@ -114,10 +136,13 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                 Enter Manually
               </Button>
             </div>
+            )}
 
             {!useManualEntry ? (
               // Saved Pets Section
-              savedPets.length === 0 ? (
+              petsLoading ? (
+                <p className="text-center py-10 text-sm text-muted-foreground">Loading patients…</p>
+              ) : savedPets.length === 0 ? (
                 <motion.div
                   className="text-center py-12 text-muted-foreground"
                   variants={fadeUp}
@@ -128,11 +153,14 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                   >
                     <PawPrint className="h-16 w-16 mx-auto mb-4 opacity-30" />
                   </motion.div>
-                  <p className="text-lg mb-4">No saved pets found</p>
-                  <p className="text-sm mb-6">Add your pet's profile to get personalized recommendations</p>
-                  {user ? (
+                  <p className="text-lg mb-4">No patients found</p>
+                  <p className="text-sm mb-6">
+                    {emptyHint ||
+                      'Finish a visit or add a clinic patient, or enter details manually.'}
+                  </p>
+                  {user && !pets ? (
                     <Button asChild variant="outline" size="lg" className="mr-4">
-                      <a href="/profile?tab=pets">
+                      <a href="/app/pets">
                         <Plus className="h-4 w-4 mr-2" />
                         Add Pet Profile
                       </a>
@@ -148,6 +176,28 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                     </Button>
                   )}
                 </motion.div>
+              ) : savedPets.length === 1 ? (
+                <div className="rounded-xl border border-primary/20 bg-background/80 p-4 flex items-center gap-4">
+                  <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-primary/20 shrink-0">
+                    <PetImage pet={savedPets[0]} alt={savedPets[0].name} className="h-full w-full object-cover" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-lg truncate">{savedPets[0].name}</p>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {savedPets[0].type} · {savedPets[0].breed || 'Mixed'}
+                      {savedPets[0].dateOfBirth
+                        ? ` · ${formatPetDobWithAge(savedPets[0].dateOfBirth)}`
+                        : ''}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {savedPets[0].weight && <Badge variant="secondary">{savedPets[0].weight}</Badge>}
+                      {savedPets[0].activityLevel && (
+                        <Badge variant="outline">{savedPets[0].activityLevel}</Badge>
+                      )}
+                    </div>
+                  </div>
+                  <CheckCircle className="h-6 w-6 text-primary shrink-0" />
+                </div>
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {savedPets.map((pet, index) => (
@@ -170,22 +220,21 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                       >
                         <CardContent className="p-4">
                           <div className="flex items-center space-x-3">
-                            <Avatar className="h-14 w-14 ring-2 ring-primary/20">
-                              <AvatarImage src={pet.profilePicture} alt={pet.name} />
-                              <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
-                                {pet.name.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
+                            <div className="h-14 w-14 rounded-full overflow-hidden ring-2 ring-primary/20 shrink-0">
+                              <PetImage pet={pet} alt={pet.name} className="h-full w-full object-cover" />
+                            </div>
                             <div className="flex-1 min-w-0">
                               <h4 className="font-semibold text-base truncate">{pet.name}</h4>
                               <p className="text-sm text-muted-foreground">{pet.breed}</p>
                               <div className="flex items-center space-x-2 mt-2">
-                                <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">
-                                  {pet.age}
-                                </Badge>
+                                {pet.dateOfBirth && (
+                                  <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">
+                                    {formatPetDobWithAge(pet.dateOfBirth)}
+                                  </Badge>
+                                )}
                                 {pet.weight && (
                                   <Badge variant="outline" className="text-xs border-primary/20 text-primary">
-                                    {pet.weight}
+                                    {pet.weight} kg
                                   </Badge>
                                 )}
                               </div>
@@ -331,13 +380,14 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                     />
                   </div>
                   <div>
-                    <Label htmlFor="petAge" className="text-primary font-medium">Age</Label>
-                    <Input
-                      id="petAge"
-                      value={manualPetData.age}
-                      onChange={(e) => setManualPetData(prev => ({ ...prev, age: e.target.value }))}
-                      placeholder="e.g., 2 years"
-                      className="border-primary/20 focus:border-primary"
+                    <Label htmlFor="petDob" className="text-primary font-medium">Date of Birth</Label>
+                    <DatePicker
+                      id="petDob"
+                      value={manualPetData.dateOfBirth}
+                      onChange={(dateOfBirth) => setManualPetData(prev => ({ ...prev, dateOfBirth }))}
+                      placeholder="Select date of birth"
+                      disableFuture
+                      className="border-primary/20"
                     />
                   </div>
                   <div>
@@ -437,7 +487,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                     </div>
                     <p className="text-sm text-primary/80">
                       <strong>{manualPetData.name}</strong> - {manualPetData.breed || 'Mixed breed'} {manualPetData.breed}
-                      {manualPetData.age && `, ${manualPetData.age}`}
+                      {manualPetData.dateOfBirth && `, ${formatPetDobWithAge(manualPetData.dateOfBirth)}`}
                       {manualPetData.weight && `, ${manualPetData.weight}kg`}
                     </p>
                     <br />
@@ -485,12 +535,9 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
               <CardContent className="space-y-6">
                 {/* Pet Profile Summary */}
                 <div className="flex items-center space-x-4 p-6 bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl border border-primary/20">
-                  <Avatar className="h-20 w-20 ring-4 ring-primary/20">
-                    <AvatarImage src={selectedPet.profilePicture} alt={selectedPet.name} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                      {selectedPet.profilePicture ? selectedPet.profilePicture : selectedPet.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="h-20 w-20 rounded-full overflow-hidden ring-4 ring-primary/20 shrink-0">
+                    <PetImage pet={selectedPet} alt={selectedPet.name} className="h-full w-full object-cover" />
+                  </div>
                   <div className="flex-1">
                     <h3 className="text-2xl font-bold text-primary mb-2">{selectedPet.name}</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -503,8 +550,8 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                         <p className="font-semibold text-primary">{selectedPet.breed}</p>
                       </div>
                       <div className="bg-secondary/50 p-2 rounded-lg">
-                        <span className="text-muted-foreground">Age:</span>
-                        <p className="font-semibold text-primary">{selectedPet.age}</p>
+                        <span className="text-muted-foreground">Date of birth:</span>
+                        <p className="font-semibold text-primary">{selectedPet.dateOfBirth ? formatPetDobWithAge(selectedPet.dateOfBirth) : 'Not set'}</p>
                       </div>
                       <div className="bg-secondary/50 p-2 rounded-lg">
                         <span className="text-muted-foreground">Weight:</span>

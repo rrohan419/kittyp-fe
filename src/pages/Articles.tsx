@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
 } from '@/components/ui/card';
@@ -10,6 +10,9 @@ import { fetchArticles } from '@/services/articleService';
 import { ArticleList } from './Interface/PagesInterface';
 
 const Articles: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const authorIdParam = searchParams.get('authorId');
+  const authorId = authorIdParam ? Number(authorIdParam) : null;
   const [articles, setArticles] = useState<ArticleList[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -27,7 +30,9 @@ const Articles: React.FC = () => {
         body: {
           name: null,
           isRandom: null,
-          articleStatus: 'PUBLISHED'
+          articleStatus: 'PUBLISHED',
+          tags: null,
+          authorId: authorId && !Number.isNaN(authorId) ? authorId : null,
         },
       });
   
@@ -39,11 +44,17 @@ const Articles: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, hasMore, isLoading]);
+  }, [page, hasMore, isLoading, authorId]);
+
+  useEffect(() => {
+    setArticles([]);
+    setPage(1);
+    setHasMore(true);
+  }, [authorId]);
 
   useEffect(() => {
     loadArticles();
-  }, [page]);
+  }, [page, authorId]);
 
   useEffect(() => {
     if (observer.current) observer.current.disconnect();
@@ -62,9 +73,13 @@ const Articles: React.FC = () => {
       <div className="pt-24 pb-16 container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <header className="mb-12">
-            <h1 className="text-4xl font-bold tracking-tight mb-3 text-balance">Our Blog</h1>
+            <h1 className="text-4xl font-bold tracking-tight mb-3 text-balance">
+              {authorId ? 'Doctor Articles' : 'Our Blog'}
+            </h1>
             <p className="text-lg text-muted-foreground">
-              Insights and guides about pet care, sustainability, and eco-friendly products.
+              {authorId
+                ? 'Published articles from this veterinarian.'
+                : 'Insights and guides about pet care, sustainability, and eco-friendly products.'}
             </p>
           </header>
 

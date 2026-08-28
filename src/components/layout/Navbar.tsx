@@ -11,7 +11,6 @@ import {
   DialogPortal,
   DialogOverlay
 } from '@/components/ui/dialog';
-import { Button } from '../ui/button';
 import { CartSidebar } from './CartSidebar';
 import { switchToGuestCart } from '@/module/slice/CartSlice';
 import { clearUser } from '@/module/slice/AuthSlice';
@@ -19,6 +18,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { ThemeSwitcher } from '../ui/theme-switcher';
 import { UserProfile } from '@/services/authService';
+import { isEcommerceEnabled } from '@/config/features';
+import { AppRole, getPortalHome, getRoleLabel, PORTAL_HOME } from '@/utils/roles';
+import { clearAuthStorage } from '@/utils/authStorage';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -30,10 +32,17 @@ export function Navbar() {
   const dispatch = useDispatch<AppDispatch>();
 
   // Get auth state from AuthSlice
-  const { user, isAuthenticated: authIsAuthenticated, loading: authLoading } = useSelector((state: RootState) => state.authReducer);
+  const { user, isAuthenticated: authIsAuthenticated, loading: authLoading, activeRole } = useSelector((state: RootState) => state.authReducer);
   const isAuthenticated = authIsAuthenticated && !isLoggingOut;
-  const userRole = user?.roles?.includes('ROLE_ADMIN') ? 'ROLE_ADMIN' : null;
-  // const isVet = user?.roles?.includes('VET') || false;
+  const portalPath =
+    (activeRole && PORTAL_HOME[activeRole]) ||
+    getPortalHome(user?.roles);
+  const portalLabel =
+    activeRole && PORTAL_HOME[activeRole]
+      ? `${getRoleLabel(activeRole as AppRole)} Portal`
+      : portalPath && portalPath !== '/login'
+        ? 'My Portal'
+        : null;
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
@@ -56,21 +65,6 @@ export function Navbar() {
     closeMenu();
   }, [location.pathname]);
 
-  // Listen for storage changes (e.g., when auth is cleared by interceptor)
-  useEffect(() => {
-    const handleStorageChange = () => {
-      // Check if token was removed
-      const token = localStorage.getItem('access_token');
-      if (!token && isAuthenticated) {
-        // Token was removed, clear user state
-        dispatch(clearUser());
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [dispatch, isAuthenticated]);
-
   const handleLogout = async () => {
     if (isLoggingOut) return;
 
@@ -78,10 +72,7 @@ export function Navbar() {
       setIsLoggingOut(true);
       closeMenu();
 
-      // First, clear auth data from localStorage
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('roles');
+      clearAuthStorage();
 
       // Then dispatch actions in sequence
       await dispatch(switchToGuestCart()).unwrap();
@@ -106,28 +97,18 @@ export function Navbar() {
     }
   };
 
+  const ecommerceOn = isEcommerceEnabled();
   const navLinks = [
     { name: 'Home', path: '/' },
-    { name: 'Products', path: '/products' },
-    // { name: 'Vet Consultation', path: '/vet' },
-    { name: 'AI Assistant', path: '/ai-assistant' },
-    { name: 'How to Use', path: '/how-to-use' },
+    ...(ecommerceOn ? [{ name: 'Products', path: '/products' }] : []),
     { name: 'Articles', path: '/articles' },
     { name: 'Contact', path: '/contact' },
-    // { name: 'Profile', path: '/profile' },
-
-    // { name: 'My Orders', path: '/orders' }
   ];
 
   const isActive = (path: string) => {
     if (path === '/' && location.pathname === '/') return true;
     if (path !== '/' && location.pathname.startsWith(path)) return true;
     return false;
-  };
-
-  const navigateToAdmin = () => {
-    navigate('/admin');
-    closeMenu();
   };
 
   return (
@@ -174,21 +155,19 @@ export function Navbar() {
                 </li>
               ))}
 
-              {userRole === 'ROLE_ADMIN' && (
+              {isAuthenticated && portalLabel && portalPath && portalPath !== '/login' && (
                 <li>
-                  <button
-                    onClick={navigateToAdmin}
+                  <Link
+                    to={portalPath}
                     className={cn(
                       "text-sm font-medium transition-colors flex items-center text-foreground",
-                      isActive('/admin')
-                        ? "text-primary"
-                        : "hover:text-primary"
+                      isActive(portalPath) ? "text-primary" : "hover:text-primary"
                     )}
                     style={{ textShadow: 'none' }}
                   >
                     <LayoutDashboard size={16} className="mr-2" />
-                    Admin
-                  </button>
+                    {portalLabel}
+                  </Link>
                 </li>
               )}
             </ul>
@@ -197,7 +176,7 @@ export function Navbar() {
               <div className="w-9">
                 <ThemeSwitcher />
               </div>
-              <CartSidebar />
+              {ecommerceOn && <CartSidebar />}
               {isAuthenticated ? (
                 <div className="flex items-center space-x-4">
                   <Link
@@ -248,7 +227,7 @@ export function Navbar() {
             <div className="w-9">
               <ThemeSwitcher />
             </div>
-            <CartSidebar />
+            {ecommerceOn && <CartSidebar />}
             <button
               onClick={toggleMenu}
               className="text-foreground hover:text-primary transition-colors"
@@ -287,21 +266,17 @@ export function Navbar() {
                   </li>
                 ))}
 
-                {userRole === 'ROLE_ADMIN' && (
+                {isAuthenticated && portalLabel && portalPath && portalPath !== '/login' && (
                   <li>
-                    <button
-                      onClick={navigateToAdmin}
-                      className={cn(
-                        "w-full text-left text-sm font-medium transition-colors flex items-center text-foreground",
-                        isActive('/admin')
-                          ? "text-primary"
-                          : "hover:text-primary"
-                      )}
+                    <Link
+                      to={portalPath}
+                      className="block text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center"
                       style={{ textShadow: 'none' }}
+                      onClick={closeMenu}
                     >
-                      <LayoutDashboard size={16} className="mr-2" />
-                      Admin Dashboard
-                    </button>
+                      <LayoutDashboard size={18} className="mr-2" />
+                      {portalLabel}
+                    </Link>
                   </li>
                 )}
 

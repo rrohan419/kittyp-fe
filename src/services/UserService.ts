@@ -1,5 +1,13 @@
 import axiosInstance from "@/config/axionInstance";
+import { setAuthItem } from "@/utils/authStorage";
 import { PetProfile, UserProfile } from "./authService";
+
+/** Persist user without JWT — token lives only in access_token key. */
+export function persistUserProfile(user: UserProfile): UserProfile {
+  const { accessToken: _omit, ...safe } = user;
+  setAuthItem('user', JSON.stringify(safe));
+  return safe as UserProfile;
+}
 
 
 interface WrappedUserResponse {
@@ -25,6 +33,7 @@ export interface UserUpdateDto {
   lastName: string;
   phoneNumber: string;
   phoneCountryCode: string;
+  age?: number | null;
   profilePictureUrl?: string;
 }
 
@@ -33,7 +42,7 @@ export interface AddPet {
   profilePicture: string;
   type: string;
   breed: string;
-  age: string;
+  // age: string;
   weight: string;
   activityLevel: string;
   gender: string;
@@ -41,14 +50,17 @@ export interface AddPet {
   healthConditions: string;
   allergies: string;
   isNeutered: boolean;
+  dateOfBirth: string;
 }
 
 export interface UpdatePet {
   uuid: string;
   name: string;
   profilePicture: string;
+  type?: string;
   breed: string;
-  age: string;
+  // age: string;
+  dateOfBirth: string;
   weight: string;
   activityLevel: string;
   gender: string;
@@ -58,13 +70,40 @@ export interface UpdatePet {
   isNeutered: boolean;
 }
 
+// Function to calculate and format age from DOB
+export const calculatePetAgeForDisplay = (dobString: string) => {
+  if (!dobString) {
+      return '';
+  }
+
+  const today = new Date();
+  const dob = new Date(dobString);
+
+  let years = today.getFullYear() - dob.getFullYear();
+  let months = today.getMonth() - dob.getMonth();
+
+  // Adjust years and months if the current date is before the birthday
+  if (months < 0 || (months === 0 && today.getDate() < dob.getDate())) {
+      years--;
+      months += 12;
+  }
+
+  if (years > 0) {
+      // Example: "2 years, 6 months"
+      return `${years} yr${years !== 1 ? 's' : ''}, ${months} mo${months !== 1 ? 's' : ''}`;
+  } else if (months > 0) {
+      // Example: "6 months"
+      return `${months} mo${months !== 1 ? 's' : ''}`;
+  } else {
+      return 'Less than 1 month';
+  }
+};
+
 
 export const fetchUserDetail = async (): Promise<UserProfile> => {
   const userResponse = await axiosInstance.get<WrappedUserResponse>('/user/me');
   const user = userResponse.data.data;
-  localStorage.setItem('user', JSON.stringify(user));
-
-  return user;
+  return persistUserProfile(user);
 };
 
 export const updateUserDetails = async (userUuid: string, userUpdateDto: UserUpdateDto): Promise<UserProfile> => {
@@ -72,11 +111,28 @@ export const updateUserDetails = async (userUuid: string, userUpdateDto: UserUpd
   const user = userResponse.data.data;
 
   // Step 4: Store user data if needed
-  localStorage.setItem('user', JSON.stringify(user));
-
-  return user;
+  return persistUserProfile(user);
 
 };
+
+export async function sendProfileOtp(body: {
+  channel: 'EMAIL' | 'PHONE';
+  email?: string;
+  phone?: string;
+}) {
+  const res = await axiosInstance.post<WrappedResponse<{ message: string }>>('/user/otp/send', body);
+  return res.data;
+}
+
+export async function verifyProfileOtp(body: {
+  channel: 'EMAIL' | 'PHONE';
+  email?: string;
+  phone?: string;
+  code: string;
+}) {
+  const res = await axiosInstance.post<WrappedResponse<{ verified: boolean }>>('/user/otp/verify', body);
+  return res.data.data;
+}
 
 export const addPet = async (petDto: AddPet): Promise<PetProfile> => {
   const response = await axiosInstance.post<WrappedResponse<PetProfile>>(`/pet`, petDto);
@@ -100,8 +156,7 @@ export const updateUserProfilePicture = async (userUuid: string, profilePictureU
     { profilePictureUrl }
   );
   const user = userResponse.data.data;
-  localStorage.setItem('user', JSON.stringify(user));
-  return user;
+  return persistUserProfile(user);
 };
 
 export const updatePetPhotos = async (petUuid: string, photos: string[]): Promise<PetProfile> => {
@@ -122,8 +177,5 @@ export const saveUserFcmToken = async (fcmToken: string): Promise<UserProfile> =
   const userResponse = await axiosInstance.patch<WrappedUserResponse>(`/user/${fcmToken}`);
   const user = userResponse.data.data;
 
-  // Store updated user data
-  localStorage.setItem('user', JSON.stringify(user));
-
-  return user;
+  return persistUserProfile(user);
 };

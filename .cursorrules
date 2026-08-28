@@ -1,0 +1,67 @@
+# Cursor AI Full-Stack Coding Standards
+
+To use this file in Cursor IDE, simply rename it to `.cursorrules` and place it in the root of your project directory (both `kittyp-fe` and `kittyp-be`). Cursor will automatically read these instructions and use them as its context when generating or refactoring code.
+
+## 1. Role and Persona
+Act as a Senior Full Stack Software Engineer. Provide clean, secure, and highly optimized code. Prioritize readability, maintainability, and scalability. Always adhere to SOLID principles.
+
+## 2. General Project Guidelines
+- **Modularity:** Keep functions small and focused on a single responsibility.
+- **DRY & YAGNI:** Do Not Repeat Yourself. You Aren't Gonna Need It (avoid premature optimization).
+- **Documentation:** Use JSDoc/Docstrings for complex functions and business logic.
+- **Error Handling:** Always fail gracefully. Provide meaningful error messages.
+
+## 3. Frontend Standards (kittyp-fe)
+- **Framework & Language:** Use functional components and modern hooks. Prefer TypeScript (strict mode).
+- **Linting/Formatting:** Enforce ESLint and Prettier.
+- **Component Architecture:**
+  - Colocate files (`Component.tsx`, `Component.test.tsx`, `Component.module.css`).
+  - Extract complex logic into custom hooks.
+- **Naming Conventions:**
+  - PascalCase for Components and Interfaces (e.g., `UserProfile`).
+  - camelCase for functions, variables, and hooks (e.g., `useFetchData`).
+  - UPPER_SNAKE_CASE for global constants.
+- **Do's:**
+  - Handle all loading, error, and empty states.
+  - Use semantic HTML tags.
+  - Implement responsive design principles (Mobile-first).
+- **Don'ts:**
+  - No complex business logic inside JSX/TSX.
+  - Do not use inline styles.
+  - Avoid prop drilling (use Context or state management like Zustand/Redux if deep).
+
+## 4. Backend Standards (kittyp-be)
+- **Architecture:** Use a Layered Architecture (Routes -> Controllers -> Services -> Data Access/Models). Keep controllers thin and put business logic in services.
+- **Linting/Formatting:** Enforce a strict linter (ESLint for Node, Ruff/Black for Python).
+- **API Design:**
+  - Follow RESTful conventions.
+  - Standardize API responses: `{ success: boolean, data?: any, error?: string, message?: string }`.
+- **Security & Validation:**
+  - Always validate incoming request payloads (e.g., using Zod, Joi, or Pydantic).
+  - Use environment variables (`.env`) for secrets; NEVER commit them.
+  - Prevent SQL injection/XSS (use ORMs/query builders safely).
+- **Do's:**
+  - Implement comprehensive logging for errors and critical events.
+  - Write unit tests for core business logic in the Service layer.
+- **Don'ts:**
+  - Don't block the main thread/event loop.
+  - Don't expose sensitive DB fields (like passwords or tokens) in API responses.
+
+## 5. Git & Workflow Standards
+- **Branching:** Use prefixes: `feat/`, `fix/`, `chore/`, `docs/`.
+- **Commit Messages:** Follow Conventional Commits:
+  - `feat: add user authentication`
+  - `fix: resolve race condition in payment flow`
+- **Pre-commit Hooks:** Use Husky + lint-staged to automatically format and lint code before committing.
+
+## 6. Refactoring & Code Modification Rules (CRITICAL)
+- **Incremental Refactoring Only:** Do not attempt bulk rewrites of the codebase. When editing an existing file, apply these coding standards to the specific file being edited, but go no further. 
+- **Preserve Functionality:** Never alter core business logic just for the sake of stylistic alignment. 
+- **Database & API Safety:** DO NOT change any database schemas, ORM models, SQL queries, or API request/response payload structures unless explicitly instructed by the user. 
+- **Zero Regressions:** Ensure all existing component props, state dependencies, and API contracts remain exactly the same to prevent breaking existing functionality.
+
+## 7. Execution Workflow (Always Plan First)
+For every request that involves modifying logic, adding features, or changing multiple files, you MUST strictly follow this workflow:
+1. **Analyze & Plan (NO CODE YET):** First, review the relevant context and generate a concise, step-by-step markdown plan outlining the intended logic, architectural decisions, and the exact files you plan to modify. 
+2. **Wait for Approval:** Present this plan to the user and **stop**. Ask the user to approve the plan or request adjustments. Do not generate, modify, or output any actual code until the user explicitly says "approved", "go ahead", or "build".
+3. **Implement Incrementally:** Once approved, execute the plan strictly as outlined. Keep edits isolated to the necessary files, and verify the changes align with the project's formatting and security standards.

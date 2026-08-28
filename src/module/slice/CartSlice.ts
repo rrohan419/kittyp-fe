@@ -13,6 +13,7 @@ import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { toast } from "sonner";
 import { Product, fetchProductByUuid } from "@/services/productService";
 import { CartItemResponse as BaseCartItemResponse, CartResponse, CartService } from '@/services/cartService';
+import { getAuthItem } from '@/utils/authStorage';
 import { createSelector } from '@reduxjs/toolkit';
 import { RootState } from '@/module/store/store';
 
@@ -178,7 +179,8 @@ export const resetCartThunk = createAsyncThunk(
   'cart/resetCartThunk',
   async (_, { dispatch }) => {
     try {
-      const userUuid = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!).uuid : null;
+      const storedUser = getAuthItem('user');
+      const userUuid = storedUser ? JSON.parse(storedUser).uuid : null;
       if (userUuid) {
         await clearCartService(userUuid);
       }
@@ -197,7 +199,7 @@ export const addToCartFromProduct = createAsyncThunk(
     try {
       // Get current state and check auth token once
       const state = getState() as { cartReducer: CartState };
-      const accessToken = localStorage.getItem('access_token');
+      const accessToken = getAuthItem('access_token');
       const isLoggedIn = !!accessToken;
 
       // Early validation for stock
@@ -229,9 +231,9 @@ export const addToCartFromProduct = createAsyncThunk(
       const authState = getState() as { authReducer: { user: UserProfile | null } };
       let userUuid = authState.authReducer.user?.uuid;
 
-      // If not in auth state, try to get from localStorage without API call
+      // If not in auth state, try to get from auth storage without API call
       if (!userUuid) {
-        const storedUser = localStorage.getItem('user');
+        const storedUser = getAuthItem('user');
         if (storedUser) {
           const userData = JSON.parse(storedUser);
           userUuid = userData.uuid;
@@ -307,12 +309,12 @@ export const syncCartsAfterLogin = createAsyncThunk(
       const state = getState() as { cartReducer: CartState };
       const guestCartItems = state.cartReducer.items;
 
-      // Get user from auth state or localStorage
+      // Get user from auth state or auth storage
       const authState = getState() as { authReducer: { user: UserProfile | null } };
       let userData = authState.authReducer.user;
 
       if (!userData) {
-        const storedUser = localStorage.getItem('user');
+        const storedUser = getAuthItem('user');
         if (storedUser) {
           userData = JSON.parse(storedUser);
         } else {
@@ -399,12 +401,12 @@ export const backgroundSyncCarts = createAsyncThunk(
       const state = getState() as { cartReducer: CartState };
       const guestCartItems = state.cartReducer.items;
 
-      // Get user from auth state or localStorage
+      // Get user from auth state or auth storage
       const authState = getState() as { authReducer: { user: UserProfile | null } };
       let userData = authState.authReducer.user;
 
       if (!userData) {
-        const storedUser = localStorage.getItem('user');
+        const storedUser = getAuthItem('user');
         if (storedUser) {
           userData = JSON.parse(storedUser);
         } else {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,11 +19,18 @@ import { login, socialSso } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
-import { validateAndSetUser } from '@/module/slice/AuthSlice';
+import { setActiveRole, validateAndSetUser, clearUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
+import { AppRole, canSwitchWorkspace, getPortalPath, ROLES } from '@/utils/roles';
+import { RoleSelectModal } from '@/components/auth/RoleSelectModal';
+import { isEcommerceEnabled } from '@/config/features';
+import { validateLoginIdentifier, normalizeLoginIdentifier } from '@/utils/validation';
+import { resolvePreferredRole } from '@/utils/workspacePreference';
+import { clearAuthStorage } from '@/utils/authStorage';
 
 const Login = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const dispatch = useDispatch<AppDispatch>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,36 +38,94 @@ const Login = () => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [pendingRoles, setPendingRoles] = useState<AppRole[]>([]);
   const hasGuestCartItems = useSelector((state: RootState) =>
     state.cartReducer.items.length > 0 && state.cartReducer.isGuestCart
   );
-  // const { initializeUserAndCart } = useCart();
+  const { user: currentUser, isAuthenticated } = useSelector((state: RootState) => state.authReducer);
+  const [switchAccount, setSwitchAccount] = useState(false);
+
+  const safeRedirect = () => {
+    const redirect = searchParams.get('redirect');
+    if (!redirect || !redirect.startsWith('/') || redirect.startsWith('//')) {
+      return null;
+    }
+    return redirect;
+  };
+
+  const finishAuth = (roles: string[] | undefined) => {
+    const redirect = safeRedirect();
+    const appRoles = (roles || []).filter((r): r is AppRole => typeof r === 'string');
+
+    if (appRoles.length === 0) {
+      dispatch(setActiveRole(null));
+      navigate(redirect || '/');
+      return;
+    }
+
+    // Doctors always land on the doctor portal after login (clinic admin is via Switch workspace).
+    const preferred = resolvePreferredRole(appRoles);
+    if (preferred) {
+      dispatch(setActiveRole(preferred));
+      // Honor deep-link redirect only when it matches the chosen portal family.
+      if (
+        redirect &&
+        ((preferred === ROLES.DOCTOR && redirect.startsWith('/doctor')) ||
+          (preferred !== ROLES.DOCTOR && redirect.startsWith('/clinic')) ||
+          (!redirect.startsWith('/doctor') && !redirect.startsWith('/clinic')))
+      ) {
+        navigate(redirect);
+        return;
+      }
+      navigate(getPortalPath(preferred));
+      return;
+    }
+
+    if (canSwitchWorkspace(appRoles)) {
+      dispatch(setActiveRole(null));
+      setPendingRoles(appRoles);
+      setRoleModalOpen(true);
+      return;
+    }
+
+    const role = appRoles[0];
+    dispatch(setActiveRole(role));
+    navigate(redirect || getPortalPath(role));
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const idErr = validateLoginIdentifier(email);
+    if (idErr) {
+      setErrorMessage(idErr);
+      setShowErrorDialog(true);
+      return;
+    }
+    if (!password) {
+      setErrorMessage('Password is required');
+      setShowErrorDialog(true);
+      return;
+    }
     setLoading(true);
 
     try {
-      // First, perform the login
-      const loginResponse = await login({ email, password });
+      await login({ email: normalizeLoginIdentifier(email), password });
+      // login() already started a fresh tab session — drop stale Redux user
+      dispatch(clearUser());
+      const user = await dispatch(validateAndSetUser()).unwrap();
 
-      // Validate token and set user in AuthSlice
-      await dispatch(validateAndSetUser()).unwrap();
-
-      // Initialize cart state (this will trigger background sync if needed)
-      await dispatch(initializeUserAndCart()).unwrap();
-
-      // Show a notification about cart syncing if there are guest items
-      if (hasGuestCartItems) {
-        toast.success("Logging you in", {
-          description: "Your cart items will be synced in the background",
-          duration: 3000,
-        });
+      if (isEcommerceEnabled()) {
+        await dispatch(initializeUserAndCart()).unwrap();
+        if (hasGuestCartItems) {
+          toast.success("Logging you in", {
+            description: "Your cart items will be synced in the background",
+            duration: 3000,
+          });
+        }
       }
 
-      // Navigate immediately after login
-      navigate("/");
-
+      finishAuth(user?.roles);
     } catch (error: any) {
       console.error("Signin Error:", error);
       setErrorMessage(error.message || 'Login failed');
@@ -68,8 +133,6 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
-
-    // console.log('Login attempted with:', { email });
   };
 
 
@@ -78,19 +141,19 @@ const Login = () => {
       try {
         setLoading(true);
         await socialSso(tokenResponse);
+        dispatch(clearUser());
 
-        await dispatch(validateAndSetUser()).unwrap();
+        const user = await dispatch(validateAndSetUser()).unwrap();
 
-        // Initialize cart state (this will trigger background sync if needed)
-        await dispatch(initializeUserAndCart()).unwrap();
+        if (isEcommerceEnabled()) {
+          await dispatch(initializeUserAndCart()).unwrap();
+        }
 
-        // Show success message
         toast.success("Google login successful!", {
           description: "Welcome back!",
         });
 
-        // Navigate to home page
-        navigate("/");
+        finishAuth(user?.roles);
       } catch (error: any) {
         console.error("Google Login Error:", error);
         toast.error("Google Signup Failed", {
@@ -120,26 +183,65 @@ const Login = () => {
               Welcome Back
             </h1>
             <p className="text-muted-foreground mb-12 text-center">
-              Sign in to your kittyp account to manage your eco-friendly cat litter orders.
+              Sign in to your kittyp account to manage pets, clinics, and care.
+              Each browser tab can stay signed in as a different account.
             </p>
 
+            {isAuthenticated && currentUser && !switchAccount ? (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="text-xl text-center">Already signed in</CardTitle>
+                  <CardDescription className="text-center">
+                    {currentUser.email}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      const roles = (currentUser.roles || []).filter(
+                        (r): r is AppRole => typeof r === 'string'
+                      );
+                      finishAuth(roles);
+                    }}
+                  >
+                    Continue
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      clearAuthStorage();
+                      dispatch(clearUser());
+                      setSwitchAccount(true);
+                    }}
+                  >
+                    Use a different account
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {(!isAuthenticated || switchAccount) && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl font-semibold text-center">Sign In</CardTitle>
                 <CardDescription className="text-center">
-                  Enter your credentials to access your account
+                  Email or account, doctor, or clinic ID
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form method="post" onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">Email or ID</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="email"
-                        type="email"
-                        placeholder="name@example.com"
+                        name="username"
+                        type="text"
+                        autoComplete="username"
+                        placeholder="email or ID"
                         className="pl-10"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -159,7 +261,9 @@ const Login = () => {
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="password"
+                        name="password"
                         type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
                         placeholder="••••••••"
                         className="pl-10"
                         value={password}
@@ -219,18 +323,26 @@ const Login = () => {
               </CardContent>
               <CardFooter className="flex justify-center">
                 <p className="text-sm text-muted-foreground">
-                  Don't have an account?{" "}
+                  Don&apos;t have an account?{" "}
                   <Link to="/signup" className="text-primary hover:text-primary/90 font-medium">
                     Sign up
                   </Link>
                 </p>
               </CardFooter>
             </Card>
+            )}
           </div>
         </div>
       </main>
 
       <ErrorDialog showErrorDialog={showErrorDialog} setShowErrorDialog={setShowErrorDialog} errorMessage={errorMessage} />
+
+      <RoleSelectModal
+        open={roleModalOpen}
+        roles={pendingRoles}
+        onOpenChange={setRoleModalOpen}
+        redirectTo={safeRedirect()}
+      />
 
       <Footer />
     </div>

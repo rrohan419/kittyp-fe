@@ -5,12 +5,15 @@ import { store } from '@/module/store/store';
 import { setUser } from '@/module/slice/AuthSlice';
 import { fetchUserDetail } from "./UserService";
 import { TokenResponse } from "@react-oauth/google";
+import { SignupRole } from "@/utils/roles";
+import { clearAuthStorage, beginNewAuthSession, getAuthItem, setAuthItem } from "@/utils/authStorage";
 
 interface SignupData {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
+  role: SignupRole;
 }
 
 interface AuthData {
@@ -44,9 +47,10 @@ export interface PetProfile {
   uuid: string;
   name: string;
   profilePicture: string;
-  type: string,
+  type: string;
   breed: string;
-  age: string;
+  // age: string;
+  dateOfBirth: string;
   weight: string;
   activityLevel: string;
   gender: string;
@@ -54,6 +58,7 @@ export interface PetProfile {
   healthConditions: string;
   allergies: string;
   isNeutered: boolean;
+  microchipNumber?: string;
   createdAt: string
 }
 
@@ -66,29 +71,61 @@ export interface UserProfile {
   enabled: boolean;
   phoneCountryCode: string;
   phoneNumber: string;
+  age?: number | null;
   uuid: string;
   createdAt: string;
-  accessToken: string;
+  /** Present only briefly after email change — never persist to auth storage. */
+  accessToken?: string;
   profilePictureUrl: string;
   ownerPets: PetProfile[];
   fcmToken: string;
 }
 
 export const signup = async (data: SignupData) => {
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-    return response;
-  } catch (error: any) {
-    throw error.response?.data || "Signup failed. Please try again.";
-  }
+  return postSignup('/auth/signup', data);
 };
+
+export interface SignupDoctorData extends Omit<SignupData, 'role'> {
+  phoneNumber: string;
+  licenseNumber?: string;
+  registrationNumber: string;
+  specialization?: string;
+  experience?: number;
+  professionalSummary?: string;
+  degreeCertificateUrl: string;
+  registrationCertificateUrl: string;
+  governmentIdUrl?: string;
+  photoUrl?: string;
+  inviteToken?: string;
+}
+
+export interface SignupClinicData extends Omit<SignupData, 'role'> {
+  clinicName: string;
+  licenseNumber?: string;
+  address?: string;
+  phone?: string;
+  timezone?: string;
+}
+
+async function postSignup(path: string, data: unknown) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    const { parseApiErrorMessage } = await import('@/utils/validation');
+    throw new Error(parseApiErrorMessage(text, 'Signup failed. Please try again.'));
+  }
+  return response.json();
+}
+
+export const signupDoctor = (data: SignupDoctorData) =>
+  postSignup('/auth/signup', { ...data, role: 'DOCTOR' as const });
+
+export const signupClinic = (data: SignupClinicData) =>
+  postSignup('/auth/signup', { ...data, role: 'CLINIC' as const });
 
 export const socialSso = async (tokenResponse: TokenResponse) => {
   try {
@@ -112,9 +149,10 @@ export const socialSso = async (tokenResponse: TokenResponse) => {
     if (data.success && data.data) {
       const { token, roles } = data.data;
 
-      // Store tokens and roles
-      localStorage.setItem("access_token", token);
-      localStorage.setItem("roles", JSON.stringify(roles));
+      // New tab session so we never overwrite another tab's vault entry
+      beginNewAuthSession();
+      setAuthItem("access_token", token);
+      setAuthItem("roles", JSON.stringify(roles));
     } else {
       throw new Error(data.message || "Signup failed");
     }
@@ -126,7 +164,7 @@ export const socialSso = async (tokenResponse: TokenResponse) => {
 
 }
 
-export const login = async (data: AuthData): Promise<{ token, roles }> => {
+export const login = async (data: AuthData): Promise<{ token: string; roles: string[] }> => {
 
   try {
     // Step 1: Login to get token
@@ -134,11 +172,10 @@ export const login = async (data: AuthData): Promise<{ token, roles }> => {
 
     const { token, roles } = loginResponse.data.data; // <-- This is JwtResponseModel
 
-    // Step 2: Store token and roles
-    localStorage.setItem('access_token', token);
-    localStorage.setItem('roles', JSON.stringify(roles));
-    // console.log("user -> -> -> ->", loginResponse);
-    // console.log("user -> -> -> ->", { token, roles });
+    // New tab session so Duplicate-tab / prior login cannot leak into this account
+    beginNewAuthSession();
+    setAuthItem('access_token', token);
+    setAuthItem('roles', JSON.stringify(roles));
 
     return { token, roles };
   } catch (error: any) {
@@ -163,7 +200,7 @@ export const resetPassword = async (code: string, password: string, email: strin
 
 export const initializeUser = async () => {
   try {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAuthItem('access_token');
     if (!accessToken) {
       return null;
     }
@@ -180,7 +217,7 @@ export const initializeUser = async () => {
 // Add token validation function
 export const validateToken = async (): Promise<boolean> => {
   try {
-    const token = localStorage.getItem('access_token');
+    const token = getAuthItem('access_token');
     if (!token) {
       return false;
     }
@@ -193,9 +230,7 @@ export const validateToken = async (): Promise<boolean> => {
 
     // If token is invalid, clear it
     if (error.response?.status === 401) {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('roles');
+      clearAuthStorage();
     }
 
     return false;
@@ -205,18 +240,12 @@ export const validateToken = async (): Promise<boolean> => {
 // Add function to get current user with token validation
 export const getCurrentUser = async (): Promise<UserProfile | null> => {
   try {
-    const token = localStorage.getItem('access_token');
+    const token = getAuthItem('access_token');
     if (!token) {
       return null;
     }
 
-    // Validate token first
-    const isValid = await validateToken();
-    if (!isValid) {
-      return null;
-    }
-
-    // If token is valid, fetch user details
+    // Single /user/me fetch — also validates the token
     const userProfile = await fetchUserDetail();
     return userProfile;
   } catch (error) {

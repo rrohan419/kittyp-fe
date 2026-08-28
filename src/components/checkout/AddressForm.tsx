@@ -7,6 +7,7 @@ import { AddressModel, AddressType, SaveAddressDto, saveNewAddress } from "@/ser
 import { useSelector } from "react-redux";
 import { RootState } from "@/module/store/store";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { digitsOnlyPhone, validatePhone } from "@/utils/validation";
 
 
 
@@ -61,6 +62,12 @@ export function AddressForm({ onAddressCreated, onCancel }: AddressFormProps) {
       return;
     }
 
+    const phoneErr = validatePhone(address.phoneNumber || '', true);
+    if (phoneErr) {
+      toast.error(phoneErr);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -100,9 +107,14 @@ export function AddressForm({ onAddressCreated, onCancel }: AddressFormProps) {
           <Input
             id="phoneNumber"
             name="phoneNumber"
+            type="tel"
+            inputMode="numeric"
+            maxLength={10}
             value={address.phoneNumber}
-            onChange={handleChange}
-            placeholder="Enter your phone number"
+            onChange={(e) =>
+              setAddress((prev) => ({ ...prev, phoneNumber: digitsOnlyPhone(e.target.value) }))
+            }
+            placeholder="10-digit phone number"
             required
           />
         </div>

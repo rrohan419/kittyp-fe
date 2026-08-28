@@ -11,6 +11,7 @@ import { RootState, AppDispatch } from "@/module/store/store";
 import { resetCartThunk, selectCartItems, selectCartTotalAmount, selectCartLoading } from "@/module/slice/CartSlice";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getAuthItem } from "@/utils/authStorage";
 
 export function CartSidebar() {
   const dispatch = useDispatch<AppDispatch>();
@@ -39,7 +40,7 @@ export function CartSidebar() {
 
   const handleCheckout = () => {
 
-    const accessToken = localStorage.getItem('access_token');
+    const accessToken = getAuthItem('access_token');
     
     if (!accessToken) {
       setIsOpen(false);
@@ -145,7 +146,7 @@ export function CartSidebar() {
               </div>
 
               <div className="space-y-3">
-                {!localStorage.getItem('access_token') && (
+                {!getAuthItem('access_token') && (
                   <div className="bg-muted/50 p-3 rounded-lg text-sm text-muted-foreground flex items-center gap-2">
                     <LogIn size={16} />
                     <p>Log in to sync your cart and checkout</p>

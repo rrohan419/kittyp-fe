@@ -6,7 +6,7 @@ import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
+    host: "localhost",
     port: 8080,
   },
   build: {
@@ -32,17 +32,20 @@ export default defineConfig(({ mode }) => ({
       strategies: "injectManifest",
       srcDir: "src",
       filename: "sw.ts",
-      manifestFilename: "manifest.webmanifest",
+      manifestFilename: "manifest.json",
       injectManifest: {
         swSrc: "src/sw.ts",
         globDirectory: "dist",
         globPatterns: ["**/*.{ts,js,css,html,ico,png,svg,woff2}"],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
-      // workbox: {
-      //   sourcemap: true
-      // },
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+      },
       devOptions: {
-        enabled: true,
+        // Keep SW off in local/dev so auth/session experiments aren't stuck
+        // on a precached bundle that still used shared localStorage.
+        enabled: false,
         type: "module",
         navigateFallback: 'index.html'
       },
@@ -63,13 +66,25 @@ export default defineConfig(({ mode }) => ({
             src: "/android-chrome-192x192.png",
             sizes: "192x192",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any",
+          },
+          {
+            src: "/android-chrome-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "maskable",
           },
           {
             src: "/android-chrome-512x512.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any",
+          },
+          {
+            src: "/android-chrome-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
           },
           {
             src: "/apple-touch-icon.png",

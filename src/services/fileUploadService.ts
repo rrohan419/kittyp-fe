@@ -140,6 +140,50 @@ export const uploadFiles = async (
   }
 };
 
+/** Unauthenticated upload used during doctor signup (before account exists). */
+export const uploadSignupDocuments = async (
+  files: File[],
+  email: string,
+  _onProgress?: (progress: UploadProgress) => void
+): Promise<string[]> => {
+  const validation = validateFiles(files, {
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'application/pdf',
+    ],
+    maxFiles: 5,
+  });
+  if (!validation.isValid) {
+    throw new Error(validation.errors.join(', '));
+  }
+
+  const formData = new FormData();
+  files.forEach((file) => formData.append('files', file));
+  // Email only in the query string — also appending it to multipart makes Spring join
+  // the two values with a comma, which breaks OTP verification key lookup.
+
+  // Use fetch (not axios) so a business-error status cannot trigger the
+  // global 401 → /login interceptor while the user is still signing up.
+  const { API_BASE_URL } = await import('@/config/env');
+  const { parseApiErrorMessage } = await import('@/utils/validation');
+  const res = await fetch(
+    `${API_BASE_URL}/upload/signup-documents?email=${encodeURIComponent(email)}`,
+    { method: 'POST', body: formData }
+  );
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(parseApiErrorMessage(text, 'Upload failed'));
+  }
+  const data = JSON.parse(text) as FileUploadResponse;
+  if (!data.success) {
+    throw new Error(data.message || 'Upload failed');
+  }
+  return data.data;
+};
+
 // Specialized upload functions for different use cases
 export const uploadProfilePicture = async (
   file: File,
@@ -173,7 +217,7 @@ export const uploadPetPhotos = async (
 ): Promise<string[]> => {
   return await uploadFiles(files, {
     onProgress,
-    maxFileSize: 3 * 1024 * 1024, // 3MB for pet photos
+    maxFileSize: 5 * 1024 * 1024, // 5MB for pet photos
     allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
     maxFiles: 5
   });

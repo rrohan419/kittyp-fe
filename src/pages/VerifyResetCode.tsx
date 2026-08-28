@@ -64,7 +64,17 @@ useEffect(() => {
   };
 
   const handleResend = async () => {
-    toast.success("A new verification code has been sent to your email.");
+    if (!email) {
+      toast.error("No email found. Please restart the password reset process.");
+      navigate('/forgot-password');
+      return;
+    }
+    try {
+      await sendPasswordResetCode(email);
+      toast.success("A new verification code has been sent to your email.");
+    } catch {
+      toast.error("Failed to resend verification code. Please try again.");
+    }
   };
 
   return (

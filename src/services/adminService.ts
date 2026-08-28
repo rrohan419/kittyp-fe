@@ -2,7 +2,7 @@ import axiosInstance from "@/config/axionInstance";
 import { UserProfile } from "./authService";
 import { ApiSuccessResponse } from "./cartService";
 
-interface PaginationModel<T> {
+export interface PaginationModel<T> {
   models: T[];
   isFirst: boolean;
   isLast: boolean;
@@ -10,7 +10,7 @@ interface PaginationModel<T> {
   totalPages: number;
 }
 
-interface WrappedPaginationResponse<T> {
+export interface WrappedPaginationResponse<T> {
   success: boolean;
   message: string;
   data: PaginationModel<T>;
@@ -33,9 +33,20 @@ interface AdminDashboardData {
   articleCount : number;
 }
 
-export const fetchAllUsers = async (pageNumber: number = 1, pageSize: number = 10): Promise<PaginationModel<UserProfile>> => {
+export const fetchAllUsers = async (
+  pageNumber: number = 1,
+  pageSize: number = 10,
+  q: string = ''
+): Promise<PaginationModel<UserProfile>> => {
   const response = await axiosInstance.get<WrappedPaginationResponse<UserProfile>>(
-    `/admin/users?pageNumber=${pageNumber}&pageSize=${pageSize}`
+    '/admin/users',
+    {
+      params: {
+        pageNumber,
+        pageSize,
+        q: q.trim() || undefined,
+      },
+    }
   );
   return response.data.data;
 };

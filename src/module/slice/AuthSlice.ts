@@ -1,8 +1,10 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { getCurrentUser, validateToken } from '@/services/authService';
 import { UserProfile, PetProfile } from '@/services/authService';
 import { addPet, AddPet, deletePet, editPet, UpdatePet, fetchUserDetail, saveUserFcmToken } from '@/services/UserService';
 import { toast } from 'sonner';
+import type { AppRole } from '@/utils/roles';
+import { getAuthItem, removeAuthItem, setAuthItem } from '@/utils/authStorage';
 
 export interface AuthState {
   user: UserProfile | null;
@@ -11,6 +13,10 @@ export interface AuthState {
   isAuthenticated: boolean;
   petsLoading: boolean;
   saving: boolean;
+  /** Active session role for multi-role users */
+  activeRole: AppRole | null;
+  /** Active clinic context for clinic admins with multiple clinics */
+  activeClinicId: string | null;
 }
 
 const initialState: AuthState = {
@@ -20,14 +26,27 @@ const initialState: AuthState = {
   isAuthenticated: false,
   petsLoading: false,
   saving: false,
+  activeRole: (getAuthItem('role') as AppRole | null) || null,
+  activeClinicId: getAuthItem('activeClinicId') || null,
 };
 
 // Async thunk to validate token and get user
 export const validateAndSetUser = createAsyncThunk(
   'auth/validateAndSetUser',
   async (_, { rejectWithValue }) => {
+    const tokenAtStart = getAuthItem('access_token');
+    if (!tokenAtStart) {
+      return rejectWithValue('No access token');
+    }
     try {
       const user = await getCurrentUser();
+      // Another login may have replaced this tab's session while /user/me was in flight
+      if (getAuthItem('access_token') !== tokenAtStart) {
+        return rejectWithValue('Stale auth validation');
+      }
+      if (!user) {
+        return rejectWithValue('Authentication failed');
+      }
       return user;
     } catch (error) {
       return rejectWithValue(error);
@@ -117,7 +136,13 @@ export const authSlice = createSlice({
   initialState,
   reducers: {
     setUser: (state, action) => {
-      state.user = action.payload;
+      const payload = action.payload;
+      if (payload && typeof payload === 'object' && 'accessToken' in payload) {
+        const { accessToken: _omit, ...safe } = payload;
+        state.user = safe;
+      } else {
+        state.user = payload;
+      }
       state.isAuthenticated = !!action.payload;
       state.error = null;
     },
@@ -125,6 +150,24 @@ export const authSlice = createSlice({
       state.user = null;
       state.isAuthenticated = false;
       state.error = null;
+      state.activeRole = null;
+      state.activeClinicId = null;
+    },
+    setActiveRole: (state, action: PayloadAction<AppRole | null>) => {
+      state.activeRole = action.payload;
+      if (action.payload) {
+        setAuthItem('role', action.payload);
+      } else {
+        removeAuthItem('role');
+      }
+    },
+    setActiveClinic: (state, action: PayloadAction<string | null>) => {
+      state.activeClinicId = action.payload;
+      if (action.payload) {
+        setAuthItem('activeClinicId', action.payload);
+      } else {
+        removeAuthItem('activeClinicId');
+      }
     },
     setLoading: (state, action) => {
       state.loading = action.payload;
@@ -183,9 +226,13 @@ export const authSlice = createSlice({
       })
       .addCase(validateAndSetUser.rejected, (state, action) => {
         state.loading = false;
+        // A superseded in-flight /user/me must not wipe a newer login in this tab
+        if (action.payload === 'Stale auth validation') {
+          return;
+        }
         state.user = null;
         state.isAuthenticated = false;
-        state.error = action.payload as string || 'Authentication failed';
+        state.error = (action.payload as string) || 'Authentication failed';
       })
       // Pet management loading states
       .addCase(addPetToUser.pending, (state) => {
@@ -229,7 +276,9 @@ export const authSlice = createSlice({
 
 export const { 
   setUser, 
-  clearUser, 
+  clearUser,
+  setActiveRole,
+  setActiveClinic,
   setLoading, 
   setError, 
   setPetsLoading, 

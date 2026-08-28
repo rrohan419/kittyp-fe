@@ -1,9 +1,12 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Instagram, TwitterIcon, FacebookIcon, LinkedinIcon } from 'lucide-react';
+import { isEcommerceEnabled } from '@/config/features';
+import { PUBLIC_SIGNUP_PATHS } from '@/utils/roles';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
-  
+  const ecommerceOn = isEcommerceEnabled();
+
   return (
     <footer className="w-full bg-muted py-16">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -15,7 +18,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-muted-foreground max-w-md">
-              Elegant, minimalist products designed with attention to detail and crafted for the modern lifestyle.
+              Veterinary clinic CRM for India — appointments, consults, invoices, and a health record that stays with the pet.
             </p>
             <div className="flex space-x-4">
               <a 
@@ -56,34 +59,50 @@ export function Footer() {
               </a>
             </div>
           </div>
-          {/* will be required later */}
-          {/* <div className="md:col-span-2 space-y-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-100">
+          {ecommerceOn && (
+          <div className="md:col-span-2 space-y-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">
               Shop
             </h3>
             <ul className="space-y-2">
               <li>
-                <Link to="/products" className="text-gray-600 dark:text-gray-400 hover:text-kitty-600 dark:hover:text-kitty-400 transition-colors">
+                <Link to="/products" className="text-muted-foreground hover:text-primary transition-colors">
                   All Products
                 </Link>
               </li>
               <li>
-                <Link to="/products?category=new" className="text-gray-600 dark:text-gray-400 hover:text-kitty-600 dark:hover:text-kitty-400 transition-colors">
-                  New Arrivals
+                <Link to="/products?category=Litter" className="text-muted-foreground hover:text-primary transition-colors">
+                  Litter
                 </Link>
               </li>
               <li>
-                <Link to="/products?category=bestsellers" className="text-gray-600 dark:text-gray-400 hover:text-kitty-600 dark:hover:text-kitty-400 transition-colors">
-                  Best Sellers
+                <Link to="/products?category=Toys" className="text-muted-foreground hover:text-primary transition-colors">
+                  Toys
                 </Link>
               </li>
               <li>
-                <Link to="/products?category=sale" className="text-gray-600 dark:text-gray-400 hover:text-kitty-600 dark:hover:text-kitty-400 transition-colors">
-                  Sale
+                <Link to="/products?category=Food" className="text-muted-foreground hover:text-primary transition-colors">
+                  Food
+                </Link>
+              </li>
+              <li>
+                <Link to="/products?category=Accessories" className="text-muted-foreground hover:text-primary transition-colors">
+                  Accessories
+                </Link>
+              </li>
+              <li>
+                <Link to="/products?category=Habitat" className="text-muted-foreground hover:text-primary transition-colors">
+                  Habitat
+                </Link>
+              </li>
+              <li>
+                <Link to="/products?category=Grooming" className="text-muted-foreground hover:text-primary transition-colors">
+                  Grooming
                 </Link>
               </li>
             </ul>
-          </div> */}
+          </div>
+          )}
           
           <div className="md:col-span-2 space-y-4">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">
@@ -105,20 +124,31 @@ export function Footer() {
                   Contact
                 </Link>
               </li>
-              <li>
-                <Link to="/how-to-use" className="text-muted-foreground hover:text-primary transition-colors">
-                  How to Use
-                </Link>
-              </li>
             </ul>
           </div>
           
-          <div className="md:col-span-4 space-y-4">
+          <div className="md:col-span-2 space-y-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">
+              Join Kittyp
+            </h3>
+            <ul className="space-y-2">
+              {PUBLIC_SIGNUP_PATHS.map((item) => (
+                <li key={item.to}>
+                  <Link to={item.to} className="text-muted-foreground hover:text-primary transition-colors">
+                    <span className="block text-foreground/90">{item.label}</span>
+                    <span className="block text-xs">{item.description}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="md:col-span-2 space-y-4">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">
               Subscribe
             </h3>
             <p className="text-muted-foreground">
-              Stay updated with our latest products and offers.
+              Occasional notes on clinic operations and pet care.
             </p>
             <form className="flex w-full max-w-md">
               <input

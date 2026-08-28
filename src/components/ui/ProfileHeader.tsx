@@ -1,17 +1,14 @@
 
 import React, { useState } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { UserRound, Heart, Bookmark, Camera } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import EditProfileForm from './EditProfileForm';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { ProfilePictureUpload } from './ProfilePictureUpload';
 import { updateUserProfilePicture } from '@/services/UserService';
 import { useDispatch, useSelector } from 'react-redux';
@@ -19,21 +16,11 @@ import { AppDispatch, RootState } from '@/module/store/store';
 import { updateUserProfile } from '@/module/slice/AuthSlice';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { CopyableId } from '@/components/ui/CopyableId';
 
-interface ProfileHeaderProps {
-  ordersCount: number;
-  onOrdersClick?: () => void;
-
-}
-
-const ProfileHeader: React.FC<ProfileHeaderProps> = ({
-  onOrdersClick,
-  ordersCount
-}) => {
-
-  const isMobile = useIsMobile();
+const ProfileHeader: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { user, isAuthenticated, loading } = useSelector((state: RootState) => state.authReducer);
+  const { user } = useSelector((state: RootState) => state.authReducer);
   const [open, setOpen] = useState(false);
   return (
     <div className="animate-fade-in glass-effect rounded-xl shadow-md transition-default">
@@ -45,9 +32,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 currentImageUrl={user.profilePictureUrl}
                 onUploadComplete={async (url) => {
                   try {
-                    // Update user profile with new image URL
                     const updatedUser = await updateUserProfilePicture(user.uuid, url);
-                    // Update Redux store
                     dispatch(updateUserProfile(updatedUser));
                     toast.success('Profile picture updated successfully!');
                   } catch (error) {
@@ -55,8 +40,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                     toast.error('Failed to update profile picture');
                   }
                 }}
-                onUploadError={(error) => {
-                  // console.error('Profile picture upload failed:', error);
+                onUploadError={() => {
                   toast.error('Profile picture upload failed');
                 }}
                 userName={`${user.firstName} ${user.lastName}`}
@@ -71,38 +55,34 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               <p className="text-muted-foreground">Member since {user.createdAt
                 ? format(new Date(user.createdAt), "do MMMM yyyy")
                 : "-"}</p>
-            </div>
-
-            <div className="flex flex-wrap gap-6 justify-center lg:justify-start text-sm">
-              <span className="inline-flex items-center gap-2 hover-lift cursor-pointer"
-                onClick={onOrdersClick}>
-                <div className="p-2 rounded-full bg-accent">
-                  <Bookmark className="h-4 w-4 text-primary" />
-                </div>
-                <span><strong>{ordersCount}</strong> Orders</span>
-              </span>
+              <CopyableId
+                className="justify-center lg:justify-start"
+                label="Account ID"
+                value={user.uuid}
+                hint="Sign in with this ID or your email."
+              />
             </div>
           </div>
 
           <div>
-            <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger asChild>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
                 <Button
                   variant="outline"
                   className="hover-lift shadow-sm border-primary/20 hover:bg-accent"
                 >
                   Edit Profile
                 </Button>
-              </SheetTrigger>
-              <SheetContent side={isMobile ? "bottom" : "right"} className={isMobile ? "h-[85vh]" : ""}>
-                <SheetHeader>
-                  <SheetTitle className="text-xl font-semibold">Edit Profile</SheetTitle>
-                </SheetHeader>
-                <div className="mt-8">
+              </DialogTrigger>
+              <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto sm:rounded-xl">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-semibold">Edit Profile</DialogTitle>
+                </DialogHeader>
+                <div className="mt-2">
                   <EditProfileForm onSuccess={() => setOpen(false)} />
                 </div>
-              </SheetContent>
-            </Sheet>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>

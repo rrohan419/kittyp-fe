@@ -55,7 +55,19 @@ export interface RecommendedProduct {
   url: string;
 }
 
+export interface EnvironmentDataDto {
+  temperature: number;
+  unit: string;
+  humidity: number;
+  weatherCondition: string;
+  windSpeed: number;
+  windUnit: string;
+  uvIndex: number;
+  precipitation: number;
+}
+
 export interface PetCarePlan {
+  uuid?: string;
   petProfileSummary: PetProfileSummary;
   environmentalImpact: EnvironmentalImpact;
   dailyFeedingPlan: DailyFeedingPlan;
@@ -63,7 +75,43 @@ export interface PetCarePlan {
   recommendedProducts: RecommendedProduct[];
   longTermWellnessTips: string[];
   vetAdviceDisclaimer: string;
+  environment?: EnvironmentDataDto;
 }
+
+export interface SaveNutritionPlanRequest {
+  petUuid: string;
+  petName: string;
+  userUuid: string;
+  recommendationResponse: PetCarePlan;
+  environmentDataDto: EnvironmentDataDto;
+}
+
+export const defaultEnvironmentData: EnvironmentDataDto = {
+  temperature: 0,
+  unit: 'CELSIUS',
+  humidity: 0,
+  weatherCondition: '',
+  windSpeed: 0,
+  windUnit: 'KILOMETERS_PER_HOUR',
+  uvIndex: 0,
+  precipitation: 0,
+};
+
+export const hasNutritionPlanData = (plan: PetCarePlan): boolean => {
+  if (!plan) return false;
+  return (
+    (plan.petProfileSummary && Object.values(plan.petProfileSummary).some(Boolean)) ||
+    (plan.dailyFeedingPlan?.meals?.length > 0 && plan.dailyFeedingPlan.meals.some(m => m.time || m.foodType)) ||
+    (plan.specialConsiderations?.length > 0 && plan.specialConsiderations.some(c => c.condition || c.recommendation)) ||
+    (plan.recommendedProducts?.length > 0 && plan.recommendedProducts.some(p => p.productName)) ||
+    (plan.longTermWellnessTips?.length > 0 && plan.longTermWellnessTips.some(Boolean)) ||
+    Boolean(
+      plan.environmentalImpact?.climateConsiderations ||
+      plan.environmentalImpact?.hydrationNeeds ||
+      plan.environmentalImpact?.energyNeedsAdjustment
+    )
+  );
+};
 
 export const defaultPetCarePlan: PetCarePlan = {
   petProfileSummary: {
@@ -297,7 +345,7 @@ export const generateNutritionRecommendation = async (
     // Track analytics
     aiAnalytics.track('nutrition_generation_started', userId, petProfile.uuid, {
       petType: petProfile.breed,
-      petAge: petProfile.age,
+      petDob: (petProfile as any).dateOfBirth,
       petWeight: petProfile.weight,
       hasLocation: !!location
     });
@@ -347,6 +395,21 @@ export const generateNutritionRecommendation = async (
     });
 
     throw new Error(error.message || 'Failed to generate nutrition recommendation');
+  }
+};
+
+export const saveNutritionPlan = async (request: SaveNutritionPlanRequest): Promise<void> => {
+  try {
+    const response = await axiosInstance.post<ApiSuccessResponse<string>>(
+      '/ai/nutrition/plan/save',
+      request
+    );
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to save nutrition plan');
+    }
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || error.message || 'Failed to save nutrition plan');
   }
 };
 

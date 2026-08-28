@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { ArrowLeft, Lock, Check, EyeOffIcon, Eye } from 'lucide-react';
 import { resetPassword } from '@/services/authService';
+import { validatePassword } from '@/utils/validation';
 
 const ResetPassword = () => {
     const [password, setPassword] = useState('');
@@ -40,9 +41,10 @@ const ResetPassword = () => {
             return;
         }
 
-        if (password.length < 8) {
-            toast.error("Password too short", {
-                description: "Password must be at least 8 characters long."
+        const passwordError = validatePassword(password);
+        if (passwordError) {
+            toast.error("Invalid password", {
+                description: passwordError
             });
             return;
         }
@@ -94,14 +96,16 @@ const ResetPassword = () => {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <form onSubmit={handleSubmit} className="space-y-4">
+                                <form method="post" onSubmit={handleSubmit} className="space-y-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="password">New Password</Label>
                                         <div className="relative">
                                             <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                                             <Input
                                                 id="password"
+                                                name="password"
                                                 type={showPassword ? "text" : "password"}
+                                                autoComplete="new-password"
                                                 placeholder="••••••••"
                                                 className="pl-10"
                                                 value={password}
@@ -126,7 +130,9 @@ const ResetPassword = () => {
                                             <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                                             <Input
                                                 id="confirmPassword"
+                                                name="confirmPassword"
                                                 type={showPassword ? "text" : "password"}
+                                                autoComplete="new-password"
                                                 placeholder="••••••••"
                                                 className="pl-10"
                                                 value={confirmPassword}

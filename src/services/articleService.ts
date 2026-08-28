@@ -24,6 +24,8 @@ export type ArticleData = {
   author: Author;
   commentCount: number;
   likeCount: number;
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED';
+  scheduledPublishAt?: string | null;
 };
 
 export type ArticleCommentDto = {
@@ -49,6 +51,8 @@ export type ArticleSearchRequest = {
   name: string | null;
   isRandom: boolean | null;
   articleStatus: string | null;
+  tags: string[] | null;
+  authorId?: number | null;
 };
 
 type FetchArticles = {
@@ -80,7 +84,9 @@ export type CreateArticleRequest = {
   category: string;
   tags: string[];
   readTime: number;
-  authorId: number;
+  authorId?: number;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED';
+  scheduledPublishAt?: string;
 };
 
 export type EditArticleRequest = {
@@ -91,6 +97,8 @@ export type EditArticleRequest = {
   category?: string;
   tags?: string[];
   readTime?: number;
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED';
+  scheduledPublishAt?: string | null;
 };
 
 export const createArticle = async (body: CreateArticleRequest): Promise<WrappedArticleResponse> => {
@@ -101,6 +109,19 @@ export const createArticle = async (body: CreateArticleRequest): Promise<Wrapped
 export const editArticle = async (slug: string, body: EditArticleRequest): Promise<WrappedArticleResponse> => {
   const response = await axiosInstance.patch(`/admin/article/edit/${slug}`, body);
   return response.data;
+};
+
+export type DoctorAuthor = {
+  id: number;
+  name: string;
+  avatar: string;
+  role: string;
+  userUuid?: string;
+};
+
+export const ensureMyAuthor = async (): Promise<DoctorAuthor> => {
+  const response = await axiosInstance.get<ApiSuccessResponse<DoctorAuthor>>('/article/author/me');
+  return response.data.data;
 };
 
 // Comments

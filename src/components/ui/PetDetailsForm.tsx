@@ -1,25 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { PlusCircle, Heart, Trash2, Save, Edit, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PetImage } from "@/components/ui/PetImage";
 import { PetProfile } from "@/services/authService";
-import { addPet, deletePet, editPet, fetchUserPets, AddPet, UpdatePet } from "@/services/UserService";
+import { AddPet, UpdatePet } from "@/services/UserService";
+import { formatPetDobWithAge } from "@/utils/petAge";
 import { PetPhotoUpload } from './PetPhotoUpload';
 import { addPetToUser, removePetFromUser, updatePetInUser, setPetsLoading, setSaving } from '@/module/slice/AuthSlice';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
+import { useNavigate } from 'react-router-dom';
 
 interface PetDetailsFormProps {
     onPetAdded?: () => void;
 }
 
 export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) => {
+    const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const { user, petsLoading, saving } = useAppSelector((state) => state.authReducer);
     const pets = user?.ownerPets || [];
@@ -29,13 +41,15 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
     const [isAddingPet, setIsAddingPet] = useState(false);
     const [isEditingPet, setIsEditingPet] = useState(false);
     const [editingPetId, setEditingPetId] = useState<string | null>(null);
+    const [pendingDelete, setPendingDelete] = useState<PetProfile | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     const [petForm, setPetForm] = useState<Omit<AddPet, 'isNeutered'> & { isNeutered: string }>({
         name: '',
         profilePicture: '',
         type: '',
         breed: '',
-        age: '',
+        dateOfBirth: '',
         weight: '',
         activityLevel: '',
         gender: '',
@@ -46,24 +60,24 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
     });
 
     // Fetch pets on component mount
-    useEffect(() => {
-        loadPets();
-    }, []);
+    // useEffect(() => {
+    //     loadPets();
+    // }, []);
 
-    const loadPets = async () => {
-        try {
-            dispatch(setPetsLoading(true));
-            const userPets = await fetchUserPets();
-            // Pets are now managed through authReducer, no need to manually set them
-        } catch (error) {
-            console.error('Error loading pets:', error);
-            toast.error("Failed to load pets", {
-                description: "Please try again later."
-            });
-        } finally {
-            dispatch(setPetsLoading(false));
-        }
-    };
+    // const loadPets = async () => {
+    //     try {
+    //         dispatch(setPetsLoading(true));
+    //         const userPets = await fetchUserPets();
+    //         // Pets are now managed through authReducer, no need to manually set them
+    //     } catch (error) {
+    //         console.error('Error loading pets:', error);
+    //         toast.error("Failed to load pets", {
+    //             description: "Please try again later."
+    //         });
+    //     } finally {
+    //         dispatch(setPetsLoading(false));
+    //     }
+    // };
 
     const scrollToForm = () => {
         setIsAddingPet(true);
@@ -81,18 +95,32 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
             profilePicture: '',
             type: '',
             breed: '',
-            age: '',
+            // age: '',
             weight: '',
             activityLevel: '',
             gender: '',
             currentFoodBrand: '',
             healthConditions: '',
             allergies: '',
-            isNeutered: ''
+            isNeutered: '',
+            dateOfBirth: ''
         });
         setIsAddingPet(false);
         setIsEditingPet(false);
         setEditingPetId(null);
+    };
+
+    const extractNumericWeight = (rawWeight: string): string => {
+        if (!rawWeight) return '';
+        const match = rawWeight.toString().match(/\d+(?:\.\d+)?/);
+        return match ? match[0] : '';
+    };
+
+    const formatWeightForSave = (rawWeight: string): string => {
+        if (!rawWeight) return '';
+        const numeric = extractNumericWeight(rawWeight);
+        if (!numeric) return '';
+        return `${numeric} kg`;
     };
 
     const handleAddPet = async () => {
@@ -107,6 +135,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
             dispatch(setSaving(true));
             const petDto: AddPet = {
                 ...petForm,
+                weight: formatWeightForSave(petForm.weight),
                 isNeutered: petForm.isNeutered === 'yes'
             };
 
@@ -136,6 +165,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
             const updatePetDto: UpdatePet = {
                 uuid: editingPetId,
                 ...petForm,
+                weight: formatWeightForSave(petForm.weight),
                 isNeutered: petForm.isNeutered === 'yes'
             };
 
@@ -149,29 +179,37 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
         }
     };
 
-    const handleDeletePet = async (petId: string) => {
+    const handleDeletePet = async () => {
+        if (!pendingDelete) return;
+        setDeleting(true);
         try {
-            dispatch(removePetFromUser(petId));
+            await dispatch(removePetFromUser(pendingDelete.uuid)).unwrap();
+            toast.success(`${pendingDelete.name} removed from My Pets`, {
+                description: 'Clinic and medical records are kept.',
+            });
+            setPendingDelete(null);
         } catch (error) {
-            console.error('Error deleting pet:', error);
-            // Error handling is already done in the async thunk
+            console.error('Error removing pet:', error);
+            toast.error('Could not remove pet');
+        } finally {
+            setDeleting(false);
         }
     };
 
     const startEditing = (pet: PetProfile) => {
         setPetForm({
-            name: pet.name,
-            profilePicture: pet.profilePicture,
-            type: pet.type,
-            breed: pet.breed,
-            age: pet.age,
-            weight: pet.weight,
-            activityLevel: pet.activityLevel,
-            gender: pet.gender,
-            currentFoodBrand: pet.currentFoodBrand,
-            healthConditions: pet.healthConditions,
-            allergies: pet.allergies,
-            isNeutered: pet.isNeutered ? 'yes' : 'no'
+            name: pet.name || '',
+            profilePicture: pet.profilePicture || '',
+            type: pet.type || '',
+            breed: pet.breed || '',
+            weight: extractNumericWeight(pet.weight),
+            activityLevel: pet.activityLevel || '',
+            gender: pet.gender || '',
+            currentFoodBrand: pet.currentFoodBrand || '',
+            healthConditions: pet.healthConditions || '',
+            allergies: pet.allergies || '',
+            isNeutered: pet.isNeutered ? 'yes' : 'no',
+            dateOfBirth: pet.dateOfBirth || '',
         });
         setEditingPetId(pet.uuid);
         setIsEditingPet(true);
@@ -208,19 +246,15 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {Array.isArray(pets) && pets.length > 0 ? (
                     pets?.map((pet) => (
-                        <Card key={pet.uuid} className="relative group hover:shadow-md transition-shadow">
+                        <Card key={pet.uuid}
+                            className="relative group hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02]"
+                            onClick={() => navigate(`/pet/${pet.uuid}`)}>
                             <CardHeader className="pb-3">
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
-                                        <Avatar className="w-12 h-12 border-2 border-primary/20">
-                                            {pet.profilePicture ? (
-                                                <AvatarImage src={pet.profilePicture} alt={pet.name} className="object-cover" />
-                                            ) : (
-                                                <AvatarFallback className="bg-primary/10 text-primary">
-                                                    <Heart className="h-6 w-6" />
-                                                </AvatarFallback>
-                                            )}
-                                        </Avatar>
+                                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20 shrink-0">
+                                            <PetImage pet={pet} alt={pet.name} className="h-full w-full object-cover" />
+                                        </div>
                                         <div>
                                             <CardTitle className="text-lg">{pet.name}</CardTitle>
                                             <CardDescription>{pet.breed || 'Mixed breed'}</CardDescription>
@@ -230,7 +264,8 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                                e.stopPropagation();
                                                 startEditing(pet);
                                                 scrollToForm();
                                             }}
@@ -241,7 +276,10 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => handleDeletePet(pet.uuid)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setPendingDelete(pet);
+                                            }}
                                             className="text-destructive hover:text-destructive"
                                         >
                                             <Trash2 className="h-4 w-4" />
@@ -251,10 +289,11 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                             </CardHeader>
                             <CardContent className="space-y-2">
                                 <div className="flex flex-wrap gap-2">
-                                    {pet.age && <Badge variant="secondary">{pet.age} old</Badge>}
+                                    {pet.dateOfBirth && <Badge variant="secondary">{formatPetDobWithAge(pet.dateOfBirth)}</Badge>}
                                     {pet.weight && <Badge variant="secondary">{pet.weight}</Badge>}
                                     {pet.activityLevel && <Badge variant="outline">{pet.activityLevel} activity</Badge>}
                                     {pet.isNeutered && <Badge variant="outline">Neutered</Badge>}
+                                    {pet.microchipNumber && <Badge variant="outline">Chip {pet.microchipNumber}</Badge>}
                                 </div>
                                 {pet.healthConditions && (
                                     <p className="text-sm text-muted-foreground">
@@ -357,13 +396,14 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="age">Age</Label>
-                                <Input
-                                    id="age"
-                                    value={petForm.age}
-                                    onChange={(e) => setPetForm({ ...petForm, age: e.target.value })}
-                                    placeholder="e.g., 2 years, 6 months"
-                                    className="border-primary/20 focus:border-primary"
+                                <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                                <DatePicker
+                                    id="dateOfBirth"
+                                    value={petForm.dateOfBirth}
+                                    onChange={(dateOfBirth) => setPetForm({ ...petForm, dateOfBirth })}
+                                    placeholder="Select date of birth"
+                                    disableFuture
+                                    className="border-primary/20"
                                 />
                             </div>
 
@@ -506,6 +546,27 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                     </CardContent>
                 </Card>
             )} */}
+
+            <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Remove {pendingDelete?.name} from My Pets?</DialogTitle>
+                        <DialogDescription>
+                            This hides the pet from your account only. Clinic visits, reports, and medical
+                            history stay in the clinic and doctor records.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setPendingDelete(null)} disabled={deleting}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={() => void handleDeletePet()} disabled={deleting}>
+                            {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Remove from My Pets
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

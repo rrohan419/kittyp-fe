@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { fetchFilteredProducts, Product, ProductDto, ProductFilterRequest } from '@/services/productService';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Search, SlidersHorizontal, X, PackageSearch } from 'lucide-react';
@@ -16,10 +17,32 @@ import { RootState } from '@/module/store/store';
 import { handleToggleFavorite } from '@/utils/favorites';
 import { useDebounce } from '@/hooks/useDebounce';
 
+const PRODUCT_CATEGORIES = [
+  'All',
+  'Litter',
+  'Toys',
+  'Food',
+  'Accessories',
+  'Habitat',
+  'Grooming',
+] as const;
+
 const Products: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const initialCategoryParam = searchParams.get('category');
+  const initialCategory =
+    initialCategoryParam &&
+    PRODUCT_CATEGORIES.some(
+      (c) => c.toLowerCase() === initialCategoryParam.toLowerCase()
+    )
+      ? PRODUCT_CATEGORIES.find(
+          (c) => c.toLowerCase() === initialCategoryParam.toLowerCase()
+        )!
+      : 'All';
+
   const [products, setProducts] = useState<Product[]>([]);
   const [hasMore, setHasMore] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedPriceRange, setSelectedPriceRange] = useState<null | { min: number, max: number }>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,7 +54,7 @@ const Products: React.FC = () => {
   const [page, setPage] = useState(1);
   const [productDto, setProductDto] = useState<ProductFilterRequest>({
     name: null,
-    category: null,
+    category: initialCategory === 'All' ? null : initialCategory,
     minPrice: null,
     maxPrice: null,
     status: ['ACTIVE', 'OUT_OF_STOCK'],
@@ -41,36 +64,35 @@ const Products: React.FC = () => {
   const dispatch = useAppDispatch();
   const favorites = useAppSelector(selectFavorites);
   const { user } = useSelector((state: RootState) => state.authReducer);
+  const productDtoRef = useRef(productDto);
+  productDtoRef.current = productDto;
 
-  const loadProducts = useCallback(async () => {
-    if (!hasMore || isLoading) return;
+  const loadProducts = useCallback(async (pageToLoad: number, replace: boolean) => {
     setIsLoading(true);
     try {
       const response = await fetchFilteredProducts({
-        page,
+        page: pageToLoad,
         size: 10,
-        body: productDto
+        body: productDtoRef.current,
       });
 
-      const newProducts = response.data.models;
+      const newProducts = response.data.models ?? [];
       setProductCount(response.data.totalElements);
-
-      setProducts(prev => [...prev, ...newProducts]);
+      setProducts((prev) => (replace ? newProducts : [...prev, ...newProducts]));
       setHasMore(!response.data.isLast);
     } catch (error) {
       console.error('Error loading products:', error);
+      if (replace) {
+        setProducts([]);
+        setProductCount(0);
+        setHasMore(false);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [page, hasMore, isLoading, productDto]);
+  }, []);
 
-  const categories = [
-    'All',
-    'Litter',
-    'toys',
-    'food',
-    'Accessories'
-  ];
+  const categories = [...PRODUCT_CATEGORIES];
 
   const clearFilters = () => {
     setSelectedCategory('All');
@@ -98,16 +120,10 @@ const Products: React.FC = () => {
   ];
 
   const displayedProducts = useMemo(() => {
-    let filtered = [...products];
-
-    if (searchQuery) {
-      filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    return filtered;
-  }, [products, searchQuery]);
+    // Server already applies name/category/price filters; avoid double-filtering
+    // which can hide results while the debounced search request is in flight.
+    return products;
+  }, [products]);
 
   const handleToggleFavoriteWrapper = async (product: Product) => {
     await handleToggleFavorite(dispatch, user.uuid, product, favorites);
@@ -121,21 +137,24 @@ const Products: React.FC = () => {
     }));
   }, [debouncedSearchQuery]);
 
+  // Reload from page 1 whenever filters change (including when already on page 1).
   useEffect(() => {
-    setProducts([]);  // Reset products when filters change
-    setPage(1);       // Reset pagination
-    setHasMore(true); // Reset flag
-  }, [productDto]);
+    setPage(1);
+    setHasMore(true);
+    void loadProducts(1, true);
+  }, [productDto, loadProducts]);
 
+  // Infinite scroll: load subsequent pages only
   useEffect(() => {
-    loadProducts();
-  }, [page]);
+    if (page <= 1) return;
+    void loadProducts(page, false);
+  }, [page, loadProducts]);
 
   useEffect(() => {
     if (observer.current) observer.current.disconnect();
 
     observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore) {
+      if (entries[0].isIntersecting && hasMore && !isLoading) {
         setPage(prev => prev + 1);
       }
     });
@@ -145,7 +164,7 @@ const Products: React.FC = () => {
     return () => {
       if (observer.current) observer.current.disconnect();
     };
-  }, [hasMore]);
+  }, [hasMore, isLoading]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -156,8 +175,8 @@ const Products: React.FC = () => {
               Discover Our Products
             </h1>
             <p className="text-lg text-muted-foreground max-w-3xl">
-              Browse our curated collection of premium quality products for your feline friend. 
-              From cozy beds to tasty treats, we've got everything your cat needs.
+              Browse our curated collection for cats, dogs, rodents, reptiles, birds, fish, and more.
+              From litter and toys to habitat gear and grooming — everything your pets need.
             </p>
           </div>
 

@@ -1,12 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -33,10 +30,10 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { FileText, Save, Send, Upload, FileInput } from 'lucide-react';
+import { Upload, FileInput } from 'lucide-react';
 import BlogEditor from '@/components/BlogEditor';
 import RichContentViewer from '@/components/RichContentViewer';
-import { createArticle, editArticle, fetchArticleBySlug } from '@/services/articleService';
+import { createArticle, editArticle, ensureMyAuthor, fetchArticleBySlug } from '@/services/articleService';
 import { uploadFiles } from '@/services/fileService';
 import {
   Dialog,
@@ -46,10 +43,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose
 } from "@/components/ui/dialog";
 import { AuthorSelector } from '@/components/admin/AuthorSelector';
 import { Author } from '@/pages/Interface/PagesInterface';
+import { getAuthItem } from '@/utils/authStorage';
 
 const articleFormSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters" }),
@@ -65,14 +62,15 @@ const articleFormSchema = z.object({
 
 type ArticleFormValues = z.infer<typeof articleFormSchema>;
 
-const DEFAULT_AUTHOR = {
-  id: 1,
-  name: 'Admin',
-  avatar: '',
-  role: 'ADMIN',
+export type AdminArticleEditorProps = {
+  basePath?: string;
+  selfAuthor?: boolean;
 };
 
-const AdminArticleEditor = () => {
+const AdminArticleEditor = ({
+  basePath = '/admin/articles',
+  selfAuthor = false,
+}: AdminArticleEditorProps) => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -86,18 +84,32 @@ const AdminArticleEditor = () => {
   const coverImageFileRef = useRef<HTMLInputElement>(null);
   const [selectedAuthor, setSelectedAuthor] = useState<Author | null>(null);
 
-  // Debug: Log when selectedAuthor changes
   useEffect(() => {
-    console.log('Selected author changed:', selectedAuthor);
-  }, [selectedAuthor]);
-
-
-  useEffect(() => {
-    const roles = JSON.parse(localStorage.getItem('roles') || '[]');
-    const isAdmin = Array.isArray(roles) && roles.includes('ROLE_ADMIN');
-    setUserRole(isAdmin ? 'ROLE_ADMIN' : null);
-    setLoading(false);
-  }, []);
+    const init = async () => {
+      try {
+        if (selfAuthor) {
+          const author = await ensureMyAuthor();
+          setSelectedAuthor({
+            id: author.id.toString(),
+            name: author.name,
+            avatar: author.avatar,
+            role: author.role,
+          });
+          setUserRole('SELF');
+        } else {
+          const roles = JSON.parse(getAuthItem('roles') || '[]');
+          const isAdmin = Array.isArray(roles) && roles.includes('ROLE_ADMIN');
+          setUserRole(isAdmin ? 'ROLE_ADMIN' : null);
+        }
+      } catch {
+        toast.error('Could not load article editor');
+        setUserRole(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void init();
+  }, [selfAuthor]);
 
   const form = useForm<ArticleFormValues>({
     resolver: zodResolver(articleFormSchema),
@@ -170,7 +182,7 @@ const AdminArticleEditor = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  if (!loading && userRole !== 'ROLE_ADMIN') {
+  if (!loading && !selfAuthor && userRole !== 'ROLE_ADMIN') {
     return <Navigate to="/" replace />;
   }
 
@@ -249,7 +261,7 @@ const AdminArticleEditor = () => {
         toast.success('Article created successfully!');
       }
       setHasUnsavedChanges(false);
-      navigate('/admin/articles');
+      navigate(basePath);
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to save article';
       toast.error(errorMessage);
@@ -282,9 +294,8 @@ const AdminArticleEditor = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <main className="flex-1 pt-24 pb-16 bg-gray-50 dark:bg-gray-900">
-        <div className="container px-4 md:px-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+        <div>
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Article Editor</h1>
@@ -301,10 +312,10 @@ const AdminArticleEditor = () => {
                 onClick={() => {
                   if (hasUnsavedChanges) {
                     if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
-                      navigate('/admin');
+                      navigate(basePath);
                     }
                   } else {
-                    navigate('/admin');
+                    navigate(basePath);
                   }
                 }}
               >
@@ -389,13 +400,20 @@ const AdminArticleEditor = () => {
                       )}
                     />
                   </div>
-                  <div>
-                  <AuthorSelector
+                  {selfAuthor && selectedAuthor ? (
+                    <p className="text-sm text-muted-foreground">
+                      Publishing as {selectedAuthor.name}
+                      {selectedAuthor.role ? ` · ${selectedAuthor.role}` : ''}
+                    </p>
+                  ) : (
+                    <div>
+                      <AuthorSelector
                         selectedAuthor={selectedAuthor}
                         onAuthorChange={setSelectedAuthor}
-                        disabled={!!slug} // Disable when editing (slug exists)
+                        disabled={!!slug}
                       />
-                  </div>
+                    </div>
+                  )}
                   <FormField
                     control={form.control}
                     name="excerpt"
@@ -638,9 +656,6 @@ const AdminArticleEditor = () => {
             </form>
           </Form>
         </div>
-      </main>
-
-      <Footer />
     </div>
   );
 };
