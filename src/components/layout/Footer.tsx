@@ -18,7 +18,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-muted-foreground max-w-md">
-              Elegant, minimalist products designed with attention to detail and crafted for the modern lifestyle.
+              Veterinary clinic CRM for India — appointments, consults, invoices, and a health record that stays with the pet.
             </p>
             <div className="flex space-x-4">
               <a 
@@ -124,11 +124,6 @@ export function Footer() {
                   Contact
                 </Link>
               </li>
-              <li>
-                <Link to="/how-to-use" className="text-muted-foreground hover:text-primary transition-colors">
-                  How to Use
-                </Link>
-              </li>
             </ul>
           </div>
           
@@ -153,7 +148,7 @@ export function Footer() {
               Subscribe
             </h3>
             <p className="text-muted-foreground">
-              Stay updated with our latest products and offers.
+              Occasional notes on clinic operations and pet care.
             </p>
             <form className="flex w-full max-w-md">
               <input
