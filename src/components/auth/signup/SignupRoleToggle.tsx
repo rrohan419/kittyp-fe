@@ -28,7 +28,7 @@ const SignupRoleToggle = ({ value, onChange, disabled }: SignupRoleToggleProps) 
         key={role}
         value={role}
         aria-label={SIGNUP_ROLE_LABELS[role]}
-        className="rounded-md data-[state=on]:bg-background data-[state=on]:shadow-sm"
+        className="rounded-md text-xs sm:text-sm px-1 sm:px-3 data-[state=on]:bg-background data-[state=on]:shadow-sm"
       >
         {SIGNUP_ROLE_LABELS[role]}
       </ToggleGroupItem>

@@ -20,7 +20,7 @@ const ResetPassword = () => {
 
     useEffect(() => {
         // Get email from session storage
-        const resetEmail = sessionStorage.getItem('resetEmail');
+        const resetEmail = localStorage.getItem('resetEmail') || sessionStorage.getItem('resetEmail');
         if (!resetEmail) {
             toast.error("Error", {
                 description: "No email found. Please restart the password reset process."
@@ -52,7 +52,7 @@ const ResetPassword = () => {
         setIsSubmitting(true);
 
         try {
-            const resetCode = sessionStorage.getItem('resetCode');
+            const resetCode = localStorage.getItem('resetCode') || sessionStorage.getItem('resetCode');
             const success = await resetPassword(resetCode, password, email);
 
             if (success) {
@@ -62,6 +62,8 @@ const ResetPassword = () => {
                 // Clear session storage
                 sessionStorage.removeItem('resetEmail');
                 sessionStorage.removeItem('resetCode');
+                localStorage.removeItem('resetEmail');
+                localStorage.removeItem('resetCode');
                 navigate('/login');
             }
         } catch (error) {
@@ -76,7 +78,7 @@ const ResetPassword = () => {
     return (
         <div className="min-h-screen bg-white dark:bg-gray-950">
 
-            <main className="pt-24 pb-16">
+            <main className="pt-20 sm:pt-24 pb-16">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="max-w-md mx-auto">
                         <Link to="/verify-reset-code" className="inline-flex items-center text-kitty-600 mb-6 hover:text-kitty-700">

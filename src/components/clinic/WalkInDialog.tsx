@@ -574,7 +574,7 @@ export function AddAppointmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[min(90dvh,calc(100dvh-2rem))] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add appointment</DialogTitle>
         </DialogHeader>

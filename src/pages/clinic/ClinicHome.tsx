@@ -10,7 +10,10 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Calendar, Users, Stethoscope, Activity, AlertTriangle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/module/store/store';
+import { ROLES, hasRole } from '@/utils/roles';
 import {
   addDays,
   format,
@@ -382,4 +385,12 @@ export default function ClinicHome() {
       </Dialog>
     </div>
   );
+}
+
+export function ClinicPortalHome() {
+  const { user } = useSelector((s: RootState) => s.authReducer);
+  if (hasRole(user?.roles, ROLES.CLINIC_STAFF) && !hasRole(user?.roles, ROLES.CLINIC_ADMIN)) {
+    return <Navigate to="/clinic/appointments" replace />;
+  }
+  return <ClinicHome />;
 }

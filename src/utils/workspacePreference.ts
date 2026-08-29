@@ -3,18 +3,44 @@ import { ROLES, hasRole, hasAnyRole } from '@/utils/roles';
 
 const DEFAULT_WORKSPACE_KEY = 'defaultWorkspace';
 
-/** Per-tab preference so workspace choice does not leak across accounts. */
+function readPref(): string | null {
+  try {
+    return localStorage.getItem(DEFAULT_WORKSPACE_KEY) || sessionStorage.getItem(DEFAULT_WORKSPACE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writePref(value: string): void {
+  try {
+    localStorage.setItem(DEFAULT_WORKSPACE_KEY, value);
+    sessionStorage.removeItem(DEFAULT_WORKSPACE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function removePref(): void {
+  try {
+    localStorage.removeItem(DEFAULT_WORKSPACE_KEY);
+    sessionStorage.removeItem(DEFAULT_WORKSPACE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Browser-wide preference — one signed-in account per browser. */
 export function getDefaultWorkspace(): AppRole | null {
-  const value = sessionStorage.getItem(DEFAULT_WORKSPACE_KEY);
+  const value = readPref();
   return value ? (value as AppRole) : null;
 }
 
 export function setDefaultWorkspace(role: AppRole): void {
-  sessionStorage.setItem(DEFAULT_WORKSPACE_KEY, role);
+  writePref(role);
 }
 
 export function clearDefaultWorkspace(): void {
-  sessionStorage.removeItem(DEFAULT_WORKSPACE_KEY);
+  removePref();
 }
 
 /**

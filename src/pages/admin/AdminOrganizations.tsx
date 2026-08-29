@@ -131,7 +131,7 @@ export default function AdminOrganizations() {
           </p>
         </div>
         <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Filter status" />
           </SelectTrigger>
           <SelectContent>

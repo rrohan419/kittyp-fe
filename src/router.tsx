@@ -46,6 +46,7 @@ import JitsiConsultPage from './pages/JitsiConsultPage';
 import { PetManagementPage } from './pages/PetManagementPage';
 import PetDetail from './pages/PetDetails';
 import ClinicInviteAccept from './pages/ClinicInviteAccept';
+import StaffInviteAccept from './pages/StaffInviteAccept';
 
 // Doctor Portal
 import { DoctorLayout } from './components/doctor/DoctorLayout';
@@ -59,7 +60,7 @@ import DoctorSettings from './pages/DoctorSettings';
 
 // Clinic Portal
 import { ClinicLayout } from './pages/clinic/ClinicLayout';
-import ClinicHome from './pages/clinic/ClinicHome';
+import { ClinicPortalHome } from './pages/clinic/ClinicHome';
 import ClinicDoctors from './pages/clinic/ClinicDoctors';
 import ClinicDoctorDetail from './pages/clinic/ClinicDoctorDetail';
 import ClinicAppointments from './pages/clinic/ClinicAppointments';
@@ -194,6 +195,10 @@ export const router = createBrowserRouter(
         {
           path: "clinic-invite/accept",
           element: <PageTransition><ClinicInviteAccept /></PageTransition>,
+        },
+        {
+          path: "staff-invite/accept",
+          element: <PageTransition><StaffInviteAccept /></PageTransition>,
         },
         {
           path: "orders",
@@ -389,7 +394,7 @@ export const router = createBrowserRouter(
           children: [
             {
               index: true,
-              element: <PageTransition><ClinicHome /></PageTransition>,
+              element: <PageTransition><ClinicPortalHome /></PageTransition>,
             },
             {
               path: "doctors",
@@ -421,7 +426,11 @@ export const router = createBrowserRouter(
             },
             {
               path: "clinics/new",
-              element: <PageTransition><ClinicCreateClinic /></PageTransition>,
+              element: (
+                <RoleGuard allowed={[ROLES.CLINIC_ADMIN]}>
+                  <PageTransition><ClinicCreateClinic /></PageTransition>
+                </RoleGuard>
+              ),
             },
             {
               path: "retention",
@@ -433,7 +442,11 @@ export const router = createBrowserRouter(
             },
             {
               path: "staff",
-              element: <PageTransition><ClinicStaff /></PageTransition>,
+              element: (
+                <RoleGuard allowed={[ROLES.CLINIC_ADMIN]}>
+                  <PageTransition><ClinicStaff /></PageTransition>
+                </RoleGuard>
+              ),
             },
             {
               path: "reports",
@@ -445,19 +458,35 @@ export const router = createBrowserRouter(
             },
             {
               path: "blog",
-              element: <PageTransition><ClinicBlog /></PageTransition>,
+              element: (
+                <RoleGuard allowed={[ROLES.CLINIC_ADMIN]}>
+                  <PageTransition><ClinicBlog /></PageTransition>
+                </RoleGuard>
+              ),
             },
             {
               path: "blog/new",
-              element: <PageTransition><ClinicArticleEditor /></PageTransition>,
+              element: (
+                <RoleGuard allowed={[ROLES.CLINIC_ADMIN]}>
+                  <PageTransition><ClinicArticleEditor /></PageTransition>
+                </RoleGuard>
+              ),
             },
             {
               path: "blog/edit/:slug",
-              element: <PageTransition><ClinicArticleEditor /></PageTransition>,
+              element: (
+                <RoleGuard allowed={[ROLES.CLINIC_ADMIN]}>
+                  <PageTransition><ClinicArticleEditor /></PageTransition>
+                </RoleGuard>
+              ),
             },
             {
               path: "settings",
-              element: <PageTransition><ClinicSettings /></PageTransition>,
+              element: (
+                <RoleGuard allowed={[ROLES.CLINIC_ADMIN]}>
+                  <PageTransition><ClinicSettings /></PageTransition>
+                </RoleGuard>
+              ),
             },
           ],
         },

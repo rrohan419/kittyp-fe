@@ -382,7 +382,7 @@ export default function ClinicPatients() {
       </div>
 
       <Tabs value={tab} onValueChange={onTabChange}>
-        <TabsList className="h-auto p-1 bg-muted gap-1">
+        <TabsList className="h-auto p-1 bg-muted gap-1 w-full max-w-full overflow-x-auto flex justify-start">
           <TabsTrigger
             value="clients"
             className="gap-2 px-4 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
