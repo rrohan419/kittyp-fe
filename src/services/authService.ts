@@ -6,7 +6,7 @@ import { setUser } from '@/module/slice/AuthSlice';
 import { fetchUserDetail } from "./UserService";
 import { TokenResponse } from "@react-oauth/google";
 import { SignupRole } from "@/utils/roles";
-import { clearAuthStorage, beginNewAuthSession, getAuthItem, setAuthItem } from "@/utils/authStorage";
+import { clearAuthStorage, getAuthItem, setAuthItem } from "@/utils/authStorage";
 
 interface SignupData {
   firstName: string;
@@ -149,8 +149,6 @@ export const socialSso = async (tokenResponse: TokenResponse) => {
     if (data.success && data.data) {
       const { token, roles } = data.data;
 
-      // New tab session so we never overwrite another tab's vault entry
-      beginNewAuthSession();
       setAuthItem("access_token", token);
       setAuthItem("roles", JSON.stringify(roles));
     } else {
@@ -172,8 +170,6 @@ export const login = async (data: AuthData): Promise<{ token: string; roles: str
 
     const { token, roles } = loginResponse.data.data; // <-- This is JwtResponseModel
 
-    // New tab session so Duplicate-tab / prior login cannot leak into this account
-    beginNewAuthSession();
     setAuthItem('access_token', token);
     setAuthItem('roles', JSON.stringify(roles));
 

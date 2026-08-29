@@ -51,7 +51,7 @@ export const PORTAL_HOME: Record<string, string> = {
   [ROLES.ADMIN]: '/admin',
   [ROLES.DOCTOR]: '/doctor',
   [ROLES.CLINIC_ADMIN]: '/clinic',
-  [ROLES.CLINIC_STAFF]: '/clinic',
+  [ROLES.CLINIC_STAFF]: '/clinic/appointments',
   [ROLES.MODERATOR]: '/admin',
   [ROLES.USER]: '/app',
 };
@@ -61,9 +61,8 @@ export const getPortalHome = (roles?: string[]): string => {
   if (hasRole(roles, ROLES.ADMIN)) return PORTAL_HOME[ROLES.ADMIN];
   if (hasRole(roles, ROLES.MODERATOR)) return PORTAL_HOME[ROLES.MODERATOR];
   if (hasRole(roles, ROLES.DOCTOR)) return PORTAL_HOME[ROLES.DOCTOR];
-  if (hasAnyRole(roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF])) {
-    return PORTAL_HOME[ROLES.CLINIC_ADMIN];
-  }
+  if (hasRole(roles, ROLES.CLINIC_ADMIN)) return PORTAL_HOME[ROLES.CLINIC_ADMIN];
+  if (hasRole(roles, ROLES.CLINIC_STAFF)) return PORTAL_HOME[ROLES.CLINIC_STAFF];
   return PORTAL_HOME[ROLES.USER];
 };
 
@@ -77,7 +76,8 @@ export const portalHomesForRoles = (roles?: string[]): string[] => {
   const homes = new Set<string>();
   for (const role of roles) {
     const home = PORTAL_HOME[role];
-    if (home) homes.add(home);
+    if (!home) continue;
+    homes.add(home.startsWith('/clinic') ? '/clinic' : home);
   }
   return [...homes];
 };
@@ -110,8 +110,12 @@ export const getContinueAsLabel = (role: AppRole): string =>
   `Continue as ${getRoleLabel(role)}`;
 
 
-/** Clinic admin/staff can send doctor invites; doctors cannot. */
+/** Clinic admins can send doctor invites; staff and doctors cannot. */
 export const canInviteDoctors = (roles?: string[]): boolean =>
+  hasRole(roles, ROLES.CLINIC_ADMIN);
+
+/** Day-to-day clinic ops (appointments, patients, invoices). */
+export const canManageClinicOps = (roles?: string[]): boolean =>
   hasAnyRole(roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF]);
 
 /** Doctors can edit nutrition plan previews before saving. */

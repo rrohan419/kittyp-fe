@@ -31,7 +31,7 @@ import { toast } from 'sonner';
 import { saveDoctorVisitChart } from '@/services/visitService';
 import { parseApiErrorMessage } from '@/utils/validation';
 import { canEditVisitChart } from '@/utils/visitChartLock';
-import { canInviteDoctors } from '@/utils/roles';
+import { canManageClinicOps } from '@/utils/roles';
 import { useAppSelector } from '@/module/store/hooks';
 
 const WRITABLE_VISIT = ['IN_PROGRESS', 'CHECKING_OUT', 'CHECKED_IN', 'WAITLIST', 'COMPLETED'];
@@ -51,7 +51,7 @@ export default function ClinicPatientDashboard() {
   const patientsPath = isDoctorPortal ? '/doctor/patients' : '/clinic/patients';
   const patientsLabel = isDoctorPortal ? 'Patients' : 'Clients & Pets';
   const user = useAppSelector((s) => s.authReducer.user);
-  const canEditMicrochip = canInviteDoctors(user?.roles) && !isDoctorPortal;
+  const canEditMicrochip = canManageClinicOps(user?.roles) && !isDoctorPortal;
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = parsePatientDashboardTab(searchParams.get('tab'));
   const { clinicUuid, loading: clinicLoading, error: clinicError } = useActiveClinic();

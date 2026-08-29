@@ -21,7 +21,7 @@ const VerifyResetCode = () => {
 useEffect(() => {
   const performPasswordReset = async () => {
     try {
-      const resetEmail = sessionStorage.getItem('resetEmail');
+      const resetEmail = localStorage.getItem('resetEmail') || sessionStorage.getItem('resetEmail');
       if (!resetEmail) {
         toast.error("No email found. Please restart the password reset process.");
         navigate('/forgot-password');
@@ -52,6 +52,7 @@ useEffect(() => {
       if (success) {
         toast.success("Code verified. You can now set your new password.");
         sessionStorage.setItem('resetCode', code);
+        localStorage.setItem('resetCode', code);
         navigate('/reset-password');
       } else {
         toast.error("The code you entered is incorrect. Please try again.");
@@ -79,7 +80,7 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
-      <main className="pt-24 pb-16">
+      <main className="pt-20 sm:pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-md mx-auto">
             <Link to="/forgot-password" className="inline-flex items-center text-kitty-600 mb-6 hover:text-kitty-700">

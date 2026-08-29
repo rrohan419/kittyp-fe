@@ -40,7 +40,7 @@ export const validateAndSetUser = createAsyncThunk(
     }
     try {
       const user = await getCurrentUser();
-      // Another login may have replaced this tab's session while /user/me was in flight
+      // Another login may have replaced credentials while /user/me was in flight
       if (getAuthItem('access_token') !== tokenAtStart) {
         return rejectWithValue('Stale auth validation');
       }
@@ -226,7 +226,7 @@ export const authSlice = createSlice({
       })
       .addCase(validateAndSetUser.rejected, (state, action) => {
         state.loading = false;
-        // A superseded in-flight /user/me must not wipe a newer login in this tab
+        // A superseded in-flight /user/me must not wipe a newer login
         if (action.payload === 'Stale auth validation') {
           return;
         }

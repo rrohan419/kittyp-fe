@@ -5,6 +5,7 @@ import { useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/module/store/store';
 import { setActiveRole } from '@/module/slice/AuthSlice';
 import { AppRole, canSwitchWorkspace, hasAnyRole, getPortalHome, ROLES } from '@/utils/roles';
+import { resolvePreferredRole } from '@/utils/workspacePreference';
 
 interface RoleGuardProps {
   allowed: AppRole | AppRole[];
@@ -44,12 +45,22 @@ export function RoleGuard({ allowed, children }: RoleGuardProps) {
 
   const roles = (user.roles || []).filter((r): r is AppRole => typeof r === 'string');
 
-  // Multi-workspace accounts must pick a session context — except doctors default to doctor portal.
+  // Multi-workspace: pick a default instead of bouncing back to a chooser after login.
   if (canSwitchWorkspace(roles) && !activeRole) {
-    if (roles.includes(ROLES.DOCTOR) && allowedRoles.includes(ROLES.DOCTOR)) {
-      return <SyncActiveRole role={ROLES.DOCTOR}>{children}</SyncActiveRole>;
+    const preferred =
+      resolvePreferredRole(roles) ||
+      (roles.includes(ROLES.DOCTOR) && allowedRoles.includes(ROLES.DOCTOR) ? ROLES.DOCTOR : undefined) ||
+      allowedRoles.find((r) => roles.includes(r));
+    if (preferred && allowedRoles.includes(preferred)) {
+      return <SyncActiveRole role={preferred}>{children}</SyncActiveRole>;
     }
-    return <Navigate to="/select-role" replace state={{ roles, from: location.pathname }} />;
+    if (preferred) {
+      return <Navigate to={getPortalHome([preferred])} replace />;
+    }
+    const fallback = allowedRoles.find((r) => roles.includes(r));
+    if (fallback) {
+      return <SyncActiveRole role={fallback}>{children}</SyncActiveRole>;
+    }
   }
 
   // Selected session role does not match this portal, but user holds an allowed role —

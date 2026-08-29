@@ -204,7 +204,10 @@ export function PortalShell({ config }: PortalShellProps) {
           collapsed && 'lg:ml-[68px]'
         )}
       >
-        <header className="sticky top-0 z-50 h-16 bg-background/95 backdrop-blur-md border-b border-border flex items-center gap-3 px-4 lg:px-6 isolate">
+        <header
+          className="sticky top-0 z-50 min-h-16 bg-background/95 backdrop-blur-md border-b border-border flex items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6 isolate"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        >
           <Button
             variant="ghost"
             size="icon"
@@ -219,7 +222,7 @@ export function PortalShell({ config }: PortalShellProps) {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <Brand className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-foreground">{config.name}</span>
+            <span className="hidden sm:inline font-bold text-foreground truncate max-w-[8rem]">{config.name}</span>
           </div>
 
           <form onSubmit={submitHeaderSearch} className="hidden md:flex flex-1 min-w-0 mr-2">
@@ -309,12 +312,12 @@ export function PortalShell({ config }: PortalShellProps) {
           </DialogContent>
         </Dialog>
 
-        <main className="flex-1 pb-20 lg:pb-6">
+        <main className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-6">
           <Outlet />
         </main>
 
         <nav
-          className="lg:hidden fixed bottom-0 left-0 right-0 z-30 h-16 bg-background/95 backdrop-blur-md border-t border-border flex items-center justify-around px-1"
+          className="lg:hidden fixed bottom-0 left-0 right-0 z-30 min-h-16 bg-background/95 backdrop-blur-md border-t border-border flex items-center justify-around px-1"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           {config.bottomTabs.map((item) => {

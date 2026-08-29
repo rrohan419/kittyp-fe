@@ -352,7 +352,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={8} collisionPadding={12} className="w-[380px] p-0 overflow-hidden z-[200]">
+      <PopoverContent align="end" sideOffset={8} collisionPadding={12} className="w-[min(380px,calc(100vw-1.5rem))] p-0 overflow-hidden z-[200]">
         <div className="px-4 py-3 border-b border-border bg-muted/30">
           <p className="text-sm font-semibold">Notifications</p>
           <p className="text-xs text-muted-foreground truncate">

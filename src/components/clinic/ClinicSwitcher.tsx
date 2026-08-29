@@ -69,7 +69,7 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
 
   if (loading) {
     return (
-      <Button variant="outline" size="sm" disabled className={cn('min-w-[140px]', className)}>
+      <Button variant="outline" size="sm" disabled className={cn('min-w-0', className)}>
         <Building2 className="h-4 w-4 mr-2" />
         Loading…
       </Button>
@@ -110,7 +110,7 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
       {isShutdown && (
         <Badge
           variant="outline"
-          className="text-[10px] shrink-0 bg-red-50 text-red-700 border-red-200"
+          className="text-[10px] shrink-0 hidden sm:inline-flex bg-red-50 text-red-700 border-red-200"
         >
           Shutdown
         </Badge>
@@ -130,24 +130,24 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
             size="sm"
             disabled={switching}
             className={cn(
-              'max-w-full relative z-[60]',
+              'max-w-[88px] sm:max-w-[140px] md:max-w-[180px] relative z-[60]',
               isShutdown && 'border-red-200 bg-red-50/80 text-red-800 hover:bg-red-50 hover:text-red-900'
             )}
           >
             {showPersonal && clinic?.personal ? (
-              <UserRound className="h-4 w-4 mr-2 shrink-0" />
+              <UserRound className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
             ) : (
-              <Building2 className="h-4 w-4 mr-2 shrink-0" />
+              <Building2 className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
             )}
-            <span className="truncate max-w-[180px]">{switching ? 'Switching…' : triggerName}</span>
-            <ChevronsUpDown className="h-3.5 w-3.5 ml-2 opacity-60 shrink-0" />
+            <span className="truncate min-w-0">{switching ? 'Switching…' : triggerName}</span>
+            <ChevronsUpDown className="h-3.5 w-3.5 ml-1 sm:ml-2 opacity-60 shrink-0" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
           sideOffset={8}
           collisionPadding={16}
-          className="w-72 z-[200]"
+          className="w-[min(18rem,calc(100vw-2rem))] z-[200]"
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <DropdownMenuLabel>

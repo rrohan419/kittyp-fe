@@ -10,16 +10,21 @@ import orderReducer from '../slice/OrderSlice';
 import adminProductReducer from '../slice/AdminProductSlice';
 import schedulingReducer from '../slice/SchedulingSlice';
 import { persistReducer, persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
-import storageSession from 'redux-persist/lib/storage/session';
-// import schedularReducer from '../slice/SchedulingSlice';
-// import vetReducer from '../slice/VetSlice';
+import storage from 'redux-persist/lib/storage';
 
+try {
+    const fromSession = sessionStorage.getItem('persist:root');
+    if (fromSession && !localStorage.getItem('persist:root')) {
+        localStorage.setItem('persist:root', fromSession);
+    }
+    sessionStorage.removeItem('persist:root');
+} catch {
+    /* ignore */
+}
 
 const persistConfig = {
     key: 'root',
-    storage: storageSession,
-    // Auth lives in sessionStorage via authStorage — do not persist authReducer
-    // or a shared localStorage blob can rehydrate the wrong user into a tab.
+    storage,
     whitelist: ['cartReducer', 'favoritesReducer'],
 };
 

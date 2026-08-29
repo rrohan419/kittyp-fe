@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import {
   CardTitle
 } from '@/components/ui/card';
 import { toast } from "sonner";
-import { LogIn, Mail, Lock, EyeOff, Eye, EyeOffIcon } from 'lucide-react';
+import { LogIn, Mail, Lock, Eye, EyeOffIcon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { login, socialSso } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
@@ -21,12 +21,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { setActiveRole, validateAndSetUser, clearUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
-import { AppRole, canSwitchWorkspace, getPortalPath, ROLES } from '@/utils/roles';
-import { RoleSelectModal } from '@/components/auth/RoleSelectModal';
+import { AppRole, getPortalPath, ROLES } from '@/utils/roles';
 import { isEcommerceEnabled } from '@/config/features';
 import { validateLoginIdentifier, normalizeLoginIdentifier } from '@/utils/validation';
 import { resolvePreferredRole } from '@/utils/workspacePreference';
-import { clearAuthStorage } from '@/utils/authStorage';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -38,13 +36,12 @@ const Login = () => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [roleModalOpen, setRoleModalOpen] = useState(false);
-  const [pendingRoles, setPendingRoles] = useState<AppRole[]>([]);
   const hasGuestCartItems = useSelector((state: RootState) =>
     state.cartReducer.items.length > 0 && state.cartReducer.isGuestCart
   );
-  const { user: currentUser, isAuthenticated } = useSelector((state: RootState) => state.authReducer);
-  const [switchAccount, setSwitchAccount] = useState(false);
+  const { user: currentUser, isAuthenticated, loading: authLoading } = useSelector(
+    (state: RootState) => state.authReducer
+  );
 
   const safeRedirect = () => {
     const redirect = searchParams.get('redirect');
@@ -60,39 +57,31 @@ const Login = () => {
 
     if (appRoles.length === 0) {
       dispatch(setActiveRole(null));
-      navigate(redirect || '/');
+      navigate(redirect || '/', { replace: true });
       return;
     }
 
-    // Doctors always land on the doctor portal after login (clinic admin is via Switch workspace).
-    const preferred = resolvePreferredRole(appRoles);
-    if (preferred) {
-      dispatch(setActiveRole(preferred));
-      // Honor deep-link redirect only when it matches the chosen portal family.
-      if (
-        redirect &&
-        ((preferred === ROLES.DOCTOR && redirect.startsWith('/doctor')) ||
-          (preferred !== ROLES.DOCTOR && redirect.startsWith('/clinic')) ||
-          (!redirect.startsWith('/doctor') && !redirect.startsWith('/clinic')))
-      ) {
-        navigate(redirect);
-        return;
-      }
-      navigate(getPortalPath(preferred));
+    const preferred =
+      resolvePreferredRole(appRoles) ||
+      (appRoles.includes(ROLES.DOCTOR) ? ROLES.DOCTOR : appRoles[0]);
+    dispatch(setActiveRole(preferred));
+    if (
+      redirect &&
+      ((preferred === ROLES.DOCTOR && redirect.startsWith('/doctor')) ||
+        (preferred !== ROLES.DOCTOR && redirect.startsWith('/clinic')) ||
+        (!redirect.startsWith('/doctor') && !redirect.startsWith('/clinic')))
+    ) {
+      navigate(redirect, { replace: true });
       return;
     }
-
-    if (canSwitchWorkspace(appRoles)) {
-      dispatch(setActiveRole(null));
-      setPendingRoles(appRoles);
-      setRoleModalOpen(true);
-      return;
-    }
-
-    const role = appRoles[0];
-    dispatch(setActiveRole(role));
-    navigate(redirect || getPortalPath(role));
+    navigate(getPortalPath(preferred), { replace: true });
   };
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !currentUser) return;
+    finishAuth(currentUser.roles);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, isAuthenticated, currentUser?.uuid]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,7 +100,6 @@ const Login = () => {
 
     try {
       await login({ email: normalizeLoginIdentifier(email), password });
-      // login() already started a fresh tab session — drop stale Redux user
       dispatch(clearUser());
       const user = await dispatch(validateAndSetUser()).unwrap();
 
@@ -176,56 +164,27 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-background">
 
-      <main className="pt-24 pb-16">
+      <main className="pt-20 sm:pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-md mx-auto">
-            <h1 className="text-4xl font-bold mb-8 text-center text-foreground">
+            <h1 className="text-3xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center text-foreground">
               Welcome Back
             </h1>
-            <p className="text-muted-foreground mb-12 text-center">
+            <p className="text-muted-foreground mb-8 sm:mb-12 text-center text-sm sm:text-base">
               Sign in to your kittyp account to manage pets, clinics, and care.
-              Each browser tab can stay signed in as a different account.
             </p>
 
-            {isAuthenticated && currentUser && !switchAccount ? (
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle className="text-xl text-center">Already signed in</CardTitle>
-                  <CardDescription className="text-center">
-                    {currentUser.email}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button
-                    className="w-full"
-                    onClick={() => {
-                      const roles = (currentUser.roles || []).filter(
-                        (r): r is AppRole => typeof r === 'string'
-                      );
-                      finishAuth(roles);
-                    }}
-                  >
-                    Continue
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      clearAuthStorage();
-                      dispatch(clearUser());
-                      setSwitchAccount(true);
-                    }}
-                  >
-                    Use a different account
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : null}
-
-            {(!isAuthenticated || switchAccount) && (
+            {authLoading || loading || (isAuthenticated && currentUser) ? (
+            <Card>
+              <CardContent className="py-10 flex flex-col items-center gap-3">
+                <div className="h-6 w-6 animate-spin border-2 border-primary border-t-transparent rounded-full" />
+                <p className="text-sm text-muted-foreground">Taking you in…</p>
+              </CardContent>
+            </Card>
+            ) : (
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl font-semibold text-center">Sign In</CardTitle>
+                <CardTitle className="text-xl sm:text-2xl font-semibold text-center">Sign In</CardTitle>
                 <CardDescription className="text-center">
                   Email or account, doctor, or clinic ID
                 </CardDescription>
@@ -336,13 +295,6 @@ const Login = () => {
       </main>
 
       <ErrorDialog showErrorDialog={showErrorDialog} setShowErrorDialog={setShowErrorDialog} errorMessage={errorMessage} />
-
-      <RoleSelectModal
-        open={roleModalOpen}
-        roles={pendingRoles}
-        onOpenChange={setRoleModalOpen}
-        redirectTo={safeRedirect()}
-      />
 
       <Footer />
     </div>

@@ -340,7 +340,7 @@ export default function ClinicAppointments() {
     <div className="p-4 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Clinic flow</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Clinic flow</h1>
           <p className="text-sm text-muted-foreground">
             Today&apos;s visit board and upcoming appointments. Use + to check someone in or schedule
             for later.
@@ -375,7 +375,7 @@ export default function ClinicAppointments() {
 
       <div className="flex flex-wrap gap-2 items-center">
         <Select value={doctorFilter} onValueChange={setDoctorFilter}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="Doctor" />
           </SelectTrigger>
           <SelectContent>
@@ -399,7 +399,7 @@ export default function ClinicAppointments() {
         </div>
       ) : (
         <Tabs defaultValue="flow">
-          <TabsList>
+          <TabsList className="w-full max-w-full h-auto flex flex-wrap justify-start">
             <TabsTrigger value="flow">Today&apos;s flow</TabsTrigger>
             <TabsTrigger value="done">Completed</TabsTrigger>
             <TabsTrigger value="scheduled">Upcoming</TabsTrigger>

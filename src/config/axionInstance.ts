@@ -22,7 +22,7 @@ export const createInstanceAndInjectStore: CreateInstanceAndInjectStoreFunction 
     dispatch = _dispatch;
   };
 
-// Helper to clear all auth-related data for this tab only
+// Helper to clear all auth-related data for this browser
 const clearAuthData = () => {
   clearAuthStorage();
 

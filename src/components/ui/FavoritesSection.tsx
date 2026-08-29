@@ -126,7 +126,7 @@ const FavoritesSection: React.FC = () => {
             value={selectedCategory || 'all'} 
             onValueChange={handleCategoryChange}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { canSwitchWorkspace, isSignupRole, PUBLIC_SIGNUP_PATHS, ROLES, SIGNUP_ROLES, SIGNUP_ROLE_LABELS } from './roles.ts';
+import { canInviteDoctors, canManageClinicOps, canSwitchWorkspace, getPortalHome, isSignupRole, PUBLIC_SIGNUP_PATHS, ROLES, SIGNUP_ROLES, SIGNUP_ROLE_LABELS } from './roles.ts';
 
 describe('signup role allowlist', () => {
   it('only allows USER, DOCTOR, CLINIC', () => {
@@ -55,5 +55,24 @@ describe('canSwitchWorkspace', () => {
 
   it('does not switch for a doctor-only account', () => {
     assert.equal(canSwitchWorkspace([ROLES.DOCTOR]), false);
+  });
+});
+
+describe('clinic staff landing and ops', () => {
+  it('sends staff to appointments, not the clinic dashboard', () => {
+    assert.equal(getPortalHome([ROLES.CLINIC_STAFF]), '/clinic/appointments');
+    assert.equal(getPortalHome([ROLES.CLINIC_ADMIN]), '/clinic');
+  });
+
+  it('lets only clinic admins invite doctors', () => {
+    assert.equal(canInviteDoctors([ROLES.CLINIC_ADMIN]), true);
+    assert.equal(canInviteDoctors([ROLES.CLINIC_STAFF]), false);
+    assert.equal(canInviteDoctors([ROLES.DOCTOR]), false);
+  });
+
+  it('lets staff and admin run clinic ops', () => {
+    assert.equal(canManageClinicOps([ROLES.CLINIC_STAFF]), true);
+    assert.equal(canManageClinicOps([ROLES.CLINIC_ADMIN]), true);
+    assert.equal(canManageClinicOps([ROLES.DOCTOR]), false);
   });
 });

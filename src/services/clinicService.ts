@@ -473,6 +473,87 @@ export async function rejectInvite(token: string): Promise<void> {
   await axiosInstance.post(`/clinic/invites/${token}/reject`);
 }
 
+export interface StaffInviteModel {
+  uuid: string;
+  email: string;
+  staffName: string;
+  status: string;
+  expiresAt: string;
+  clinicUuid: string;
+  clinicName: string;
+  token?: string | null;
+  createdAt?: string | null;
+}
+
+export interface StaffInvitePreview {
+  clinicName: string;
+  staffName: string;
+  email: string;
+  expired: boolean;
+  accepted: boolean;
+  status: string;
+}
+
+export interface StaffMemberModel {
+  userUuid: string;
+  email: string;
+  name: string;
+  role?: string;
+  joinedAt?: string | null;
+  enabled: boolean;
+}
+
+export async function inviteStaff(
+  clinicUuid: string,
+  payload: { name: string; email: string }
+): Promise<StaffInviteModel> {
+  const res = await axiosInstance.post<ApiSuccessResponse<StaffInviteModel>>(
+    `/clinic/${clinicUuid}/staff/invite`,
+    payload
+  );
+  return res.data.data;
+}
+
+export async function fetchClinicStaff(clinicUuid: string): Promise<StaffMemberModel[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<StaffMemberModel[]>>(
+    `/clinic/${clinicUuid}/staff`
+  );
+  return res.data.data ?? [];
+}
+
+export async function fetchStaffInvites(clinicUuid: string): Promise<StaffInviteModel[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<StaffInviteModel[]>>(
+    `/clinic/${clinicUuid}/staff/invites`
+  );
+  return res.data.data ?? [];
+}
+
+export async function revokeStaffInvite(clinicUuid: string, inviteUuid: string): Promise<void> {
+  await axiosInstance.post(`/clinic/${clinicUuid}/staff/invites/${inviteUuid}/revoke`);
+}
+
+export async function disableClinicStaff(clinicUuid: string, userUuid: string): Promise<void> {
+  await axiosInstance.post(`/clinic/${clinicUuid}/staff/${userUuid}/disable`);
+}
+
+export async function fetchStaffInviteByToken(token: string): Promise<StaffInvitePreview> {
+  const res = await axiosInstance.get<ApiSuccessResponse<StaffInvitePreview>>(
+    `/clinic/staff-invite/${token}`
+  );
+  return res.data.data;
+}
+
+export async function completeStaffInvite(
+  token: string,
+  payload: { firstName: string; lastName?: string; password: string }
+): Promise<StaffMemberModel> {
+  const res = await axiosInstance.post<ApiSuccessResponse<StaffMemberModel>>(
+    `/clinic/staff-invite/${token}/complete`,
+    payload
+  );
+  return res.data.data;
+}
+
 export async function fetchClinicPatients(clinicUuid: string): Promise<ClinicPatientModel[]> {
   const res = await axiosInstance.get<ApiSuccessResponse<ClinicPatientModel[]>>(`/clinic/${clinicUuid}/patients`);
   return res.data.data ?? [];

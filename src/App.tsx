@@ -52,8 +52,7 @@ function App() {
   const isLoading = navigation.state === "loading";
   const inPortal = isPortalRoute(location.pathname);
 
-  // Dev: drop any previously registered SW so multi-tab auth isn't stuck on
-  // an old precached bundle that wrote a shared localStorage token.
+  // Dev: drop stale service workers so auth isn't stuck on an old precached bundle.
   useEffect(() => {
     if (!import.meta.env.DEV || !('serviceWorker' in navigator)) return;
     void navigator.serviceWorker.getRegistrations().then((regs) => {

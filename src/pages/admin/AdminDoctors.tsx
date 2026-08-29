@@ -165,7 +165,7 @@ export default function AdminDoctors() {
           </p>
         </div>
         <Select value={filter} onValueChange={(v) => setFilter(v as DoctorStatus | 'ALL')}>
-          <SelectTrigger className="w-[220px]">
+          <SelectTrigger className="w-full sm:w-[220px]">
             <SelectValue placeholder="Filter status" />
           </SelectTrigger>
           <SelectContent>
