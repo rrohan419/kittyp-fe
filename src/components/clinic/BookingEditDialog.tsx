@@ -236,6 +236,11 @@ export function BookingEditDialog({
                 type="time"
                 step={1800}
                 value={slotTime}
+                min={
+                  slotDate === format(new Date(), 'yyyy-MM-dd')
+                    ? format(snapToHalfHour(new Date()), 'HH:mm')
+                    : undefined
+                }
                 onChange={(e) => setSlotTime(e.target.value)}
               />
             </div>

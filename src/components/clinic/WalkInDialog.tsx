@@ -910,6 +910,11 @@ export function AddAppointmentDialog({
                   <Input
                     type="time"
                     value={form.slotTime}
+                    min={
+                      form.slotDate === format(new Date(), 'yyyy-MM-dd')
+                        ? format(snapToHalfHour(new Date()), 'HH:mm')
+                        : undefined
+                    }
                     onChange={(e) => set('slotTime', e.target.value)}
                     onBlur={applyTimeSnap}
                   />
