@@ -8,6 +8,20 @@ export interface PaginationModel<T> {
   isLast: boolean;
   totalElements: number;
   totalPages: number;
+  pageNumber?: number;
+  pageSize?: number;
+}
+
+export function emptyPage<T>(pageSize = 10): PaginationModel<T> {
+  return {
+    models: [],
+    isFirst: true,
+    isLast: true,
+    totalElements: 0,
+    totalPages: 0,
+    pageNumber: 1,
+    pageSize,
+  };
 }
 
 export interface WrappedPaginationResponse<T> {

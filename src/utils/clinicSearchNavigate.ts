@@ -24,10 +24,12 @@ export async function resolveClinicSearchTarget(
   const q = rawQuery.trim();
   if (!q || !clinicUuid) return null;
 
-  const [pets, owners] = await Promise.all([
-    fetchClinicPets(clinicUuid, q).catch(() => [] as ClinicPetListModel[]),
-    fetchClinicOwners(clinicUuid, q).catch(() => [] as ClinicOwnerModel[]),
+  const [petsPage, ownersPage] = await Promise.all([
+    fetchClinicPets(clinicUuid, q, { pageSize: 50 }).catch(() => ({ models: [] as ClinicPetListModel[] })),
+    fetchClinicOwners(clinicUuid, q, { pageSize: 50 }).catch(() => ({ models: [] as ClinicOwnerModel[] })),
   ]);
+  const pets = petsPage.models ?? [];
+  const owners = ownersPage.models ?? [];
 
   const qn = norm(q);
   const qd = digits(q);

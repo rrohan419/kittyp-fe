@@ -77,7 +77,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
     user: { name: 'Dr. John Doe', subtitle: 'General Veterinary', initials: 'DR' },
     navItems: [
       { label: 'Dashboard', path: '/doctor', icon: LayoutDashboard, end: true },
-      { label: 'Appointments', path: '/doctor/appointments', icon: Calendar, badge: '3' },
+      { label: 'Appointments', path: '/doctor/appointments', icon: Calendar },
       { label: 'Availability', path: '/doctor/availability', icon: Clock },
       { label: 'Patients', path: '/doctor/patients', icon: Users },
       { label: 'Nutrition', path: '/doctor/nutrition', icon: Apple },

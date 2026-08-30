@@ -164,12 +164,14 @@ export function AddAppointmentDialog({
       setSearching(true);
       try {
         const emailOrId = { by: 'emailOrId' as const };
-        const [pets, owners, users] = await Promise.all([
-          fetchClinicPets(clinicUuid, q, emailOrId),
-          fetchClinicOwners(clinicUuid, q, emailOrId),
+        const [petsPage, ownersPage, users] = await Promise.all([
+          fetchClinicPets(clinicUuid, q, { ...emailOrId, pageSize: 50 }),
+          fetchClinicOwners(clinicUuid, q, { ...emailOrId, pageSize: 50 }),
           searchPlatformUsers(clinicUuid, q, emailOrId),
         ]);
         if (cancelled) return;
+        const pets = petsPage.models ?? [];
+        const owners = ownersPage.models ?? [];
         const petHits: SearchHit[] = pets.slice(0, 30).map((pet) => ({ kind: 'pet', pet }));
         const ownerPetHits: SearchHit[] = [];
         for (const owner of owners.slice(0, 20)) {
@@ -910,6 +912,11 @@ export function AddAppointmentDialog({
                   <Input
                     type="time"
                     value={form.slotTime}
+                    min={
+                      form.slotDate === format(new Date(), 'yyyy-MM-dd')
+                        ? format(snapToHalfHour(new Date()), 'HH:mm')
+                        : undefined
+                    }
                     onChange={(e) => set('slotTime', e.target.value)}
                     onBlur={applyTimeSnap}
                   />

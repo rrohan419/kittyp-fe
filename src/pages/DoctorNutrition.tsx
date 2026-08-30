@@ -36,6 +36,9 @@ import {
 import type { PetCarePlan } from '@/services/aiService';
 import { defaultEnvironmentData } from '@/services/aiService';
 import { PetParentNutritionTracker } from '@/components/nutrition/PetParentNutritionTracker';
+import { NutritionDurationPicker } from '@/components/nutrition/NutritionDurationPicker';
+import { DEFAULT_PLAN_DURATION_DAYS, clampPlanDurationDays } from '@/utils/nutritionDuration';
+import { ListPager } from '@/components/ui/ListPager';
 
 function petName(plan: NutritionPlan): string {
   return plan.nutritionRecommendationResponse?.petProfileSummary?.name?.trim() || 'Patient';
@@ -64,20 +67,27 @@ export default function DoctorNutrition() {
   const [busyUuid, setBusyUuid] = useState<string | null>(null);
   const [trackerPetUuid, setTrackerPetUuid] = useState<string | null>(null);
   const [sendTarget, setSendTarget] = useState<NutritionPlan | null>(null);
+  const [sendDurationDays, setSendDurationDays] = useState(DEFAULT_PLAN_DURATION_DAYS);
+  const [planPage, setPlanPage] = useState(0);
+  const [planPages, setPlanPages] = useState(0);
+  const [planTotal, setPlanTotal] = useState(0);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (page = planPage) => {
     setLoading(true);
     setLoadError(false);
     try {
-      const page = await fetchFilteredNutritionPlans(0, 30, {});
-      setPlans(page.models ?? []);
+      const result = await fetchFilteredNutritionPlans(page, 20, {});
+      setPlans(result.models ?? []);
+      setPlanPage(page);
+      setPlanPages(result.totalPages ?? 0);
+      setPlanTotal(result.totalElements ?? 0);
     } catch {
       setLoadError(true);
       toast.error('Failed to load nutrition plans');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [planPage]);
 
   useEffect(() => {
     void load();
@@ -128,8 +138,8 @@ export default function DoctorNutrition() {
   const handleSend = async (plan: NutritionPlan) => {
     try {
       await runBusy(plan.uuid, async () => {
-        await sendNutritionPlan(plan.uuid);
-        toast.success(`Sent plan to ${petName(plan)}'s parent`);
+        await sendNutritionPlan(plan.uuid, { durationDays: clampPlanDurationDays(sendDurationDays) });
+        toast.success(`Sent ${clampPlanDurationDays(sendDurationDays)}-day plan to ${petName(plan)}'s parent`);
         setReviewPlan(null);
         setSendTarget(null);
       });
@@ -227,7 +237,10 @@ export default function DoctorNutrition() {
                   <Button
                     size="sm"
                     disabled={busyUuid === plan.uuid}
-                    onClick={() => setSendTarget(plan)}
+                    onClick={() => {
+                      setSendDurationDays(DEFAULT_PLAN_DURATION_DAYS);
+                      setSendTarget(plan);
+                    }}
                   >
                     <Send className="h-3.5 w-3.5 mr-1" />
                     Send to parent
@@ -236,6 +249,14 @@ export default function DoctorNutrition() {
               </div>
             ))
           )}
+          <ListPager
+            page={planPage + 1}
+            totalPages={planPages}
+            totalElements={planTotal}
+            noun={planTotal === 1 ? 'plan' : 'plans'}
+            onPageChange={(p) => void load(p - 1)}
+            disabled={loading}
+          />
         </CardContent>
       </Card>
 
@@ -275,7 +296,7 @@ export default function DoctorNutrition() {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Parent nutrition progress</DialogTitle>
-            <DialogDescription>30-day feeding log for this patient.</DialogDescription>
+            <DialogDescription>Feeding log for this patient.</DialogDescription>
           </DialogHeader>
           {trackerPetUuid && (
             <PetParentNutritionTracker embedded petUuid={trackerPetUuid} readOnly />
@@ -322,7 +343,10 @@ export default function DoctorNutrition() {
                 )}
                 <Button
                   disabled={busyUuid === reviewPlan.uuid}
-                  onClick={() => setSendTarget(reviewPlan)}
+                  onClick={() => {
+                    setSendDurationDays(DEFAULT_PLAN_DURATION_DAYS);
+                    setSendTarget(reviewPlan);
+                  }}
                 >
                   <Send className="h-4 w-4 mr-1.5" />
                   Send to parent
@@ -343,6 +367,7 @@ export default function DoctorNutrition() {
                 : ''}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <NutritionDurationPicker value={sendDurationDays} onChange={setSendDurationDays} />
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction

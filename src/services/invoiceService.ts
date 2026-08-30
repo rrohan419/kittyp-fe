@@ -1,5 +1,6 @@
 import axiosInstance from '@/config/axionInstance';
 import { ApiSuccessResponse } from './cartService';
+import { PaginationModel, emptyPage } from './adminService';
 
 export type TreatmentItemType =
   | 'CONSULTATION'
@@ -122,11 +123,18 @@ export async function createConsultationInvoice(
   return normalizeCreateResult(res.data.data);
 }
 
-export async function fetchMyInvoices(clinicUuid?: string): Promise<ConsultationInvoice[]> {
-  const res = await axiosInstance.get<ApiSuccessResponse<ConsultationInvoice[]>>('/invoice/mine', {
-    params: clinicUuid ? { clinicUuid } : undefined,
-  });
-  return res.data.data ?? [];
+export async function fetchMyInvoices(
+  clinicUuid?: string,
+  pageNumber = 1,
+  pageSize = 10
+): Promise<PaginationModel<ConsultationInvoice>> {
+  const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<ConsultationInvoice>>>(
+    '/invoice/mine',
+    {
+      params: { pageNumber, pageSize, ...(clinicUuid ? { clinicUuid } : {}) },
+    }
+  );
+  return res.data.data ?? emptyPage<ConsultationInvoice>(pageSize);
 }
 
 export async function generateInvoicePdf(uuid: string): Promise<ConsultationInvoice> {
@@ -187,11 +195,16 @@ function normalizeCreateResult(data: CreateInvoiceResult | ConsultationInvoice):
   };
 }
 
-export async function fetchClinicInvoices(clinicUuid: string): Promise<ConsultationInvoice[]> {
-  const res = await axiosInstance.get<ApiSuccessResponse<ConsultationInvoice[]>>(
-    `/clinic/${clinicUuid}/invoices`
+export async function fetchClinicInvoices(
+  clinicUuid: string,
+  pageNumber = 1,
+  pageSize = 10
+): Promise<PaginationModel<ConsultationInvoice>> {
+  const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<ConsultationInvoice>>>(
+    `/clinic/${clinicUuid}/invoices`,
+    { params: { pageNumber, pageSize } }
   );
-  return res.data.data ?? [];
+  return res.data.data ?? emptyPage<ConsultationInvoice>(pageSize);
 }
 
 export async function generateClinicInvoicePdf(
@@ -258,9 +271,16 @@ export interface OwnerInvoice {
   createdAt?: string | null;
 }
 
-export async function fetchOwnerPetInvoices(petUuid: string): Promise<OwnerInvoice[]> {
-  const res = await axiosInstance.get<ApiSuccessResponse<OwnerInvoice[]>>(`/pet/${petUuid}/invoices`);
-  return res.data.data ?? [];
+export async function fetchOwnerPetInvoices(
+  petUuid: string,
+  pageNumber = 1,
+  pageSize = 10
+): Promise<PaginationModel<OwnerInvoice>> {
+  const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<OwnerInvoice>>>(
+    `/pet/${petUuid}/invoices`,
+    { params: { pageNumber, pageSize } }
+  );
+  return res.data.data ?? emptyPage<OwnerInvoice>(pageSize);
 }
 
 export async function fetchOwnerInvoicePdfUrl(petUuid: string, invoiceUuid: string): Promise<string> {

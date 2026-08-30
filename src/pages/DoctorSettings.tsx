@@ -87,6 +87,7 @@ export default function DoctorSettings() {
   const { isPersonalPractice } = useActiveClinic();
   const [profile, setProfile] = useState<DoctorVerificationModel | null>(null);
   const [attended, setAttended] = useState<AttendedPatientModel[]>([]);
+  const [attendedTotal, setAttendedTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [waConfigured, setWaConfigured] = useState(false);
   const [waPhoneId, setWaPhoneId] = useState('');
@@ -95,11 +96,15 @@ export default function DoctorSettings() {
   useEffect(() => {
     void Promise.all([
       fetchMyDoctorProfile().catch(() => null),
-      fetchMyAttendedPatients().catch(() => [] as AttendedPatientModel[]),
+      fetchMyAttendedPatients(undefined, { pageNumber: 1, pageSize: 20 }).catch(() => ({
+        models: [] as AttendedPatientModel[],
+        totalElements: 0,
+      })),
     ])
       .then(([p, a]) => {
         setProfile(p);
-        setAttended(a);
+        setAttended(a.models ?? []);
+        setAttendedTotal(a.totalElements ?? 0);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -232,7 +237,7 @@ export default function DoctorSettings() {
               Pets and owners from visits you treated across practices.
             </p>
           </div>
-          <Badge variant="secondary">{attended.length}</Badge>
+          <Badge variant="secondary">{attendedTotal}</Badge>
         </CardHeader>
         <CardContent className="space-y-2">
           {attended.length === 0 ? (

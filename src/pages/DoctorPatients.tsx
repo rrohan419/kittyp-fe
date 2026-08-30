@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format, parseISO, isValid } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,43 +7,52 @@ import { Button } from '@/components/ui/button';
 import { Search, PawPrint, Mail } from 'lucide-react';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { AttendedPatientModel, fetchMyAttendedPatients } from '@/services/visitService';
-import { matchesQuery } from '@/utils/search';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ListPager } from '@/components/ui/ListPager';
 
-type ClientRow = {
-  petUuid: string;
-  petName: string;
-  ownerName?: string | null;
-  ownerEmail?: string | null;
-  ownerPhone?: string | null;
-  clinicName?: string | null;
-  lastAssessment?: string | null;
-  lastVisitAt?: string | null;
-  visitCount?: number;
-};
+const PAGE_SIZE = 20;
 
 export default function DoctorPatients() {
   const { clinicUuid, clinic } = useActiveClinic();
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [patients, setPatients] = useState<AttendedPatientModel[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  /** Scope patient roster to the active practice (personal vs clinic branch). */
   const practiceClinicUuid = clinicUuid || undefined;
 
   useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => window.clearTimeout(handle);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, practiceClinicUuid]);
+
+  useEffect(() => {
     let cancelled = false;
-    setPatients([]);
     (async () => {
       setLoading(true);
       try {
-        const attended = await fetchMyAttendedPatients(practiceClinicUuid);
+        const result = await fetchMyAttendedPatients(practiceClinicUuid, {
+          q: debouncedSearch || undefined,
+          pageNumber: page,
+          pageSize: PAGE_SIZE,
+        });
         if (!cancelled) {
-          setPatients(attended);
+          setPatients(result.models ?? []);
+          setTotal(result.totalElements ?? 0);
+          setTotalPages(result.totalPages ?? 0);
         }
       } catch {
         if (!cancelled) {
           setPatients([]);
+          setTotal(0);
+          setTotalPages(0);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -52,32 +61,7 @@ export default function DoctorPatients() {
     return () => {
       cancelled = true;
     };
-  }, [practiceClinicUuid]);
-
-  const clients = useMemo<ClientRow[]>(() => {
-    return patients
-      .filter((p) => p.petUuid)
-      .map((p) => ({
-        petUuid: p.petUuid,
-        petName: p.petName,
-        ownerName: p.ownerName,
-        ownerEmail: p.ownerEmail,
-        ownerPhone: p.ownerPhone,
-        clinicName: p.clinicName,
-        lastAssessment: p.lastAssessment,
-        lastVisitAt: p.lastVisitAt,
-        visitCount: p.visitCount,
-      }))
-      .sort((a, b) => (a.petName || '').toLowerCase().localeCompare((b.petName || '').toLowerCase()));
-  }, [patients]);
-
-  const filtered = useMemo(
-    () =>
-      clients.filter((p) =>
-        matchesQuery(search, p.petName, p.ownerName, p.ownerEmail, p.ownerPhone, p.clinicName)
-      ),
-    [clients, search]
-  );
+  }, [practiceClinicUuid, debouncedSearch, page]);
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -90,7 +74,7 @@ export default function DoctorPatients() {
                 : `You're at ${clinic.name} — clinic visits only.`
               : 'Pets you treated, plus pets that visited a clinic you belong to'}
           <span className="inline-block min-w-[2.5rem]">
-            {loading ? '' : ` · ${filtered.length}`}
+            {loading ? '' : ` · ${total}`}
           </span>
         </p>
       </div>
@@ -123,7 +107,7 @@ export default function DoctorPatients() {
             </Card>
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : patients.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="py-16 text-center text-muted-foreground">
             {clinic?.personal
@@ -132,8 +116,9 @@ export default function DoctorPatients() {
           </CardContent>
         </Card>
       ) : (
+        <>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((p) => {
+          {patients.filter((p) => p.petUuid).map((p) => {
             const last = p.lastVisitAt ? parseISO(p.lastVisitAt) : null;
             return (
               <Card key={p.petUuid} className="border-0 shadow-sm hover:shadow-md transition-shadow">
@@ -180,6 +165,15 @@ export default function DoctorPatients() {
             );
           })}
         </div>
+        <ListPager
+          page={page}
+          totalPages={totalPages}
+          totalElements={total}
+          noun={total === 1 ? 'patient' : 'patients'}
+          onPageChange={setPage}
+          disabled={loading}
+        />
+        </>
       )}
     </div>
   );

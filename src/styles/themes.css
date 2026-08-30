@@ -21,6 +21,7 @@
     --input: 220 13% 91%;
     --ring: 339 85% 60%;
     --radius: 0.5rem;
+    color-scheme: light;
   }
 
   .dark {
@@ -44,6 +45,7 @@
     --border: 215 27.9% 16.9%;
     --input: 215 27.9% 16.9%;
     --ring: 339 85% 60%;
+    color-scheme: dark;
   }
 
   /* Default theme is now pink/rose */

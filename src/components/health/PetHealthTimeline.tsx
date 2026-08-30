@@ -105,7 +105,9 @@ export const PetHealthTimeline: React.FC<PetHealthTimelineProps> = ({
     try {
       const [list, bills] = await Promise.all([
         fetchParentPetVisits(petId),
-        fetchOwnerPetInvoices(petId).catch(() => [] as OwnerInvoice[]),
+        fetchOwnerPetInvoices(petId, 1, 50)
+          .then((page) => page.models ?? [])
+          .catch(() => [] as OwnerInvoice[]),
       ]);
       setVisits(list);
       setInvoices(bills);

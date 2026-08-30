@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { addDays, format, startOfDay } from 'date-fns';
-import { FileSpreadsheet, Plus, Trash2, FileDown, ExternalLink, Send, Banknote, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileSpreadsheet, Plus, Trash2, FileDown, ExternalLink, Send, Banknote, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,7 @@ import { formatInr } from '@/services/availabilityService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { collectInvoicePayment, isInvoiceUnpaid, toastInvoicePaymentError } from '@/utils/collectInvoicePayment';
 import { MarkInvoicePaidDialog } from '@/components/invoice/MarkInvoicePaidDialog';
+import { ListPager } from '@/components/ui/ListPager';
 
 const emptyItem = (): TreatmentLineItem => ({
   itemType: 'CONSULTATION',
@@ -43,8 +44,7 @@ const emptyItem = (): TreatmentLineItem => ({
   unitPrice: 500,
 });
 
-const INITIAL_INVOICE_ROWS = 5;
-const MORE_INVOICE_ROWS = 10;
+const INVOICE_PAGE_SIZE = 10;
 
 type LocationState = { fromVisit?: InvoiceFromVisitState } | null;
 
@@ -72,7 +72,9 @@ export default function DoctorInvoices() {
   const [paidAmount, setPaidAmount] = useState('0');
   const [paymentMode, setPaymentMode] = useState('UPI');
   const [invoices, setInvoices] = useState<ConsultationInvoice[]>([]);
-  const [visibleCount, setVisibleCount] = useState(INITIAL_INVOICE_ROWS);
+  const [invoicePage, setInvoicePage] = useState(1);
+  const [invoiceTotal, setInvoiceTotal] = useState(0);
+  const [invoicePages, setInvoicePages] = useState(0);
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
   const [busyUuid, setBusyUuid] = useState<string | null>(null);
@@ -177,20 +179,23 @@ export default function DoctorInvoices() {
     })();
   }, [location.state, location.pathname, location.search, navigate, searchParams]);
 
-  const load = async () => {
+  const load = async (page = invoicePage) => {
     if (clinicLoading) return;
     try {
-      const list = await fetchMyInvoices(clinicUuid ?? undefined);
-      setInvoices(list);
-      setVisibleCount(list.length);
+      const result = await fetchMyInvoices(clinicUuid ?? undefined, page, INVOICE_PAGE_SIZE);
+      setInvoices(result.models ?? []);
+      setInvoiceTotal(result.totalElements ?? 0);
+      setInvoicePages(result.totalPages ?? 0);
+      setInvoicePage(result.pageNumber ?? page);
     } catch {
       setInvoices([]);
-      setVisibleCount(0);
+      setInvoiceTotal(0);
+      setInvoicePages(0);
     }
   };
 
   useEffect(() => {
-    void load();
+    void load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clinicLoading, clinicUuid]);
 
@@ -212,15 +217,7 @@ export default function DoctorInvoices() {
     })();
   }, [searchParams, clinicLoading]);
 
-  const orderedInvoices = useMemo(() => {
-    return [...invoices].sort((a, b) => {
-      const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
-      const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
-      return tb - ta;
-    });
-  }, [invoices]);
-  const visibleInvoices = orderedInvoices.slice(0, visibleCount);
-  const hiddenCount = Math.max(0, orderedInvoices.length - visibleCount);
+  const orderedInvoices = invoices;
 
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0),
@@ -657,9 +654,9 @@ export default function DoctorInvoices() {
         <CardHeader>
           <CardTitle className="text-base">
             Previous invoices
-            {orderedInvoices.length ? (
+            {invoiceTotal ? (
               <span className="ml-2 text-sm font-normal text-muted-foreground">
-                {orderedInvoices.length} {orderedInvoices.length === 1 ? 'invoice' : 'invoices'}
+                {invoiceTotal} {invoiceTotal === 1 ? 'invoice' : 'invoices'}
               </span>
             ) : null}
           </CardTitle>
@@ -669,7 +666,7 @@ export default function DoctorInvoices() {
             <p className="text-sm text-muted-foreground">No invoices yet.</p>
           ) : (
             <>
-            {visibleInvoices.map((inv) => (
+            {orderedInvoices.map((inv) => (
               <div
                 key={inv.uuid}
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-muted/50 text-sm"
@@ -737,34 +734,13 @@ export default function DoctorInvoices() {
                 </div>
               </div>
             ))}
-            {(hiddenCount > 0 || visibleCount > INITIAL_INVOICE_ROWS) && (
-              <div className="flex justify-center gap-2 pt-1">
-                {hiddenCount > 0 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground"
-                    onClick={() => setVisibleCount((n) => n + MORE_INVOICE_ROWS)}
-                  >
-                    <ChevronDown className="h-4 w-4 mr-1" />
-                    Show {Math.min(MORE_INVOICE_ROWS, hiddenCount)} more
-                  </Button>
-                )}
-                {visibleCount > INITIAL_INVOICE_ROWS && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground"
-                    onClick={() => setVisibleCount(INITIAL_INVOICE_ROWS)}
-                  >
-                    <ChevronUp className="h-4 w-4 mr-1" />
-                    Collapse
-                  </Button>
-                )}
-              </div>
-            )}
+            <ListPager
+              page={invoicePage}
+              totalPages={invoicePages}
+              totalElements={invoiceTotal}
+              noun={invoiceTotal === 1 ? 'invoice' : 'invoices'}
+              onPageChange={(p) => void load(p)}
+            />
             </>
           )}
         </CardContent>

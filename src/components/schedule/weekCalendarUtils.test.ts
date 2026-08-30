@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { setHours, setMinutes, setSeconds, startOfDay } from 'date-fns';
-import { HOUR_PX, eventLayout, slotStartFromHourClick, visibleHourRange, withLanes } from './weekCalendarLayout.ts';
+import {
+  HOUR_PX,
+  eventLayout,
+  nowLineOffsetPx,
+  slotStartFromHourClick,
+  visibleHourRange,
+  withLanes,
+} from './weekCalendarLayout.ts';
 
 function at(day: Date, hour: number, minute = 0) {
   return setSeconds(setMinutes(setHours(day, hour), minute), 0);
@@ -80,6 +87,25 @@ describe('visibleHourRange', () => {
     ]);
     assert.equal(range.startHour, 0);
     assert.equal(range.endHour, 20);
+  });
+
+  it('expands the grid to include the current hour', () => {
+    const day = startOfDay(new Date('2026-08-19T00:00:00'));
+    const range = visibleHourRange([], at(day, 7, 15));
+    assert.equal(range.startHour, 7);
+    assert.equal(range.endHour, 20);
+  });
+});
+
+describe('nowLineOffsetPx', () => {
+  it('places 9:30 at 1.5 hours from an 8am range start', () => {
+    const day = startOfDay(new Date('2026-08-19T00:00:00'));
+    assert.equal(nowLineOffsetPx(at(day, 9, 30), { startHour: 8, endHour: 20 }), 1.5 * HOUR_PX);
+  });
+
+  it('returns null when now is outside the visible range', () => {
+    const day = startOfDay(new Date('2026-08-19T00:00:00'));
+    assert.equal(nowLineOffsetPx(at(day, 6, 0), { startHour: 8, endHour: 20 }), null);
   });
 });
 

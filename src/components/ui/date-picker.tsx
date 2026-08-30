@@ -76,6 +76,18 @@ export function DatePicker({
         className="z-[200] w-auto p-0"
         align="start"
         onOpenAutoFocus={(event) => event.preventDefault()}
+        onPointerDownOutside={(event) => {
+          const target = event.target as HTMLElement | null;
+          if (target?.closest("[data-radix-select-content]")) {
+            event.preventDefault();
+          }
+        }}
+        onFocusOutside={(event) => {
+          const target = event.target as HTMLElement | null;
+          if (target?.closest("[data-radix-select-content]")) {
+            event.preventDefault();
+          }
+        }}
       >
         <Calendar
           {...calendarProps}

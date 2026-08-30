@@ -1,11 +1,12 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format, parseISO, isValid } from 'date-fns';
 import { FileText, Loader2, Receipt } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { InvoicePdfDialog } from '@/components/invoice/InvoicePdfDialog';
-import { OwnerInvoice, fetchOwnerInvoicePdfUrl } from '@/services/invoiceService';
+import { OwnerInvoice, fetchOwnerInvoicePdfUrl, fetchOwnerPetInvoices } from '@/services/invoiceService';
+import { LoadMoreButton } from '@/components/ui/ListPager';
 
 function money(inv: OwnerInvoice): string {
   const currency = inv.currency || 'INR';
@@ -26,12 +27,42 @@ function paymentLabel(inv: OwnerInvoice): string {
 
 type Props = {
   petId: string;
-  invoices: OwnerInvoice[];
-  loading?: boolean;
 };
 
-export function OwnerPetRecords({ petId, invoices, loading }: Props) {
+const PAGE_SIZE = 10;
+
+export function OwnerPetRecords({ petId }: Props) {
+  const [invoices, setInvoices] = useState<OwnerInvoice[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [pdfUuid, setPdfUuid] = useState<string | null>(null);
+
+  const loadPage = useCallback(
+    async (nextPage: number, append: boolean) => {
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      try {
+        const result = await fetchOwnerPetInvoices(petId, nextPage, PAGE_SIZE);
+        const rows = result.models ?? [];
+        setInvoices((prev) => (append ? [...prev, ...rows] : rows));
+        setPage(nextPage);
+        setHasMore(!(result.isLast ?? nextPage >= (result.totalPages ?? 1)));
+      } catch {
+        if (!append) setInvoices([]);
+        setHasMore(false);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [petId]
+  );
+
+  useEffect(() => {
+    void loadPage(1, false);
+  }, [loadPage]);
   const fetchUrl = useCallback(
     (invoiceUuid: string) => fetchOwnerInvoicePdfUrl(petId, invoiceUuid),
     [petId]
@@ -70,7 +101,8 @@ export function OwnerPetRecords({ petId, invoices, loading }: Props) {
               No invoices yet. After the clinic collects payment, the bill and PDF appear here.
             </p>
           ) : (
-            invoices.map((inv) => (
+            <>
+            {invoices.map((inv) => (
               <div
                 key={inv.uuid}
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-muted/50"
@@ -97,7 +129,13 @@ export function OwnerPetRecords({ petId, invoices, loading }: Props) {
                   )}
                 </div>
               </div>
-            ))
+            ))}
+            <LoadMoreButton
+              hasMore={hasMore}
+              loading={loadingMore}
+              onLoadMore={() => void loadPage(page + 1, true)}
+            />
+            </>
           )}
         </CardContent>
       </Card>

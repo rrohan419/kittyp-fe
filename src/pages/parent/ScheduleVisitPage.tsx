@@ -33,6 +33,7 @@ import {
 import { isAxiosError } from 'axios';
 import { PetNameType } from '@/components/ui/PetNameType';
 import { specializationLabel } from '@/utils/specialization';
+import { filterOpenSlots } from '@/utils/clinicSlots';
 
 type Step = 'search' | 'book';
 
@@ -313,7 +314,7 @@ export default function ScheduleVisitPage() {
     fetchParentDoctorSlots(clinic.clinicUuid, doctor.doctorUuid, date)
       .then((s) => {
         if (!cancelled) {
-          setSlots(s);
+          setSlots(filterOpenSlots(s));
           setSlotStart('');
         }
       })
@@ -361,7 +362,7 @@ export default function ScheduleVisitPage() {
       toast.error(apiErrorMessage(e, 'Could not book this slot'));
       if (clinic && doctor) {
         try {
-          setSlots(await fetchParentDoctorSlots(clinic.clinicUuid, doctor.doctorUuid, date));
+          setSlots(filterOpenSlots(await fetchParentDoctorSlots(clinic.clinicUuid, doctor.doctorUuid, date)));
         } catch {
           /* ignore */
         }

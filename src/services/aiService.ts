@@ -352,7 +352,22 @@ export const generateNutritionRecommendation = async (
 
     // Call AI service
     const requestData: any = {
-      petProfile,
+      petProfile: {
+        uuid: petProfile.uuid,
+        name: petProfile.name,
+        profilePicture: petProfile.profilePicture,
+        type: petProfile.type,
+        breed: petProfile.breed,
+        dateOfBirth: petProfile.dateOfBirth,
+        weight: petProfile.weight,
+        activityLevel: petProfile.activityLevel,
+        gender: petProfile.gender,
+        currentFoodBrand: petProfile.currentFoodBrand,
+        healthConditions: petProfile.healthConditions,
+        allergies: petProfile.allergies,
+        isNeutered: petProfile.isNeutered,
+        isSpayedOrNeutered: petProfile.isNeutered,
+      },
       userId,
       timestamp: new Date().toISOString()
     };

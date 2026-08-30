@@ -10,17 +10,17 @@ function mapAttended(row: AttendedPatientModel): PetProfile {
   return {
     uuid: row.petUuid,
     name: row.petName || 'Pet',
-    profilePicture: '',
+    profilePicture: row.profilePicture || '',
     type: row.species || '',
     breed: row.breed || '',
-    dateOfBirth: '',
-    weight: '',
-    activityLevel: 'moderate',
-    gender: '',
-    currentFoodBrand: '',
-    healthConditions: '',
-    allergies: '',
-    isNeutered: true,
+    dateOfBirth: row.dateOfBirth || '',
+    weight: row.weight == null || row.weight === '' ? '' : String(row.weight),
+    activityLevel: row.activityLevel || '',
+    gender: row.gender || '',
+    currentFoodBrand: row.currentFoodBrand || '',
+    healthConditions: row.healthConditions || '',
+    allergies: row.allergies || '',
+    isNeutered: row.isNeutered ?? false,
     createdAt: '',
   };
 }
@@ -49,10 +49,11 @@ export function useNutritionPets() {
     }
     setLoading(true);
     try {
-      const attended = await fetchMyAttendedPatients(clinicUuid).catch(
-        () => [] as AttendedPatientModel[]
-      );
-      setPets(attended.map(mapAttended));
+      const attended = await fetchMyAttendedPatients(clinicUuid, {
+        pageNumber: 1,
+        pageSize: 50,
+      }).catch(() => ({ models: [] as AttendedPatientModel[] }));
+      setPets((attended.models ?? []).map(mapAttended));
       setSourceLabel(
         isPersonalPractice
           ? 'Pets you treated'

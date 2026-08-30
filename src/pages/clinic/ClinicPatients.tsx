@@ -50,6 +50,7 @@ import {
   searchPlatformUsers,
 } from '@/services/clinicService';
 import { toast } from 'sonner';
+import { ListPager } from '@/components/ui/ListPager';
 import { digitsOnlyPhone, validateEmail, validatePhone } from '@/utils/validation';
 import { cn } from '@/lib/utils';
 
@@ -78,6 +79,12 @@ export default function ClinicPatients() {
   const [search, setSearch] = useState(searchParams.get('q') || '');
   const [searchAllBranches, setSearchAllBranches] = useState(false);
   const [owners, setOwners] = useState<OwnerRow[]>([]);
+  const [ownerPage, setOwnerPage] = useState(1);
+  const [ownerTotal, setOwnerTotal] = useState(0);
+  const [ownerPages, setOwnerPages] = useState(0);
+  const [petPage, setPetPage] = useState(1);
+  const [petTotal, setPetTotal] = useState(0);
+  const [petPages, setPetPages] = useState(0);
   const [pets, setPets] = useState<PetRow[]>([]);
   const [platformUsers, setPlatformUsers] = useState<PlatformUserSearchModel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +95,11 @@ export default function ClinicPatients() {
 
   const set = (key: keyof typeof emptyForm, value: string) =>
     setForm((s) => ({ ...s, [key]: value }));
+
+  useEffect(() => {
+    setOwnerPage(1);
+    setPetPage(1);
+  }, [search, clinicUuid, searchAllBranches]);
 
   useEffect(() => {
     const q = searchParams.get('q') || '';
@@ -107,21 +119,27 @@ export default function ClinicPatients() {
       const results = await Promise.all(
         clinics.map(async (c) => {
           const [o, p, users] = await Promise.all([
-            fetchClinicOwners(c.uuid, search || undefined),
-            fetchClinicPets(c.uuid, search || undefined),
+            fetchClinicOwners(c.uuid, search || undefined, { pageNumber: 1, pageSize: 20 }),
+            fetchClinicPets(c.uuid, search || undefined, { pageNumber: 1, pageSize: 20 }),
             search.trim().length >= 3
               ? searchPlatformUsers(c.uuid, search.trim())
               : Promise.resolve([]),
           ]);
           return {
-            owners: o.map((row) => ({ ...row, clinicUuid: c.uuid, clinicName: c.name })),
-            pets: p.map((row) => ({ ...row, clinicUuid: c.uuid, clinicName: c.name })),
+            owners: (o.models ?? []).map((row) => ({ ...row, clinicUuid: c.uuid, clinicName: c.name })),
+            pets: (p.models ?? []).map((row) => ({ ...row, clinicUuid: c.uuid, clinicName: c.name })),
+            ownerTotal: o.totalElements ?? 0,
+            petTotal: p.totalElements ?? 0,
             users,
           };
         })
       );
       setOwners(results.flatMap((r) => r.owners));
       setPets(results.flatMap((r) => r.pets));
+      setOwnerTotal(results.reduce((sum, r) => sum + r.ownerTotal, 0));
+      setPetTotal(results.reduce((sum, r) => sum + r.petTotal, 0));
+      setOwnerPages(0);
+      setPetPages(0);
       // Dedupe platform users by userUuid across branches
       const seen = new Set<string>();
       const merged: PlatformUserSearchModel[] = [];
@@ -134,14 +152,18 @@ export default function ClinicPatients() {
       return;
     }
     const [o, p, users] = await Promise.all([
-      fetchClinicOwners(clinicUuid!, search || undefined),
-      fetchClinicPets(clinicUuid!, search || undefined),
+      fetchClinicOwners(clinicUuid!, search || undefined, { pageNumber: ownerPage, pageSize: 20 }),
+      fetchClinicPets(clinicUuid!, search || undefined, { pageNumber: petPage, pageSize: 20 }),
       search.trim().length >= 3
         ? searchPlatformUsers(clinicUuid!, search.trim())
         : Promise.resolve([]),
     ]);
-    setOwners(o.map((row) => ({ ...row, clinicUuid: clinicUuid!, clinicName: clinic?.name })));
-    setPets(p.map((row) => ({ ...row, clinicUuid: clinicUuid!, clinicName: clinic?.name })));
+    setOwners((o.models ?? []).map((row) => ({ ...row, clinicUuid: clinicUuid!, clinicName: clinic?.name })));
+    setPets((p.models ?? []).map((row) => ({ ...row, clinicUuid: clinicUuid!, clinicName: clinic?.name })));
+    setOwnerTotal(o.totalElements ?? 0);
+    setOwnerPages(o.totalPages ?? 0);
+    setPetTotal(p.totalElements ?? 0);
+    setPetPages(p.totalPages ?? 0);
     setPlatformUsers(users);
   };
 
@@ -165,15 +187,17 @@ export default function ClinicPatients() {
           const results = await Promise.all(
             clinics.map(async (c) => {
               const [o, p, users] = await Promise.all([
-                fetchClinicOwners(c.uuid, search || undefined),
-                fetchClinicPets(c.uuid, search || undefined),
+                fetchClinicOwners(c.uuid, search || undefined, { pageNumber: 1, pageSize: 20 }),
+                fetchClinicPets(c.uuid, search || undefined, { pageNumber: 1, pageSize: 20 }),
                   search.trim().length >= 3
                     ? searchPlatformUsers(c.uuid, search.trim())
                     : Promise.resolve([]),
               ]);
               return {
-                owners: o.map((row) => ({ ...row, clinicUuid: c.uuid, clinicName: c.name })),
-                pets: p.map((row) => ({ ...row, clinicUuid: c.uuid, clinicName: c.name })),
+                owners: (o.models ?? []).map((row) => ({ ...row, clinicUuid: c.uuid, clinicName: c.name })),
+                pets: (p.models ?? []).map((row) => ({ ...row, clinicUuid: c.uuid, clinicName: c.name })),
+                ownerTotal: o.totalElements ?? 0,
+                petTotal: p.totalElements ?? 0,
                 users,
               };
             })
@@ -181,6 +205,10 @@ export default function ClinicPatients() {
           if (!cancelled) {
             setOwners(results.flatMap((r) => r.owners));
             setPets(results.flatMap((r) => r.pets));
+            setOwnerTotal(results.reduce((sum, r) => sum + r.ownerTotal, 0));
+            setPetTotal(results.reduce((sum, r) => sum + r.petTotal, 0));
+            setOwnerPages(0);
+            setPetPages(0);
             const seen = new Set<string>();
             const merged: PlatformUserSearchModel[] = [];
             for (const u of results.flatMap((r) => r.users)) {
@@ -192,15 +220,19 @@ export default function ClinicPatients() {
           }
         } else if (clinicUuid) {
           const [o, p, users] = await Promise.all([
-            fetchClinicOwners(clinicUuid, search || undefined),
-            fetchClinicPets(clinicUuid, search || undefined),
+            fetchClinicOwners(clinicUuid, search || undefined, { pageNumber: ownerPage, pageSize: 20 }),
+            fetchClinicPets(clinicUuid, search || undefined, { pageNumber: petPage, pageSize: 20 }),
             search.trim().length >= 3
               ? searchPlatformUsers(clinicUuid, search.trim())
               : Promise.resolve([]),
           ]);
           if (!cancelled) {
-            setOwners(o.map((row) => ({ ...row, clinicUuid, clinicName: clinic?.name })));
-            setPets(p.map((row) => ({ ...row, clinicUuid, clinicName: clinic?.name })));
+            setOwners((o.models ?? []).map((row) => ({ ...row, clinicUuid, clinicName: clinic?.name })));
+            setPets((p.models ?? []).map((row) => ({ ...row, clinicUuid, clinicName: clinic?.name })));
+            setOwnerTotal(o.totalElements ?? 0);
+            setOwnerPages(o.totalPages ?? 0);
+            setPetTotal(p.totalElements ?? 0);
+            setPetPages(p.totalPages ?? 0);
             setPlatformUsers(users);
           }
         }
@@ -219,7 +251,7 @@ export default function ClinicPatients() {
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [clinicUuid, search, searchAllBranches, clinics, clinic?.name]);
+  }, [clinicUuid, search, searchAllBranches, clinics, clinic?.name, ownerPage, petPage]);
 
   // When a header/list search uniquely identifies a pet or owner, open that entity directly.
   useEffect(() => {
@@ -398,7 +430,7 @@ export default function ClinicPatients() {
                   : 'bg-primary/10 text-primary'
               )}
             >
-              {owners.length}
+              {ownerTotal || owners.length}
             </Badge>
           </TabsTrigger>
           <TabsTrigger
@@ -416,7 +448,7 @@ export default function ClinicPatients() {
                   : 'bg-primary/10 text-primary'
               )}
             >
-              {pets.length}
+              {petTotal || pets.length}
             </Badge>
           </TabsTrigger>
         </TabsList>
@@ -576,6 +608,16 @@ export default function ClinicPatients() {
                   </p>
                 </div>
               )}
+              {!searchAllBranches && (
+                <ListPager
+                  page={ownerPage}
+                  totalPages={ownerPages}
+                  totalElements={ownerTotal}
+                  noun={ownerTotal === 1 ? 'client' : 'clients'}
+                  onPageChange={setOwnerPage}
+                  disabled={loading}
+                />
+              )}
             </div>
           )}
         </TabsContent>
@@ -677,6 +719,18 @@ export default function ClinicPatients() {
                   <p className="text-sm text-muted-foreground">
                     No pets found{searchAllBranches ? ' across branches' : ' for this clinic'}.
                   </p>
+                </div>
+              )}
+              {!searchAllBranches && (
+                <div className="col-span-full">
+                  <ListPager
+                    page={petPage}
+                    totalPages={petPages}
+                    totalElements={petTotal}
+                    noun={petTotal === 1 ? 'pet' : 'pets'}
+                    onPageChange={setPetPage}
+                    disabled={loading}
+                  />
                 </div>
               )}
             </div>

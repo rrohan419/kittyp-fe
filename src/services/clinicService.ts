@@ -1,5 +1,6 @@
 import axiosInstance from '@/config/axionInstance';
 import { ApiSuccessResponse } from './cartService';
+import { PaginationModel, emptyPage } from './adminService';
 
 export interface ClinicModel {
   uuid: string;
@@ -204,6 +205,15 @@ export interface InvoiceSummaryModel {
   createdAt?: string;
 }
 
+export interface ClinicalRecordModel {
+  uuid: string;
+  title?: string;
+  description?: string;
+  date?: string;
+  visitUuid?: string;
+  attachments?: string[];
+}
+
 export interface ClinicPetMedicalProfileModel {
   pet: ClinicPetListModel;
   owner: OwnerSummaryModel;
@@ -211,8 +221,8 @@ export interface ClinicPetMedicalProfileModel {
   appointments: ClinicBookingModel[];
   vaccinations: VaccineScheduleModel[];
   prescriptions: string[];
-  labReports: string[];
-  surgeries: string[];
+  labReports: ClinicalRecordModel[];
+  surgeries: ClinicalRecordModel[];
   invoices: InvoiceSummaryModel[];
 }
 
@@ -257,6 +267,7 @@ export interface HealthEventModel {
   isPast?: boolean;
   status?: string;
   attachments?: string[];
+  visitUuid?: string;
 }
 
 export interface VaccineScheduleModel {
@@ -265,6 +276,14 @@ export interface VaccineScheduleModel {
   dueDate: string;
   completed?: boolean;
   completedDate?: string;
+  certificateUrl?: string;
+}
+
+export interface VaccineCatalogModel {
+  id: number;
+  name: string;
+  species?: string;
+  description?: string;
 }
 
 export interface PatientDetailModel {
@@ -597,13 +616,20 @@ export async function fetchClinicPatientDetail(
 export async function fetchClinicOwners(
   clinicUuid: string,
   q?: string,
-  opts?: { by?: 'emailOrId' }
-): Promise<ClinicOwnerModel[]> {
-  const res = await axiosInstance.get<ApiSuccessResponse<ClinicOwnerModel[]>>(
+  opts?: { by?: 'emailOrId'; pageNumber?: number; pageSize?: number }
+): Promise<PaginationModel<ClinicOwnerModel>> {
+  const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<ClinicOwnerModel>>>(
     `/clinic/${clinicUuid}/owners`,
-    { params: { ...(q ? { q } : {}), ...(opts?.by ? { by: opts.by } : {}) } }
+    {
+      params: {
+        ...(q ? { q } : {}),
+        ...(opts?.by ? { by: opts.by } : {}),
+        pageNumber: opts?.pageNumber ?? 1,
+        pageSize: opts?.pageSize ?? 20,
+      },
+    }
   );
-  return res.data.data ?? [];
+  return res.data.data ?? emptyPage<ClinicOwnerModel>(opts?.pageSize ?? 20);
 }
 
 export async function searchPlatformUsers(
@@ -688,13 +714,20 @@ export async function addPetToClinicOwner(
 export async function fetchClinicPets(
   clinicUuid: string,
   q?: string,
-  opts?: { by?: 'emailOrId' }
-): Promise<ClinicPetListModel[]> {
-  const res = await axiosInstance.get<ApiSuccessResponse<ClinicPetListModel[]>>(
+  opts?: { by?: 'emailOrId'; pageNumber?: number; pageSize?: number }
+): Promise<PaginationModel<ClinicPetListModel>> {
+  const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<ClinicPetListModel>>>(
     `/clinic/${clinicUuid}/pets`,
-    { params: { ...(q ? { q } : {}), ...(opts?.by ? { by: opts.by } : {}) } }
+    {
+      params: {
+        ...(q ? { q } : {}),
+        ...(opts?.by ? { by: opts.by } : {}),
+        pageNumber: opts?.pageNumber ?? 1,
+        pageSize: opts?.pageSize ?? 20,
+      },
+    }
   );
-  return res.data.data ?? [];
+  return res.data.data ?? emptyPage<ClinicPetListModel>(opts?.pageSize ?? 20);
 }
 
 export async function fetchClinicPetMedicalProfile(
@@ -914,4 +947,59 @@ export async function fetchRetentionAlerts(clinicUuid: string): Promise<Retentio
 
 export async function notifyRetentionAlert(clinicUuid: string, alertId: string): Promise<void> {
   await axiosInstance.post(`/clinic/${clinicUuid}/retention-alerts/${alertId}/notify`);
+}
+
+export async function createClinicClinicalRecord(
+  clinicUuid: string,
+  petUuid: string,
+  payload: {
+    type: 'LAB_REPORT' | 'SURGERY';
+    title?: string;
+    description?: string;
+    date: string;
+    visitUuid?: string;
+    attachments?: string[];
+  }
+): Promise<HealthEventModel> {
+  const res = await axiosInstance.post<ApiSuccessResponse<HealthEventModel>>(
+    `/clinic/${clinicUuid}/pets/${petUuid}/records`,
+    payload
+  );
+  return res.data.data;
+}
+
+export async function fetchVaccineCatalog(
+  clinicUuid: string,
+  species?: string
+): Promise<VaccineCatalogModel[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<VaccineCatalogModel[]>>(
+    `/clinic/${clinicUuid}/vaccine-catalog`,
+    { params: species ? { species } : undefined }
+  );
+  return res.data.data ?? [];
+}
+
+export async function addClinicVaccineDue(
+  clinicUuid: string,
+  petUuid: string,
+  payload: { vaccineMasterId: number; dueDate: string }
+): Promise<VaccineScheduleModel> {
+  const res = await axiosInstance.post<ApiSuccessResponse<VaccineScheduleModel>>(
+    `/clinic/${clinicUuid}/pets/${petUuid}/vaccines`,
+    payload
+  );
+  return res.data.data;
+}
+
+export async function markClinicVaccineGiven(
+  clinicUuid: string,
+  petUuid: string,
+  scheduleId: number,
+  payload?: { completedDate?: string; certificateUrl?: string }
+): Promise<VaccineScheduleModel> {
+  const res = await axiosInstance.patch<ApiSuccessResponse<VaccineScheduleModel>>(
+    `/clinic/${clinicUuid}/pets/${petUuid}/vaccines/${scheduleId}`,
+    payload ?? {}
+  );
+  return res.data.data;
 }
