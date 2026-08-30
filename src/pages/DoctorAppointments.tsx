@@ -43,7 +43,9 @@ import {
 import { DashboardAppointmentRow } from '@/components/schedule/DashboardAppointmentRow';
 import { petNameWithType } from '@/utils/petType';
 import { consultPath, isVideoConsult } from '@/utils/consult';
+import { hasAuthToken } from '@/utils/authStorage';
 import { attendedVisitSurfaceClass, isUrgentVisit } from '@/utils/visitUrgency';
+import { visitStatusLabel } from '@/utils/visitStatus';
 import { cn } from '@/lib/utils';
 import { fetchMyDoctorProfile, isPracticeReady, statusLabel } from '@/services/doctorVerificationService';
 import { resolveLockedDoctorUuid } from '@/utils/roles';
@@ -62,7 +64,7 @@ export default function DoctorAppointments() {
   const navigate = useNavigate();
   const user = useAppSelector((s) => s.authReducer.user);
   const { clinicUuid, clinic, isPersonalPractice } = useActiveClinic();
-  const clinicActivated = isClinicActivated(clinic?.status);
+  const clinicActivated = isClinicActivated(clinic?.status, clinic?.personal);
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
@@ -83,6 +85,12 @@ export default function DoctorAppointments() {
 
   /** Scope to active practice — personal never mixes clinic-branch appointments. */
   const load = useCallback(async () => {
+    if (!hasAuthToken()) {
+      setVisits([]);
+      setBookings([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const today = startOfDay(new Date());
@@ -231,8 +239,7 @@ export default function DoctorAppointments() {
       if (andComplete) {
         const completed = await completeDoctorVisit(chartVisit.uuid);
         const visitClinic = completed.clinicUuid || chartVisit.clinicUuid;
-        const billableOnDoctor =
-          isPersonalPractice && (!visitClinic || visitClinic === clinicUuid);
+        const billableOnDoctor = !visitClinic || visitClinic === clinicUuid;
         setChartVisit(null);
         await load();
         if (billableOnDoctor) {
@@ -250,16 +257,12 @@ export default function DoctorAppointments() {
             nextVisitNotes: notes.nextVisitNotes || completed.chart?.nextVisitNotes || undefined,
             petWeight: vitals.weightKg || undefined,
           };
-          toast.success('Treatment finished — create invoice');
+          toast.success('Treatment finished — ready to invoice');
           navigate(`/doctor/invoices?visit=${encodeURIComponent(fromVisit.visitUuid)}`, {
             state: { fromVisit },
           });
         } else {
-          toast.success(
-            isPersonalPractice
-              ? 'Treatment finished — clinic staff can create the invoice from Clinic → Appointments'
-              : 'Treatment finished — create the invoice from Clinic → Appointments on this branch'
-          );
+          toast.success('Treatment finished — ready to invoice');
         }
         return;
       }
@@ -403,10 +406,9 @@ export default function DoctorAppointments() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge variant="secondary" className="text-[10px]">
-                    {v.status === 'CHECKING_OUT' ? 'Checkout' : 'Completed'}
+                    {visitStatusLabel(v.status)}
                   </Badge>
-                  {isPersonalPractice &&
-                    (!v.clinicUuid || v.clinicUuid === clinicUuid) &&
+                  {(!v.clinicUuid || v.clinicUuid === clinicUuid) &&
                     (v.invoiceUuid ? (
                       <Button
                         size="sm"

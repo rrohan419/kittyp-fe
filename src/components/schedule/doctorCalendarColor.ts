@@ -1,3 +1,5 @@
+import { cn } from '@/lib/utils';
+
 export type DoctorColorIdentity = {
   doctorUuid: string;
   name: string;
@@ -94,6 +96,19 @@ export function doctorCalendarBlockClass(doctorUuid?: string | null): string {
 
 export function doctorCalendarSwatchClass(doctorUuid?: string | null): string {
   return paletteEntry(doctorUuid).swatch;
+}
+
+/** Attended visit: doctor palette fill + outcome border (rose urgent, emerald routine). */
+export function doctorAttendedCalendarBlockClass(
+  doctorUuid: string | null | undefined,
+  urgent: boolean
+): string {
+  return cn(
+    doctorCalendarBlockClass(doctorUuid),
+    urgent
+      ? 'border-2 border-rose-600 dark:border-rose-500'
+      : 'border-2 border-emerald-600 dark:border-emerald-500'
+  );
 }
 
 function stripDrPrefix(name: string): string {

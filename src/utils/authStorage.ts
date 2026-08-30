@@ -81,6 +81,11 @@ export function getAuthItem(key: AuthStorageKey): string | null {
   return readLocal(key);
 }
 
+/** True when a bearer token is present (does not validate expiry). */
+export function hasAuthToken(): boolean {
+  return Boolean(getAuthItem('access_token'));
+}
+
 export function setAuthItem(key: AuthStorageKey, value: string): void {
   writeLocal(key, value);
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { differenceInHours, format, parseISO } from 'date-fns';
+import { differenceInHours, format, parseISO, startOfDay } from 'date-fns';
 import {
   Bell,
   CalendarClock,
@@ -21,12 +21,15 @@ import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
 import {
   DoctorInviteModel,
+  fetchClinicVisits,
   fetchDoctorInvites,
   fetchMyPendingInvites,
   remindDoctorInvite,
 } from '@/services/clinicService';
 import { fetchMyDoctorVisits } from '@/services/visitService';
 import { ROLES, canInviteDoctors, hasAnyRole } from '@/utils/roles';
+import { filterUrgentAttentionQueue } from '@/utils/visitStatus';
+import { hasAuthToken } from '@/utils/authStorage';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -70,6 +73,8 @@ function persistClickedIds(ids: Set<string>) {
 
 const NOTIF_REFRESH_EVENT = 'kittyp-notif-refresh';
 
+export { NOTIF_REFRESH_EVENT };
+
 /** Call after accept/decline so the bell drops the invite immediately. */
 export function notifyInviteAddressed(inviteUuid?: string) {
   if (inviteUuid) {
@@ -77,9 +82,37 @@ export function notifyInviteAddressed(inviteUuid?: string) {
     ids.add(`my-invite-${inviteUuid}`);
     persistClickedIds(ids);
   }
+  notifyPortalRefresh();
+}
+
+/** Call after walk-in, status change, or any visit update that should refresh the bell. */
+export function notifyPortalRefresh() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event(NOTIF_REFRESH_EVENT));
   }
+}
+
+function urgentVisitNotif(
+  v: {
+    uuid: string;
+    petName?: string;
+    ownerName?: string;
+    doctorName?: string | null;
+    reasonForVisit?: string;
+    createdAt?: string;
+  },
+  href: string
+): NotifItem {
+  return {
+    id: `urgent-${v.uuid}`,
+    kind: 'alert',
+    title: `Urgent · ${v.petName || 'Patient'}`,
+    body: `${v.ownerName || 'Owner'}${v.doctorName ? ` · Dr. ${v.doctorName}` : ''}${
+      v.reasonForVisit ? ` · ${v.reasonForVisit}` : ''
+    }`,
+    href,
+    time: v.createdAt,
+  };
 }
 
 function resolvePortalKind(basePath: string, roles: string[] | undefined): PortalKind {
@@ -102,11 +135,17 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
   const [showAll, setShowAll] = useState(false);
 
   const isDoctor = hasAnyRole(user?.roles, [ROLES.DOCTOR]);
+  const isClinicStaff = hasAnyRole(user?.roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF]);
   const canManageInvites = canInviteDoctors(user?.roles);
 
   const load = useCallback(async () => {
+    if (!hasAuthToken()) {
+      setItems([]);
+      return;
+    }
     setLoading(true);
     try {
+      const alerts: NotifItem[] = [];
       const next: NotifItem[] = [];
 
       if (isDoctor) {
@@ -131,9 +170,18 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
 
         try {
           const mine = await fetchMyDoctorVisits({ clinicUuid: clinicUuid || undefined });
-          for (const v of mine.filter((x) =>
-            ['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS'].includes(x.status)
-          ).slice(0, 12)) {
+          const urgent = filterUrgentAttentionQueue(mine);
+          const urgentIds = new Set(urgent.map((v) => v.uuid));
+          for (const v of urgent) {
+            alerts.push(urgentVisitNotif(v, '/doctor/appointments'));
+          }
+          for (const v of mine
+            .filter(
+              (x) =>
+                !urgentIds.has(x.uuid) &&
+                ['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS'].includes(x.status)
+            )
+            .slice(0, 12)) {
             next.push({
               id: `visit-${v.uuid}`,
               kind: 'visit',
@@ -151,6 +199,18 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
           }
         } catch (err) {
           console.error('Failed to load doctor visits for notifications', err);
+        }
+      }
+
+      if (portal === 'clinic' && clinicUuid && isClinicStaff) {
+        try {
+          const today = format(startOfDay(new Date()), 'yyyy-MM-dd');
+          const clinicVisits = await fetchClinicVisits(clinicUuid, { date: today });
+          for (const v of filterUrgentAttentionQueue(clinicVisits)) {
+            alerts.push(urgentVisitNotif(v, '/clinic/appointments'));
+          }
+        } catch (err) {
+          console.error('Failed to load clinic urgent visits for notifications', err);
         }
       }
 
@@ -189,9 +249,11 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
         }
       }
 
-      if (next.length === 0) {
+      const merged = [...alerts, ...next];
+
+      if (merged.length === 0) {
         if (portal === 'clinic') {
-          next.push({
+          merged.push({
             id: 'empty-tip',
             kind: 'update',
             title: 'All caught up',
@@ -199,7 +261,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
             href: `/clinic/patients`,
           });
         } else if (isDoctor || portal === 'doctor') {
-          next.push({
+          merged.push({
             id: 'empty-tip',
             kind: 'update',
             title: 'No clinic invites',
@@ -207,7 +269,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
             href: '/doctor',
           });
         } else {
-          next.push({
+          merged.push({
             id: 'empty-tip',
             kind: 'update',
             title: 'No notifications yet',
@@ -217,11 +279,11 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
         }
       }
 
-      setItems(next);
+      setItems(merged);
     } finally {
       setLoading(false);
     }
-  }, [portal, clinicUuid, clinic?.name, basePath, isDoctor, canManageInvites]);
+  }, [portal, clinicUuid, clinic?.name, basePath, isDoctor, isClinicStaff, canManageInvites]);
 
   useEffect(() => {
     if (open) void load();

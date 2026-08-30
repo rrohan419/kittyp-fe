@@ -1,122 +1,99 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { setHours, setMinutes, setSeconds, startOfDay } from 'date-fns';
+import { addDays, addMinutes, setHours, setMinutes, setSeconds, startOfDay } from 'date-fns';
 import {
-  HOUR_PX,
-  eventLayout,
-  nowLineOffsetPx,
-  slotStartFromHourClick,
-  visibleHourRange,
-  withLanes,
+  isFutureBookableSlot,
+  weekHasFutureBookableSlots,
 } from './weekCalendarLayout.ts';
+import {
+  filterPracticeWeekEvents,
+  resolveEventDoctorUuid,
+} from './weekCalendarPractice.ts';
 
-function at(day: Date, hour: number, minute = 0) {
-  return setSeconds(setMinutes(setHours(day, hour), minute), 0);
-}
-
-describe('withLanes', () => {
-  it('gives a chain of overlaps the same laneCount', () => {
-    const day = startOfDay(new Date('2026-08-19T00:00:00'));
-    const a = { id: 'a', start: at(day, 9, 0), end: at(day, 9, 30) };
-    const b = { id: 'b', start: at(day, 9, 15), end: at(day, 9, 45) };
-    const c = { id: 'c', start: at(day, 9, 30), end: at(day, 10, 0) };
-    const lanes = withLanes([a, b, c]);
-    const counts = new Set(lanes.map((e) => e.laneCount));
-    assert.equal(counts.size, 1);
-    assert.equal(lanes[0].laneCount, 2);
-    const laneSet = new Set(lanes.map((e) => e.lane));
-    assert.equal(laneSet.size, 2);
-  });
-
-  it('does not treat back-to-back 30-min slots as overlap', () => {
-    const day = startOfDay(new Date('2026-08-19T00:00:00'));
-    const a = { id: 'a', start: at(day, 9, 0), end: at(day, 9, 30) };
-    const b = { id: 'b', start: at(day, 9, 30), end: at(day, 10, 0) };
-    const lanes = withLanes([a, b]);
-    assert.equal(lanes[0].laneCount, 1);
-    assert.equal(lanes[1].laneCount, 1);
-    assert.equal(lanes[0].lane, 0);
-    assert.equal(lanes[1].lane, 0);
+describe('resolveEventDoctorUuid', () => {
+  it('prefers event envelope then visit then booking then fallback', () => {
+    assert.equal(resolveEventDoctorUuid({ doctorUuid: 'a' }), 'a');
+    assert.equal(resolveEventDoctorUuid({ visit: { doctorUuid: 'b' } }), 'b');
+    assert.equal(resolveEventDoctorUuid({ booking: { doctorUuid: 'c' } }), 'c');
+    assert.equal(resolveEventDoctorUuid({}, 'fallback'), 'fallback');
   });
 });
 
-describe('eventLayout', () => {
-  it('keeps 30-min height inside the slot so neighbors do not overlap', () => {
-    const day = startOfDay(new Date('2026-08-19T00:00:00'));
-    const first = {
-      start: at(day, 9, 0),
-      end: at(day, 9, 30),
-      lane: 0,
-      laneCount: 1,
-    };
-    const second = {
-      start: at(day, 9, 30),
-      end: at(day, 10, 0),
-      lane: 0,
-      laneCount: 1,
-    };
-    const a = eventLayout(first, day);
-    const b = eventLayout(second, day);
-    assert.ok(a);
-    assert.ok(b);
-    assert.equal(a.height + 2, (30 / 60) * HOUR_PX);
-    assert.ok(a.top + a.height <= b.top);
+describe('filterPracticeWeekEvents', () => {
+  const clinicA = 'clinic-a';
+  const clinicB = 'clinic-b';
+  const ev = (clinicUuid?: string) => ({ visit: { clinicUuid } });
+
+  it('returns all when no active clinic', () => {
+    const events = [ev(clinicA), ev(clinicB)];
+    assert.equal(filterPracticeWeekEvents(events, null, false).length, 2);
   });
 
-  it('does not park overnight events in the 8 AM row', () => {
-    const day = startOfDay(new Date('2026-08-19T00:00:00'));
-    const midnight = {
-      start: at(day, 0, 12),
-      end: at(day, 0, 42),
-      lane: 0,
-      laneCount: 1,
-    };
-    assert.equal(eventLayout(midnight, day), null);
-    const placed = eventLayout(midnight, day, { startHour: 0, endHour: 20 });
-    assert.ok(placed);
-    assert.equal(placed.top, (12 / 60) * HOUR_PX);
+  it('filters to active clinic for affiliated practice', () => {
+    const events = [ev(clinicA), ev(clinicB)];
+    const filtered = filterPracticeWeekEvents(events, clinicA, false);
+    assert.equal(filtered.length, 1);
+    assert.equal(filtered[0].visit?.clinicUuid, clinicA);
+  });
+
+  it('personal practice keeps unassigned and own clinic', () => {
+    const events = [ev(undefined), ev(clinicA), ev(clinicB)];
+    const filtered = filterPracticeWeekEvents(events, clinicA, true);
+    assert.equal(filtered.length, 2);
   });
 });
 
-describe('visibleHourRange', () => {
-  it('opens at midnight when a visit starts before clinic hours', () => {
-    const day = startOfDay(new Date('2026-08-19T00:00:00'));
-    const range = visibleHourRange([
-      { start: at(day, 0, 12), end: at(day, 0, 42) },
-      { start: at(day, 0, 21), end: at(day, 0, 51) },
-    ]);
-    assert.equal(range.startHour, 0);
-    assert.equal(range.endHour, 20);
+describe('isFutureBookableSlot', () => {
+  it('rejects past and equal-to-now slots', () => {
+    const now = new Date('2026-08-30T14:00:00');
+    assert.equal(isFutureBookableSlot(new Date('2026-08-30T13:30:00'), now), false);
+    assert.equal(isFutureBookableSlot(now, now), false);
   });
 
-  it('expands the grid to include the current hour', () => {
-    const day = startOfDay(new Date('2026-08-19T00:00:00'));
-    const range = visibleHourRange([], at(day, 7, 15));
-    assert.equal(range.startHour, 7);
-    assert.equal(range.endHour, 20);
+  it('accepts future slots', () => {
+    const now = new Date('2026-08-30T14:00:00');
+    assert.equal(isFutureBookableSlot(addMinutes(now, 1), now), true);
+    assert.equal(isFutureBookableSlot(new Date('2026-08-31T09:00:00'), now), true);
   });
 });
 
-describe('nowLineOffsetPx', () => {
-  it('places 9:30 at 1.5 hours from an 8am range start', () => {
-    const day = startOfDay(new Date('2026-08-19T00:00:00'));
-    assert.equal(nowLineOffsetPx(at(day, 9, 30), { startHour: 8, endHour: 20 }), 1.5 * HOUR_PX);
+describe('weekHasFutureBookableSlots', () => {
+  const hourRange = { startHour: 9, endHour: 17 };
+
+  it('false for an entirely past week', () => {
+    const now = new Date('2026-08-30T14:00:00');
+    const monday = startOfDay(new Date('2026-08-18T09:00:00'));
+    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+    assert.equal(weekHasFutureBookableSlots(weekDays, hourRange, now), false);
   });
 
-  it('returns null when now is outside the visible range', () => {
-    const day = startOfDay(new Date('2026-08-19T00:00:00'));
-    assert.equal(nowLineOffsetPx(at(day, 6, 0), { startHour: 8, endHour: 20 }), null);
+  it('true when the current week still has a future slot today', () => {
+    const now = new Date('2026-08-30T14:00:00');
+    const monday = startOfDay(new Date('2026-08-25T09:00:00'));
+    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+    assert.equal(weekHasFutureBookableSlots(weekDays, hourRange, now), true);
   });
-});
 
-describe('slotStartFromHourClick', () => {
-  it('snaps the top half of an hour cell to :00 and the bottom to :30', () => {
-    const day = startOfDay(new Date('2026-08-19T00:00:00'));
-    const top = slotStartFromHourClick(day, 10, 10);
-    const bottom = slotStartFromHourClick(day, 10, HOUR_PX / 2);
-    assert.equal(top.getHours(), 10);
-    assert.equal(top.getMinutes(), 0);
-    assert.equal(bottom.getHours(), 10);
-    assert.equal(bottom.getMinutes(), 30);
+  it('false when the current week has no remaining business-hour slots', () => {
+    const now = new Date('2026-08-31T18:00:00');
+    const monday = startOfDay(new Date('2026-08-25T09:00:00'));
+    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+    assert.equal(weekHasFutureBookableSlots(weekDays, hourRange, now), false);
+  });
+
+  it('true for a fully future week', () => {
+    const now = new Date('2026-08-30T14:00:00');
+    const monday = startOfDay(new Date('2026-09-01T09:00:00'));
+    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+    assert.equal(weekHasFutureBookableSlots(weekDays, hourRange, now), true);
+  });
+
+  it('respects hour range boundaries', () => {
+    const now = new Date('2026-08-30T11:00:00');
+    const today = startOfDay(now);
+    const narrowRange = { startHour: 10, endHour: 11 };
+    assert.equal(weekHasFutureBookableSlots([today], narrowRange, now), false);
+    const slot1030 = setSeconds(setMinutes(setHours(today, 10), 30), 0);
+    assert.equal(isFutureBookableSlot(slot1030, now), false);
   });
 });

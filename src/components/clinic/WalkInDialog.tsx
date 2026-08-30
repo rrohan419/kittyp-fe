@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, Search, X } from 'lucide-react';
-import { addHours, addMinutes, format, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
+import { addHours, format, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
 import {
   ClinicDoctorModel,
   ClinicOwnerModel,
@@ -30,7 +30,6 @@ import {
   ensureClinicOwnerFromUser,
   fetchClinicOwners,
   fetchClinicPets,
-  fetchDoctorBusySlots,
   searchPlatformUsers,
   VisitUrgency,
 } from '@/services/clinicService';
@@ -38,6 +37,7 @@ import { fetchParentDoctorSlots } from '@/services/discoverService';
 import { isPracticeReady } from '@/services/doctorVerificationService';
 import { digitsOnlyPhone, validateEmail, validatePhone } from '@/utils/validation';
 import { toast } from 'sonner';
+import { notifyPortalRefresh } from '@/components/portal/PortalNotifications';
 import { cn } from '@/lib/utils';
 import { PetPhotoField } from '@/components/clinic/PetPhotoField';
 import { PetNameType } from '@/components/ui/PetNameType';
@@ -337,28 +337,8 @@ export function AddAppointmentDialog({
           }
           setBusyHint(null);
         } catch {
-          if (cancelled) return;
-          try {
-            const raw = new Date(`${form.slotDate}T${form.slotTime}`);
-            if (Number.isNaN(raw.getTime())) return;
-            const snapped = snapToHalfHour(raw);
-            const startIso = format(snapped, "yyyy-MM-dd'T'HH:mm:ss");
-            const endIso = format(addMinutes(snapped, 30), "yyyy-MM-dd'T'HH:mm:ss");
-            const busy = await fetchDoctorBusySlots(clinicUuid, resolvedDoctorUuid, {
-              from: startIso,
-              to: endIso,
-            });
-            if (cancelled) return;
-            if (busy.length > 0) {
-              const next = snapToHalfHour(addMinutes(snapped, 30));
-              setBusyHint(
-                `Doctor not available at ${format(snapped, 'h:mm a')} — try ${format(next, 'h:mm a')}`
-              );
-            } else {
-              setBusyHint(null);
-            }
-          } catch {
-            if (!cancelled) setBusyHint(null);
+          if (!cancelled) {
+            setBusyHint('Could not confirm doctor availability for this time');
           }
         }
       })();
@@ -478,6 +458,9 @@ export function AddAppointmentDialog({
         errors.slotTime = 'Pick a future time';
       }
     }
+    if (busyHint) {
+      errors.slotTime = busyHint;
+    }
     setFieldErrors((prev) => ({ ...prev, ...errors }));
     return Object.keys(errors).length === 0;
   };
@@ -516,7 +499,7 @@ export function AddAppointmentDialog({
       return;
     }
     if (timing === 'schedule' && !validateSchedule()) {
-      toast.error('Fix the schedule fields');
+      toast.error(busyHint || 'Fix the schedule fields');
       return;
     }
 
@@ -550,6 +533,7 @@ export function AddAppointmentDialog({
         toast.success('Appointment scheduled — doctor notified');
       }
       onCreated();
+      notifyPortalRefresh();
       onOpenChange(false);
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number; data?: { message?: string } } })?.response

@@ -129,12 +129,8 @@ function App() {
                     <Navbar />
                   </div>
                 )}
-                <main className={cn(!inPortal && "pt-16")}>
-                  {!inPortal && (
-                    <div className="fixed top-16 z-40">
-                      <GlobalBreadcrumbs />
-                    </div>
-                  )}
+                <main className={cn(!inPortal && 'pt-16')}>
+                  {!inPortal && location.pathname !== '/' && <GlobalBreadcrumbs />}
                   <div className="relative">
                     <Outlet />
                   </div>

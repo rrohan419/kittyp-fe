@@ -15,6 +15,7 @@ export interface HealthSample {
   mem: number;
   disk: number;
   pool: number;
+  workers: number;
 }
 
 export function donutArcs(parts: DonutPart[], radius = 42): DonutArc[] {

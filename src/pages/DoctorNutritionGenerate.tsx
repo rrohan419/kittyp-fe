@@ -225,7 +225,6 @@ export default function DoctorNutritionGenerate() {
           </div>
         </>
       )}
-
       <AlertDialog open={sendOpen} onOpenChange={setSendOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -43,6 +43,7 @@ export interface ClinicDoctorModel {
   joinedAt?: string | null;
   experienceYears?: number | null;
   registrationNumber?: string | null;
+  clinicUuid?: string | null;
 }
 
 export interface ClinicDoctorPatientModel {
@@ -349,7 +350,9 @@ export async function updateAdminClinicStatus(
 export const CLINIC_NOT_ACTIVATED_MESSAGE =
   'This clinic must be verified by admin before appointments, bookings, or adding doctors.';
 
-export function isClinicActivated(status?: string | null): boolean {
+export function isClinicActivated(status?: string | null, personal?: boolean): boolean {
+  if (status === 'SHUTDOWN' || status === 'REJECTED') return false;
+  if (personal) return true;
   return status === 'VERIFIED';
 }
 
@@ -427,6 +430,7 @@ export interface DoctorInvitePreview {
   expired: boolean;
   accepted: boolean;
   status: string;
+  clinicUuid?: string;
 }
 
 export async function inviteDoctor(
@@ -821,7 +825,7 @@ export interface ClinicVisitModel {
 
 export async function fetchClinicVisits(
   clinicUuid: string,
-  params?: { date?: string; status?: VisitStatus; doctorUuid?: string }
+  params?: { date?: string; from?: string; to?: string; status?: VisitStatus; doctorUuid?: string }
 ): Promise<ClinicVisitModel[]> {
   const res = await axiosInstance.get<ApiSuccessResponse<ClinicVisitModel[]>>(
     `/clinic/${clinicUuid}/visits`,

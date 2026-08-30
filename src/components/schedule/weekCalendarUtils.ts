@@ -21,12 +21,15 @@ export {
   HOUR_PX,
   dayBounds,
   eventLayout,
+  isFutureBookableSlot,
   nowLineOffsetPx,
   slotStartFromHourClick,
   visibleHourRange,
+  weekHasFutureBookableSlots,
   withLanes,
 } from './weekCalendarLayout';
 export type { HourRange } from './weekCalendarLayout';
+export { filterPracticeWeekEvents, resolveEventDoctorUuid } from './weekCalendarPractice';
 
 export function visitEventTime(v: ClinicVisitModel): { start: Date; end: Date } {
   const raw =

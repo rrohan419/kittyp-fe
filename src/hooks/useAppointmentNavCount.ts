@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { format, isValid, parseISO, startOfDay } from 'date-fns';
+import { NOTIF_REFRESH_EVENT } from '@/components/portal/PortalNotifications';
 import { fetchClinicVisits, type ClinicBookingModel, type ClinicVisitModel } from '@/services/clinicService';
 import { fetchMyDoctorBookings, fetchMyDoctorVisits } from '@/services/visitService';
+import { hasAuthToken } from '@/utils/authStorage';
 import { ROLES } from '@/utils/roles';
 
-const ACTIVE_VISIT = new Set(['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS']);
+const ACTIVE_VISIT = new Set(['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS', 'CHECKING_OUT']);
 const CLOSED_BOOKING = new Set(['CANCELLED', 'NO_SHOW', 'COMPLETED']);
 
 function countOpenAppointments(visits: ClinicVisitModel[], bookings: ClinicBookingModel[]): number {
@@ -43,6 +45,10 @@ export function useAppointmentNavCount(
     const today = format(startOfDay(new Date()), 'yyyy-MM-dd');
 
     const load = async () => {
+      if (!hasAuthToken()) {
+        if (!cancelled) setCount(0);
+        return;
+      }
       try {
         let next = 0;
         if (isDoctor) {
@@ -66,11 +72,14 @@ export function useAppointmentNavCount(
     void load();
     const interval = setInterval(() => void load(), 30000);
     const onFocus = () => void load();
+    const onRefresh = () => void load();
     window.addEventListener('focus', onFocus);
+    window.addEventListener(NOTIF_REFRESH_EVENT, onRefresh);
     return () => {
       cancelled = true;
       clearInterval(interval);
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener(NOTIF_REFRESH_EVENT, onRefresh);
     };
   }, [role, clinicUuid]);
 

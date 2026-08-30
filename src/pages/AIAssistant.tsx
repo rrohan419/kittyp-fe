@@ -39,6 +39,7 @@ import UserLocationDisplay from '@/components/ui/UserLocationDisplay';
 import { PetSelectionComponent } from '@/components/ui/PetSelectionComponent';
 import { useNutritionPets } from '@/hooks/useNutritionPets';
 import { NutritionPlanPreview } from '@/components/nutrition/NutritionPlanPreview';
+import { AiDisclaimer } from '@/components/ui/AiDisclaimer';
 import { canEditNutritionPlan } from '@/utils/roles';
 
 // Floating particles component for background effects
@@ -467,6 +468,10 @@ const VetTriageTab: React.FC<{ savedPets: any[] }> = ({ savedPets }) => {
                   </motion.div>
                 )}
                 <div ref={chatEndRef} />
+              </div>
+
+              <div className="px-4 pb-2">
+                <AiDisclaimer />
               </div>
 
               {/* Chat Input */}

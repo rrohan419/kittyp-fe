@@ -13,11 +13,18 @@ import RichContentViewer from '@/components/RichContentViewer';
 
 import { useSelector } from 'react-redux';
 import { RootState } from '@/module/store/store';
+import {
+  articleBackLabel,
+  resolveArticleBackPath,
+  type ArticleLocationState,
+} from '@/utils/articleBack';
 
 const ArticlePage = () => {
   const { slug } = useParams<{ slug?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const backPath = resolveArticleBackPath((location.state as ArticleLocationState | null)?.from);
+  const backLabel = articleBackLabel(backPath);
 
   // State to store the article and comments
   const [article, setArticle] = useState<ArticleData>(null); // Adjust the type as per your response structure
@@ -268,10 +275,10 @@ const ArticlePage = () => {
               variant="ghost"
               size="sm"
               className="mb-6 flex items-center"
-              onClick={() => navigate('/articles')}
+              onClick={() => navigate(backPath)}
             >
               <ArrowLeft size={16} className="mr-2" />
-              Back to Articles
+              {backLabel}
             </Button>
 
             {/* Article Header */}
