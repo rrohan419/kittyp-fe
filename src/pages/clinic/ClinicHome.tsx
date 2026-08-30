@@ -28,11 +28,9 @@ import { useActiveClinic } from '@/hooks/useActiveClinic';
 import {
   ClinicBookingModel,
   ClinicDoctorModel,
-  ClinicPatientModel,
   ClinicVisitModel,
   fetchClinicBookings,
   fetchClinicDoctors,
-  fetchClinicPatients,
   fetchClinicStats,
   fetchClinicVisits,
   isClinicActivated,
@@ -50,7 +48,7 @@ import { toast } from 'sonner';
 export default function ClinicHome() {
   const { clinic, clinicUuid, loading: clinicLoading } = useActiveClinic();
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
-  const [patients, setPatients] = useState<ClinicPatientModel[]>([]);
+  const [patientCount, setPatientCount] = useState(0);
   const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [diagnosedCount, setDiagnosedCount] = useState(0);
@@ -71,7 +69,7 @@ export default function ClinicHome() {
     if (!clinicUuid) {
       setLoading(false);
       setDoctors([]);
-      setPatients([]);
+      setPatientCount(0);
       setBookings([]);
       setVisits([]);
       setDiagnosedCount(0);
@@ -80,9 +78,8 @@ export default function ClinicHome() {
     setLoading(true);
     try {
       const days = Array.from({ length: 7 }, (_, i) => format(addDays(weekStart, i), 'yyyy-MM-dd'));
-      const [docs, pats, bookingPage, stats, ...dayVisits] = await Promise.all([
+      const [docs, bookingPage, stats, ...dayVisits] = await Promise.all([
         fetchClinicDoctors(clinicUuid),
-        fetchClinicPatients(clinicUuid),
         fetchClinicBookings(clinicUuid, 0, 200),
         fetchClinicStats(clinicUuid),
         ...days.map((date) => fetchClinicVisits(clinicUuid, { date }).catch(() => [] as ClinicVisitModel[])),
@@ -92,13 +89,13 @@ export default function ClinicHome() {
         for (const v of list) visitMap.set(v.uuid, v);
       }
       setDoctors(docs);
-      setPatients(pats);
+      setPatientCount(stats?.patientCount ?? 0);
       setBookings(bookingPage?.models ?? []);
       setVisits([...visitMap.values()]);
       setDiagnosedCount(stats?.diagnosedPetCount ?? 0);
     } catch {
       setDoctors([]);
-      setPatients([]);
+      setPatientCount(0);
       setBookings([]);
       setVisits([]);
       setDiagnosedCount(0);
@@ -165,7 +162,7 @@ export default function ClinicHome() {
     },
     {
       label: 'Clients & Pets',
-      value: patients.length,
+      value: patientCount,
       sub: 'This branch only',
       icon: Users,
       to: '/clinic/patients',

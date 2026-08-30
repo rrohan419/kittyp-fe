@@ -9,7 +9,6 @@ import {
   Plus,
   Syringe,
   TrendingUp,
-  Utensils,
 } from 'lucide-react';
 import {
   Line,
@@ -31,20 +30,17 @@ import { toast } from 'sonner';
 import { formatPetDobWithAge } from '@/utils/petAge';
 import { PetImage } from '@/components/ui/PetImage';
 import {
-  FeedingLogModel,
   PetDashboardModel,
   WeightLogModel,
-  createFeedingLog,
-  fetchFeedingLogs,
   fetchPetDashboard,
   fetchWeightHistory,
   logPetWeight,
 } from '@/services/petDashboardService';
+import { PetParentNutritionTracker } from '@/components/nutrition/PetParentNutritionTracker';
 import { PetHealthTimeline } from '@/components/health/PetHealthTimeline';
 import { OwnerPetRecords } from '@/components/health/OwnerPetRecords';
 import { OwnerPetEditDialog } from '@/components/ui/OwnerPetEditDialog';
 import { PetProfile } from '@/services/authService';
-import { fetchOwnerPetInvoices, OwnerInvoice } from '@/services/invoiceService';
 
 export default function PetDashboardPage() {
   const { petId } = useParams<{ petId: string }>();
@@ -54,8 +50,6 @@ export default function PetDashboardPage() {
 
   const [dashboard, setDashboard] = useState<PetDashboardModel | null>(null);
   const [weights, setWeights] = useState<WeightLogModel[]>([]);
-  const [logs, setLogs] = useState<FeedingLogModel[]>([]);
-  const [invoices, setInvoices] = useState<OwnerInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [weightInput, setWeightInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -65,16 +59,9 @@ export default function PetDashboardPage() {
     if (!petId) return;
     setLoading(true);
     try {
-      const [dash, wh, fl, bills] = await Promise.all([
-        fetchPetDashboard(petId),
-        fetchWeightHistory(petId),
-        fetchFeedingLogs(petId),
-        fetchOwnerPetInvoices(petId).catch(() => [] as OwnerInvoice[]),
-      ]);
+      const [dash, wh] = await Promise.all([fetchPetDashboard(petId), fetchWeightHistory(petId)]);
       setDashboard(dash);
       setWeights(wh);
-      setLogs(fl);
-      setInvoices(bills);
     } catch {
       setDashboard(null);
       toast.error('Could not load pet dashboard');
@@ -118,17 +105,6 @@ export default function PetDashboardPage() {
       toast.error('Failed to log weight');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const logMeal = async (status: 'COMPLETED' | 'SKIPPED') => {
-    if (!petId) return;
-    try {
-      await createFeedingLog(petId, { status, notes: 'Logged from pet dashboard' });
-      toast.success(status === 'COMPLETED' ? 'Meal marked complete' : 'Meal skipped');
-      await load();
-    } catch {
-      toast.error('Failed to update daily log');
     }
   };
 
@@ -290,43 +266,11 @@ export default function PetDashboardPage() {
         </TabsContent>
 
         <TabsContent value="records" className="space-y-4 mt-4">
-          {petId && <OwnerPetRecords petId={petId} invoices={invoices} loading={loading} />}
+          {petId && <OwnerPetRecords petId={petId} />}
         </TabsContent>
 
         <TabsContent value="nutrition" className="space-y-4 mt-4">
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Utensils className="h-4 w-4" /> Daily logging
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => logMeal('COMPLETED')}>
-                  Mark meal complete
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => logMeal('SKIPPED')}>
-                  Skip meal
-                </Button>
-                <Button size="sm" variant="ghost" asChild>
-                  <Link to="/app/nutrition">View plan</Link>
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {logs.slice(0, 8).map((log, idx) => (
-                  <div key={log.id ?? idx} className="text-sm flex justify-between p-3 rounded-lg bg-muted/50">
-                    <span className="capitalize">{String(log.status).toLowerCase()}</span>
-                    <span className="text-muted-foreground">
-                      {log.loggedAt ? format(parseISO(log.loggedAt), 'MMM d, h:mm a') : '—'}
-                    </span>
-                  </div>
-                ))}
-                {!logs.length && (
-                  <p className="text-sm text-muted-foreground">No feeding logs yet. Log today&apos;s meals above.</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {petId && <PetParentNutritionTracker embedded petUuid={petId} />}
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-4 mt-4">

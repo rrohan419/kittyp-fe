@@ -21,6 +21,18 @@ import {
   type PetCarePlan,
 } from '@/services/aiService';
 import { fetchFilteredNutritionPlans, sendNutritionPlan } from '@/services/petNutritionService';
+import { NutritionDurationPicker } from '@/components/nutrition/NutritionDurationPicker';
+import { DEFAULT_PLAN_DURATION_DAYS, clampPlanDurationDays } from '@/utils/nutritionDuration';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function DoctorNutritionGenerate() {
   const navigate = useNavigate();
@@ -34,6 +46,8 @@ export default function DoctorNutritionGenerate() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [plan, setPlan] = useState<PetCarePlan>(defaultPetCarePlan);
+  const [sendOpen, setSendOpen] = useState(false);
+  const [sendDurationDays, setSendDurationDays] = useState(DEFAULT_PLAN_DURATION_DAYS);
 
   useEffect(() => {
     if (preselectedPet) {
@@ -109,6 +123,7 @@ export default function DoctorNutritionGenerate() {
       toast.error('Select a patient first');
       return;
     }
+    const days = clampPlanDurationDays(sendDurationDays);
     setSaving(true);
     try {
       await persistPlan();
@@ -119,8 +134,9 @@ export default function DoctorNutritionGenerate() {
         navigate('/doctor/nutrition');
         return;
       }
-      await sendNutritionPlan(latest.uuid);
-      toast.success(`Plan sent for ${selectedPet.name}`);
+      await sendNutritionPlan(latest.uuid, { durationDays: days });
+      toast.success(`Sent ${days}-day plan for ${selectedPet.name}`);
+      setSendOpen(false);
       navigate('/doctor/nutrition');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to send plan';
@@ -196,13 +212,45 @@ export default function DoctorNutritionGenerate() {
               <Save className="h-4 w-4 mr-1.5" />
               {saving ? 'Saving…' : 'Save draft'}
             </Button>
-            <Button disabled={saving} onClick={() => void handleSaveAndSend()}>
+            <Button
+              disabled={saving}
+              onClick={() => {
+                setSendDurationDays(DEFAULT_PLAN_DURATION_DAYS);
+                setSendOpen(true);
+              }}
+            >
               <Send className="h-4 w-4 mr-1.5" />
               {saving ? 'Sending…' : 'Save and send to parent'}
             </Button>
           </div>
         </>
       )}
+
+      <AlertDialog open={sendOpen} onOpenChange={setSendOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send this plan to the parent?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedPet
+                ? `${selectedPet.name}'s parent will see this plan and can log meals against it. You cannot edit it after sending.`
+                : 'Choose how long the parent should follow this plan.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <NutritionDurationPicker value={sendDurationDays} onChange={setSendDurationDays} />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving || !selectedPet}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleSaveAndSend();
+              }}
+            >
+              {saving ? 'Sending…' : 'Send'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

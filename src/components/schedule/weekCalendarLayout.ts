@@ -43,7 +43,7 @@ export function withLanes<T extends { start: Date; end: Date }>(
   return result;
 }
 
-export function visibleHourRange(events: { start: Date; end: Date }[]): HourRange {
+export function visibleHourRange(events: { start: Date; end: Date }[], now?: Date): HourRange {
   let startHour = DAY_START_HOUR;
   let endHour = DAY_END_HOUR;
   for (const e of events) {
@@ -62,9 +62,23 @@ export function visibleHourRange(events: { start: Date; end: Date }[]): HourRang
     if (end.getMinutes() > 0 || end.getSeconds() > 0 || end.getMilliseconds() > 0) hour += 1;
     endHour = Math.max(endHour, hour);
   }
+  if (now && Number.isFinite(now.getTime())) {
+    startHour = Math.min(startHour, now.getHours());
+    endHour = Math.max(endHour, Math.min(24, now.getHours() + 1));
+  }
   startHour = Math.max(0, startHour);
   endHour = Math.min(24, Math.max(startHour + 1, endHour));
   return { startHour, endHour };
+}
+
+/** Pixel offset of `now` from the top of the visible hour range, or null if off-grid. */
+export function nowLineOffsetPx(now: Date, range: HourRange): number | null {
+  if (!Number.isFinite(now.getTime())) return null;
+  const minutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  const startMins = range.startHour * 60;
+  const endMins = range.endHour * 60;
+  if (minutes < startMins || minutes > endMins) return null;
+  return ((minutes - startMins) / 60) * HOUR_PX;
 }
 
 export function dayBounds(day: Date, startHour = DAY_START_HOUR, endHour = DAY_END_HOUR) {

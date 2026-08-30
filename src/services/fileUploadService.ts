@@ -140,6 +140,60 @@ export const uploadFiles = async (
   }
 };
 
+export type ClinicalUploadKind = 'labs' | 'vaccines' | 'surgeries';
+
+export async function uploadClinicalFiles(
+  files: File[],
+  params: {
+    clinicUuid: string;
+    petUuid: string;
+    kind: ClinicalUploadKind;
+    visitUuid?: string;
+    eventUuid?: string;
+  },
+  onProgress?: (progress: UploadProgress) => void
+): Promise<string[]> {
+  const validation = validateFiles(files, {
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'application/pdf',
+    ],
+    maxFiles: 5,
+  });
+  if (!validation.isValid) {
+    throw new Error(validation.errors.join(', '));
+  }
+
+  const formData = new FormData();
+  files.forEach((file) => formData.append('files', file));
+  formData.append('clinicUuid', params.clinicUuid);
+  formData.append('petUuid', params.petUuid);
+  formData.append('kind', params.kind);
+  if (params.visitUuid) formData.append('visitUuid', params.visitUuid);
+  if (params.eventUuid) formData.append('eventUuid', params.eventUuid);
+
+  const response = await axiosInstance.post<FileUploadResponse>('/upload/clinical', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (progressEvent) => {
+      if (onProgress && progressEvent.total) {
+        onProgress({
+          loaded: progressEvent.loaded,
+          total: progressEvent.total,
+          percentage: Math.round((progressEvent.loaded * 100) / progressEvent.total),
+        });
+      }
+    },
+  });
+  if (!response.data.success) {
+    throw new Error(response.data.message || 'Upload failed');
+  }
+  return response.data.data;
+}
+
 /** Unauthenticated upload used during doctor signup (before account exists). */
 export const uploadSignupDocuments = async (
   files: File[],

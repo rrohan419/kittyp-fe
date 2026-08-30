@@ -4,8 +4,56 @@ import { DayPicker } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
+
+function CalendarDropdown({
+  options,
+  value,
+  onChange,
+  disabled,
+}: {
+  options?: { value: number; label: string; disabled: boolean }[];
+  value?: string | number | readonly string[];
+  onChange?: React.ChangeEventHandler<HTMLSelectElement>;
+  disabled?: boolean;
+}) {
+  const selected = value == null ? undefined : String(Array.isArray(value) ? value[0] : value);
+  return (
+    <Select
+      value={selected}
+      disabled={disabled}
+      onValueChange={(next) => {
+        onChange?.({
+          target: { value: next },
+        } as React.ChangeEvent<HTMLSelectElement>);
+      }}
+    >
+      <SelectTrigger className="h-8 w-auto min-w-[5.5rem] gap-1 border-input bg-background px-2 text-sm text-foreground">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="z-[300] max-h-64 bg-popover text-popover-foreground">
+        {options?.map((opt) => (
+          <SelectItem
+            key={opt.value}
+            value={String(opt.value)}
+            disabled={opt.disabled}
+            className="text-popover-foreground"
+          >
+            {opt.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 function Calendar({
   className,
@@ -13,6 +61,7 @@ function Calendar({
   showOutsideDays = true,
   captionLayout = "label",
   hideNavigation,
+  components,
   ...props
 }: CalendarProps) {
   return (
@@ -33,8 +82,7 @@ function Calendar({
           captionLayout !== "label" && "flex items-center gap-1"
         ),
         dropdowns: "flex items-center justify-center gap-1 h-8",
-        dropdown_root:
-          "relative rounded-md border border-input bg-background px-2 py-1",
+        dropdown_root: "relative",
         dropdown: "absolute inset-0 opacity-0 cursor-pointer",
         nav: "absolute inset-x-0 top-0 flex items-center justify-between px-1 z-10",
         button_previous: cn(
@@ -67,6 +115,7 @@ function Calendar({
         ...classNames,
       }}
       components={{
+        Dropdown: CalendarDropdown,
         Chevron: ({ orientation, className, ...rest }) => {
           const Icon =
             orientation === "left"
@@ -76,6 +125,7 @@ function Calendar({
                 : ChevronDown;
           return <Icon className={cn("h-4 w-4", className)} {...rest} />;
         },
+        ...components,
       }}
       {...props}
     />

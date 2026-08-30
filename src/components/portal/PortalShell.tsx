@@ -32,6 +32,7 @@ import { AppRole, ROLES, canSwitchWorkspace, hasAnyRole } from '@/utils/roles';
 import { ClinicSwitcher } from '@/components/clinic/ClinicSwitcher';
 import { PortalNotifications } from '@/components/portal/PortalNotifications';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { useAppointmentNavCount } from '@/hooks/useAppointmentNavCount';
 import { resolveClinicSearchTarget } from '@/utils/clinicSearchNavigate';
 import { clearStuckUiLocks, installStuckUiLockGuard } from '@/utils/clearStuckUiLocks';
 import { clearAuthStorage } from '@/utils/authStorage';
@@ -86,7 +87,7 @@ export function PortalShell({ config }: PortalShellProps) {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const cartItems = useSelector(selectCartItems);
-  const { user } = useSelector((s: RootState) => s.authReducer);
+  const { user, activeRole } = useSelector((s: RootState) => s.authReducer);
   const itemCount = cartItems.reduce((sum, it) => sum + (it.quantity || 0), 0);
   const [collapsed, setCollapsed] = useState(initialSidebarCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -100,8 +101,15 @@ export function PortalShell({ config }: PortalShellProps) {
     ROLES.CLINIC_STAFF,
   ]);
   const isClinicPortal = config.basePath === '/clinic';
-  const navItems = config.navItems;
   const { clinicUuid } = useActiveClinic();
+  const appointmentCount = useAppointmentNavCount(activeRole, clinicUuid);
+  const appointmentBadge = appointmentCount > 0 ? String(appointmentCount) : undefined;
+  const withAppointmentBadge = (items: NavItem[]) =>
+    items.map((item) =>
+      item.path.includes('/appointments') ? { ...item, badge: appointmentBadge } : item
+    );
+  const navItems = withAppointmentBadge(config.navItems);
+  const bottomTabs = withAppointmentBadge(config.bottomTabs);
 
   useEffect(() => {
     const handler = () => {
@@ -320,10 +328,15 @@ export function PortalShell({ config }: PortalShellProps) {
           className="lg:hidden fixed bottom-0 left-0 right-0 z-30 min-h-16 bg-background/95 backdrop-blur-md border-t border-border flex items-center justify-around px-1"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
-          {config.bottomTabs.map((item) => {
+          {bottomTabs.map((item) => {
             const Icon = item.icon;
             const active = isActiveLink(location.pathname, item);
             const isCart = item.path === '/app/cart';
+            const tabBadge = isCart
+              ? itemCount > 0
+                ? String(itemCount)
+                : undefined
+              : item.badge;
             return (
               <Link
                 key={item.path}
@@ -335,9 +348,9 @@ export function PortalShell({ config }: PortalShellProps) {
               >
                 <div className="relative">
                   <Icon className={cn('h-5 w-5 shrink-0', active && 'text-primary')} />
-                  {isCart && itemCount > 0 && (
+                  {tabBadge && (
                     <span className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-semibold flex items-center justify-center">
-                      {itemCount}
+                      {tabBadge}
                     </span>
                   )}
                 </div>

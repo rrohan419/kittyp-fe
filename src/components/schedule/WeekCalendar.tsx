@@ -19,10 +19,12 @@ import {
   doctorDisplayName,
   doctorUrgentStripeClass,
 } from './doctorCalendarColor';
+import { NowGutterMark, NowIndicator, useTickingNow } from './NowIndicator';
 import {
   HOUR_PX,
   WeekCalEvent,
   eventLayout,
+  nowLineOffsetPx,
   slotStartFromHourClick,
   visibleHourRange,
   withLanes,
@@ -69,11 +71,18 @@ export function WeekCalendar({
   emptyLabel = 'No appointments this week.',
   doctors,
 }: Props) {
+  const now = useTickingNow();
   const weekStart = startOfWeek(weekAnchor, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(weekAnchor, { weekStartsOn: 1 });
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
-  const today = startOfDay(new Date());
-  const hourRange = visibleHourRange(events);
+  const today = startOfDay(now);
+  const todayInWeek = weekDays.some((d) => isSameDay(d, today));
+  const hourRange = visibleHourRange(events, todayInWeek ? now : undefined);
+  const nowTop = todayInWeek ? nowLineOffsetPx(now, hourRange) : null;
+  const nextTodayStart =
+    events
+      .filter((e) => isSameDay(e.start, today) && e.start.getTime() > now.getTime())
+      .sort((a, b) => a.start.getTime() - b.start.getTime())[0]?.start ?? null;
   const hours = Array.from(
     { length: hourRange.endHour - hourRange.startHour },
     (_, i) => hourRange.startHour + i
@@ -137,14 +146,17 @@ export function WeekCalendar({
             variant="outline"
             size="icon"
             className="h-8 w-8"
+            title="Previous week"
+            aria-label="Previous week"
             onClick={() => onWeekAnchorChange(addDays(weekAnchor, -7))}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button
-            variant="outline"
+            variant={isSameDay(weekAnchor, today) ? 'secondary' : 'outline'}
             size="sm"
             className="h-8"
+            title="Jump to this week"
             onClick={() => onWeekAnchorChange(startOfDay(new Date()))}
           >
             Today
@@ -153,6 +165,8 @@ export function WeekCalendar({
             variant="outline"
             size="icon"
             className="h-8 w-8"
+            title="Next week"
+            aria-label="Next week"
             onClick={() => onWeekAnchorChange(addDays(weekAnchor, 7))}
           >
             <ChevronRight className="h-4 w-4" />
@@ -191,7 +205,7 @@ export function WeekCalendar({
               ))}
             </div>
             <div className="grid" style={{ gridTemplateColumns: `56px repeat(7, minmax(0, 1fr))` }}>
-              <div className="border-r border-border bg-muted/20">
+              <div className="relative border-r border-border bg-muted/20">
                 {hours.map((h) => (
                   <div
                     key={h}
@@ -201,6 +215,7 @@ export function WeekCalendar({
                     {format(setHours(today, h), 'h a')}
                   </div>
                 ))}
+                {nowTop != null ? <NowGutterMark top={nowTop} now={now} /> : null}
               </div>
               {weekDays.map((d) => {
                 const dayEvs = withLanes(events.filter((e) => isSameDay(e.start, d)));
@@ -234,6 +249,9 @@ export function WeekCalendar({
                         />
                       )
                     )}
+                    {nowTop != null && isSameDay(d, today) ? (
+                      <NowIndicator top={nowTop} now={now} nextStartsAt={nextTodayStart} />
+                    ) : null}
                     {dayEvs.map((ev) => {
                       const layout = eventLayout(ev, d, hourRange);
                       if (!layout) return null;

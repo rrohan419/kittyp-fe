@@ -1,5 +1,6 @@
 import axiosInstance from '@/config/axionInstance';
 import { ApiSuccessResponse } from './cartService';
+import { PaginationModel, emptyPage } from './adminService';
 import type { ClinicBookingModel, ClinicVisitModel, VisitChartModel } from './clinicService';
 
 export type DoctorScheduleParams = {
@@ -72,6 +73,15 @@ export type AttendedPatientModel = {
   petName: string;
   species?: string | null;
   breed?: string | null;
+  dateOfBirth?: string | null;
+  weight?: string | number | null;
+  profilePicture?: string | null;
+  activityLevel?: string | null;
+  gender?: string | null;
+  currentFoodBrand?: string | null;
+  healthConditions?: string | null;
+  allergies?: string | null;
+  isNeutered?: boolean | null;
   ownerUuid?: string | null;
   ownerName?: string | null;
   ownerEmail?: string | null;
@@ -83,12 +93,22 @@ export type AttendedPatientModel = {
   lastAssessment?: string | null;
 };
 
-export async function fetchMyAttendedPatients(clinicUuid?: string | null): Promise<AttendedPatientModel[]> {
-  const res = await axiosInstance.get<ApiSuccessResponse<AttendedPatientModel[]>>(
+export async function fetchMyAttendedPatients(
+  clinicUuid?: string | null,
+  opts?: { q?: string; pageNumber?: number; pageSize?: number }
+): Promise<PaginationModel<AttendedPatientModel>> {
+  const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<AttendedPatientModel>>>(
     '/doctor/patients/attended',
-    { params: clinicUuid ? { clinicUuid } : undefined }
+    {
+      params: {
+        ...(clinicUuid ? { clinicUuid } : {}),
+        ...(opts?.q ? { q: opts.q } : {}),
+        pageNumber: opts?.pageNumber ?? 1,
+        pageSize: opts?.pageSize ?? 20,
+      },
+    }
   );
-  return res.data.data ?? [];
+  return res.data.data ?? emptyPage<AttendedPatientModel>(opts?.pageSize ?? 20);
 }
 
 export type VisitRatingResult = {

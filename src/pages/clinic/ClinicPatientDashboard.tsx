@@ -23,8 +23,10 @@ import {
   fetchClinicPetMedicalProfile,
   fetchClinicPetVisits,
 } from '@/services/clinicService';
+import { ClinicalRecordsTab } from '@/components/clinic/ClinicalRecordsTab';
 import { PetPhoto } from '@/components/clinic/PetPhoto';
 import { ClinicPetEditDialog } from '@/components/clinic/ClinicPetEditDialog';
+import { VaccinationsTab } from '@/components/clinic/VaccinationsTab';
 import { formatPetDobWithAge } from '@/utils/petAge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
@@ -352,6 +354,21 @@ export default function ClinicPatientDashboard() {
                     {ev.date ? format(parseISO(ev.date), 'MMM d, yyyy') : '—'}
                     {ev.status ? ` · ${ev.status}` : ''}
                   </p>
+                  {ev.attachments?.length ? (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {ev.attachments.map((url) => (
+                        <a
+                          key={url}
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-primary underline"
+                        >
+                          Attachment
+                        </a>
+                      ))}
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
             ))
@@ -409,26 +426,14 @@ export default function ClinicPatientDashboard() {
           )}
         </TabsContent>
 
-        <TabsContent value="vaccinations" className="mt-4 space-y-3">
-          {profile.vaccinations.length ? (
-            profile.vaccinations.map((v) => (
-              <Card key={v.id} className="border-0 shadow-sm">
-                <CardContent className="p-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{v.vaccineName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Due {v.dueDate ? format(parseISO(v.dueDate), 'MMM d, yyyy') : '—'}
-                    </p>
-                  </div>
-                  <Badge variant={v.completed ? 'secondary' : 'outline'}>
-                    {v.completed ? 'Completed' : 'Pending'}
-                  </Badge>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <EmptyTab label="Vaccinations" />
-          )}
+        <TabsContent value="vaccinations" className="mt-4">
+          <VaccinationsTab
+            vaccinations={profile.vaccinations ?? []}
+            clinicUuid={clinicUuid ?? ''}
+            petUuid={pet.petUuid}
+            species={pet.species}
+            onSaved={reloadProfile}
+          />
         </TabsContent>
 
         {tab === 'prescriptions' ? (
@@ -465,10 +470,24 @@ export default function ClinicPatientDashboard() {
         ) : null}
 
         <TabsContent value="labs" className="mt-4">
-          <EmptyTab label="Lab reports" />
+          <ClinicalRecordsTab
+            kind="labs"
+            records={profile.labReports ?? []}
+            visits={visits}
+            clinicUuid={clinicUuid ?? ''}
+            petUuid={pet.petUuid}
+            onSaved={reloadProfile}
+          />
         </TabsContent>
         <TabsContent value="surgeries" className="mt-4">
-          <EmptyTab label="Surgeries" />
+          <ClinicalRecordsTab
+            kind="surgeries"
+            records={profile.surgeries ?? []}
+            visits={visits}
+            clinicUuid={clinicUuid ?? ''}
+            petUuid={pet.petUuid}
+            onSaved={reloadProfile}
+          />
         </TabsContent>
 
         <TabsContent value="invoices" className="mt-4 space-y-3">

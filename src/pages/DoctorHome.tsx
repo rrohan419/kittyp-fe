@@ -85,9 +85,11 @@ import { calendarBlockClass, isUrgentVisit } from '@/utils/visitUrgency';
 import { DashboardAppointmentRow } from '@/components/schedule/DashboardAppointmentRow';
 import { WalkInDialog } from '@/components/clinic/WalkInDialog';
 import { resolveLockedDoctorUuid } from '@/utils/roles';
+import { NowGutterMark, NowIndicator, useTickingNow } from '@/components/schedule/NowIndicator';
 import {
   HOUR_PX,
   eventLayout,
+  nowLineOffsetPx,
   slotStartFromHourClick,
   visitEventTime,
   visibleHourRange,
@@ -199,7 +201,11 @@ export default function DoctorHome() {
     () => eachDayOfInterval({ start: weekStart, end: weekEnd }),
     [weekStart, weekEnd]
   );
-  const today = useMemo(() => startOfDay(new Date()), []);
+  const now = useTickingNow();
+  const today = useMemo(
+    () => startOfDay(now),
+    [now.getFullYear(), now.getMonth(), now.getDate()]
+  );
 
   const loadSchedule = useCallback(async () => {
     setScheduleLoading(true);
@@ -211,14 +217,16 @@ export default function DoctorHome() {
       const [v, b, attended, docs] = await Promise.all([
         fetchMyDoctorVisits(params),
         fetchMyDoctorBookings(params).catch(() => [] as ClinicBookingModel[]),
-        fetchMyAttendedPatients(clinicUuid || undefined).catch(() => []),
+        fetchMyAttendedPatients(clinicUuid || undefined, { pageNumber: 1, pageSize: 1 }).catch(
+          () => ({ models: [], totalElements: 0 })
+        ),
         clinicUuid
           ? fetchClinicDoctors(clinicUuid).catch(() => [] as ClinicDoctorModel[])
           : Promise.resolve([] as ClinicDoctorModel[]),
       ]);
       setVisits(v);
       setBookings(b);
-      setPatientCount(attended.length);
+      setPatientCount(attended.totalElements ?? 0);
       setDoctors(docs);
     } catch {
       setVisits([]);
@@ -378,20 +386,34 @@ export default function DoctorHome() {
     return events.sort((a, b) => a.start.getTime() - b.start.getTime());
   }, [visits, bookings, clinicLabelByUuid]);
 
-  const hourRange = useMemo(() => visibleHourRange(weekEvents), [weekEvents]);
+  const todayInWeek = weekDays.some((d) => isSameDay(d, today));
+  const hourRange = useMemo(
+    () => visibleHourRange(weekEvents, todayInWeek ? now : undefined),
+    [weekEvents, todayInWeek, now]
+  );
+  const nowTop = todayInWeek ? nowLineOffsetPx(now, hourRange) : null;
+  const nextTodayStart = useMemo(
+    () =>
+      weekEvents
+        .filter((e) => isSameDay(e.start, today) && e.start.getTime() > now.getTime())
+        .sort((a, b) => a.start.getTime() - b.start.getTime())[0]?.start ?? null,
+    [weekEvents, today, now]
+  );
   const hours = useMemo(
     () => Array.from({ length: hourRange.endHour - hourRange.startHour }, (_, i) => hourRange.startHour + i),
     [hourRange]
   );
 
   const listEvents = useMemo(() => {
-    return [...weekEvents].sort((a, b) => {
-      const au = isUrgentVisit(a.visit?.urgency) ? 0 : 1;
-      const bu = isUrgentVisit(b.visit?.urgency) ? 0 : 1;
-      if (au !== bu) return au - bu;
-      return a.start.getTime() - b.start.getTime();
-    });
-  }, [weekEvents]);
+    return weekEvents
+      .filter((e) => isSameDay(e.start, weekAnchor))
+      .sort((a, b) => {
+        const au = isUrgentVisit(a.visit?.urgency) ? 0 : 1;
+        const bu = isUrgentVisit(b.visit?.urgency) ? 0 : 1;
+        if (au !== bu) return au - bu;
+        return a.start.getTime() - b.start.getTime();
+      });
+  }, [weekEvents, weekAnchor]);
 
   const todayEvents = useMemo(
     () => weekEvents.filter((e) => isSameDay(e.start, today)),
@@ -820,8 +842,11 @@ export default function DoctorHome() {
                 : clinic?.name
                   ? `${clinic.name} only`
                   : 'Active practice'}{' '}
-              · {format(weekStart, 'MMM d')} – {format(weekEnd, 'MMM d')}
-              {' · Click an empty time to book'}
+              ·{' '}
+              {viewMode === 'list'
+                ? format(weekAnchor, 'EEE, MMM d')
+                : `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'MMM d')}`}
+              {viewMode === 'tiles' ? ' · Click an empty time to book' : ''}
             </p>
             <div className="flex items-center gap-3 mt-1.5">
               <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
@@ -835,13 +860,33 @@ export default function DoctorHome() {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setWeekAnchor((d) => addDays(d, -7))}>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              title={viewMode === 'list' ? 'Previous day' : 'Previous week'}
+              aria-label={viewMode === 'list' ? 'Previous day' : 'Previous week'}
+              onClick={() => setWeekAnchor((d) => addDays(d, viewMode === 'list' ? -1 : -7))}
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" className="h-8" onClick={() => setWeekAnchor(startOfDay(new Date()))}>
+            <Button
+              variant={isSameDay(weekAnchor, today) ? 'secondary' : 'outline'}
+              size="sm"
+              className="h-8"
+              title={viewMode === 'list' ? 'Jump to today' : 'Jump to this week'}
+              onClick={() => setWeekAnchor(startOfDay(new Date()))}
+            >
               Today
             </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setWeekAnchor((d) => addDays(d, 7))}>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              title={viewMode === 'list' ? 'Next day' : 'Next week'}
+              aria-label={viewMode === 'list' ? 'Next day' : 'Next week'}
+              onClick={() => setWeekAnchor((d) => addDays(d, viewMode === 'list' ? 1 : 7))}
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -853,8 +898,10 @@ export default function DoctorHome() {
             </div>
           ) : viewMode === 'list' ? (
             <div className="space-y-2 max-h-[520px] overflow-y-auto">
-              {weekEvents.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-10">No appointments this week.</p>
+              {listEvents.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-10">
+                  No appointments on {format(weekAnchor, 'EEE, MMM d')}.
+                </p>
               ) : (
                 listEvents.map((ev) => (
                   <DashboardAppointmentRow
@@ -896,7 +943,7 @@ export default function DoctorHome() {
                   className="grid"
                   style={{ gridTemplateColumns: `56px repeat(7, minmax(0, 1fr))` }}
                 >
-                  <div className="border-r border-border bg-muted/20">
+                  <div className="relative border-r border-border bg-muted/20">
                     {hours.map((h) => (
                       <div
                         key={h}
@@ -906,6 +953,7 @@ export default function DoctorHome() {
                         {format(setHours(today, h), 'h a')}
                       </div>
                     ))}
+                    {nowTop != null ? <NowGutterMark top={nowTop} now={now} /> : null}
                   </div>
                   {weekDays.map((d) => {
                     const dayEvs = withLanes(weekEvents.filter((e) => isSameDay(e.start, d)));
@@ -931,6 +979,9 @@ export default function DoctorHome() {
                             aria-label={`Book ${format(d, 'EEE MMM d')} at ${format(setHours(d, h), 'h a')}`}
                           />
                         ))}
+                        {nowTop != null && isSameDay(d, today) ? (
+                          <NowIndicator top={nowTop} now={now} nextStartsAt={nextTodayStart} />
+                        ) : null}
                         {dayEvs.map((ev) => eventBlock(ev, d))}
                       </div>
                     );

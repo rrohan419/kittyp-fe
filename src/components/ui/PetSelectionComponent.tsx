@@ -543,11 +543,11 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                       <div className="bg-secondary/50 p-2 rounded-lg">
                         <span className="text-muted-foreground">Type:</span>
-                        <p className="font-semibold text-primary">{selectedPet.type}</p>
+                        <p className="font-semibold text-primary">{selectedPet.type || 'Not set'}</p>
                       </div>
                       <div className="bg-secondary/50 p-2 rounded-lg">
                         <span className="text-muted-foreground">Breed:</span>
-                        <p className="font-semibold text-primary">{selectedPet.breed}</p>
+                        <p className="font-semibold text-primary">{selectedPet.breed || 'Not set'}</p>
                       </div>
                       <div className="bg-secondary/50 p-2 rounded-lg">
                         <span className="text-muted-foreground">Date of birth:</span>
@@ -556,6 +556,32 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                       <div className="bg-secondary/50 p-2 rounded-lg">
                         <span className="text-muted-foreground">Weight:</span>
                         <p className="font-semibold text-primary">{selectedPet.weight || 'Not set'}</p>
+                      </div>
+                      <div className="bg-secondary/50 p-2 rounded-lg">
+                        <span className="text-muted-foreground">Gender:</span>
+                        <p className="font-semibold text-primary">{selectedPet.gender || 'Not set'}</p>
+                      </div>
+                      <div className="bg-secondary/50 p-2 rounded-lg">
+                        <span className="text-muted-foreground">Neutered / spayed:</span>
+                        <p className="font-semibold text-primary">
+                          {selectedPet.isNeutered === true ? 'Yes' : selectedPet.isNeutered === false ? 'No' : 'Not set'}
+                        </p>
+                      </div>
+                      <div className="bg-secondary/50 p-2 rounded-lg">
+                        <span className="text-muted-foreground">Activity:</span>
+                        <p className="font-semibold text-primary">{selectedPet.activityLevel || 'Not set'}</p>
+                      </div>
+                      <div className="bg-secondary/50 p-2 rounded-lg">
+                        <span className="text-muted-foreground">Food brand:</span>
+                        <p className="font-semibold text-primary">{selectedPet.currentFoodBrand || 'Not set'}</p>
+                      </div>
+                      <div className="bg-secondary/50 p-2 rounded-lg col-span-2">
+                        <span className="text-muted-foreground">Health conditions:</span>
+                        <p className="font-semibold text-primary">{selectedPet.healthConditions || 'None listed'}</p>
+                      </div>
+                      <div className="bg-secondary/50 p-2 rounded-lg col-span-2">
+                        <span className="text-muted-foreground">Food allergies:</span>
+                        <p className="font-semibold text-primary">{selectedPet.allergies || 'None listed'}</p>
                       </div>
                     </div>
                   </div>

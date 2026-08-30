@@ -19,6 +19,7 @@ export interface NutritionPlan {
   status?: NutritionPlanStatus | string;
   approvedAt?: string | null;
   sentAt?: string | null;
+  durationDays?: number | null;
   nutritionRecommendationResponse: NutritionRecommendationResponse;
 }
 
@@ -145,9 +146,13 @@ export const approveNutritionPlan = async (uuid: string): Promise<NutritionPlan>
   return res.data.data;
 };
 
-export const sendNutritionPlan = async (uuid: string): Promise<NutritionPlan> => {
+export const sendNutritionPlan = async (
+  uuid: string,
+  options?: { durationDays?: number }
+): Promise<NutritionPlan> => {
   const res = await axiosInstance.post<ApiSuccessResponse<NutritionPlan>>(
-    `/ai/nutrition/plans/${uuid}/send`
+    `/ai/nutrition/plans/${uuid}/send`,
+    options?.durationDays != null ? { durationDays: options.durationDays } : {}
   );
   return res.data.data;
 };

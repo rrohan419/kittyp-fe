@@ -21,6 +21,7 @@ export {
   HOUR_PX,
   dayBounds,
   eventLayout,
+  nowLineOffsetPx,
   slotStartFromHourClick,
   visibleHourRange,
   withLanes,
