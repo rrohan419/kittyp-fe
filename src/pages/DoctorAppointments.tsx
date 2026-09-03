@@ -242,7 +242,7 @@ export default function DoctorAppointments() {
         const billableOnDoctor = !visitClinic || visitClinic === clinicUuid;
         setChartVisit(null);
         await load();
-        if (billableOnDoctor) {
+        if (billableOnDoctor && isPersonalPractice) {
           const fromVisit: InvoiceFromVisitState = {
             visitUuid: completed.uuid || chartVisit.uuid,
             clinicUuid: visitClinic,
@@ -262,7 +262,7 @@ export default function DoctorAppointments() {
             state: { fromVisit },
           });
         } else {
-          toast.success('Treatment finished — ready to invoice');
+          toast.success('Treatment finished — sent to reception Checkout for billing');
         }
         return;
       }

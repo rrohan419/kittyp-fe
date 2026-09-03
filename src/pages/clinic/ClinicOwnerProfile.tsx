@@ -36,6 +36,8 @@ import {
   ClinicOwnerProfileModel,
   addPetToClinicOwner,
   fetchClinicOwnerProfile,
+  sendPetConsentOtp,
+  verifyPetConsentOtp,
 } from '@/services/clinicService';
 import { PetPhoto } from '@/components/clinic/PetPhoto';
 import { formatPetDobWithAge } from '@/utils/petAge';
@@ -61,6 +63,10 @@ export default function ClinicOwnerProfile() {
   const [addOpen, setAddOpen] = useState(false);
   const [petForm, setPetForm] = useState(emptyPet);
   const [saving, setSaving] = useState(false);
+  const [consentCode, setConsentCode] = useState('');
+  const [consentVerified, setConsentVerified] = useState(false);
+  const [consentSending, setConsentSending] = useState(false);
+  const [consentVerifying, setConsentVerifying] = useState(false);
 
   const reload = async () => {
     if (!clinicUuid || !ownerUuid) return;
@@ -97,6 +103,10 @@ export default function ClinicOwnerProfile() {
   const handleAddPet = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clinicUuid || !ownerUuid || !petForm.name.trim()) return;
+    if (!consentVerified) {
+      toast.error('Verify owner email consent before adding this pet');
+      return;
+    }
     setSaving(true);
     try {
       const pet = await addPetToClinicOwner(clinicUuid, ownerUuid, {
@@ -112,6 +122,8 @@ export default function ClinicOwnerProfile() {
       toast.success(`${pet.name} added`);
       setAddOpen(false);
       setPetForm(emptyPet);
+      setConsentCode('');
+      setConsentVerified(false);
       await reload();
     } catch (err: unknown) {
       const message =
@@ -120,6 +132,47 @@ export default function ClinicOwnerProfile() {
       toast.error(message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSendConsent = async () => {
+    if (!clinicUuid || !ownerUuid || !petForm.name.trim()) {
+      toast.error('Enter the pet name first');
+      return;
+    }
+    setConsentSending(true);
+    try {
+      await sendPetConsentOtp(clinicUuid, ownerUuid, petForm.name.trim());
+      setConsentVerified(false);
+      toast.success('Consent code sent to owner email');
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Failed to send consent code';
+      toast.error(message);
+    } finally {
+      setConsentSending(false);
+    }
+  };
+
+  const handleVerifyConsent = async () => {
+    if (!clinicUuid || !ownerUuid || !petForm.name.trim() || !consentCode.trim()) {
+      toast.error('Enter pet name and the code');
+      return;
+    }
+    setConsentVerifying(true);
+    try {
+      await verifyPetConsentOtp(clinicUuid, ownerUuid, petForm.name.trim(), consentCode.trim());
+      setConsentVerified(true);
+      toast.success('Owner consent verified');
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Invalid consent code';
+      toast.error(message);
+      setConsentVerified(false);
+    } finally {
+      setConsentVerifying(false);
     }
   };
 
@@ -266,7 +319,17 @@ export default function ClinicOwnerProfile() {
         </div>
       </div>
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog
+        open={addOpen}
+        onOpenChange={(open) => {
+          setAddOpen(open);
+          if (!open) {
+            setPetForm(emptyPet);
+            setConsentCode('');
+            setConsentVerified(false);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add pet for {owner.name}</DialogTitle>
@@ -276,7 +339,10 @@ export default function ClinicOwnerProfile() {
               <Label>Pet name *</Label>
               <Input
                 value={petForm.name}
-                onChange={(e) => setPetForm((s) => ({ ...s, name: e.target.value }))}
+                onChange={(e) => {
+                  setPetForm((s) => ({ ...s, name: e.target.value }));
+                  setConsentVerified(false);
+                }}
                 required
               />
             </div>
@@ -294,6 +360,47 @@ export default function ClinicOwnerProfile() {
                   value={petForm.breed}
                   onChange={(e) => setPetForm((s) => ({ ...s, breed: e.target.value }))}
                 />
+              </div>
+            </div>
+            <div className="rounded-md border px-3 py-2.5 space-y-2">
+              <p className="text-sm font-medium">Owner consent (email OTP)</p>
+              <p className="text-xs text-muted-foreground">
+                A one-time code is emailed to the owner for this pet name only.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={consentSending || !petForm.name.trim()}
+                  onClick={() => void handleSendConsent()}
+                >
+                  {consentSending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                  Send code
+                </Button>
+                <Input
+                  className="max-w-[140px] h-8"
+                  placeholder="6-digit code"
+                  value={consentCode}
+                  onChange={(e) => {
+                    setConsentCode(e.target.value);
+                    setConsentVerified(false);
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={consentVerifying || !consentCode.trim()}
+                  onClick={() => void handleVerifyConsent()}
+                >
+                  {consentVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                  Verify
+                </Button>
+                {consentVerified ? (
+                  <Badge variant="secondary" className="self-center">
+                    Verified
+                  </Badge>
+                ) : null}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -348,7 +455,7 @@ export default function ClinicOwnerProfile() {
               <Button type="button" variant="outline" onClick={() => setAddOpen(false)} disabled={saving}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving || !consentVerified}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Add pet
               </Button>
