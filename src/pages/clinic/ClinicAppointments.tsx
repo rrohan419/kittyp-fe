@@ -126,6 +126,32 @@ export default function ClinicAppointments() {
     [clinicUuid]
   );
 
+  const openInvoiceForVisit = useCallback(
+    (v: ClinicVisitModel) => {
+      if (v.invoiceUuid) {
+        setPreviewInvoiceUuid(v.invoiceUuid);
+        return;
+      }
+      const fromVisit: InvoiceFromVisitState = {
+        visitUuid: v.uuid,
+        clinicUuid: v.clinicUuid || clinicUuid || undefined,
+        petUuid: v.petUuid,
+        petName: v.petName,
+        ownerName: v.ownerName || undefined,
+        ownerPhone: v.ownerPhone || undefined,
+        ownerEmail: v.ownerEmail || undefined,
+        reason: v.reasonForVisit || undefined,
+        diagnosis: v.chart?.assessment || undefined,
+        doctorNotes: v.chart?.plan || undefined,
+        nextVisitNotes: v.chart?.nextVisitNotes || undefined,
+      };
+      navigate(`/clinic/invoices?visit=${encodeURIComponent(v.uuid)}`, {
+        state: { fromVisit },
+      });
+    },
+    [clinicUuid, navigate]
+  );
+
   const load = useCallback(async () => {
     if (!clinicUuid) {
       setVisits([]);
@@ -530,28 +556,7 @@ export default function ClinicAppointments() {
                               : { status: 'COMPLETED' }
                           );
                         }}
-                        onInvoice={() => {
-                          if (v.invoiceUuid) {
-                            setPreviewInvoiceUuid(v.invoiceUuid);
-                            return;
-                          }
-                          const fromVisit: InvoiceFromVisitState = {
-                            visitUuid: v.uuid,
-                            clinicUuid: v.clinicUuid || clinicUuid || undefined,
-                            petUuid: v.petUuid,
-                            petName: v.petName,
-                            ownerName: v.ownerName || undefined,
-                            ownerPhone: v.ownerPhone || undefined,
-                            ownerEmail: v.ownerEmail || undefined,
-                            reason: v.reasonForVisit || undefined,
-                            diagnosis: v.chart?.assessment || undefined,
-                            doctorNotes: v.chart?.plan || undefined,
-                            nextVisitNotes: v.chart?.nextVisitNotes || undefined,
-                          };
-                          navigate(`/clinic/invoices?visit=${encodeURIComponent(v.uuid)}`, {
-                            state: { fromVisit },
-                          });
-                        }}
+                        onInvoice={() => openInvoiceForVisit(v)}
                         onCancel={() => patch(v.uuid, { status: 'CANCELLED' })}
                         onAssign={(doctorUuid) =>
                           patch(v.uuid, { doctorUuid: doctorUuid || null })
@@ -622,7 +627,17 @@ export default function ClinicAppointments() {
                           </p>
                         )}
                       </div>
-                      <Badge className={statusBadge.COMPLETED}>Completed</Badge>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <Badge className={statusBadge.COMPLETED}>Completed</Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => openInvoiceForVisit(v)}
+                        >
+                          {v.invoiceUuid ? 'View invoice' : 'Create invoice'}
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 );
