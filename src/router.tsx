@@ -38,6 +38,7 @@ import AdminArticles from './pages/AdminArticles';
 import AdminOrders from './pages/AdminOrders';
 import AdminProducts from './pages/AdminProducts';
 import AdminUsers from './pages/AdminUsers';
+import AdminParents from '@/pages/admin/AdminParents';
 import { VetConsultation } from './pages/VetConsultation';
 import { VetDashboardPage } from './pages/VetDashboardPage';
 import ParentAppointmentsPage from './pages/parent/ParentAppointmentsPage';
@@ -524,7 +525,11 @@ export const router = createBrowserRouter(
             },
             {
               path: "users",
-              element: <PageTransition><AdminUsers /></PageTransition>,
+              element: <PageTransition><AdminUsers mode="all" /></PageTransition>,
+            },
+            {
+              path: "parents",
+              element: <PageTransition><AdminParents /></PageTransition>,
             },
             {
               path: "health",

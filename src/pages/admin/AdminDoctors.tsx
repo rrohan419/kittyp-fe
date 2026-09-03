@@ -161,7 +161,7 @@ export default function AdminDoctors() {
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Doctor Verification</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Clinic-affiliated doctors appear first. Optional fields only show when provided.
+            Organization-affiliated doctors appear first. Optional fields only show when provided.
           </p>
         </div>
         <Select value={filter} onValueChange={(v) => setFilter(v as DoctorStatus | 'ALL')}>
