@@ -1,6 +1,4 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { fetchFilteredOrders } from '@/services/orderService';
-import { fetchProductCount } from '@/services/productService';
 import { fetchAdminDashboardData } from '@/services/adminService';
 
 interface AdminState {
@@ -9,6 +7,8 @@ interface AdminState {
     totalOrderCount: number;
     totalUserCount: number;
     totalArticleCount: number;
+    pendingDoctorsCount: number;
+    clinicsCount: number;
 }
 
 const initialState: AdminState = {
@@ -16,25 +16,16 @@ const initialState: AdminState = {
     isDashboardLoading: true,
     totalOrderCount: 0,
     totalUserCount: 0,
-    totalArticleCount:0,
+    totalArticleCount: 0,
+    pendingDoctorsCount: 0,
+    clinicsCount: 0,
 };
-
-
 
 export const initializeAdminDashboard = createAsyncThunk(
     'admin/initializeDashboard',
-    async (_, { dispatch }) => {
+    async () => {
         try {
-            // const dashboardData = await fetchProductCount(true);
-            // const orderTotalNumber = await fetchFilteredOrders(1, 5, {
-            //     orderNumber: null,
-            //     orderStatus: null,
-            //     userUuid: null,
-            //     searchText: null
-            // });
-            const adminDashboardData = await fetchAdminDashboardData();
-
-            return adminDashboardData;
+            return await fetchAdminDashboardData();
         } catch (error) {
             console.error('Failed to initialize admin dashboard:', error);
             throw error;
@@ -56,6 +47,8 @@ export const adminSlice = createSlice({
                 state.totalOrderCount = action.payload.totalOrders;
                 state.totalUserCount = action.payload.usersCount;
                 state.totalArticleCount = action.payload.articleCount;
+                state.pendingDoctorsCount = action.payload.pendingDoctorsCount ?? 0;
+                state.clinicsCount = action.payload.clinicsCount ?? 0;
                 state.isDashboardLoading = false;
             })
             .addCase(initializeAdminDashboard.rejected, (state) => {

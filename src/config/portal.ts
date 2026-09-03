@@ -145,6 +145,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
     navItems: [
       { label: 'Dashboard', path: '/admin', icon: LayoutDashboard, end: true },
       { label: 'Users', path: '/admin/users', icon: Users },
+      { label: 'Parents', path: '/admin/parents', icon: PawPrint },
       { label: 'Doctors', path: '/admin/doctors', icon: Stethoscope },
       { label: 'Clinics', path: '/admin/clinics', icon: Building2 },
       { label: 'Orders', path: '/admin/orders', icon: ShoppingCart },
@@ -155,7 +156,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
     ],
     bottomTabs: [
       { label: 'Home', path: '/admin', icon: LayoutDashboard, end: true },
-      { label: 'Users', path: '/admin/users', icon: Users },
+      { label: 'Parents', path: '/admin/parents', icon: PawPrint },
       { label: 'Doctors', path: '/admin/doctors', icon: Stethoscope },
       { label: 'Articles', path: '/admin/articles', icon: FileText },
       { label: 'More', path: '/admin/settings', icon: MoreHorizontal },
@@ -170,6 +171,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
     navItems: [
       { label: 'Dashboard', path: '/admin', icon: LayoutDashboard, end: true },
       { label: 'Users', path: '/admin/users', icon: Users },
+      { label: 'Parents', path: '/admin/parents', icon: PawPrint },
       { label: 'Doctors', path: '/admin/doctors', icon: Stethoscope },
       { label: 'Clinics', path: '/admin/clinics', icon: Building2 },
       { label: 'Orders', path: '/admin/orders', icon: ShoppingCart },
@@ -180,7 +182,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
     ],
     bottomTabs: [
       { label: 'Home', path: '/admin', icon: LayoutDashboard, end: true },
-      { label: 'Users', path: '/admin/users', icon: Users },
+      { label: 'Parents', path: '/admin/parents', icon: PawPrint },
       { label: 'Doctors', path: '/admin/doctors', icon: Stethoscope },
       { label: 'Articles', path: '/admin/articles', icon: FileText },
       { label: 'More', path: '/admin/settings', icon: MoreHorizontal },
