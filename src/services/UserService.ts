@@ -172,10 +172,6 @@ export const fetchUserPets = async (): Promise<PetProfile[]> => {
   return response.data.data;
 };
 
-export const saveUserFcmToken = async (fcmToken: string): Promise<UserProfile> => {
-  
-  const userResponse = await axiosInstance.patch<WrappedUserResponse>(`/user/${fcmToken}`);
-  const user = userResponse.data.data;
-
-  return persistUserProfile(user);
+export const saveUserFcmToken = async (fcmToken: string): Promise<void> => {
+  await axiosInstance.patch(`/user/${encodeURIComponent(fcmToken)}`);
 };
