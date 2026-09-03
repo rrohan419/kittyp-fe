@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -15,14 +15,12 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/module/store/store';
 import { ROLES, hasRole } from '@/utils/roles';
 import {
-  addDays,
   format,
   parseISO,
   startOfDay,
   startOfWeek,
   endOfWeek,
   isWithinInterval,
-  isSameDay,
 } from 'date-fns';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import {
@@ -37,13 +35,13 @@ import {
   CLINIC_NOT_ACTIVATED_MESSAGE,
 } from '@/services/clinicService';
 import { WeekCalendar } from '@/components/schedule/WeekCalendar';
-import { WeekCalEvent, buildWeekEvents, visitEventTime } from '@/components/schedule/weekCalendarUtils';
+import { WeekCalEvent, buildWeekEvents, isFutureBookableSlot, visitEventTime } from '@/components/schedule/weekCalendarUtils';
 import { DashboardAppointmentRow } from '@/components/schedule/DashboardAppointmentRow';
 import { cn } from '@/lib/utils';
 import { petNameWithType } from '@/utils/petType';
-import { isUrgentVisit } from '@/utils/visitUrgency';
 import { WalkInDialog } from '@/components/clinic/WalkInDialog';
 import { toast } from 'sonner';
+import { filterClinicUrgentToday, isCalendarExcludedStatus } from '@/utils/visitStatus';
 
 export default function ClinicHome() {
   const { clinic, clinicUuid, loading: clinicLoading } = useActiveClinic();
@@ -57,6 +55,7 @@ export default function ClinicHome() {
   const [selected, setSelected] = useState<WeekCalEvent | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addSlot, setAddSlot] = useState<Date | null>(null);
+  const loadSeq = useRef(0);
   const clinicActivated = isClinicActivated(clinic?.status);
 
   const weekStart = useMemo(
@@ -66,6 +65,7 @@ export default function ClinicHome() {
   const weekEnd = useMemo(() => endOfWeek(weekAnchor, { weekStartsOn: 1 }), [weekAnchor]);
 
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
     if (!clinicUuid) {
       setLoading(false);
       setDoctors([]);
@@ -76,23 +76,30 @@ export default function ClinicHome() {
       return;
     }
     setLoading(true);
+    const from = format(weekStart, 'yyyy-MM-dd');
+    const to = format(weekEnd, 'yyyy-MM-dd');
     try {
-      const days = Array.from({ length: 7 }, (_, i) => format(addDays(weekStart, i), 'yyyy-MM-dd'));
-      const [docs, bookingPage, stats, ...dayVisits] = await Promise.all([
+      let visitFetchFailed = false;
+      const [docs, bookingPage, stats, visitList] = await Promise.all([
         fetchClinicDoctors(clinicUuid),
         fetchClinicBookings(clinicUuid, 0, 200),
         fetchClinicStats(clinicUuid),
-        ...days.map((date) => fetchClinicVisits(clinicUuid, { date }).catch(() => [] as ClinicVisitModel[])),
+        fetchClinicVisits(clinicUuid, { from, to }).catch(() => {
+          visitFetchFailed = true;
+          return [] as ClinicVisitModel[];
+        }),
       ]);
-      const visitMap = new Map<string, ClinicVisitModel>();
-      for (const list of dayVisits as ClinicVisitModel[][]) {
-        for (const v of list) visitMap.set(v.uuid, v);
+      if (seq !== loadSeq.current) {
+        return;
       }
       setDoctors(docs);
       setPatientCount(stats?.patientCount ?? 0);
       setBookings(bookingPage?.models ?? []);
-      setVisits([...visitMap.values()]);
+      setVisits(visitList);
       setDiagnosedCount(stats?.diagnosedPetCount ?? 0);
+      if (visitFetchFailed) {
+        toast.error('Could not load visits for this week');
+      }
     } catch {
       setDoctors([]);
       setPatientCount(0);
@@ -111,10 +118,9 @@ export default function ClinicHome() {
   const weekEvents = useMemo(() => {
     const range = { start: weekStart, end: weekEnd };
     const weekVisits = visits.filter((v) => {
-      const raw = v.startedAt || v.checkedInAt || v.createdAt;
-      if (!raw) return false;
+      if (isCalendarExcludedStatus(v.status)) return false;
       try {
-        return isWithinInterval(parseISO(raw), range);
+        return isWithinInterval(visitEventTime(v).start, range);
       } catch {
         return false;
       }
@@ -132,13 +138,9 @@ export default function ClinicHome() {
 
   const urgentToday = useMemo(() => {
     const today = startOfDay(new Date());
-    return visits
-      .filter((v) => {
-        if (!isUrgentVisit(v.urgency)) return false;
-        if (v.status === 'COMPLETED' || v.status === 'CANCELLED' || v.status === 'NO_SHOW') return false;
-        return isSameDay(visitEventTime(v).start, today);
-      })
-      .sort((a, b) => visitEventTime(a).start.getTime() - visitEventTime(b).start.getTime());
+    return filterClinicUrgentToday(visits, today).sort(
+      (a, b) => visitEventTime(a).start.getTime() - visitEventTime(b).start.getTime()
+    );
   }, [visits]);
 
   const stats = [
@@ -312,6 +314,10 @@ export default function ClinicHome() {
             loading={loading}
             onEventClick={setSelected}
             onSlotClick={(start) => {
+              if (!isFutureBookableSlot(start)) {
+                toast.error('Cannot book a past time');
+                return;
+              }
               if (!clinicUuid || clinic?.status === 'SHUTDOWN') {
                 toast.error('This clinic cannot take new appointments');
                 return;

@@ -22,6 +22,7 @@ import { WalkInDialog } from '@/components/clinic/WalkInDialog';
 import { BookingEditDialog } from '@/components/clinic/BookingEditDialog';
 import { fetchMyDoctorProfile, isPracticeReady, statusLabel } from '@/services/doctorVerificationService';
 import { canInviteDoctors, resolveLockedDoctorUuid, shouldLockAssigneeDoctor } from '@/utils/roles';
+import { hasAuthToken } from '@/utils/authStorage';
 import {
   Dialog,
   DialogContent,
@@ -94,7 +95,7 @@ export default function ClinicAppointments() {
   const user = useAppSelector((s) => s.authReducer.user);
   const canInvite = canInviteDoctors(user?.roles);
   const { clinicUuid, clinic, isPersonalPractice } = useActiveClinic();
-  const clinicActivated = isClinicActivated(clinic?.status);
+  const clinicActivated = isClinicActivated(clinic?.status, clinic?.personal);
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
@@ -188,6 +189,7 @@ export default function ClinicAppointments() {
   useEffect(() => {
     if (!clinicUuid) return;
     const t = setInterval(() => {
+      if (!hasAuthToken()) return;
       void (async () => {
         try {
           const [visitList, bookingPage, doctorList] = await Promise.all([

@@ -32,6 +32,10 @@ export function calendarBlockClass(urgent: boolean): string {
   return urgent ? urgentCalendarBlockClass : routineCalendarBlockClass;
 }
 
+/** Muted emerald for completed / checking-out on week calendar. */
+export const attendedCalendarBlockClass =
+  'opacity-60 bg-emerald-600/75 text-white border-emerald-700 border-l-4 border-l-emerald-400';
+
 export const urgentVisitBadgeClass =
   'border-transparent bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200';
 

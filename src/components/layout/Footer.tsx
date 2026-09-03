@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Instagram, TwitterIcon, FacebookIcon, LinkedinIcon } from 'lucide-react';
+import { KittypLogo } from '@/components/brand/KittypLogo';
 import { isEcommerceEnabled } from '@/config/features';
 import { PUBLIC_SIGNUP_PATHS } from '@/utils/roles';
 
@@ -12,11 +13,7 @@ export function Footer() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
           <div className="md:col-span-4 space-y-6">
-            <Link to="/" className="inline-block">
-              <span className="text-2xl font-extrabold tracking-tight">
-                kitty<span className="text-primary">p</span>
-              </span>
-            </Link>
+            <KittypLogo asLink />
             <p className="text-muted-foreground max-w-md">
               Veterinary clinic CRM for India — appointments, consults, invoices, and a health record that stays with the pet.
             </p>

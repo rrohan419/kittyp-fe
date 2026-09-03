@@ -54,7 +54,7 @@ function DocLink({ href, label }: { href?: string; label: string }) {
 }
 
 export default function AdminDoctors() {
-  const [filter, setFilter] = useState<DoctorStatus | 'ALL'>('DOCUMENTS_SUBMITTED');
+  const [filter, setFilter] = useState<DoctorStatus | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
   const [doctors, setDoctors] = useState<DoctorVerificationModel[]>([]);
   const [selected, setSelected] = useState<DoctorVerificationModel | null>(null);

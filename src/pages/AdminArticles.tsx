@@ -249,7 +249,9 @@ const AdminArticles = ({
                               <Button 
                                 variant="outline" 
                                 size="sm"
-                                onClick={() => navigate(`/articles/${article.slug}`)}
+                                onClick={() =>
+                                  navigate(`/articles/${article.slug}`, { state: { from: basePath } })
+                                }
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 View

@@ -1,8 +1,7 @@
 import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -16,9 +15,22 @@ interface AuthorSelectorProps {
   selectedAuthor: Author | null;
   onAuthorChange: (author: Author | null) => void;
   disabled?: boolean;
+  compact?: boolean;
 }
 
-export function AuthorSelector({ selectedAuthor, onAuthorChange, disabled = false }: AuthorSelectorProps) {
+function authorInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+export function AuthorSelector({
+  selectedAuthor,
+  onAuthorChange,
+  disabled = false,
+  compact = false,
+}: AuthorSelectorProps) {
   const [authors, setAuthors] = React.useState<Author[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isAddingAuthor, setIsAddingAuthor] = React.useState(false);
@@ -94,8 +106,8 @@ export function AuthorSelector({ selectedAuthor, onAuthorChange, disabled = fals
   };
 
   return (
-    <div className="grid gap-2">
-      <Label>Author</Label>
+    <div className={compact ? 'min-w-[11rem]' : 'grid gap-2'}>
+      {!compact && <Label>Author</Label>}
       <div className="flex gap-2">
         <Select
           value={selectedAuthor?.id || ''}
@@ -105,21 +117,35 @@ export function AuthorSelector({ selectedAuthor, onAuthorChange, disabled = fals
           }}
           disabled={isLoading || disabled}
         >
-          <SelectTrigger className="flex-1">
+          <SelectTrigger className={compact ? 'h-7 w-auto min-w-0 gap-1.5 border-0 bg-transparent px-2 shadow-none text-primary focus:ring-0' : 'flex-1'}>
             <SelectValue placeholder={
-              disabled ? "Author cannot be changed when editing" : 
-              isLoading ? "Loading authors..." : 
-              "Select an author"
+              disabled ? "Author locked" :
+              isLoading ? "Loading…" :
+              "Author"
             }>
               {selectedAuthor && (
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
-                    <img src={selectedAuthor.avatar} alt={selectedAuthor.name} />
+                <div className="flex items-center gap-1.5">
+                  <Avatar className={compact ? 'h-5 w-5' : 'h-6 w-6'}>
+                    {selectedAuthor.avatar ? (
+                      <AvatarImage src={selectedAuthor.avatar} alt={selectedAuthor.name} />
+                    ) : null}
+                    <AvatarFallback className="text-[10px]">
+                      {authorInitials(selectedAuthor.name)}
+                    </AvatarFallback>
                   </Avatar>
-                  <div className="text-left">
-                    <p className="text-sm font-medium">{selectedAuthor.name}</p>
-                    <p className="text-xs text-muted-foreground">{selectedAuthor.role}</p>
-                  </div>
+                  <span className={compact ? 'text-xs text-muted-foreground' : 'text-left'}>
+                    {compact ? (
+                      <span className="text-xs font-medium text-primary">
+                        {selectedAuthor.name}
+                        {selectedAuthor.role ? ` · ${selectedAuthor.role}` : ''}
+                      </span>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium">{selectedAuthor.name}</p>
+                        <p className="text-xs text-muted-foreground">{selectedAuthor.role}</p>
+                      </>
+                    )}
+                  </span>
                 </div>
               )}
             </SelectValue>
@@ -139,7 +165,8 @@ export function AuthorSelector({ selectedAuthor, onAuthorChange, disabled = fals
                 <SelectItem key={author.id} value={author.id}>
                   <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
-                      <img src={author.avatar} alt={author.name} />
+                      {author.avatar ? <AvatarImage src={author.avatar} alt={author.name} /> : null}
+                      <AvatarFallback className="text-xs">{authorInitials(author.name)}</AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="font-medium">{author.name}</p>
@@ -152,7 +179,7 @@ export function AuthorSelector({ selectedAuthor, onAuthorChange, disabled = fals
           </SelectContent>
         </Select>
 
-        {selectedAuthor && !disabled && (
+        {!compact && selectedAuthor && !disabled && (
           <Button 
             variant="outline" 
             size="icon" 
@@ -163,6 +190,7 @@ export function AuthorSelector({ selectedAuthor, onAuthorChange, disabled = fals
             <User className="h-4 w-4" />
           </Button>
         )}
+        {!compact && (
         <Dialog open={isAddingAuthor} onOpenChange={setIsAddingAuthor}>
           <DialogTrigger asChild>
             <Button variant="outline" size="icon" className="flex-shrink-0" disabled={disabled}>
@@ -205,7 +233,8 @@ export function AuthorSelector({ selectedAuthor, onAuthorChange, disabled = fals
                 {newAuthor.avatar && (
                   <div className="mt-2">
                     <Avatar className="h-16 w-16">
-                      <img src={newAuthor.avatar} alt="Preview" />
+                      <AvatarImage src={newAuthor.avatar} alt="Preview" />
+                      <AvatarFallback>{authorInitials(newAuthor.name || 'NA')}</AvatarFallback>
                     </Avatar>
                   </div>
                 )}
@@ -235,24 +264,8 @@ export function AuthorSelector({ selectedAuthor, onAuthorChange, disabled = fals
             </div>
           </DialogContent>
         </Dialog>
+        )}
       </div>
-
-      {selectedAuthor && (
-        <Card className="mt-2 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-12 w-12">
-                <img src={selectedAuthor.avatar} alt={selectedAuthor.name} />
-              </Avatar>
-              <div>
-                <p className="font-medium">{selectedAuthor.name}</p>
-                <p className="text-sm text-muted-foreground">{selectedAuthor.role}</p>
-                <p className="text-xs text-green-600 dark:text-green-400">✓ Selected</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

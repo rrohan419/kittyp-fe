@@ -123,7 +123,7 @@ export function BookingEditDialog({
           }
           setBusyHint(null);
         } catch {
-          if (!cancelled) setBusyHint(null);
+          if (!cancelled) setBusyHint('Could not confirm doctor availability for this time');
         }
       })();
     }, 250);
@@ -159,6 +159,10 @@ export function BookingEditDialog({
     }
     if (Object.keys(payload).length === 0) {
       toast.message('No changes');
+      return;
+    }
+    if (busyHint) {
+      toast.error(busyHint);
       return;
     }
     setSaving(true);

@@ -4,14 +4,17 @@ import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Stethoscope, CheckCircle2, AlertCircle } from 'lucide-react';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/module/store/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/module/store/store';
+import { setActiveClinic } from '@/module/slice/AuthSlice';
 import {
   acceptInvite,
   DoctorInvitePreview,
   fetchInviteByToken,
   rejectInvite,
+  switchClinic,
 } from '@/services/clinicService';
+import { setPendingClinicPinned } from '@/utils/activeClinic';
 import { toast } from 'sonner';
 import { notifyInviteAddressed } from '@/components/portal/PortalNotifications';
 import { ROLES, hasAnyRole } from '@/utils/roles';
@@ -22,6 +25,7 @@ export default function ClinicInviteAccept() {
   const [params] = useSearchParams();
   const token = params.get('token') || '';
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
   const { user, isAuthenticated } = useSelector((s: RootState) => s.authReducer);
 
   const [preview, setPreview] = useState<DoctorInvitePreview | null>(null);
@@ -73,10 +77,16 @@ export default function ClinicInviteAccept() {
     if (!token) return;
     setAccepting(true);
     try {
-      await acceptInvite(token);
+      const joined = await acceptInvite(token);
+      const clinicUuid = joined.clinicUuid || preview?.clinicUuid;
+      if (clinicUuid) {
+        setPendingClinicPinned(false);
+        await switchClinic(clinicUuid);
+        dispatch(setActiveClinic(clinicUuid));
+      }
       toast.success('You joined the clinic');
       notifyInviteAddressed();
-      navigate('/doctor');
+      navigate('/doctor/appointments');
     } catch (err: unknown) {
       const ax = err as { response?: { data?: unknown }; message?: string };
       const raw =

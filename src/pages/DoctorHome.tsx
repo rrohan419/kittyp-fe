@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -60,7 +60,10 @@ import {
   isClinicActivated,
   CLINIC_NOT_ACTIVATED_MESSAGE,
   rejectInvite,
+  switchClinic,
 } from '@/services/clinicService';
+import { setActiveClinic } from '@/module/slice/AuthSlice';
+import { setPendingClinicPinned } from '@/utils/activeClinic';
 import {
   ClinicBookingModel,
   ClinicVisitModel,
@@ -72,7 +75,7 @@ import {
   startDoctorBookingTreatment,
   startDoctorVisit,
 } from '@/services/visitService';
-import { useAppSelector } from '@/module/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { toast } from 'sonner';
 import { notifyInviteAddressed } from '@/components/portal/PortalNotifications';
@@ -82,17 +85,24 @@ import { cn } from '@/lib/utils';
 import { petNameWithType } from '@/utils/petType';
 import { consultPath, isVideoConsult } from '@/utils/consult';
 import { calendarBlockClass, isUrgentVisit } from '@/utils/visitUrgency';
+import { filterUrgentAttentionQueue, isAttendedCalendarVisit } from '@/utils/visitStatus';
+import { doctorAttendedCalendarBlockClass } from '@/components/schedule/doctorCalendarColor';
 import { DashboardAppointmentRow } from '@/components/schedule/DashboardAppointmentRow';
 import { WalkInDialog } from '@/components/clinic/WalkInDialog';
 import { resolveLockedDoctorUuid } from '@/utils/roles';
+import { hasAuthToken } from '@/utils/authStorage';
 import { NowGutterMark, NowIndicator, useTickingNow } from '@/components/schedule/NowIndicator';
+import { WeekCalendarSlotLayer } from '@/components/schedule/weekCalendarSlotLayer';
 import {
   HOUR_PX,
   eventLayout,
+  isFutureBookableSlot,
   nowLineOffsetPx,
-  slotStartFromHourClick,
+  resolveEventDoctorUuid,
+  filterPracticeWeekEvents,
   visitEventTime,
   visibleHourRange,
+  weekHasFutureBookableSlots,
   withLanes,
 } from '@/components/schedule/weekCalendarUtils';
 
@@ -104,6 +114,7 @@ type CalEvent = {
   start: Date;
   end: Date;
   status: string;
+  doctorUuid?: string | null;
   visit?: ClinicVisitModel;
   booking?: ClinicBookingModel;
 };
@@ -131,8 +142,10 @@ function chartFormFromVisit(visit: ClinicVisitModel, petWeight = '') {
 
 export default function DoctorHome() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.authReducer.user);
-  const { clinicUuid, clinic, clinics, isPersonalPractice } = useActiveClinic();
+  const { clinicUuid, clinic, clinics, isPersonalPractice, refresh, loading: clinicLoading } = useActiveClinic();
+  const scheduleSeq = useRef(0);
   const [profile, setProfile] = useState<DoctorVerificationModel | null>(null);
   const [invites, setInvites] = useState<DoctorInviteModel[]>([]);
   const [invitesLoading, setInvitesLoading] = useState(true);
@@ -176,6 +189,10 @@ export default function DoctorHome() {
   });
 
   const bookCalendarSlot = (start: Date) => {
+    if (!isFutureBookableSlot(start)) {
+      toast.error('Cannot book a past time');
+      return;
+    }
     if (!clinicUuid || clinic?.status === 'SHUTDOWN') {
       toast.error('This practice cannot take new appointments');
       return;
@@ -208,11 +225,12 @@ export default function DoctorHome() {
   );
 
   const loadSchedule = useCallback(async () => {
+    if (!hasAuthToken() || clinicLoading) return;
+    const seq = ++scheduleSeq.current;
     setScheduleLoading(true);
     try {
       const from = format(weekStart, 'yyyy-MM-dd');
       const to = format(weekEnd, 'yyyy-MM-dd');
-      // Scope calendar to the active practice so clinic visits never appear under Personal.
       const params = { from, to, clinicUuid: clinicUuid || undefined };
       const [v, b, attended, docs] = await Promise.all([
         fetchMyDoctorVisits(params),
@@ -224,6 +242,9 @@ export default function DoctorHome() {
           ? fetchClinicDoctors(clinicUuid).catch(() => [] as ClinicDoctorModel[])
           : Promise.resolve([] as ClinicDoctorModel[]),
       ]);
+      if (seq !== scheduleSeq.current) {
+        return;
+      }
       setVisits(v);
       setBookings(b);
       setPatientCount(attended.totalElements ?? 0);
@@ -237,7 +258,7 @@ export default function DoctorHome() {
     } finally {
       setScheduleLoading(false);
     }
-  }, [weekStart, weekEnd, clinicUuid]);
+  }, [weekStart, weekEnd, clinicUuid, clinicLoading]);
 
   useEffect(() => {
     void fetchMyDoctorProfile()
@@ -312,28 +333,12 @@ export default function DoctorHome() {
     [bookings, today, clinicUuid, isPersonalPractice]
   );
   const activeAppointments = attending.length + queue.length;
-  const attendedPetUuids = useMemo(() => {
-    const ids = new Set<string>();
-    for (const v of practiceTodayVisits) {
-      if (
-        (v.status === 'IN_PROGRESS' || v.status === 'CHECKING_OUT' || v.status === 'COMPLETED') &&
-        v.petUuid
-      ) {
-        ids.add(v.petUuid);
-      }
-    }
-    return ids;
-  }, [practiceTodayVisits]);
   const urgentToday = useMemo(
     () =>
-      practiceTodayVisits.filter(
-        (v) =>
-          isUrgentVisit(v.urgency) &&
-          v.status === 'WAITLIST' &&
-          !!v.petUuid &&
-          !attendedPetUuids.has(v.petUuid)
+      filterUrgentAttentionQueue(practiceTodayVisits).sort(
+        (a, b) => visitEventTime(a).start.getTime() - visitEventTime(b).start.getTime()
       ),
-    [practiceTodayVisits, attendedPetUuids]
+    [practiceTodayVisits]
   );
 
   const clinicLabelByUuid = useMemo(() => {
@@ -360,6 +365,7 @@ export default function DoctorHome() {
         start,
         end,
         status: v.status,
+        doctorUuid: v.doctorUuid,
         visit: v,
       });
     }
@@ -380,17 +386,21 @@ export default function DoctorHome() {
         start,
         end,
         status: b.status,
+        doctorUuid: b.doctorUuid,
         booking: b,
       });
     }
-    return events.sort((a, b) => a.start.getTime() - b.start.getTime());
-  }, [visits, bookings, clinicLabelByUuid]);
+    const sorted = events.sort((a, b) => a.start.getTime() - b.start.getTime());
+    const practiceFiltered = filterPracticeWeekEvents(sorted, clinicUuid, isPersonalPractice);
+    return practiceFiltered;
+  }, [visits, bookings, clinicLabelByUuid, clinicUuid, isPersonalPractice]);
 
   const todayInWeek = weekDays.some((d) => isSameDay(d, today));
   const hourRange = useMemo(
     () => visibleHourRange(weekEvents, todayInWeek ? now : undefined),
     [weekEvents, todayInWeek, now]
   );
+  const weekHasBookableSlots = weekHasFutureBookableSlots(weekDays, hourRange, now);
   const nowTop = todayInWeek ? nowLineOffsetPx(now, hourRange) : null;
   const nextTodayStart = useMemo(
     () =>
@@ -521,8 +531,7 @@ export default function DoctorHome() {
       if (andComplete) {
         const completed = await completeDoctorVisit(chartVisit.uuid);
         const visitClinic = completed.clinicUuid || chartVisit.clinicUuid;
-        const billableOnDoctor =
-          isPersonalPractice && (!visitClinic || visitClinic === clinicUuid);
+        const billableOnDoctor = !visitClinic || visitClinic === clinicUuid;
         setChartVisit(null);
         await loadSchedule();
         if (billableOnDoctor) {
@@ -540,16 +549,12 @@ export default function DoctorHome() {
             nextVisitNotes: form.nextVisitNotes || completed.chart?.nextVisitNotes || undefined,
             petWeight: form.weightKg || undefined,
           };
-          toast.success('Treatment finished — create invoice');
+          toast.success('Treatment finished — ready to invoice');
           navigate(`/doctor/invoices?visit=${encodeURIComponent(fromVisit.visitUuid)}`, {
             state: { fromVisit },
           });
         } else {
-          toast.success(
-            isPersonalPractice
-              ? 'Treatment finished — clinic staff can create the invoice from Clinic → Appointments'
-              : 'Treatment finished — create the invoice from Clinic → Appointments on this branch'
-          );
+          toast.success('Treatment finished — ready to invoice');
         }
         return;
       } else {
@@ -577,7 +582,14 @@ export default function DoctorHome() {
     }
     setAcceptingUuid(inv.uuid);
     try {
-      await acceptInvite(inv.token);
+      const joined = await acceptInvite(inv.token);
+      const clinicUuid = joined.clinicUuid || inv.clinicUuid;
+      if (clinicUuid) {
+        setPendingClinicPinned(false);
+        await switchClinic(clinicUuid);
+        dispatch(setActiveClinic(clinicUuid));
+        await refresh();
+      }
       toast.success(`Joined ${inv.clinicName}`);
       setInvites((prev) => prev.filter((i) => i.uuid !== inv.uuid));
       notifyInviteAddressed(inv.uuid);
@@ -609,6 +621,8 @@ export default function DoctorHome() {
     const layout = eventLayout(ev, day, hourRange);
     if (!layout) return null;
     const urgent = isUrgentVisit(ev.visit?.urgency);
+    const attended = isAttendedCalendarVisit(ev.status);
+    const doctorUuid = resolveEventDoctorUuid(ev, lockedDoctorUuid);
     return (
       <button
         key={ev.id}
@@ -619,7 +633,9 @@ export default function DoctorHome() {
         }}
         className={cn(
           'absolute box-border rounded border px-1 py-0.5 text-[10px] leading-tight shadow-sm overflow-hidden text-left hover:brightness-110',
-          calendarBlockClass(urgent)
+          attended
+            ? doctorAttendedCalendarBlockClass(doctorUuid, urgent)
+            : calendarBlockClass(urgent)
         )}
         style={{
           top: layout.top,
@@ -732,7 +748,7 @@ export default function DoctorHome() {
       )}
 
       {urgentToday.length > 0 && (
-        <Card className="border-rose-200 bg-rose-50/40 dark:bg-rose-950/20 dark:border-rose-800">
+        <Card className="relative border-rose-200 bg-rose-50/40 dark:bg-rose-950/20 dark:border-rose-800">
           <CardHeader className="pb-2">
             <CardTitle className="text-base text-rose-800 dark:text-rose-200">
               Needs attention · {urgentToday.length} urgent
@@ -741,12 +757,17 @@ export default function DoctorHome() {
           <CardContent className="space-y-2">
             {urgentToday.map((v) => {
               const { start } = visitEventTime(v);
+              const place =
+                v.clinicName ||
+                (v.clinicUuid ? clinicLabelByUuid.get(v.clinicUuid) : undefined) ||
+                clinic?.name ||
+                '';
               return (
                 <DashboardAppointmentRow
                   key={v.uuid}
                   time={format(start, 'h:mm a')}
                   title={petNameWithType(v.petName, v.species)}
-                  subtitle={v.ownerName || 'Owner'}
+                  subtitle={[v.ownerName || 'Owner', place].filter(Boolean).join(' · ')}
                   urgent
                   status={v.status}
                   onClick={() =>
@@ -754,7 +775,7 @@ export default function DoctorHome() {
                       id: v.uuid,
                       kind: 'visit',
                       title: v.petName,
-                      subtitle: '',
+                      subtitle: place,
                       start,
                       end: start,
                       status: v.status,
@@ -845,8 +866,12 @@ export default function DoctorHome() {
               ·{' '}
               {viewMode === 'list'
                 ? format(weekAnchor, 'EEE, MMM d')
-                : `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'MMM d')}`}
-              {viewMode === 'tiles' ? ' · Click an empty time to book' : ''}
+                : (
+                    <span className="font-bold text-foreground">
+                      {format(weekStart, 'd MMM')} – {format(weekEnd, 'd MMM')}
+                    </span>
+                  )}
+              {viewMode === 'tiles' && weekHasBookableSlots ? ' · Click an empty time to book' : ''}
             </p>
             <div className="flex items-center gap-3 mt-1.5">
               <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
@@ -966,19 +991,13 @@ export default function DoctorHome() {
                         )}
                         style={{ height: hours.length * HOUR_PX }}
                       >
-                        {hours.map((h) => (
-                          <button
-                            key={h}
-                            type="button"
-                            className="absolute left-0 right-0 border-b border-border/50 hover:bg-primary/10 focus-visible:bg-primary/15 focus-visible:outline-none"
-                            style={{ top: (h - hourRange.startHour) * HOUR_PX, height: HOUR_PX }}
-                            onClick={(e) => {
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              bookCalendarSlot(slotStartFromHourClick(d, h, e.clientY - rect.top));
-                            }}
-                            aria-label={`Book ${format(d, 'EEE MMM d')} at ${format(setHours(d, h), 'h a')}`}
-                          />
-                        ))}
+                        <WeekCalendarSlotLayer
+                          day={d}
+                          hours={hours}
+                          hourRange={hourRange}
+                          now={now}
+                          onSlotClick={bookCalendarSlot}
+                        />
                         {nowTop != null && isSameDay(d, today) ? (
                           <NowIndicator top={nowTop} now={now} nextStartsAt={nextTodayStart} />
                         ) : null}

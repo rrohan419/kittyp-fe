@@ -13,20 +13,24 @@ import {
 } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { calendarBlockClass, isUrgentVisit } from '@/utils/visitUrgency';
+import { isAttendedCalendarVisit } from '@/utils/visitStatus';
 import {
+  doctorAttendedCalendarBlockClass,
   doctorCalendarBlockClass,
   doctorCalendarSwatchClass,
   doctorDisplayName,
   doctorUrgentStripeClass,
 } from './doctorCalendarColor';
 import { NowGutterMark, NowIndicator, useTickingNow } from './NowIndicator';
+import { WeekCalendarSlotLayer } from './weekCalendarSlotLayer';
 import {
   HOUR_PX,
   WeekCalEvent,
   eventLayout,
+  resolveEventDoctorUuid,
   nowLineOffsetPx,
-  slotStartFromHourClick,
   visibleHourRange,
+  weekHasFutureBookableSlots,
   withLanes,
 } from './weekCalendarUtils';
 
@@ -92,6 +96,14 @@ export function WeekCalendar({
     .sort((a, b) => a.start.getTime() - b.start.getTime());
   const doctorList = doctors ?? [];
   const colorByDoctor = doctorList.length > 0;
+  const weekHasBookableSlots = weekHasFutureBookableSlots(weekDays, hourRange, now);
+
+  function visitBlockClass(ev: WeekCalEvent, urgent: boolean, attended: boolean): string {
+    const doctorUuid = resolveEventDoctorUuid(ev);
+    if (attended) return doctorAttendedCalendarBlockClass(doctorUuid, urgent);
+    if (colorByDoctor) return cn(doctorCalendarBlockClass(doctorUuid), urgent && doctorUrgentStripeClass);
+    return calendarBlockClass(urgent);
+  }
 
   return (
     <div>
@@ -138,8 +150,11 @@ export function WeekCalendar({
 
       <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
         <p className="text-sm text-muted-foreground">
-          Mon–Sun · {format(weekStart, 'MMM d')} – {format(weekEnd, 'MMM d')}
-          {onSlotClick ? ' · Click an empty time to book' : ''}
+          Mon–Sun ·{' '}
+          <span className="font-bold text-foreground">
+            {format(weekStart, 'd MMM')} – {format(weekEnd, 'd MMM')}
+          </span>
+          {onSlotClick && weekHasBookableSlots ? ' · Click an empty time to book' : ''}
         </p>
         <div className="flex items-center gap-1">
           <Button
@@ -228,27 +243,13 @@ export function WeekCalendar({
                     )}
                     style={{ height: hours.length * HOUR_PX }}
                   >
-                    {hours.map((h) =>
-                      onSlotClick ? (
-                        <button
-                          key={h}
-                          type="button"
-                          className="absolute left-0 right-0 border-b border-border/50 hover:bg-primary/10 focus-visible:bg-primary/15 focus-visible:outline-none"
-                          style={{ top: (h - hourRange.startHour) * HOUR_PX, height: HOUR_PX }}
-                          onClick={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            onSlotClick(slotStartFromHourClick(d, h, e.clientY - rect.top));
-                          }}
-                          aria-label={`Book ${format(d, 'EEE MMM d')} at ${format(setHours(d, h), 'h a')}`}
-                        />
-                      ) : (
-                        <div
-                          key={h}
-                          className="absolute left-0 right-0 border-b border-border/50"
-                          style={{ top: (h - hourRange.startHour) * HOUR_PX, height: HOUR_PX }}
-                        />
-                      )
-                    )}
+                    <WeekCalendarSlotLayer
+                      day={d}
+                      hours={hours}
+                      hourRange={hourRange}
+                      now={now}
+                      onSlotClick={onSlotClick}
+                    />
                     {nowTop != null && isSameDay(d, today) ? (
                       <NowIndicator top={nowTop} now={now} nextStartsAt={nextTodayStart} />
                     ) : null}
@@ -256,6 +257,7 @@ export function WeekCalendar({
                       const layout = eventLayout(ev, d, hourRange);
                       if (!layout) return null;
                       const urgent = isUrgentVisit(ev.visit?.urgency);
+                      const attended = isAttendedCalendarVisit(ev.status);
                       const tone = eventToneLabel(ev, urgent, colorByDoctor, doctors);
                       return (
                         <button
@@ -267,12 +269,7 @@ export function WeekCalendar({
                           }}
                           className={cn(
                             'absolute box-border rounded border px-1 py-0.5 text-[10px] leading-tight shadow-sm overflow-hidden text-left hover:brightness-110',
-                            colorByDoctor
-                              ? cn(
-                                  doctorCalendarBlockClass(ev.doctorUuid),
-                                  urgent && doctorUrgentStripeClass
-                                )
-                              : calendarBlockClass(urgent)
+                            visitBlockClass(ev, urgent, attended)
                           )}
                           style={{
                             top: layout.top,
@@ -308,6 +305,7 @@ export function WeekCalendar({
             <div className="flex flex-wrap gap-2">
               {todayEvents.map((ev) => {
                 const urgent = isUrgentVisit(ev.visit?.urgency);
+                const attended = isAttendedCalendarVisit(ev.status);
                 const tone = eventToneLabel(ev, urgent, colorByDoctor, doctors);
                 return (
                   <Badge
@@ -315,12 +313,7 @@ export function WeekCalendar({
                     variant="outline"
                     className={cn(
                       'cursor-pointer text-[11px] border font-normal',
-                      colorByDoctor
-                        ? cn(
-                            doctorCalendarBlockClass(ev.doctorUuid),
-                            urgent && doctorUrgentStripeClass
-                          )
-                        : calendarBlockClass(urgent)
+                      visitBlockClass(ev, urgent, attended)
                     )}
                     onClick={() => onEventClick?.(ev)}
                     aria-label={tone}

@@ -6,6 +6,28 @@ export const DAY_END_HOUR = 20;
 export const HOUR_PX = 64;
 const SLOT_GAP_PX = 2;
 
+/** True when slot start is strictly in the future (bookable). */
+export function isFutureBookableSlot(slotStart: Date, now = new Date()): boolean {
+  return slotStart.getTime() > now.getTime();
+}
+
+/** True when the visible week grid has at least one future bookable half-hour slot. */
+export function weekHasFutureBookableSlots(
+  weekDays: Date[],
+  hourRange: HourRange,
+  now = new Date()
+): boolean {
+  for (const d of weekDays) {
+    for (let h = hourRange.startHour; h < hourRange.endHour; h++) {
+      for (const minute of [0, 30]) {
+        const slotStart = setSeconds(setMinutes(setHours(startOfDay(d), h), minute), 0);
+        if (isFutureBookableSlot(slotStart, now)) return true;
+      }
+    }
+  }
+  return false;
+}
+
 export type HourRange = { startHour: number; endHour: number };
 
 export function withLanes<T extends { start: Date; end: Date }>(

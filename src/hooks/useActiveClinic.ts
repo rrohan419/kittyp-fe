@@ -4,6 +4,11 @@ import { AppDispatch, RootState } from '@/module/store/store';
 import { setActiveClinic } from '@/module/slice/AuthSlice';
 import { ClinicModel, fetchMyClinics, fetchUserClinics } from '@/services/clinicService';
 import { getAuthItem } from '@/utils/authStorage';
+import {
+  isDoctorPortalPath,
+  isPendingClinicPinned,
+  resolveActiveClinicId,
+} from '@/utils/activeClinic';
 
 /** Resolves the active clinic uuid + model for clinic portal pages. */
 export function useActiveClinic() {
@@ -42,15 +47,13 @@ export function useActiveClinic() {
         setError(null);
         const stored = getAuthItem('activeClinicId');
         if (list.length) {
-          const stillValid = stored && list.some((c) => c.uuid === stored);
-          if (!stillValid) {
-            // Prefer personal only for doctors; clinic admins just get first branch.
-            const isDoctorPath =
-              typeof window !== 'undefined' && window.location.pathname.startsWith('/doctor');
-            const personal = isDoctorPath ? list.find((c) => c.personal) : undefined;
-            dispatch(setActiveClinic((personal ?? list[0]).uuid));
-          } else if (!activeClinicId) {
-            dispatch(setActiveClinic(stored));
+          const resolved = isDoctorPortalPath()
+            ? resolveActiveClinicId(list, stored, { pinPending: isPendingClinicPinned() })
+            : stored && list.some((c) => c.uuid === stored)
+              ? stored
+              : list[0].uuid;
+          if (resolved && resolved !== activeClinicId) {
+            dispatch(setActiveClinic(resolved));
           }
         }
       } catch (e: unknown) {
@@ -71,9 +74,11 @@ export function useActiveClinic() {
   const clinicUuid =
     clinics.length === 0
       ? null
-      : activeClinicId && clinics.some((c) => c.uuid === activeClinicId)
-        ? activeClinicId
-        : clinics[0]?.uuid ?? null;
+      : isDoctorPortalPath()
+        ? resolveActiveClinicId(clinics, activeClinicId, { pinPending: isPendingClinicPinned() })
+        : activeClinicId && clinics.some((c) => c.uuid === activeClinicId)
+          ? activeClinicId
+          : clinics[0]?.uuid ?? null;
   const clinic = (clinicUuid ? clinics.find((c) => c.uuid === clinicUuid) : null) ?? null;
   /** Doctor portal: Personal practice only (owned clinic). Affiliated switcher is not personal. */
   const isPersonalPractice = clinic?.personal === true;

@@ -119,10 +119,8 @@ export const addFcmTokenToUser = createAsyncThunk(
   'auth/user/fcm-token',
   async (fcmToken: string, { dispatch }) => {
     try {
-      const updatedUser = await saveUserFcmToken(fcmToken);
-      
-      dispatch(setUser(updatedUser));
-      
+      await saveUserFcmToken(fcmToken);
+      dispatch(setUserFcmToken(fcmToken));
     } catch (err) {
       console.error('❌ AuthSlice: FCM token update failed:', err);
       toast.error("Failed to update FCM token.");

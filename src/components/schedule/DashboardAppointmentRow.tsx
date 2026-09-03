@@ -6,6 +6,7 @@ import {
   routineVisitBadgeClass,
   urgentVisitBadgeClass,
 } from '@/utils/visitUrgency';
+import { visitStatusLabel } from '@/utils/visitStatus';
 
 type Props = {
   time: string;
@@ -50,7 +51,7 @@ export function DashboardAppointmentRow({
         </Badge>
         {status ? (
           <Badge variant="outline" className="hidden sm:inline-flex text-[10px] font-normal">
-            {status.replace(/_/g, ' ')}
+            {visitStatusLabel(status)}
           </Badge>
         ) : null}
       </span>

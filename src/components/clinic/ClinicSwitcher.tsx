@@ -14,7 +14,8 @@ import {
 import { AppDispatch, RootState } from '@/module/store/store';
 import { setActiveClinic } from '@/module/slice/AuthSlice';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
-import { ClinicModel, switchClinic } from '@/services/clinicService';
+import { ClinicModel, isClinicActivated, switchClinic } from '@/services/clinicService';
+import { setPendingClinicPinned } from '@/utils/activeClinic';
 import { cn } from '@/lib/utils';
 import { Link, useLocation } from 'react-router-dom';
 import { hasAnyRole, ROLES } from '@/utils/roles';
@@ -55,6 +56,7 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
     clearStuckUiLocks();
     setSwitching(true);
     try {
+      setPendingClinicPinned(!isClinicActivated(next.status, next.personal));
       await switchClinic(next.uuid);
       dispatch(setActiveClinic(next.uuid));
       await refresh();

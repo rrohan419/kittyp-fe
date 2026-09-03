@@ -30,7 +30,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { Upload, FileInput } from 'lucide-react';
+import { Upload, FileInput, CalendarClock, Save, Send, ImageIcon } from 'lucide-react';
 import BlogEditor from '@/components/BlogEditor';
 import RichContentViewer from '@/components/RichContentViewer';
 import { createArticle, editArticle, ensureMyAuthor, fetchArticleBySlug } from '@/services/articleService';
@@ -48,19 +48,42 @@ import { AuthorSelector } from '@/components/admin/AuthorSelector';
 import { Author } from '@/pages/Interface/PagesInterface';
 import { getAuthItem } from '@/utils/authStorage';
 
+const CATEGORIES = [
+  'Pet Care',
+  'Pet Health',
+  'Veterinary Care',
+  'Sustainability',
+  'Products',
+  'Tips & Tricks',
+] as const;
+
 const articleFormSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters" }),
   slug: z.string().min(5, { message: "Slug must be at least 5 characters" }),
   excerpt: z.string().min(10, { message: "Excerpt must be at least 10 characters" }),
   content: z.string().min(50, { message: "Content must be at least 50 characters" }),
-  coverImage: z.string().url({ message: "Cover image must be a valid URL" }),
+  coverImage: z.string().min(1, { message: "Cover image is required" }),
   category: z.string().min(2, { message: "Category is required" }),
   tags: z.string(),
   readTime: z.coerce.number().min(1, { message: "Read time must be at least 1 minute" }),
-  status: z.enum(["DRAFT", "PUBLISHED"])
+  status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED", "SCHEDULED"]),
+  scheduledPublishAt: z.string().optional(),
 });
 
 type ArticleFormValues = z.infer<typeof articleFormSchema>;
+
+function toDatetimeLocalValue(iso?: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fromDatetimeLocalValue(value?: string): string | undefined {
+  if (!value?.trim()) return undefined;
+  return value.length === 16 ? `${value}:00` : value;
+}
 
 export type AdminArticleEditorProps = {
   basePath?: string;
@@ -83,6 +106,7 @@ const AdminArticleEditor = ({
   const { slug } = useParams<{ slug: string }>();
   const coverImageFileRef = useRef<HTMLInputElement>(null);
   const [selectedAuthor, setSelectedAuthor] = useState<Author | null>(null);
+  const [coverFailed, setCoverFailed] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -122,7 +146,8 @@ const AdminArticleEditor = ({
       category: "",
       tags: "",
       readTime: 5,
-      status: "DRAFT"
+      status: "DRAFT",
+      scheduledPublishAt: "",
     },
   });
 
@@ -137,11 +162,18 @@ const AdminArticleEditor = ({
             slug: data.slug,
             excerpt: data.excerpt,
             content: data.content,
-            coverImage: data.coverImage,
-            category: data.category,
-            tags: data.tags.join(','),
-            readTime: data.readTime,
-            status: 'DRAFT',
+            coverImage: data.coverImage || '',
+            category: data.category || '',
+            tags: (data.tags || []).join(', '),
+            readTime: data.readTime || 5,
+            status:
+              data.status === 'PUBLISHED' ||
+              data.status === 'DRAFT' ||
+              data.status === 'SCHEDULED' ||
+              data.status === 'ARCHIVED'
+                ? data.status
+                : 'PUBLISHED',
+            scheduledPublishAt: toDatetimeLocalValue(data.scheduledPublishAt),
           });
           // Set the author from the fetched article
           if (data.author) {
@@ -169,6 +201,11 @@ const AdminArticleEditor = ({
     return () => subscription.unsubscribe();
   }, [form]);
 
+  const coverUrl = form.watch('coverImage');
+  useEffect(() => {
+    setCoverFailed(false);
+  }, [coverUrl]);
+
   // Warn user before leaving with unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -193,7 +230,7 @@ const AdminArticleEditor = ({
         const response = await uploadFiles(Array.from(files));
         const imageUrl = response.data[0];
         if (imageUrl) {
-          form.setValue("coverImage", imageUrl, { shouldValidate: true });
+          form.setValue("coverImage", imageUrl, { shouldValidate: true, shouldDirty: true });
           toast.success("Cover image uploaded!");
         }
       } catch (error) {
@@ -229,6 +266,15 @@ const AdminArticleEditor = ({
       // Use selected author
       const authorToUse = selectedAuthor;
       
+      const scheduleIso =
+        values.status === 'SCHEDULED' ? fromDatetimeLocalValue(values.scheduledPublishAt) : undefined;
+
+      if (values.status === 'SCHEDULED' && !scheduleIso) {
+        toast.error('Pick a publish date and time to schedule');
+        setSubmitting(false);
+        return;
+      }
+
       const payload = {
         title: values.title.trim(),
         slug: values.slug.trim(),
@@ -239,12 +285,12 @@ const AdminArticleEditor = ({
         tags: cleanedTags,
         readTime: values.readTime,
         authorId: parseInt(authorToUse.id.toString()),
-        status: values.status
+        status: values.status,
+        scheduledPublishAt: scheduleIso,
       };
 
       if (slug) {
-        // For edit, we need to use the author object, not authorId
-        const editPayload = {
+        await editArticle(slug, {
           title: payload.title,
           excerpt: payload.excerpt,
           content: payload.content,
@@ -253,12 +299,24 @@ const AdminArticleEditor = ({
           tags: payload.tags,
           readTime: payload.readTime,
           status: payload.status,
-        };
-        await editArticle(slug, editPayload);
-        toast.success('Article updated successfully!');
+          scheduledPublishAt: scheduleIso ?? null,
+        });
+        toast.success(
+          values.status === 'PUBLISHED'
+            ? 'Article published'
+            : values.status === 'SCHEDULED'
+              ? 'Article scheduled'
+              : 'Draft saved'
+        );
       } else {
         await createArticle(payload);
-        toast.success('Article created successfully!');
+        toast.success(
+          values.status === 'PUBLISHED'
+            ? 'Article published'
+            : values.status === 'SCHEDULED'
+              ? 'Article scheduled'
+              : 'Draft created'
+        );
       }
       setHasUnsavedChanges(false);
       navigate(basePath);
@@ -272,14 +330,23 @@ const AdminArticleEditor = ({
   };
 
   const generateSlug = () => {
-    const title = form.getValues("title");
-    if (title) {
-      const slug = title
-        .toLowerCase()
-        .replace(/[^\w\s]/gi, '')
-        .replace(/\s+/g, '-');
-      form.setValue("slug", slug);
+    const title = form.getValues('title').trim();
+    if (!title) {
+      toast.error('Add a title first');
+      return;
     }
+    const nextSlug = title
+      .toLowerCase()
+      .replace(/[^\w\s-]/gi, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .slice(0, 80);
+    if (nextSlug.length < 5) {
+      toast.error('Title is too short to make a URL slug');
+      return;
+    }
+    form.setValue('slug', nextSlug, { shouldValidate: true, shouldDirty: true });
   };
 
   if (loading || fetchingArticle) {
@@ -330,7 +397,20 @@ const AdminArticleEditor = ({
                   form.handleSubmit(onSubmit)();
                 }}
               >
+                <Save className="h-4 w-4 mr-1.5" />
                 {submitting ? 'Saving...' : 'Save Draft'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={submitting}
+                onClick={() => {
+                  form.setValue('status', 'SCHEDULED');
+                  form.handleSubmit(onSubmit)();
+                }}
+              >
+                <CalendarClock className="h-4 w-4 mr-1.5" />
+                Schedule
               </Button>
               <Button
                 type="button"
@@ -340,6 +420,7 @@ const AdminArticleEditor = ({
                   form.handleSubmit(onSubmit)();
                 }}
               >
+                <Send className="h-4 w-4 mr-1.5" />
                 {submitting ? 'Publishing...' : 'Publish'}
               </Button>
             </div>
@@ -349,7 +430,28 @@ const AdminArticleEditor = ({
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <Card>
                 <CardHeader>
-                  <CardTitle>Article Details</CardTitle>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <CardTitle>Article Details</CardTitle>
+                    {selfAuthor && selectedAuthor ? (
+                      <span className="inline-flex items-center rounded-md border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                        {selectedAuthor.name}
+                        {selectedAuthor.role ? ` · ${selectedAuthor.role}` : ''}
+                      </span>
+                    ) : selectedAuthor && slug ? (
+                      <span className="inline-flex items-center rounded-md border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                        {selectedAuthor.name}
+                        {selectedAuthor.role ? ` · ${selectedAuthor.role}` : ''}
+                      </span>
+                    ) : (
+                      <div className="inline-flex items-center rounded-md border border-primary/40 bg-primary/10">
+                        <AuthorSelector
+                          compact
+                          selectedAuthor={selectedAuthor}
+                          onAuthorChange={setSelectedAuthor}
+                        />
+                      </div>
+                    )}
+                  </div>
                   <CardDescription>Basic information about your article</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -384,36 +486,33 @@ const AdminArticleEditor = ({
                           <FormLabel>Slug</FormLabel>
                           <div className="flex space-x-2">
                             <FormControl>
-                              <Input placeholder="article-url-slug" {...field} />
+                              <Input
+                                placeholder="article-url-slug"
+                                {...field}
+                                disabled={!!slug}
+                              />
                             </FormControl>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={generateSlug}
-                              className="whitespace-nowrap"
-                            >
-                              Generate
-                            </Button>
+                            {!slug && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={generateSlug}
+                                className="whitespace-nowrap"
+                              >
+                                Generate
+                              </Button>
+                            )}
                           </div>
+                          <p className="text-xs text-muted-foreground">
+                            {slug
+                              ? 'URL path is fixed after publish so existing links keep working.'
+                              : 'Fills the URL from the title, e.g. “Cat Food” → cat-food.'}
+                          </p>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
-                  {selfAuthor && selectedAuthor ? (
-                    <p className="text-sm text-muted-foreground">
-                      Publishing as {selectedAuthor.name}
-                      {selectedAuthor.role ? ` · ${selectedAuthor.role}` : ''}
-                    </p>
-                  ) : (
-                    <div>
-                      <AuthorSelector
-                        selectedAuthor={selectedAuthor}
-                        onAuthorChange={setSelectedAuthor}
-                        disabled={!!slug}
-                      />
-                    </div>
-                  )}
                   <FormField
                     control={form.control}
                     name="excerpt"
@@ -423,7 +522,8 @@ const AdminArticleEditor = ({
                         <FormControl>
                           <Textarea
                             placeholder="Brief summary of the article"
-                            className="resize-none"
+                            rows={3}
+                            className="min-h-[4.5rem] resize-y"
                             {...field}
                           />
                         </FormControl>
@@ -440,7 +540,7 @@ const AdminArticleEditor = ({
                         <FormItem>
                           <FormLabel>Cover Image</FormLabel>
                           <FormControl>
-                            <div>
+                            <div className="space-y-3">
                               <Input
                                 type="file"
                                 ref={coverImageFileRef}
@@ -448,19 +548,46 @@ const AdminArticleEditor = ({
                                 className="hidden"
                                 accept="image/*"
                               />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => coverImageFileRef.current?.click()}
-                              >
-                                <Upload className="mr-2 h-4 w-4" />
-                                Upload Image
-                              </Button>
-                              {field.value && (
-                                <div className="mt-4">
-                                  <img src={field.value} alt="Cover preview" className="rounded-md object-cover h-48 w-full" />
-                                </div>
-                              )}
+                              <div className="relative h-48 overflow-hidden rounded-xl border bg-muted">
+                                {field.value && !coverFailed ? (
+                                  <img
+                                    src={field.value}
+                                    alt="Cover preview"
+                                    className="h-full w-full object-cover"
+                                    referrerPolicy="no-referrer"
+                                    onError={() => setCoverFailed(true)}
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-4 text-center text-muted-foreground">
+                                    <ImageIcon className="h-8 w-8 opacity-60" />
+                                    {field.value && coverFailed ? (
+                                      <>
+                                        <p className="text-sm font-medium text-foreground">
+                                          Could not load image
+                                        </p>
+                                        <p className="text-xs break-all">{field.value}</p>
+                                      </>
+                                    ) : (
+                                      <p className="text-sm">No cover yet</p>
+                                    )}
+                                  </div>
+                                )}
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  className="absolute bottom-3 left-3 shadow-sm"
+                                  onClick={() => coverImageFileRef.current?.click()}
+                                >
+                                  <Upload className="mr-2 h-4 w-4" />
+                                  Upload Image
+                                </Button>
+                              </div>
+                              <Input
+                                value={field.value}
+                                onChange={field.onChange}
+                                placeholder="https://… or uploaded file URL"
+                              />
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -476,7 +603,7 @@ const AdminArticleEditor = ({
                           <FormLabel>Category</FormLabel>
                           <Select
                             onValueChange={field.onChange}
-                            defaultValue={field.value}
+                            value={field.value || undefined}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -484,11 +611,20 @@ const AdminArticleEditor = ({
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="Pet Care">Pet Care</SelectItem>
-                              <SelectItem value="Pet Health">Pet Health</SelectItem>
-                              <SelectItem value="Sustainability">Sustainability</SelectItem>
-                              <SelectItem value="Products">Products</SelectItem>
-                              <SelectItem value="Tips & Tricks">Tips & Tricks</SelectItem>
+                              {(CATEGORIES as readonly string[]).includes(field.value)
+                                ? CATEGORIES.map((item) => (
+                                    <SelectItem key={item} value={item}>
+                                      {item}
+                                    </SelectItem>
+                                  ))
+                                : [
+                                    ...CATEGORIES,
+                                    ...(field.value ? [field.value] : []),
+                                  ].map((item) => (
+                                    <SelectItem key={item} value={item}>
+                                      {item}
+                                    </SelectItem>
+                                  ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -536,6 +672,23 @@ const AdminArticleEditor = ({
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="scheduledPublishAt"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Schedule publish at</FormLabel>
+                        <FormControl>
+                          <Input type="datetime-local" {...field} />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          Optional. Set a date/time, then click Schedule. The article stays private until then.
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </CardContent>
               </Card>
 

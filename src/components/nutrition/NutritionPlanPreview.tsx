@@ -26,6 +26,7 @@ import {
   hasNutritionPlanData,
 } from '@/services/aiService';
 import { cn } from '@/lib/utils';
+import { AiDisclaimer } from '@/components/ui/AiDisclaimer';
 
 interface NutritionPlanPreviewProps {
   plan: PetCarePlan;
@@ -652,6 +653,7 @@ export const NutritionPlanPreview: React.FC<NutritionPlanPreviewProps> = ({
                 </div>
               </motion.div>
             )}
+            <AiDisclaimer className="pt-2" />
           </motion.div>
         </CardContent>
       </Card>

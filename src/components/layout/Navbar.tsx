@@ -12,6 +12,7 @@ import {
   DialogOverlay
 } from '@/components/ui/dialog';
 import { CartSidebar } from './CartSidebar';
+import { KittypLogo } from '@/components/brand/KittypLogo';
 import { switchToGuestCart } from '@/module/slice/CartSlice';
 import { clearUser } from '@/module/slice/AuthSlice';
 import { useDispatch, useSelector } from 'react-redux';
@@ -115,26 +116,16 @@ export function Navbar() {
     <>
       <header
         className={cn(
-          "fixed top-0 left-0 w-full z-50 isolate",
-          isOpen ? "bg-background dark:bg-gray-900 shadow-sm" :
+          'fixed top-0 left-0 right-0 w-full z-50 isolate',
+          isOpen ? 'bg-background dark:bg-gray-900 shadow-sm' :
             scrolled
-              ? "bg-background/95 backdrop-blur-sm shadow-sm dark:bg-black/95"
-              : "bg-background/80 dark:bg-black/80"
+              ? 'bg-background/95 backdrop-blur-sm shadow-sm dark:bg-black/95'
+              : 'bg-background/80 dark:bg-black/80'
         )}
-        style={{
-          WebkitFontSmoothing: 'none',
-          MozOsxFontSmoothing: 'grayscale',
-          textShadow: 'none',
-          textRendering: 'optimizeLegibility',
-          paddingTop: 'env(safe-area-inset-top)',
-        }}
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <nav className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <Link to="/" className="inline-block relative z-[9999]">
-            <span className="text-2xl font-extrabold tracking-tight text-foreground">
-              kitty<span className="text-primary">p</span>
-            </span>
-          </Link>
+        <nav className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+          <KittypLogo asLink className="relative z-[9999]" />
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8">

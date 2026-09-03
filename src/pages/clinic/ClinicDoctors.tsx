@@ -68,7 +68,7 @@ export default function ClinicDoctors() {
   const canInvite = canInviteDoctors(user?.roles) && doctorsBase.startsWith('/clinic');
   const clinicAdminContext = doctorsBase.startsWith('/clinic');
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
-  const clinicActivated = isClinicActivated(clinic?.status);
+  const clinicActivated = isClinicActivated(clinic?.status, clinic?.personal);
   const [search, setSearch] = useState('');
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
   const [invites, setInvites] = useState<DoctorInviteModel[]>([]);
