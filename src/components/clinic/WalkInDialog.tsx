@@ -24,13 +24,18 @@ import {
   ClinicDoctorModel,
   ClinicOwnerModel,
   ClinicPetListModel,
+  OwnerEmailLookupModel,
   PlatformUserSearchModel,
+  admitClinicPet,
   createClinicBooking,
   createWalkInVisit,
   ensureClinicOwnerFromUser,
   fetchClinicOwners,
   fetchClinicPets,
+  lookupOwnerByEmail,
   searchPlatformUsers,
+  sendPetConsentOtp,
+  verifyPetConsentOtp,
   VisitUrgency,
 } from '@/services/clinicService';
 import { fetchParentDoctorSlots } from '@/services/discoverService';
@@ -130,6 +135,12 @@ export function AddAppointmentDialog({
   const [saving, setSaving] = useState(false);
   const [searching, setSearching] = useState(false);
   const [busyHint, setBusyHint] = useState<string | null>(null);
+  const [emailLookup, setEmailLookup] = useState<OwnerEmailLookupModel | null>(null);
+  const [matchedOwner, setMatchedOwner] = useState<ClinicOwnerModel | null>(null);
+  const [consentCode, setConsentCode] = useState('');
+  const [consentVerified, setConsentVerified] = useState(false);
+  const [consentSending, setConsentSending] = useState(false);
+  const [consentVerifying, setConsentVerifying] = useState(false);
 
   const activeDoctors = useMemo(
     () =>
@@ -284,6 +295,10 @@ export function AddAppointmentDialog({
       setTiming('now');
       setFieldErrors({});
       setBusyHint(null);
+      setEmailLookup(null);
+      setMatchedOwner(null);
+      setConsentCode('');
+      setConsentVerified(false);
       return;
     }
     if (initialSlotStart && !Number.isNaN(initialSlotStart.getTime())) {
@@ -373,10 +388,23 @@ export function AddAppointmentDialog({
     }
   };
 
-  const selectPet = (p: ClinicPetListModel) => {
-    setSelectedPet(p);
-    setPetSearch('');
-    setHits([]);
+  const selectPet = async (p: ClinicPetListModel) => {
+    try {
+      setSearching(true);
+      const admitted = await admitClinicPet(clinicUuid, p.petUuid);
+      setSelectedPet(admitted);
+      setPetSearch('');
+      setHits([]);
+      return true;
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Could not admit pet to this clinic';
+      toast.error(message);
+      return false;
+    } finally {
+      setSearching(false);
+    }
   };
 
   const selectPlatformUser = async (user: PlatformUserSearchModel) => {
@@ -386,7 +414,7 @@ export function AddAppointmentDialog({
       const petsOfOwner = owner.pets ?? [];
       if (petsOfOwner.length > 0) {
         const op = petsOfOwner[0];
-        selectPet({
+        await selectPet({
           petUuid: op.petUuid,
           globalPetId: op.globalPetId,
           name: op.name,
@@ -409,6 +437,13 @@ export function AddAppointmentDialog({
       }
       const [first = '', ...rest] = (user.name || '').trim().split(/\s+/);
       setMode('new');
+      setMatchedOwner(owner);
+      setEmailLookup({
+        found: true,
+        source: 'PLATFORM',
+        owner,
+        platformUser: user,
+      });
       setForm((s) => ({
         ...s,
         ownerFirstName: first || user.email?.split('@')[0] || '',
@@ -433,6 +468,128 @@ export function AddAppointmentDialog({
     setPetSearch('');
   };
 
+  const resetConsent = () => {
+    setConsentCode('');
+    setConsentVerified(false);
+  };
+
+  const applyMatchedOwner = async (hit: OwnerEmailLookupModel) => {
+    if (!hit.found) return;
+    try {
+      setSearching(true);
+      let owner = hit.owner ?? null;
+      if (!owner && hit.platformUser) {
+        owner = await ensureClinicOwnerFromUser(clinicUuid, hit.platformUser.userUuid);
+      }
+      if (!owner) {
+        toast.error('Could not load existing profile');
+        return;
+      }
+      setMatchedOwner(owner);
+      setForm((s) => ({
+        ...s,
+        ownerFirstName: owner.firstName || owner.name?.split(/\s+/)[0] || '',
+        ownerLastName: owner.lastName || owner.name?.split(/\s+/).slice(1).join(' ') || '',
+        ownerEmail: owner.email || s.ownerEmail,
+        ownerPhone: digitsOnlyPhone(owner.phone || s.ownerPhone || hit.platformUser?.phone || ''),
+      }));
+      resetConsent();
+      toast.message('Existing profile loaded — pick a pet or add a new one');
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Could not use existing profile';
+      toast.error(message);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const runEmailLookup = async (rawEmail: string) => {
+    const emailErr = validateEmail(rawEmail);
+    if (emailErr) {
+      setFieldErrors((s) => ({ ...s, ownerEmail: emailErr }));
+      setEmailLookup(null);
+      setMatchedOwner(null);
+      return;
+    }
+    try {
+      const hit = await lookupOwnerByEmail(clinicUuid, rawEmail.trim());
+      setEmailLookup(hit);
+      if (!hit.found) {
+        setMatchedOwner(null);
+        resetConsent();
+        return;
+      }
+      // Don't leave staff on an empty "create patient" form — attach to the existing profile.
+      await applyMatchedOwner(hit);
+    } catch {
+      setEmailLookup(null);
+    }
+  };
+
+  const ensureConsentOwner = async (): Promise<ClinicOwnerModel | null> => {
+    if (matchedOwner) return matchedOwner;
+    if (emailLookup?.owner) return emailLookup.owner;
+    if (emailLookup?.platformUser) {
+      const owner = await ensureClinicOwnerFromUser(clinicUuid, emailLookup.platformUser.userUuid);
+      setMatchedOwner(owner);
+      return owner;
+    }
+    return null;
+  };
+
+  const handleSendConsent = async () => {
+    if (!form.petName.trim()) {
+      toast.error('Enter the pet name before sending consent');
+      return;
+    }
+    try {
+      setConsentSending(true);
+      const owner = await ensureConsentOwner();
+      if (!owner) {
+        toast.error('No existing owner profile for consent');
+        return;
+      }
+      await sendPetConsentOtp(clinicUuid, owner.ownerUuid, form.petName.trim());
+      setConsentVerified(false);
+      toast.success('Consent code sent to owner email');
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Failed to send consent code';
+      toast.error(message);
+    } finally {
+      setConsentSending(false);
+    }
+  };
+
+  const handleVerifyConsent = async () => {
+    if (!form.petName.trim() || !consentCode.trim()) {
+      toast.error('Enter pet name and the code from the owner');
+      return;
+    }
+    try {
+      setConsentVerifying(true);
+      const owner = await ensureConsentOwner();
+      if (!owner) {
+        toast.error('No existing owner profile for consent');
+        return;
+      }
+      await verifyPetConsentOtp(clinicUuid, owner.ownerUuid, form.petName.trim(), consentCode.trim());
+      setConsentVerified(true);
+      toast.success('Owner consent verified');
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Invalid consent code';
+      toast.error(message);
+      setConsentVerified(false);
+    } finally {
+      setConsentVerifying(false);
+    }
+  };
+
   const validateNewPatient = (): boolean => {
     const errors: Record<string, string> = {};
     if (!form.ownerFirstName.trim()) errors.ownerFirstName = 'First name is required';
@@ -447,7 +604,7 @@ export function AddAppointmentDialog({
 
   const validateSchedule = (): boolean => {
     const errors: Record<string, string> = {};
-    if (!resolvedDoctorUuid) errors.doctorUuid = 'Doctor is required to schedule';
+    // Doctor is optional — unassigned appointments appear in the Unassigned filter.
     if (!form.slotDate) errors.slotDate = 'Date is required';
     if (!form.slotTime) errors.slotTime = 'Time is required';
     if (form.slotDate && form.slotTime) {
@@ -458,15 +615,24 @@ export function AddAppointmentDialog({
         errors.slotTime = 'Pick a future time';
       }
     }
-    if (busyHint) {
+    if (busyHint && resolvedDoctorUuid) {
       errors.slotTime = busyHint;
     }
     setFieldErrors((prev) => ({ ...prev, ...errors }));
     return Object.keys(errors).length === 0;
   };
 
+  const needsOwnerConsent =
+    mode === 'new' &&
+    timing === 'schedule' &&
+    Boolean(emailLookup?.found || matchedOwner) &&
+    !selectedPet;
+
   const patientPayload = () => {
     if (mode === 'existing' && selectedPet) {
+      return { petUuid: selectedPet.petUuid };
+    }
+    if (mode === 'new' && selectedPet) {
       return { petUuid: selectedPet.petUuid };
     }
     return {
@@ -494,8 +660,16 @@ export function AddAppointmentDialog({
       toast.error('Search and select a pet or owner first');
       return;
     }
-    if (mode === 'new' && !validateNewPatient()) {
+    if (mode === 'new' && !selectedPet && !validateNewPatient()) {
       toast.error('Fix the highlighted fields');
+      return;
+    }
+    if (emailLookup?.found && !matchedOwner && !selectedPet && mode === 'new') {
+      toast.error('This email already exists — use that profile instead of creating a new patient');
+      return;
+    }
+    if (needsOwnerConsent && !consentVerified) {
+      toast.error('Verify owner email consent before scheduling a new pet on this profile');
       return;
     }
     if (timing === 'schedule' && !validateSchedule()) {
@@ -505,6 +679,9 @@ export function AddAppointmentDialog({
 
     setSaving(true);
     try {
+      if (needsOwnerConsent) {
+        await ensureConsentOwner();
+      }
       const doctorUuid = resolvedDoctorUuid || undefined;
       if (timing === 'now') {
         await createWalkInVisit(clinicUuid, {
@@ -524,13 +701,15 @@ export function AddAppointmentDialog({
         }
         await createClinicBooking(clinicUuid, {
           ...patientPayload(),
-          doctorUuid: doctorUuid!,
+          doctorUuid: doctorUuid || undefined,
           slotStart: format(slotStart, "yyyy-MM-dd'T'HH:mm:ss"),
           durationMinutes: 30,
           notes: form.reason || undefined,
           mode: 'IN_PERSON',
         });
-        toast.success('Appointment scheduled — doctor notified');
+        toast.success(
+          doctorUuid ? 'Appointment scheduled — doctor notified' : 'Appointment scheduled — unassigned'
+        );
       }
       onCreated();
       notifyPortalRefresh();
@@ -576,6 +755,9 @@ export function AddAppointmentDialog({
               setMode('existing');
               clearSelectedPet();
               setFieldErrors({});
+              setEmailLookup(null);
+              setMatchedOwner(null);
+              resetConsent();
             }}
           >
             Existing patient
@@ -590,6 +772,9 @@ export function AddAppointmentDialog({
               setMode('new');
               clearSelectedPet();
               setFieldErrors({});
+              setEmailLookup(null);
+              setMatchedOwner(null);
+              resetConsent();
             }}
           >
             New patient
@@ -664,7 +849,7 @@ export function AddAppointmentDialog({
                             key={hit.pet.petUuid}
                             type="button"
                             className="w-full text-left px-3 py-2.5 text-sm hover:bg-muted/60"
-                            onClick={() => selectPet(hit.pet)}
+                            onClick={() => void selectPet(hit.pet)}
                           >
                             <PetNameType name={hit.pet.name} type={hit.pet.species} />
                             <p className="text-xs text-muted-foreground truncate">
@@ -686,87 +871,241 @@ export function AddAppointmentDialog({
           </div>
         ) : (
           <div className="space-y-3 mt-1">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label>Owner first name</Label>
-                <Input
-                  value={form.ownerFirstName}
-                  onChange={(e) => set('ownerFirstName', e.target.value)}
-                />
-                {fieldErrors.ownerFirstName && (
-                  <p className="text-xs text-destructive mt-1">{fieldErrors.ownerFirstName}</p>
+            {emailLookup?.found || matchedOwner ? (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm space-y-1">
+                <p className="text-foreground font-medium">
+                  This email is already on KittyP
+                  {matchedOwner?.name ? ` — ${matchedOwner.name}` : ''}.
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  New patient create is blocked. Pick a pet on this profile or add a new pet below.
+                </p>
+              </div>
+            ) : null}
+
+            {matchedOwner ? (
+              <div className="rounded-md border bg-muted/30 px-3 py-2.5 text-sm space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-foreground">{matchedOwner.name}</p>
+                    <p className="text-xs text-muted-foreground">{matchedOwner.email}</p>
+                  </div>
+                  <Badge variant="secondary">Existing</Badge>
+                </div>
+                {(matchedOwner.pets?.length ?? 0) > 0 ? (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Pets on this profile — click to schedule</p>
+                    <div className="border rounded-md divide-y max-h-36 overflow-y-auto bg-background">
+                      {matchedOwner.pets.map((op) => (
+                        <button
+                          key={op.petUuid}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
+                          onClick={() =>
+                            void selectPet({
+                              petUuid: op.petUuid,
+                              globalPetId: op.globalPetId,
+                              name: op.name,
+                              species: op.species,
+                              breed: op.breed,
+                              gender: op.gender,
+                              dateOfBirth: op.dateOfBirth,
+                              weight: op.weight,
+                              microchipNumber: op.microchipNumber,
+                              photoUrl: op.photoUrl,
+                              patientNumber: op.patientNumber,
+                              ownerUuid: matchedOwner.ownerUuid,
+                              ownerName: matchedOwner.name,
+                              ownerPhone: matchedOwner.phone,
+                              ownerEmail: matchedOwner.email,
+                              linked: matchedOwner.linked,
+                              lastVisit: op.lastVisit,
+                            }).then((ok) => {
+                              if (ok) setMode('existing');
+                            })
+                          }
+                        >
+                          <PetNameType name={op.name} type={op.species} />
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground pt-1">
+                      Or add a new pet for this owner below
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No pets yet — add one below</p>
                 )}
               </div>
+            ) : null}
+
+            {selectedPet && mode === 'new' ? (
               <div>
-                <Label>Last name</Label>
-                <Input value={form.ownerLastName} onChange={(e) => set('ownerLastName', e.target.value)} />
+                <Label>Selected pet</Label>
+                <div className="mt-1 flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
+                  <PetNameType name={selectedPet.name} type={selectedPet.species} />
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground"
+                    onClick={clearSelectedPet}
+                    aria-label="Clear selection"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : null}
+
+            {!matchedOwner ? (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Owner first name</Label>
+                  <Input
+                    value={form.ownerFirstName}
+                    onChange={(e) => set('ownerFirstName', e.target.value)}
+                  />
+                  {fieldErrors.ownerFirstName && (
+                    <p className="text-xs text-destructive mt-1">{fieldErrors.ownerFirstName}</p>
+                  )}
+                </div>
+                <div>
+                  <Label>Last name</Label>
+                  <Input
+                    value={form.ownerLastName}
+                    onChange={(e) => set('ownerLastName', e.target.value)}
+                  />
+                </div>
+              </div>
+            ) : null}
             <div>
               <Label>Email</Label>
               <Input
                 type="email"
                 value={form.ownerEmail}
-                onChange={(e) => set('ownerEmail', e.target.value)}
-                onBlur={() => {
-                  const err = validateEmail(form.ownerEmail);
-                  if (err) setFieldErrors((s) => ({ ...s, ownerEmail: err }));
+                onChange={(e) => {
+                  set('ownerEmail', e.target.value);
+                  setEmailLookup(null);
+                  setMatchedOwner(null);
+                  resetConsent();
                 }}
+                onBlur={() => void runEmailLookup(form.ownerEmail)}
               />
               {fieldErrors.ownerEmail && (
                 <p className="text-xs text-destructive mt-1">{fieldErrors.ownerEmail}</p>
               )}
             </div>
-            <div>
-              <Label>Phone (10 digits)</Label>
-              <Input
-                inputMode="numeric"
-                maxLength={10}
-                placeholder="9876543210"
-                value={form.ownerPhone}
-                onChange={(e) => set('ownerPhone', digitsOnlyPhone(e.target.value))}
-                onBlur={() => {
-                  const err = validatePhone(form.ownerPhone, true);
-                  if (err) setFieldErrors((s) => ({ ...s, ownerPhone: err }));
-                }}
-              />
-              {fieldErrors.ownerPhone && (
-                <p className="text-xs text-destructive mt-1">{fieldErrors.ownerPhone}</p>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+            {!matchedOwner ? (
               <div>
-                <Label>Pet name</Label>
-                <Input value={form.petName} onChange={(e) => set('petName', e.target.value)} />
-                {fieldErrors.petName && (
-                  <p className="text-xs text-destructive mt-1">{fieldErrors.petName}</p>
+                <Label>Phone (10 digits)</Label>
+                <Input
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="9876543210"
+                  value={form.ownerPhone}
+                  onChange={(e) => set('ownerPhone', digitsOnlyPhone(e.target.value))}
+                  onBlur={() => {
+                    const err = validatePhone(form.ownerPhone, true);
+                    if (err) setFieldErrors((s) => ({ ...s, ownerPhone: err }));
+                  }}
+                />
+                {fieldErrors.ownerPhone && (
+                  <p className="text-xs text-destructive mt-1">{fieldErrors.ownerPhone}</p>
                 )}
               </div>
+            ) : (
               <div>
-                <Label>Species</Label>
-                <Select value={form.petType} onValueChange={(v) => set('petType', v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select species" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CAT">Cat</SelectItem>
-                    <SelectItem value="DOG">Dog</SelectItem>
-                    <SelectItem value="BIRD">Bird</SelectItem>
-                    <SelectItem value="RABBIT">Rabbit</SelectItem>
-                    <SelectItem value="OTHER">Other</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Phone</Label>
+                <Input value={form.ownerPhone} disabled />
               </div>
-            </div>
-            <div>
-              <Label>Breed</Label>
-              <Input value={form.petBreed} onChange={(e) => set('petBreed', e.target.value)} />
-            </div>
-            <PetPhotoField
-              value={form.petPhotoUrl || null}
-              onChange={(url) => set('petPhotoUrl', url || '')}
-              disabled={saving}
-            />
+            )}
+            {!selectedPet ? (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label>Pet name</Label>
+                    <Input
+                      value={form.petName}
+                      onChange={(e) => {
+                        set('petName', e.target.value);
+                        resetConsent();
+                      }}
+                    />
+                    {fieldErrors.petName && (
+                      <p className="text-xs text-destructive mt-1">{fieldErrors.petName}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label>Species</Label>
+                    <Select value={form.petType} onValueChange={(v) => set('petType', v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select species" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CAT">Cat</SelectItem>
+                        <SelectItem value="DOG">Dog</SelectItem>
+                        <SelectItem value="BIRD">Bird</SelectItem>
+                        <SelectItem value="RABBIT">Rabbit</SelectItem>
+                        <SelectItem value="OTHER">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label>Breed</Label>
+                  <Input value={form.petBreed} onChange={(e) => set('petBreed', e.target.value)} />
+                </div>
+                <PetPhotoField
+                  value={form.petPhotoUrl || null}
+                  onChange={(url) => set('petPhotoUrl', url || '')}
+                  disabled={saving}
+                />
+              </>
+            ) : null}
+
+            {needsOwnerConsent ? (
+              <div className="rounded-md border px-3 py-2.5 space-y-2">
+                <p className="text-sm font-medium">Owner consent (email OTP)</p>
+                <p className="text-xs text-muted-foreground">
+                  Scheduling a new pet on an existing profile requires a one-time code sent to the
+                  owner&apos;s email. Walk-ins skip this.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={consentSending || !form.petName.trim()}
+                    onClick={() => void handleSendConsent()}
+                  >
+                    {consentSending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                    Send code
+                  </Button>
+                  <Input
+                    className="max-w-[140px] h-8"
+                    placeholder="6-digit code"
+                    value={consentCode}
+                    onChange={(e) => {
+                      setConsentCode(e.target.value);
+                      setConsentVerified(false);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={consentVerifying || !consentCode.trim()}
+                    onClick={() => void handleVerifyConsent()}
+                  >
+                    {consentVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                    Verify
+                  </Button>
+                  {consentVerified ? (
+                    <Badge variant="secondary" className="self-center">
+                      Verified
+                    </Badge>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -858,13 +1197,14 @@ export function AddAppointmentDialog({
                 <div>
                   <Label>Assign doctor</Label>
                   <Select
-                    value={form.doctorUuid || undefined}
-                    onValueChange={(v) => set('doctorUuid', v)}
+                    value={form.doctorUuid || 'none'}
+                    onValueChange={(v) => set('doctorUuid', v === 'none' ? '' : v)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select doctor" />
+                      <SelectValue placeholder="Unassigned" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">Unassigned</SelectItem>
                       {activeDoctors.map((d) => (
                         <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
                           {d.name || d.email || d.doctorUuid}
@@ -872,9 +1212,9 @@ export function AddAppointmentDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                  {fieldErrors.doctorUuid && (
-                    <p className="text-xs text-destructive mt-1">{fieldErrors.doctorUuid}</p>
-                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Leave unassigned to assign later from the board
+                  </p>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-2">
