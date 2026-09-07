@@ -30,8 +30,8 @@ describe('stackedPercents', () => {
 describe('appendSample', () => {
   it('keeps the last max samples', () => {
     const next = appendSample(
-      [{ mem: 1, disk: 1, pool: 1 }, { mem: 2, disk: 2, pool: 2 }],
-      { mem: 3, disk: 3, pool: 3 },
+      [{ mem: 1, disk: 1, pool: 1, workers: 0 }, { mem: 2, disk: 2, pool: 2, workers: 0 }],
+      { mem: 3, disk: 3, pool: 3, workers: 0 },
       2,
     );
     assert.equal(next.length, 2);

@@ -246,7 +246,7 @@ const ClinicSignupForm = () => {
                                 value={emailOtp}
                                 onChange={(e) => setEmailOtp(e.target.value)}
                               />
-                              <Button type="button" size="sm" onClick={verifyEmail} disabled={loading || !emailOtp.trim()}>
+                              <Button type="button" size="sm" onClick={verifyEmail} disabled={loading || emailOtp.trim().length !== 6}>
                                 Verify
                               </Button>
                             </>

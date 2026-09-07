@@ -266,7 +266,7 @@ export default function ClinicOwnerProfile() {
           <div>
             <p className="text-muted-foreground text-xs mb-1">Billing</p>
             <p className="font-medium">
-              {profile.billingStatus.replaceAll('_', ' ')}
+              {profile.billingStatus.split('_').join(' ')}
               {profile.invoiceCount > 0 ? ` · ${profile.invoiceCount} invoice(s)` : ''}
             </p>
           </div>

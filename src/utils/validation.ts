@@ -1,4 +1,4 @@
-import DOMPurify from 'dompurify';
+import DOMPurify, { type Config } from 'dompurify';
 
 export const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,72}$/;
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -80,7 +80,7 @@ export function toE164Phone(localPhone: string, countryCode = '+91'): string {
   return `${code}${local}`;
 }
 
-const HTML_ALLOWLIST = {
+const HTML_ALLOWLIST: Config = {
   ALLOWED_TAGS: [
     'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'a', 'ul', 'ol', 'li',
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre',
@@ -90,7 +90,7 @@ const HTML_ALLOWLIST = {
   ALLOW_DATA_ATTR: false,
   FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'style'],
   FORBID_ATTR: ['style'],
-} as const;
+};
 
 export function sanitizeHtml(html: string): string {
   if (!html) return '';

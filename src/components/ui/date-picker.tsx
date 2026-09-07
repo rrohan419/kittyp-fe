@@ -22,7 +22,7 @@ export type DatePickerProps = {
   captionLayout?: CalendarProps['captionLayout'];
   calendarProps?: Omit<
     CalendarProps,
-    'mode' | 'selected' | 'onSelect' | 'disabled' | 'month' | 'onMonthChange' | 'startMonth' | 'endMonth'
+    'mode' | 'selected' | 'onSelect' | 'disabled' | 'month' | 'onMonthChange' | 'startMonth' | 'endMonth' | 'required'
   >;
 };
 

@@ -87,6 +87,10 @@ type SearchHit =
   | { kind: 'owner'; owner: ClinicOwnerModel; pet: ClinicPetListModel }
   | { kind: 'user'; user: PlatformUserSearchModel };
 
+type PetHit = Extract<SearchHit, { kind: 'pet' }>;
+type OwnerHit = Extract<SearchHit, { kind: 'owner' }>;
+type UserHit = Extract<SearchHit, { kind: 'user' }>;
+
 /** Snap: :00 stays; 1–30 → :30; >30 → next hour :00. */
 export function snapToHalfHour(date: Date): Date {
   const minutes = date.getMinutes();
@@ -183,8 +187,8 @@ export function AddAppointmentDialog({
         if (cancelled) return;
         const pets = petsPage.models ?? [];
         const owners = ownersPage.models ?? [];
-        const petHits: SearchHit[] = pets.slice(0, 30).map((pet) => ({ kind: 'pet', pet }));
-        const ownerPetHits: SearchHit[] = [];
+        const petHits: PetHit[] = pets.slice(0, 30).map((pet) => ({ kind: 'pet', pet }));
+        const ownerPetHits: OwnerHit[] = [];
         for (const owner of owners.slice(0, 20)) {
           const petsOfOwner = owner.pets ?? [];
           if (petsOfOwner.length === 0) continue;
@@ -214,7 +218,7 @@ export function AddAppointmentDialog({
             });
           }
         }
-        const userHits: SearchHit[] = users.slice(0, 20).map((user) => ({ kind: 'user', user }));
+        const userHits: UserHit[] = users.slice(0, 20).map((user) => ({ kind: 'user', user }));
         const seenPet = new Set<string>();
         const seenOwner = new Set<string>();
         const seenUser = new Set<string>();

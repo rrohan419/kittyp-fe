@@ -61,3 +61,32 @@ npm run dev
 ## Note
 The app will work without Firebase configuration, but push notifications and other Firebase features won't function until you add the proper environment variables.
 
+## App Check (hardening)
+
+Client-side FCM should carry an App Check attestation. Enabled only when
+`VITE_RECAPTCHA_SITE_KEY` is set (see `src/config/firebase.ts`).
+
+1. Firebase Console > Build > App Check > Get started.
+2. Register a reCAPTCHA v3 provider (Firebase supplies a site key + secret).
+3. Add the **site key** (public) to `.env`:
+   ```env
+   VITE_RECAPTCHA_SITE_KEY=6Lc...
+   ```
+4. Enforce App Check on the Cloud Messaging API (and Firestore/Storage if used)
+   in the console so unverified clients are rejected server-side.
+5. Never commit the reCAPTCHA **secret** — it stays in the console only.
+
+## Firestore / Storage rules (least privilege)
+
+Rule templates live in `firebase/firestore.rules` and `firebase/storage.rules`
+(deny-by-default). Deploy with:
+
+```bash
+firebase deploy --only firestore:rules
+firebase deploy --only storage
+```
+
+Authorization policy: the backend is the source of truth (JWT + `@PreAuthorize`);
+never trust a client-sent role flag alone. The rules are the client-access
+boundary only.
+

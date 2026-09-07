@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction, createSelector } from '@r
 import { RootState } from '@/module/store/store';
 import { toast } from 'sonner';
 import { Product } from '@/services/productService';
-import { FavoriteProduct, fetchFavorites, addToFavorites, removeFromFavorites } from '@/services/favoritesService';
+import { FavoriteProduct, ProductStatus, fetchFavorites, addToFavorites, removeFromFavorites } from '@/services/favoritesService';
 
 export interface FavoritesState {
   items: FavoriteProduct[];
@@ -111,7 +111,8 @@ const favoritesSlice = createSlice({
           price: action.payload.price,
           category: action.payload.category,
           imageUrls: action.payload.productImageUrls,
-          currency: action.payload.currency
+          currency: action.payload.currency,
+          status: action.payload.status as ProductStatus
         };
         state.items.push(favoriteProduct);
         state.totalElements += 1;

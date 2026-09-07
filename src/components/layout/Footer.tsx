@@ -19,7 +19,7 @@ export function Footer() {
             </p>
             <div className="flex space-x-4">
               <a 
-                href="https://instagram.com/rrohan419" 
+                href="https://instagram.com/kittyp.in" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 aria-label="Instagram"
@@ -28,7 +28,7 @@ export function Footer() {
                 <Instagram size={20} />
               </a>
               <a 
-                href="https://twitter.com/rrohan419" 
+                href="https://twitter.com/kittyp" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 aria-label="Twitter"
@@ -37,7 +37,7 @@ export function Footer() {
                 <TwitterIcon size={20} />
               </a>
               <a 
-                href="https://facebook.com/rrohan419" 
+                href="https://facebook.com/kittyp" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 aria-label="Facebook"
@@ -46,7 +46,7 @@ export function Footer() {
                 <FacebookIcon size={20} />
               </a>
               <a 
-                href="https://linkedin.com/in/rrohan419" 
+                href="https://linkedin.com/company/kittyp" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 aria-label="LinkedIn"
@@ -109,6 +109,11 @@ export function Footer() {
               <li>
                 <Link to="/about" className="text-muted-foreground hover:text-primary transition-colors">
                   About
+                </Link>
+              </li>
+              <li>
+                <Link to="/pricing" className="text-muted-foreground hover:text-primary transition-colors">
+                  Pricing
                 </Link>
               </li>
               <li>

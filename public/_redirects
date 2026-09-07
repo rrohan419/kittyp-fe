@@ -1,3 +1,20 @@
+/.env       404
+/.env.*     404
+/.git       404
+/.git/*     404
+/.gitignore 404
+/.gitattributes 404
+/.gitmodules 404
+/.htaccess  404
+/.htpasswd  404
+/.aws       404
+/.aws/*     404
+/.npmrc     404
+/.npm/*     404
+/.DS_Store  404
+*.env       404
+*.pem       404
+*.key       404
 /sitemap.xml  /sitemap.xml  200
 /robots.txt   /robots.txt   200
 /*           /index.html    200

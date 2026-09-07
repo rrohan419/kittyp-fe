@@ -13,6 +13,7 @@ const Sitemap = () => {
       links: [
         { name: 'Home', path: '/' },
         { name: 'About', path: '/about' },
+        { name: 'Pricing', path: '/pricing' },
         { name: 'Articles', path: '/articles' },
         { name: 'Contact Us', path: '/contact' },
       ],
@@ -34,8 +35,6 @@ const Sitemap = () => {
             title: 'Shop',
             links: [
               { name: 'All Products', path: '/products' },
-              { name: 'How to Use', path: '/how-to-use' },
-              { name: 'Why Eco Litter', path: '/why-eco-litter' },
               { name: 'Cart', path: '/cart' },
               { name: 'Checkout', path: '/checkout' },
             ],

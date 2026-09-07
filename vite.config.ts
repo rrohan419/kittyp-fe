@@ -51,10 +51,10 @@ export default defineConfig(({ mode }) => ({
       },
       
       manifest: {
-        name: "Kittyp - Eco-Friendly Pet Products",
+        name: "Kittyp — Veterinary Clinic CRM",
         short_name: "Kittyp",
         description:
-          "Pure by Nature, Trusted by You",
+          "Kittyp is the veterinary operating system for Indian clinics: appointments, consults, invoices, and a pet health record that stays with the pet.",
         start_url: "/",
         display: "standalone",
         background_color: "#ffffff",
@@ -93,7 +93,7 @@ export default defineConfig(({ mode }) => ({
             purpose: "any",
           },
         ],
-        categories: ["shopping", "lifestyle", "pets"],
+        categories: ["business", "medical", "productivity"],
         lang: "en",
         dir: "ltr",
         prefer_related_applications: false,

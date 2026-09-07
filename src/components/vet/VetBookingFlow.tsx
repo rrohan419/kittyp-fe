@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
-import { TimeSlotPicker } from './TimeSlotPicke';
+import { TimeSlotPicker } from './TimeSlotPicker';
 
 interface VetBookingFlowProps {
   vets: VetProfile[];

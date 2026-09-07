@@ -177,14 +177,14 @@ const Index = () => {
           content="Replace paper for one consultation. Appointments, consults, invoices — history stays with the pet."
         />
         <meta property="og:url" content="https://kittyp.in/" />
-        <meta property="og:image" content="https://kittyp.in/og-image.jpg" />
+        <meta property="og:image" content="https://kittyp.in/home/hero-consult.png" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Kittyp — Veterinary clinic CRM for India" />
         <meta
           name="twitter:description"
           content="Clinic CRM for Indian veterinary practices. Book, chart, bill — keep the pet's record portable."
         />
-        <meta name="twitter:image" content="https://kittyp.in/og-image.jpg" />
+        <meta name="twitter:image" content="https://kittyp.in/home/hero-consult.png" />
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'WebSite',

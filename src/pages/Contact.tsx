@@ -55,8 +55,8 @@ const Contact = () => {
                             Contact Us
                         </h1>
                         <p className="text-muted-foreground mb-12 text-center max-w-2xl mx-auto">
-                            Have questions about our eco-friendly cat litter? Want to become a retailer?
-                            We'd love to hear from you!
+                            Questions about Kittyp for your veterinary clinic? Need help with your account?
+                            We'd love to hear from you.
                         </p>
 
                         <div className="grid gap-8 md:grid-cols-2 mb-12">
@@ -70,7 +70,7 @@ const Contact = () => {
                                                 For customer support and inquiries:
                                             </p>
                                             <a
-                                                href="mailto:support@kittyp.com"
+                                                href="mailto:support@kittyp.in"
                                                 className="text-primary hover:text-primary/90 transition-colors"
                                             >
                                                 support@kittyp.in
@@ -83,15 +83,17 @@ const Contact = () => {
                                     <CardContent className="p-6 flex items-start space-x-4">
                                         <Phone className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
                                         <div>
-                                            <h3 className="font-medium text-lg mb-1 text-foreground">Call Us</h3>
+                                            <h3 className="font-medium text-lg mb-1 text-foreground">WhatsApp Us</h3>
                                             <p className="text-muted-foreground mb-2">
-                                                Monday to Friday, 9am - 5pm EST:
+                                                Monday to Saturday, 9am - 7pm IST:
                                             </p>
                                             <a
-                                                href="tel:+1-800-KITTY-P"
+                                                href="https://wa.me/919876543210"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
                                                 className="text-primary hover:text-primary/90 transition-colors"
                                             >
-                                                1-800-KITTY-P
+                                                +91 98765 43210
                                             </a>
                                         </div>
                                     </CardContent>
@@ -106,9 +108,8 @@ const Contact = () => {
                                                 Our headquarters:
                                             </p>
                                             <address className="not-italic text-foreground">
-                                                123 Eco Way<br />
-                                                Portland, OR 97201<br />
-                                                United States
+                                                Bengaluru, Karnataka<br />
+                                                India
                                             </address>
                                         </div>
                                     </CardContent>
@@ -191,20 +192,12 @@ const Contact = () => {
                                 Join Our Community
                             </h2>
                             <p className="text-muted-foreground mb-6">
-                                Follow us on social media for updates, promotions, and cat care tips!
+                                Follow us on social media for updates, product news, and clinic resources!
                             </p>
 
                             <div className="flex justify-center space-x-6">
                                 <a
-                                    href="https://www.fb.com/rrohan419"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary hover:text-primary/90 transition-colors"
-                                >
-                                    Facebook
-                                </a>
-                                <a
-                                    href="https://www.instagram.com/rrohan419"
+                                    href="https://www.instagram.com/kittyp.in"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-primary hover:text-primary/90 transition-colors"
@@ -212,7 +205,15 @@ const Contact = () => {
                                     Instagram
                                 </a>
                                 <a
-                                    href="https://www.x.com/rrohan419"
+                                    href="https://www.linkedin.com/company/kittyp"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:text-primary/90 transition-colors"
+                                >
+                                    LinkedIn
+                                </a>
+                                <a
+                                    href="https://www.x.com/kittyp"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-primary hover:text-primary/90 transition-colors"
@@ -220,7 +221,7 @@ const Contact = () => {
                                     Twitter
                                 </a>
                                 <a
-                                    href="https://www.youtube.com/"
+                                    href="https://www.youtube.com/@kittyp"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-primary hover:text-primary/90 transition-colors"

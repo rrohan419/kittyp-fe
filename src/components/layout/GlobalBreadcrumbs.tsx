@@ -23,8 +23,6 @@ const breadcrumbConfig: BreadcrumbConfig = {
   '/': { label: 'Home', icon: Home },
   '/products': { label: 'Products' },
   '/product': { label: 'Product Details', dynamic: true },
-  '/how-to-use': { label: 'How to Use' },
-  '/why-eco-litter': { label: 'Why Eco Litter' },
   '/about': { label: 'About Us' },
   '/contact': { label: 'Contact' },
   '/articles': { label: 'Articles' },

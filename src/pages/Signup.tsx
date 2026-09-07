@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ import {
 import { toast } from 'sonner';
 import { UserPlus, Mail, Lock, User, CheckCircleIcon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
-import { signup, socialSso } from '@/services/authService';
+import { signup, socialSso, login } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/module/store/store';
@@ -31,6 +31,7 @@ import { validateAndSetUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
 import { validateEmail, validatePassword } from '@/utils/validation';
 import { isSignupRole, type SignupRole } from '@/utils/roles';
+import { clearAuthStorage, hasAuthToken } from '@/utils/authStorage';
 import SignupRoleToggle from '@/components/auth/signup/SignupRoleToggle';
 import DoctorSignupForm from '@/components/auth/signup/DoctorSignupForm';
 import ClinicSignupForm from '@/components/auth/signup/ClinicSignupForm';
@@ -67,6 +68,14 @@ const Signup = () => {
   const handleGoogleSignup = () => googleLogin();
   const dispatch = useDispatch<AppDispatch>();
 
+  // Session isolation: a signed-in pet parent must not carry their session into
+  // doctor/clinic signup. Clear any residual auth so the new role flow starts clean.
+  useEffect(() => {
+    if (role !== 'USER' && hasAuthToken()) {
+      clearAuthStorage();
+    }
+  }, [role]);
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -94,22 +103,23 @@ const Signup = () => {
     try {
       await signup({ firstName, lastName, email, password, role: 'USER' });
 
-      setShowSuccessDialog(true);
-
-      setTimeout(() => {
-        setFirstName('');
-        setLastName('');
-        setEmail('');
-        setPassword('');
-        setConfirmPassword('');
-
+      // Auto-login the newly created parent and land in the app.
+      try {
+        await login({ email, password });
+        await dispatch(validateAndSetUser()).unwrap();
+        await dispatch(initializeUserAndCart()).unwrap();
         toast.success('Account created successfully', {
-          description: 'Please login with your new account',
+          description: 'Welcome to Kittyp!',
           duration: 3000,
         });
-
-        navigate('/login');
-      }, 2000);
+        navigate('/');
+      } catch {
+        // Fall back to the manual-login path if auto-login fails.
+        setShowSuccessDialog(true);
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Signup failed';
       setErrorMessage(message);

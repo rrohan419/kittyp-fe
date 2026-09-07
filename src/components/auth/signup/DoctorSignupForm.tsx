@@ -483,7 +483,7 @@ const DoctorSignupForm = () => {
                         <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(1)}>
                           Back
                         </Button>
-                        <Button type="submit" className="flex-1" disabled={loading}>
+                        <Button type="submit" className="flex-1" disabled={loading || emailOtp.length !== 6}>
                           {loading ? 'Verifying…' : 'Verify & Continue'}
                         </Button>
                       </div>
@@ -527,7 +527,7 @@ const DoctorSignupForm = () => {
                         <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(2)}>
                           Back
                         </Button>
-                        <Button type="submit" className="flex-1" disabled={loading}>
+                        <Button type="submit" className="flex-1" disabled={loading || phoneOtp.length !== 6}>
                           {loading ? 'Verifying…' : 'Verify & Continue'}
                         </Button>
                       </div>

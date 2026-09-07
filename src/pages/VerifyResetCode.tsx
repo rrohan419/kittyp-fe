@@ -119,7 +119,7 @@ useEffect(() => {
                   <Button 
                     type="submit" 
                     className="w-full bg-kitty-600 hover:bg-kitty-700"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || code.length !== 6}
                   >
                     {isSubmitting ? "Verifying..." : "Verify Code"}
                   </Button>

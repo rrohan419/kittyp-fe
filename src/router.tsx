@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { isEcommerceEnabled } from '@/config/features';
 import Index from "@/pages/Index";
 import Products from "@/pages/Products";
-import HowToUse from "@/pages/HowToUse";
 import Articles from "@/pages/Articles";
 import Contact from "@/pages/Contact";
 import Login from "@/pages/Login";
@@ -21,13 +20,13 @@ import Checkout from "@/pages/Checkout";
 import MyOrders from "@/pages/MyOrders";
 import OrderDetail from "@/pages/OrderDetail";
 import About from "@/pages/About";
+import Pricing from "@/pages/Pricing";
 import ArticleDetail from "@/pages/ArticleDetail";
 import AdminArticleEditor from "@/pages/AdminArticleEditor";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import Sitemap from "@/pages/Sitemap";
 import SitemapXml from "@/pages/SitemapXml";
-import WhyEcoLitter from "@/pages/WhyEcoLitter";
 import ForgotPassword from "@/pages/ForgotPassword";
 import VerifyResetCode from "@/pages/VerifyResetCode";
 import ResetPassword from "@/pages/ResetPassword";
@@ -40,7 +39,6 @@ import AdminProducts from './pages/AdminProducts';
 import AdminUsers from './pages/AdminUsers';
 import AdminParents from '@/pages/admin/AdminParents';
 import { VetConsultation } from './pages/VetConsultation';
-import { VetDashboardPage } from './pages/VetDashboardPage';
 import ParentAppointmentsPage from './pages/parent/ParentAppointmentsPage';
 import ScheduleVisitPage from './pages/parent/ScheduleVisitPage';
 import JitsiConsultPage from './pages/JitsiConsultPage';
@@ -112,10 +110,6 @@ export const router = createBrowserRouter(
         {
           path: "product/:uuid",
           element: ecommerceElement(<PageTransition><ProductDetail /></PageTransition>),
-        },
-        {
-          path: "how-to-use",
-          element: <PageTransition><HowToUse /></PageTransition>,
         },
         {
           path: "articles",
@@ -214,8 +208,8 @@ export const router = createBrowserRouter(
           element: <PageTransition><About /></PageTransition>,
         },
         {
-          path: "why-eco-litter",
-          element: ecommerceElement(<PageTransition><WhyEcoLitter /></PageTransition>),
+          path: "pricing",
+          element: <PageTransition><Pricing /></PageTransition>,
         },
         {
           path: "privacy",

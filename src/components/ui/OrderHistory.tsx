@@ -22,7 +22,8 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ userUuid }) => {
   const filters: OrderFilterRequest = {
     userUuid,
     orderNumber: null,
-    orderStatus: statusFilter
+    orderStatus: statusFilter,
+    searchText: null
   };
 
   const handleStatusFilterChange = (status: string | null) => {

@@ -27,6 +27,7 @@ export default function MyOrders() {
         userUuid: userUuid,
         orderNumber: null,
         orderStatus: null,
+        searchText: null,
     });
 
     const handleOrderNumberChange = (value: string) => {

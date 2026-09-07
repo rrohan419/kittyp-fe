@@ -64,7 +64,6 @@ function matchMedia(query: string) {
 
 function installGlobals(): void {
   const g = globalThis as typeof globalThis & {
-    window: typeof globalThis;
     localStorage: typeof localStorageMock;
     matchMedia: typeof matchMedia;
   };
@@ -77,7 +76,10 @@ function installGlobals(): void {
     value: matchMedia,
     configurable: true,
   });
-  g.window = g;
+  Object.defineProperty(g, 'window', {
+    value: g,
+    configurable: true,
+  });
 }
 
 before(() => {

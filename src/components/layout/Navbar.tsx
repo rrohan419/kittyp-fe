@@ -22,6 +22,7 @@ import { UserProfile } from '@/services/authService';
 import { isEcommerceEnabled } from '@/config/features';
 import { AppRole, getPortalHome, getRoleLabel, PORTAL_HOME } from '@/utils/roles';
 import { clearAuthStorage } from '@/utils/authStorage';
+import { useHasPublishedArticles } from '@/hooks/useHasPublishedArticles';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -99,10 +100,12 @@ export function Navbar() {
   };
 
   const ecommerceOn = isEcommerceEnabled();
+  const hasPublishedArticles = useHasPublishedArticles();
   const navLinks = [
     { name: 'Home', path: '/' },
     ...(ecommerceOn ? [{ name: 'Products', path: '/products' }] : []),
-    { name: 'Articles', path: '/articles' },
+    ...(hasPublishedArticles ? [{ name: 'Articles', path: '/articles' }] : []),
+    { name: 'Pricing', path: '/pricing' },
     { name: 'Contact', path: '/contact' },
   ];
 
