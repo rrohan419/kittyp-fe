@@ -160,7 +160,7 @@ const Contact = () => {
                                                 name="subject"
                                                 value={formData.subject}
                                                 onChange={handleChange}
-                                                placeholder="Product question"
+                                                placeholder="Clinic or CRM question"
                                                 required
                                             />
                                         </div>
@@ -192,7 +192,7 @@ const Contact = () => {
                                 Join Our Community
                             </h2>
                             <p className="text-muted-foreground mb-6">
-                                Follow us on social media for updates, product news, and clinic resources!
+                                Follow us on social media for clinic CRM updates and resources!
                             </p>
 
                             <div className="flex justify-center space-x-6">

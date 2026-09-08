@@ -9,9 +9,9 @@ Disallow: /admin/
 Disallow: /admin/*
 
 # Allow important pages
-Allow: /products
+Allow: /pricing
 Allow: /articles
 Allow: /about
 Allow: /contact
 Allow: /privacy
-Allow: /terms 
+Allow: /terms
