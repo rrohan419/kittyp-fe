@@ -6,45 +6,78 @@ import { Helmet } from 'react-helmet';
 
 const plans = [
   {
-    name: 'Clinic',
-    price: 'Custom',
-    blurb: 'For single-location practices ready to leave paper behind.',
+    name: 'Pilot',
+    price: '₹0',
+    period: '/ 21 days',
+    blurb: 'Try Kittyp with your real clinic workflow — no card required.',
     highlights: [
       'Appointments & front desk',
-      'Doctor consults & pet records',
-      'GST-ready invoices & WhatsApp receipts',
+      'Doctor charts & pet records',
+      'Invoices (WhatsApp receipts)',
       'Staff & doctor invites',
+    ],
+    cta: 'Start pilot',
+    to: '/signup/clinic-admin',
+    featured: false,
+  },
+  {
+    name: 'Starter',
+    price: '₹999',
+    period: '/ mo',
+    blurb: 'Single-location practices leaving paper behind.',
+    highlights: [
+      'Everything in Pilot',
+      'Unlimited appointments',
+      'GST-ready invoices',
+      'Email support',
+    ],
+    cta: 'Register your clinic',
+    to: '/signup/clinic-admin',
+    featured: false,
+  },
+  {
+    name: 'Clinic',
+    price: '₹2,499',
+    period: '/ mo',
+    blurb: 'Growing clinics with multiple doctors on the floor.',
+    highlights: [
+      'Everything in Starter',
+      'Multi-doctor roster',
+      'Branch switcher',
+      'Priority support',
     ],
     cta: 'Register your clinic',
     to: '/signup/clinic-admin',
     featured: true,
   },
   {
-    name: 'Doctor',
-    price: 'Included',
-    blurb: 'Personal practice or join clinics without a second identity.',
+    name: 'Hospital',
+    price: '₹6,999',
+    period: '/ mo',
+    blurb: 'Multi-branch hospitals and high-volume OPD.',
     highlights: [
-      'Online & in-clinic availability',
-      'Patient history on the pet',
-      'Invoices for personal practice',
-      'Works across affiliated clinics',
+      'Everything in Clinic',
+      'Multi-branch CRM',
+      'Advanced reporting',
+      'Dedicated onboarding',
     ],
-    cta: 'Sign up as doctor',
-    to: '/signup/doctor',
+    cta: 'Talk to us',
+    to: '/contact',
     featured: false,
   },
   {
-    name: 'Pet parent',
-    price: 'Free',
-    blurb: 'Book visits and keep lifelong records with your pets.',
+    name: 'Enterprise',
+    price: 'Custom',
+    period: '',
+    blurb: 'Hospital groups and chains that need SSO, SLAs, and custom workflows.',
     highlights: [
-      'Book appointments',
-      'Vaccines & visit timeline',
-      'Invoices in one place',
-      'History that moves with the pet',
+      'Custom contracts',
+      'SSO / security review',
+      'Volume pricing',
+      'Named success manager',
     ],
-    cta: 'Sign up as pet parent',
-    to: '/signup/parent',
+    cta: 'Contact sales',
+    to: '/contact',
     featured: false,
   },
 ];
@@ -56,7 +89,7 @@ const Pricing = () => {
         <title>Pricing — Kittyp</title>
         <meta
           name="description"
-          content="Kittyp pricing for veterinary clinics, doctors, and pet parents in India."
+          content="Kittyp clinic CRM pricing in INR: Pilot ₹0/21d, Starter ₹999/mo, Clinic ₹2499/mo, Hospital ₹6999/mo. Pet parents are free."
         />
         <link rel="canonical" href="https://kittyp.in/pricing" />
       </Helmet>
@@ -64,59 +97,50 @@ const Pricing = () => {
       <main className="pt-24 pb-16">
         <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-12 md:mb-16">
           <div className="mx-auto max-w-3xl text-center">
-            <h1 className="mb-4 text-4xl font-bold text-foreground md:text-5xl">
-              Pricing
-            </h1>
+            <h1 className="mb-4 text-4xl font-bold text-foreground md:text-5xl">Pricing</h1>
             <p className="text-lg text-muted-foreground">
-              Start with the role that fits you. Clinic plans are tailored to your practice —
-              talk to us and we&apos;ll set you up.
+              Monetize clinics. Pet parents book and pay invoices for free. All prices INR.
             </p>
           </div>
         </section>
 
         <section className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
+          <div className="mx-auto grid max-w-6xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {plans.map((plan) => (
               <div
                 key={plan.name}
-                className={`flex flex-col rounded-xl border p-6 ${
-                  plan.featured
-                    ? 'border-primary/40 bg-primary/5 shadow-sm'
-                    : 'border-border bg-card'
+                className={`rounded-2xl border p-6 flex flex-col ${
+                  plan.featured ? 'border-primary shadow-lg shadow-primary/10' : 'border-border'
                 }`}
               >
-                <p className="text-sm font-medium text-muted-foreground">{plan.name}</p>
-                <p className="mt-2 text-3xl font-bold text-foreground">{plan.price}</p>
-                <p className="mt-2 text-sm text-muted-foreground">{plan.blurb}</p>
-                <ul className="mt-6 flex-1 space-y-2">
-                  {plan.highlights.map((item) => (
-                    <li key={item} className="flex items-start gap-2 text-sm text-foreground">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      <span>{item}</span>
+                <h2 className="text-xl font-semibold text-foreground">{plan.name}</h2>
+                <p className="mt-3 flex items-baseline gap-1">
+                  <span className="text-3xl font-bold text-foreground">{plan.price}</span>
+                  {plan.period ? (
+                    <span className="text-sm text-muted-foreground">{plan.period}</span>
+                  ) : null}
+                </p>
+                <p className="mt-3 text-sm text-muted-foreground">{plan.blurb}</p>
+                <ul className="mt-6 space-y-2 flex-1">
+                  {plan.highlights.map((h) => (
+                    <li key={h} className="flex gap-2 text-sm text-foreground">
+                      <Check className="h-4 w-4 shrink-0 text-primary mt-0.5" />
+                      {h}
                     </li>
                   ))}
                 </ul>
-                <Button className="mt-8 w-full" variant={plan.featured ? 'default' : 'outline'} asChild>
+                <Button asChild className="mt-6 w-full" variant={plan.featured ? 'default' : 'outline'}>
                   <Link to={plan.to}>{plan.cta}</Link>
                 </Button>
               </div>
             ))}
           </div>
-
-          <p className="mx-auto mt-12 max-w-2xl text-center text-sm text-muted-foreground">
-            Need a multi-branch rollout or a walkthrough?{' '}
-            <Link to="/contact" className="text-primary hover:underline">
-              Contact us
-            </Link>{' '}
-            or email{' '}
-            <a href="mailto:support@kittyp.in" className="text-primary hover:underline">
-              support@kittyp.in
-            </a>
-            .
+          <p className="mx-auto mt-10 max-w-2xl text-center text-sm text-muted-foreground">
+            Doctors joining a clinic or running personal practice are included with the clinic plan.
+            Pet parent accounts stay free.
           </p>
         </section>
       </main>
-
       <Footer />
     </div>
   );

@@ -1,8 +1,7 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, lazy, Suspense } from 'react-router-dom';
 import { isEcommerceEnabled } from '@/config/features';
 import Index from "@/pages/Index";
 import Products from "@/pages/Products";
-import Articles from "@/pages/Articles";
 import Contact from "@/pages/Contact";
 import Login from "@/pages/Login";
 import SelectRole from "@/pages/SelectRole";
@@ -20,7 +19,6 @@ import Checkout from "@/pages/Checkout";
 import MyOrders from "@/pages/MyOrders";
 import OrderDetail from "@/pages/OrderDetail";
 import About from "@/pages/About";
-import Pricing from "@/pages/Pricing";
 import ArticleDetail from "@/pages/ArticleDetail";
 import AdminArticleEditor from "@/pages/AdminArticleEditor";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
@@ -90,6 +88,17 @@ import DoctorNutritionGenerate from './pages/DoctorNutritionGenerate';
 import ParentHealthPage from './pages/parent/ParentHealthPage';
 import PetParentNutritionTracker from './components/nutrition/PetParentNutritionTracker';
 
+const Articles = lazy(() => import('@/pages/Articles'));
+const Pricing = lazy(() => import('@/pages/Pricing'));
+
+const RouteFallback = () => (
+  <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
+);
+
+const lazyPage = (element: React.ReactNode) => (
+  <Suspense fallback={<RouteFallback />}>{element}</Suspense>
+);
+
 const ecommerceElement = (element: React.ReactNode) =>
   isEcommerceEnabled() ? element : <Navigate to="/" replace />;
 
@@ -113,7 +122,7 @@ export const router = createBrowserRouter(
         },
         {
           path: "articles",
-          element: <PageTransition><Articles /></PageTransition>,
+          element: lazyPage(<PageTransition><Articles /></PageTransition>),
         },
         {
           path: "articles/:slug",
@@ -209,7 +218,7 @@ export const router = createBrowserRouter(
         },
         {
           path: "pricing",
-          element: <PageTransition><Pricing /></PageTransition>,
+          element: lazyPage(<PageTransition><Pricing /></PageTransition>),
         },
         {
           path: "privacy",
@@ -289,7 +298,7 @@ export const router = createBrowserRouter(
             },
             {
               path: "articles",
-              element: <PageTransition><Articles /></PageTransition>,
+              element: lazyPage(<PageTransition><Articles /></PageTransition>),
             },
             {
               path: "profile",

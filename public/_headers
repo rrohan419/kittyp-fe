@@ -1,0 +1,22 @@
+# Kittyp Netlify security headers
+# Evidence: KITTYP_AUDIT_NOTES.md — missing CSP, XFO, nosniff, Referrer-Policy,
+# Permissions-Policy on HTML; HSTS present but strengthen with includeSubDomains+preload.
+#
+# Host inventory (live source + audit):
+#   self / kittyp.in / www.kittyp.in
+#   API: kittyp-be-production.up.railway.app, api.kittyp.in
+#   Firebase Auth/FCM: kittyp-prod.firebaseapp.com, *.googleapis.com, *.gstatic.com
+#   Google SSO / gtag: accounts.google.com, googletagmanager.com, google-analytics.com
+#   Razorpay: checkout.razorpay.com, api.razorpay.com, lumberjack.razorpay.com
+#   Media: images.unsplash.com, kittyp-site-images.s3.ap-south-1.amazonaws.com
+#   Teleconsult: meet.jit.si
+#   Fonts: fonts.googleapis.com, fonts.gstatic.com
+#   App Check: www.google.com/recaptcha, www.gstatic.com/recaptcha
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://checkout.razorpay.com https://www.google.com https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://images.unsplash.com https://kittyp-site-images.s3.ap-south-1.amazonaws.com https://www.googletagmanager.com https://www.google-analytics.com https://*.googleusercontent.com; connect-src 'self' https://kittyp-be-production.up.railway.app https://api.kittyp.in https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://api.razorpay.com https://lumberjack.razorpay.com https://www.google.com https://www.gstatic.com; frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com https://meet.jit.si https://www.google.com https://accounts.google.com https://kittyp-prod.firebaseapp.com; worker-src 'self' blob:; media-src 'self' blob:
