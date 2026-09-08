@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { format, isValid, parseISO, startOfDay } from 'date-fns';
+import { isValid, parseISO } from 'date-fns';
 import { NOTIF_REFRESH_EVENT } from '@/components/portal/PortalNotifications';
 import { fetchClinicVisits, type ClinicBookingModel, type ClinicVisitModel } from '@/services/clinicService';
 import { fetchMyDoctorBookings, fetchMyDoctorVisits } from '@/services/visitService';
 import { hasAuthToken } from '@/utils/authStorage';
 import { ROLES } from '@/utils/roles';
+import { clinicTodayIso } from '@/utils/clinicDay';
 
 const ACTIVE_VISIT = new Set(['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS', 'CHECKING_OUT']);
 const CLOSED_BOOKING = new Set(['CANCELLED', 'NO_SHOW', 'COMPLETED']);
@@ -42,7 +43,7 @@ export function useAppointmentNavCount(
     }
 
     let cancelled = false;
-    const today = format(startOfDay(new Date()), 'yyyy-MM-dd');
+    const today = clinicTodayIso();
 
     const load = async () => {
       if (!hasAuthToken()) {

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { formatIsoDate, parseIsoDate, toDateBound } from '@/utils/isoDate';
+import { clinicTodayDate } from '@/utils/clinicDay';
 
 export type DatePickerProps = {
   /** `yyyy-MM-dd`, or empty when unset. */
@@ -42,13 +43,13 @@ export function DatePicker({
 }: DatePickerProps) {
   const selected = parseIsoDate(value);
   const [open, setOpen] = React.useState(false);
-  const [month, setMonth] = React.useState<Date>(selected ?? startOfDay(new Date()));
+  const [month, setMonth] = React.useState<Date>(selected ?? clinicTodayDate());
 
   React.useEffect(() => {
     if (selected) setMonth(selected);
   }, [value]);
 
-  const today = startOfDay(new Date());
+  const today = clinicTodayDate();
   const minBound = latestDate(disablePast ? today : undefined, toDateBound(min));
   const maxBound = earliestDate(disableFuture ? today : undefined, toDateBound(max));
   const startMonth = minBound ?? new Date(today.getFullYear() - 40, 0, 1);

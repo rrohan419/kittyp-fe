@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { differenceInHours, format, parseISO, startOfDay } from 'date-fns';
+import { differenceInHours, format, parseISO } from 'date-fns';
 import {
   Bell,
   CalendarClock,
@@ -28,6 +28,7 @@ import {
 } from '@/services/clinicService';
 import { fetchMyDoctorVisits } from '@/services/visitService';
 import { ROLES, canInviteDoctors, hasAnyRole } from '@/utils/roles';
+import { clinicTodayIso } from '@/utils/clinicDay';
 import { filterUrgentAttentionQueue } from '@/utils/visitStatus';
 import { hasAuthToken } from '@/utils/authStorage';
 import { cn } from '@/lib/utils';
@@ -204,7 +205,7 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
 
       if (portal === 'clinic' && clinicUuid && isClinicStaff) {
         try {
-          const today = format(startOfDay(new Date()), 'yyyy-MM-dd');
+          const today = clinicTodayIso();
           const clinicVisits = await fetchClinicVisits(clinicUuid, { date: today });
           for (const v of filterUrgentAttentionQueue(clinicVisits)) {
             alerts.push(urgentVisitNotif(v, '/clinic/appointments'));

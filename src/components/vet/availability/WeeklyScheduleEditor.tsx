@@ -101,7 +101,13 @@ export const WeeklyScheduleEditor: React.FC<WeeklyScheduleEditorProps> = ({
   };
 
   const toggleDayActive = (dayOfWeek: number, isActive: boolean) => {
-    const updatedAvailability = availability.map(slot =>
+    const daySlots = getAvailabilityForDay(dayOfWeek);
+    if (isActive && daySlots.length === 0) {
+      // Empty day: create a default window so the day picker / Active switch is not a no-op.
+      addTimeSlot(dayOfWeek);
+      return;
+    }
+    const updatedAvailability = availability.map((slot) =>
       slot.dayOfWeek === dayOfWeek ? { ...slot, isActive } : slot
     );
     onChange(updatedAvailability);

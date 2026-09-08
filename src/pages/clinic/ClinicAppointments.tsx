@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clock, Loader2, Pencil, Plus, User } from 'lucide-react';
-import { format, parseISO, isValid, isSameDay, startOfDay, addMinutes } from 'date-fns';
+import { format, parseISO, isValid, isSameDay, addMinutes } from 'date-fns';
+import { clinicTodayDate } from '@/utils/clinicDay';
 import { useNavigate } from 'react-router-dom';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
@@ -47,6 +48,7 @@ import {
 } from '@/services/clinicService';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { clearStuckUiLocks } from '@/utils/clearStuckUiLocks';
 import { petNameWithType } from '@/utils/petType';
 import {
   attendedVisitSurfaceClass,
@@ -266,7 +268,7 @@ export default function ClinicAppointments() {
 
   /** Today's still-relevant scheduled cards for Waitlist (include until slot end passes). */
   const todayScheduledBookings = useMemo(() => {
-    const today = startOfDay(new Date());
+    const today = clinicTodayDate();
     const now = Date.now();
     return [...bookings]
       .filter((b) => {
@@ -387,17 +389,32 @@ export default function ClinicAppointments() {
           ) : null}
         </div>
         <Button
-          onClick={() => setAddOpen(true)}
-          disabled={
-            !clinicUuid ||
-            !clinicActivated ||
-            (lockAssignee && !lockedDoctorUuid) ||
-            (lockAssignee && !practiceReady)
-          }
+          onClick={() => {
+            clearStuckUiLocks();
+            if (!clinicUuid) {
+              toast.error('Select a clinic branch first');
+              return;
+            }
+            if (!clinicActivated) {
+              toast.error(
+                `${CLINIC_NOT_ACTIVATED_MESSAGE}${clinic?.status ? ` (current: ${clinic.status})` : ''}`
+              );
+              return;
+            }
+            if (lockAssignee && !lockedDoctorUuid) {
+              toast.error('Your doctor profile is not linked yet — cannot book as assignee');
+              return;
+            }
+            if (lockAssignee && !practiceReady) {
+              toast.error('Practice is not ready — finish verification before adding appointments');
+              return;
+            }
+            setAddOpen(true);
+          }}
           aria-label="Add appointment"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add
+          Add appointment
         </Button>
       </div>
 

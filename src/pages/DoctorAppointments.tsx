@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { addDays, format, isValid, parseISO, startOfDay } from 'date-fns';
+import { addDays, format, isValid, parseISO } from 'date-fns';
+import { clinicTodayDate } from '@/utils/clinicDay';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -42,6 +43,7 @@ import {
 } from '@/services/visitService';
 import { DashboardAppointmentRow } from '@/components/schedule/DashboardAppointmentRow';
 import { petNameWithType } from '@/utils/petType';
+import { clearStuckUiLocks } from '@/utils/clearStuckUiLocks';
 import { consultPath, isVideoConsult } from '@/utils/consult';
 import { hasAuthToken } from '@/utils/authStorage';
 import { attendedVisitSurfaceClass, isUrgentVisit } from '@/utils/visitUrgency';
@@ -93,7 +95,7 @@ export default function DoctorAppointments() {
     }
     setLoading(true);
     try {
-      const today = startOfDay(new Date());
+      const today = clinicTodayDate();
       const from = format(today, 'yyyy-MM-dd');
       const to = format(addDays(today, 14), 'yyyy-MM-dd');
       const scope = { clinicUuid: clinicUuid || undefined };
@@ -167,6 +169,7 @@ export default function DoctorAppointments() {
   );
 
   const openChart = async (visit: ClinicVisitModel) => {
+    clearStuckUiLocks();
     setBusy(true);
     try {
       let current = visit;

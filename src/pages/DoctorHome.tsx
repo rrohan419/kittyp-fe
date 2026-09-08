@@ -40,6 +40,7 @@ import {
   startOfDay,
   startOfWeek,
 } from 'date-fns';
+import { clinicTodayDate } from '@/utils/clinicDay';
 import {
   DoctorVerificationModel,
   fetchMyDoctorProfile,
@@ -155,7 +156,7 @@ export default function DoctorHome() {
   const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
   const [patientCount, setPatientCount] = useState<number | null>(null);
   const [scheduleLoading, setScheduleLoading] = useState(true);
-  const [weekAnchor, setWeekAnchor] = useState(() => startOfDay(new Date()));
+  const [weekAnchor, setWeekAnchor] = useState(() => clinicTodayDate());
   const [viewMode, setViewMode] = useState<'tiles' | 'list'>('tiles');
   const [chartVisit, setChartVisit] = useState<ClinicVisitModel | null>(null);
   const [eventDetail, setEventDetail] = useState<EventDetail | null>(null);
@@ -220,8 +221,8 @@ export default function DoctorHome() {
   );
   const now = useTickingNow();
   const today = useMemo(
-    () => startOfDay(now),
-    [now.getFullYear(), now.getMonth(), now.getDate()]
+    () => clinicTodayDate(undefined, now),
+    [now.getFullYear(), now.getMonth(), now.getDate(), now.getHours()]
   );
 
   const loadSchedule = useCallback(async () => {
@@ -901,7 +902,7 @@ export default function DoctorHome() {
               size="sm"
               className="h-8"
               title={viewMode === 'list' ? 'Jump to today' : 'Jump to this week'}
-              onClick={() => setWeekAnchor(startOfDay(new Date()))}
+              onClick={() => setWeekAnchor(clinicTodayDate())}
             >
               Today
             </Button>

@@ -52,6 +52,7 @@ import {
 import { toast } from 'sonner';
 import { ListPager } from '@/components/ui/ListPager';
 import { digitsOnlyPhone, validateEmail, validatePhone } from '@/utils/validation';
+import { clearStuckUiLocks } from '@/utils/clearStuckUiLocks';
 import { cn } from '@/lib/utils';
 
 type OwnerRow = ClinicOwnerModel & { clinicUuid?: string; clinicName?: string };
@@ -317,12 +318,14 @@ export default function ClinicPatients() {
       toast.error('Owner first name is required');
       return;
     }
-    if (!validateEmail(form.ownerEmail)) {
-      toast.error('Valid email is required');
+    const emailError = validateEmail(form.ownerEmail);
+    if (emailError) {
+      toast.error(emailError);
       return;
     }
-    if (!validatePhone(form.ownerPhone)) {
-      toast.error('Valid 10-digit phone is required');
+    const phoneError = validatePhone(form.ownerPhone, true);
+    if (phoneError) {
+      toast.error(phoneError);
       return;
     }
     if (!form.petName.trim()) {
@@ -374,7 +377,17 @@ export default function ClinicPatients() {
                 : 'Select a clinic branch to view records'}
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)} disabled={!clinicUuid} className="shadow-md shadow-primary/20">
+        <Button
+          onClick={() => {
+            clearStuckUiLocks();
+            if (!clinicUuid) {
+              toast.error('Select a clinic branch first');
+              return;
+            }
+            setAddOpen(true);
+          }}
+          className="shadow-md shadow-primary/20"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add client
         </Button>

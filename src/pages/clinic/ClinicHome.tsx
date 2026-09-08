@@ -17,11 +17,11 @@ import { ROLES, hasRole } from '@/utils/roles';
 import {
   format,
   parseISO,
-  startOfDay,
   startOfWeek,
   endOfWeek,
   isWithinInterval,
 } from 'date-fns';
+import { clinicTodayDate, formatClinicTodayLong } from '@/utils/clinicDay';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import {
   ClinicBookingModel,
@@ -51,7 +51,7 @@ export default function ClinicHome() {
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [diagnosedCount, setDiagnosedCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [weekAnchor, setWeekAnchor] = useState(() => startOfDay(new Date()));
+  const [weekAnchor, setWeekAnchor] = useState(() => clinicTodayDate());
   const [selected, setSelected] = useState<WeekCalEvent | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addSlot, setAddSlot] = useState<Date | null>(null);
@@ -137,7 +137,7 @@ export default function ClinicHome() {
   }, [visits, bookings, weekStart, weekEnd]);
 
   const urgentToday = useMemo(() => {
-    const today = startOfDay(new Date());
+    const today = clinicTodayDate();
     return filterClinicUrgentToday(visits, today).sort(
       (a, b) => visitEventTime(a).start.getTime() - visitEventTime(b).start.getTime()
     );
@@ -193,7 +193,7 @@ export default function ClinicHome() {
             {clinic?.name ?? 'Clinic Dashboard'}
           </h1>
           <p className="text-muted-foreground mt-0 text-sm">
-            {format(new Date(), 'EEEE, MMMM d, yyyy')}
+            {formatClinicTodayLong()}
             {clinic?.name ? ` · Showing only ${clinic.name}` : ''}
           </p>
         </div>

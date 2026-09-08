@@ -11,6 +11,7 @@ import {
   startOfDay,
   startOfWeek,
 } from 'date-fns';
+import { clinicTodayDate } from '@/utils/clinicDay';
 import { cn } from '@/lib/utils';
 import { calendarBlockClass, isUrgentVisit } from '@/utils/visitUrgency';
 import { isAttendedCalendarVisit } from '@/utils/visitStatus';
@@ -79,7 +80,7 @@ export function WeekCalendar({
   const weekStart = startOfWeek(weekAnchor, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(weekAnchor, { weekStartsOn: 1 });
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
-  const today = startOfDay(now);
+  const today = clinicTodayDate(undefined, now);
   const todayInWeek = weekDays.some((d) => isSameDay(d, today));
   const hourRange = visibleHourRange(events, todayInWeek ? now : undefined);
   const nowTop = todayInWeek ? nowLineOffsetPx(now, hourRange) : null;
@@ -172,7 +173,7 @@ export function WeekCalendar({
             size="sm"
             className="h-8"
             title="Jump to this week"
-            onClick={() => onWeekAnchorChange(startOfDay(new Date()))}
+            onClick={() => onWeekAnchorChange(clinicTodayDate())}
           >
             Today
           </Button>

@@ -483,6 +483,10 @@ export const router = createBrowserRouter(
                 </RoleGuard>
               ),
             },
+            {
+              path: "hours",
+              element: <Navigate to="/clinic/settings" replace />,
+            },
           ],
         },
         {

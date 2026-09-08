@@ -15,13 +15,13 @@ import {
   format,
   isSameDay,
   isToday,
-  startOfDay,
   startOfWeek,
 } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { generateTimeSlots } from '@/utils/timezone';
 import { cn } from '@/lib/utils';
 import { formatInr } from '@/services/availabilityService';
+import { clinicTodayDate } from '@/utils/clinicDay';
 
 interface AvailabilityPreviewProps {
   availability: VetAvailability[];
@@ -42,7 +42,7 @@ export const AvailabilityPreview: React.FC<AvailabilityPreviewProps> = ({
   const [weekAnchor, setWeekAnchor] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
-  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
+  const [selectedDate, setSelectedDate] = useState(() => clinicTodayDate());
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => addDays(weekAnchor, i));
@@ -142,7 +142,7 @@ export const AvailabilityPreview: React.FC<AvailabilityPreviewProps> = ({
   const goThisWeek = () => {
     const start = startOfWeek(new Date(), { weekStartsOn: 1 });
     setWeekAnchor(start);
-    setSelectedDate(startOfDay(new Date()));
+    setSelectedDate(clinicTodayDate());
   };
 
   return (

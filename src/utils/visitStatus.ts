@@ -1,5 +1,6 @@
-import { isSameDay, parseISO, startOfDay } from 'date-fns';
+import { isSameDay, parseISO } from 'date-fns';
 import { isUrgentVisit } from '@/utils/visitUrgency';
+import { clinicTodayDate } from '@/utils/clinicDay';
 
 /** Human visit status for dashboards. Do not use for ecommerce /checkout. */
 export function visitStatusLabel(status?: string | null): string {
@@ -115,7 +116,7 @@ export function filterUrgentAttentionQueue<T extends UrgentVisitLike>(visits: T[
 /** Clinic portal: all non-terminal urgent visits today (upstream behavior). */
 export function filterClinicUrgentToday<T extends UrgentVisitLike>(
   visits: T[],
-  day: Date = startOfDay(new Date())
+  day: Date = clinicTodayDate()
 ): T[] {
   return visits.filter((visit) => {
     if (!isUrgentVisit(visit.urgency)) return false;
@@ -129,7 +130,7 @@ export function filterUrgentDashboardVisits<T extends UrgentVisitLike>(
   visits: T[],
   opts?: { todayOnly?: boolean; visitDay?: (visit: T) => Date }
 ): T[] {
-  const today = opts?.todayOnly ? startOfDay(new Date()) : null;
+  const today = opts?.todayOnly ? clinicTodayDate() : null;
   const filtered = filterUrgentAttentionQueue(visits);
   if (!today || !opts?.visitDay) return filtered;
   return filtered.filter((visit) => isSameDay(opts.visitDay!(visit), today));
