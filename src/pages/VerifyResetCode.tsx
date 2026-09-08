@@ -57,8 +57,12 @@ useEffect(() => {
       } else {
         toast.error("The code you entered is incorrect. Please try again.");
       }
-    } catch (error) {
-      toast.error("Failed to verify code. Please try again.");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : "Failed to verify code. Please try again.";
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }

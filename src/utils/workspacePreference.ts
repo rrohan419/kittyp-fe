@@ -50,6 +50,15 @@ export function clearDefaultWorkspace(): void {
  * dual-role doctor accounts so login does not land on /clinic.
  */
 export function resolvePreferredRole(roles: AppRole[]): AppRole | null {
+  // Platform admins must not bounce into doctor/clinic portals after login.
+  if (hasAnyRole(roles, [ROLES.ADMIN, ROLES.MODERATOR])) {
+    const preferred = getDefaultWorkspace();
+    if (preferred && roles.includes(preferred)) {
+      return preferred;
+    }
+    return hasRole(roles, ROLES.ADMIN) ? ROLES.ADMIN : ROLES.MODERATOR;
+  }
+
   if (hasRole(roles, ROLES.DOCTOR)) {
     const preferred = getDefaultWorkspace();
     // Drop stale clinic defaults that trapped doctors on the clinic portal.
@@ -66,6 +75,10 @@ export function resolvePreferredRole(roles: AppRole[]): AppRole | null {
 
   if (hasAnyRole(roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF])) {
     return hasRole(roles, ROLES.CLINIC_ADMIN) ? ROLES.CLINIC_ADMIN : ROLES.CLINIC_STAFF;
+  }
+
+  if (hasRole(roles, ROLES.USER)) {
+    return ROLES.USER;
   }
 
   return null;

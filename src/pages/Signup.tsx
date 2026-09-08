@@ -112,7 +112,7 @@ const Signup = () => {
           description: 'Welcome to Kittyp!',
           duration: 3000,
         });
-        navigate('/');
+        navigate('/app');
       } catch {
         // Fall back to the manual-login path if auto-login fails.
         setShowSuccessDialog(true);
