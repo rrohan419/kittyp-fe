@@ -247,7 +247,13 @@ export default function ClinicAppointments() {
       status === 'WAITLIST' ? v.status === 'WAITLIST' || v.status === 'CHECKED_IN' : v.status === status
     );
 
-  const completedToday = filteredVisits.filter((v) => v.status === 'COMPLETED');
+  const completedToday = filteredVisits.filter((v) => {
+    if (v.status !== 'COMPLETED') return false;
+    const raw = v.completedAt || v.startedAt || v.createdAt;
+    if (!raw) return false;
+    const d = parseISO(raw);
+    return isValid(d) && isSameDay(d, clinicTodayDate());
+  });
 
   const upcomingBookings = useMemo(() => {
     const now = Date.now();

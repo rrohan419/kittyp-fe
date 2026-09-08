@@ -30,7 +30,7 @@ import {
   markClinicInvoicePaid,
   sendClinicInvoiceWhatsApp,
 } from '@/services/invoiceService';
-import { fetchClinicPetMedicalProfile, fetchClinicVisits } from '@/services/clinicService';
+import { fetchClinicPetMedicalProfile, fetchClinicVisits, isClinicActivated, CLINIC_NOT_ACTIVATED_MESSAGE } from '@/services/clinicService';
 import { formatInr } from '@/services/availabilityService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { collectInvoicePayment, isInvoiceUnpaid, toastInvoicePaymentError } from '@/utils/collectInvoicePayment';
@@ -55,6 +55,7 @@ export default function ClinicInvoices() {
   const hydratedRef = useRef<string | null>(null);
   const petNameRef = useRef<HTMLInputElement | null>(null);
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
+  const clinicActivated = isClinicActivated(clinic?.status, clinic?.personal);
 
   const [items, setItems] = useState<TreatmentLineItem[]>([emptyItem()]);
   const [petName, setPetName] = useState('');
@@ -294,6 +295,10 @@ export default function ClinicInvoices() {
       toast.error('Select a clinic first');
       return;
     }
+    if (!clinicActivated) {
+      toast.error(CLINIC_NOT_ACTIVATED_MESSAGE);
+      return;
+    }
     submittingRef.current = true;
     setLoading(true);
     setSendingWhatsApp(withWhatsApp);
@@ -416,6 +421,10 @@ export default function ClinicInvoices() {
   };
 
   const onCollectPayment = async (inv: ConsultationInvoice) => {
+    if (!clinicActivated) {
+      toast.error(CLINIC_NOT_ACTIVATED_MESSAGE);
+      return;
+    }
     setBusyUuid(inv.uuid);
     try {
       await collectInvoicePayment(inv);

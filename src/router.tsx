@@ -18,12 +18,10 @@ import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import MyOrders from "@/pages/MyOrders";
 import OrderDetail from "@/pages/OrderDetail";
-import About from "@/pages/About";
 import ArticleDetail from "@/pages/ArticleDetail";
 import AdminArticleEditor from "@/pages/AdminArticleEditor";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
-import Sitemap from "@/pages/Sitemap";
 import SitemapXml from "@/pages/SitemapXml";
 import ForgotPassword from "@/pages/ForgotPassword";
 import VerifyResetCode from "@/pages/VerifyResetCode";
@@ -31,14 +29,11 @@ import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
 import App from './App';
 import { PageTransition } from './components/layout/PageTransition';
-import AdminArticles from './pages/AdminArticles';
 import AdminOrders from './pages/AdminOrders';
-import AdminProducts from './pages/AdminProducts';
 import AdminUsers from './pages/AdminUsers';
 import AdminParents from '@/pages/admin/AdminParents';
 import { VetConsultation } from './pages/VetConsultation';
 import ParentAppointmentsPage from './pages/parent/ParentAppointmentsPage';
-import ParentBillingPage from './pages/parent/ParentBillingPage';
 import ScheduleVisitPage from './pages/parent/ScheduleVisitPage';
 import JitsiConsultPage from './pages/JitsiConsultPage';
 import { PetManagementPage } from './pages/PetManagementPage';
@@ -70,7 +65,6 @@ import ClinicInventory from './pages/clinic/ClinicInventory';
 import ClinicStaff from './pages/clinic/ClinicStaff';
 import ClinicReports from './pages/clinic/ClinicReports';
 import ClinicSettings from './pages/clinic/ClinicSettings';
-import ClinicInvoices from './pages/clinic/ClinicInvoices';
 import ClinicRetention from './pages/clinic/ClinicRetention';
 import ClinicBlog from './pages/clinic/ClinicBlog';
 import ClinicArticleEditor from './pages/clinic/ClinicArticleEditor';
@@ -83,14 +77,20 @@ import { RoleGuard } from './components/auth/RoleGuard';
 import { ROLES } from './utils/roles';
 import DoctorBlog from './pages/DoctorBlog';
 import DoctorArticleEditor from './pages/DoctorArticleEditor';
-import DoctorInvoices from './pages/DoctorInvoices';
-import DoctorNutrition from './pages/DoctorNutrition';
 import DoctorNutritionGenerate from './pages/DoctorNutritionGenerate';
 import ParentHealthPage from './pages/parent/ParentHealthPage';
 import PetParentNutritionTracker from './components/nutrition/PetParentNutritionTracker';
 
 const Articles = lazy(() => import('@/pages/Articles'));
 const Pricing = lazy(() => import('@/pages/Pricing'));
+const DoctorInvoices = lazy(() => import('./pages/DoctorInvoices'));
+const ClinicInvoices = lazy(() => import('./pages/clinic/ClinicInvoices'));
+const ParentBillingPage = lazy(() => import('./pages/parent/ParentBillingPage'));
+const AdminArticles = lazy(() => import('./pages/AdminArticles'));
+const AdminProducts = lazy(() => import('./pages/AdminProducts'));
+const DoctorNutrition = lazy(() => import('./pages/DoctorNutrition'));
+const About = lazy(() => import('@/pages/About'));
+const Sitemap = lazy(() => import('@/pages/Sitemap'));
 
 const RouteFallback = () => (
   <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
@@ -215,7 +215,7 @@ export const router = createBrowserRouter(
         },
         {
           path: "about",
-          element: <PageTransition><About /></PageTransition>,
+          element: lazyPage(<PageTransition><About /></PageTransition>),
         },
         {
           path: "pricing",
@@ -231,7 +231,7 @@ export const router = createBrowserRouter(
         },
         {
           path: "sitemap",
-          element: <PageTransition><Sitemap /></PageTransition>,
+          element: lazyPage(<PageTransition><Sitemap /></PageTransition>),
         },
         {
           path: "sitemap.xml",
@@ -275,7 +275,7 @@ export const router = createBrowserRouter(
             },
             {
               path: "billing",
-              element: <PageTransition><ParentBillingPage /></PageTransition>,
+              element: lazyPage(<PageTransition><ParentBillingPage /></PageTransition>),
             },
             {
               path: "consult/:bookingUuid",
@@ -357,7 +357,7 @@ export const router = createBrowserRouter(
             },
             {
               path: "nutrition",
-              element: <PageTransition><DoctorNutrition /></PageTransition>,
+              element: lazyPage(<PageTransition><DoctorNutrition /></PageTransition>),
             },
             {
               path: "nutrition/new",
@@ -377,7 +377,7 @@ export const router = createBrowserRouter(
             },
             {
               path: "invoices",
-              element: <PageTransition><DoctorInvoices /></PageTransition>,
+              element: lazyPage(<PageTransition><DoctorInvoices /></PageTransition>),
             },
             {
               path: "messages",
@@ -463,7 +463,7 @@ export const router = createBrowserRouter(
             },
             {
               path: "invoices",
-              element: <PageTransition><ClinicInvoices /></PageTransition>,
+              element: lazyPage(<PageTransition><ClinicInvoices /></PageTransition>),
             },
             {
               path: "blog",
@@ -533,7 +533,7 @@ export const router = createBrowserRouter(
             },
             {
               path: "products",
-              element: ecommerceElement(<PageTransition><AdminProducts /></PageTransition>),
+              element: ecommerceElement(lazyPage(<PageTransition><AdminProducts /></PageTransition>)),
             },
             {
               path: "users",
@@ -549,7 +549,7 @@ export const router = createBrowserRouter(
             },
             {
               path: "articles",
-              element: <PageTransition><AdminArticles /></PageTransition>,
+              element: lazyPage(<PageTransition><AdminArticles /></PageTransition>),
             },
             {
               path: "articles/new",

@@ -613,7 +613,7 @@ export function AddAppointmentDialog({
     if (!form.slotTime) errors.slotTime = 'Time is required';
     if (form.slotDate && form.slotTime) {
       const start = snapToHalfHour(new Date(`${form.slotDate}T${form.slotTime}`));
-      if (Number.isNaN(start.getTime())) {
+      if (!(start instanceof Date) || Number.isNaN(start.getTime())) {
         errors.slotTime = 'Invalid date/time';
       } else if (start.getTime() < Date.now() - 60_000) {
         errors.slotTime = 'Pick a future time';

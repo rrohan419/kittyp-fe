@@ -30,7 +30,7 @@ import {
   markInvoicePaid,
   sendInvoiceWhatsApp,
 } from '@/services/invoiceService';
-import { fetchClinicPetMedicalProfile } from '@/services/clinicService';
+import { fetchClinicPetMedicalProfile, isClinicActivated, CLINIC_NOT_ACTIVATED_MESSAGE } from '@/services/clinicService';
 import { fetchMyDoctorVisits } from '@/services/visitService';
 import { formatInr } from '@/services/availabilityService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
@@ -56,6 +56,7 @@ export default function DoctorInvoices() {
   const hydratedRef = useRef<string | null>(null);
   const petNameRef = useRef<HTMLInputElement | null>(null);
   const { clinic, clinicUuid, isPersonalPractice, loading: clinicLoading } = useActiveClinic();
+  const clinicActivated = isClinicActivated(clinic?.status, clinic?.personal);
 
   const [items, setItems] = useState<TreatmentLineItem[]>([emptyItem()]);
   const [petName, setPetName] = useState('');
@@ -274,6 +275,11 @@ export default function DoctorInvoices() {
       toast.error('Pet name is required');
       return;
     }
+    const billingClinic = linkClinicUuid || clinicUuid;
+    if (billingClinic && clinic && !isPersonalPractice && !clinicActivated) {
+      toast.error(CLINIC_NOT_ACTIVATED_MESSAGE);
+      return;
+    }
     if (withWhatsApp && !ownerPhone.trim()) {
       toast.error('Owner phone is required to send on WhatsApp');
       return;
@@ -403,6 +409,10 @@ export default function DoctorInvoices() {
   };
 
   const onCollectPayment = async (inv: ConsultationInvoice) => {
+    if (clinic && !isPersonalPractice && !clinicActivated) {
+      toast.error(CLINIC_NOT_ACTIVATED_MESSAGE);
+      return;
+    }
     setBusyUuid(inv.uuid);
     try {
       await collectInvoicePayment(inv);

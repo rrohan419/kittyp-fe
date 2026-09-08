@@ -88,6 +88,7 @@ import { consultPath, isVideoConsult } from '@/utils/consult';
 import { calendarBlockClass, isUrgentVisit } from '@/utils/visitUrgency';
 import { filterUrgentAttentionQueue, isAttendedCalendarVisit } from '@/utils/visitStatus';
 import { doctorAttendedCalendarBlockClass } from '@/components/schedule/doctorCalendarColor';
+import { clearStuckUiLocks } from '@/utils/clearStuckUiLocks';
 import { DashboardAppointmentRow } from '@/components/schedule/DashboardAppointmentRow';
 import { WalkInDialog } from '@/components/clinic/WalkInDialog';
 import { resolveLockedDoctorUuid } from '@/utils/roles';
@@ -447,6 +448,7 @@ export default function DoctorHome() {
   };
 
   const openEvent = async (ev: CalEvent) => {
+    clearStuckUiLocks();
     setBusy(true);
     try {
       if (ev.kind === 'booking' && ev.booking) {
@@ -476,6 +478,7 @@ export default function DoctorHome() {
 
   const startTreatment = async () => {
     if (!eventDetail) return;
+    clearStuckUiLocks();
     setBusy(true);
     try {
       if (eventDetail.kind === 'booking' && eventDetail.booking) {
@@ -1266,6 +1269,7 @@ export default function DoctorHome() {
             (eventDetail.visit?.status === 'IN_PROGRESS' || canEditVisitChart(eventDetail.visit)) ? (
               <Button
                 onClick={() => {
+                  clearStuckUiLocks();
                   const v = eventDetail.visit!;
                   const weightFromPet = eventDetail.pet?.weight ? String(eventDetail.pet.weight) : '';
                   setEventDetail(null);

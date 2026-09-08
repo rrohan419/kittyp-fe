@@ -400,8 +400,9 @@ export default function ClinicDoctors() {
         </div>
       ) : filtered.length === 0 ? (
         <p className="text-center text-muted-foreground py-16 text-sm">
-          No doctors linked to this clinic yet.
-          {canInvite ? ' Invite a doctor to get started.' : ''}
+          {doctors.length === 0
+            ? `No doctors linked to this clinic yet.${canInvite ? ' Invite a doctor to get started.' : ''}`
+            : `No doctors match “${search.trim()}”. Clear search to see all ${doctors.length}.`}
         </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

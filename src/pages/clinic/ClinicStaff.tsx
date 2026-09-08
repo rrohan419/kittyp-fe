@@ -53,7 +53,14 @@ export default function ClinicStaff() {
         fetchClinicStaff(clinicUuid),
         fetchStaffInvites(clinicUuid),
       ]);
-      setStaff(members);
+      const seen = new Set<string>();
+      const uniqueMembers = members.filter((m) => {
+        const key = (m.userUuid || m.email || '').toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      setStaff(uniqueMembers);
       setInvites(pending.filter((inv) => inv.status === 'PENDING'));
     } catch {
       setStaff([]);

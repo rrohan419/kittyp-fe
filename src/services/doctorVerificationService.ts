@@ -156,6 +156,17 @@ export const DOCTOR_STATUS_STEPS: DoctorStatus[] = [
 
 export function statusLabel(status: DoctorStatus | string | null | undefined): string {
   if (!status) return 'Unknown';
+  const key = String(status).toUpperCase();
+  const labels: Record<string, string> = {
+    DRAFT: 'Draft',
+    DOCUMENTS_SUBMITTED: 'Gov ID / docs pending review',
+    UNDER_REVIEW: 'Under review',
+    VERIFIED: 'Verified',
+    PUBLISHED: 'Verified',
+    REJECTED: 'Rejected',
+    NEEDS_MORE_INFO: 'Needs more info',
+  };
+  if (labels[key]) return labels[key];
   return String(status)
     .toLowerCase()
     .split('_')
