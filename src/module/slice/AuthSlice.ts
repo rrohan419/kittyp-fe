@@ -40,8 +40,8 @@ export const validateAndSetUser = createAsyncThunk(
     }
     try {
       const user = await getCurrentUser();
-      // Another login may have replaced credentials while /user/me was in flight
-      if (getAuthItem('access_token') !== tokenAtStart) {
+      // Another login may have replaced credentials, or logout cleared them, while /user/me was in flight
+      if (!getAuthItem('access_token') || getAuthItem('access_token') !== tokenAtStart) {
         return rejectWithValue('Stale auth validation');
       }
       if (!user) {
@@ -218,6 +218,13 @@ export const authSlice = createSlice({
       })
       .addCase(validateAndSetUser.fulfilled, (state, action) => {
         state.loading = false;
+        // Logout (or token clear) while /user/me was in flight must not revive the session.
+        if (!getAuthItem('access_token')) {
+          state.user = null;
+          state.isAuthenticated = false;
+          state.error = null;
+          return;
+        }
         state.user = action.payload;
         state.isAuthenticated = !!action.payload;
         state.error = null;

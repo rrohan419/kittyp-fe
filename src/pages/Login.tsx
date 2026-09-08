@@ -25,6 +25,7 @@ import { AppRole, getPortalPath, ROLES } from '@/utils/roles';
 import { isEcommerceEnabled } from '@/config/features';
 import { validateLoginIdentifier, normalizeLoginIdentifier } from '@/utils/validation';
 import { resolvePreferredRole } from '@/utils/workspacePreference';
+import { hasAuthToken } from '@/utils/authStorage';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -78,7 +79,7 @@ const Login = () => {
   };
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated || !currentUser) return;
+    if (authLoading || !isAuthenticated || !currentUser || !hasAuthToken()) return;
     finishAuth(currentUser.roles);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isAuthenticated, currentUser?.uuid]);

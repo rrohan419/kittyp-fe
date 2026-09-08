@@ -57,17 +57,42 @@ export type ChecklistKey =
   | 'checkGoogleMapsMatch'
   | 'checkClinicPhotos';
 
+function messageFromSignupErrorBody(raw: string, fallback: string): string {
+  const text = (raw || '').trim();
+  if (!text) return fallback;
+  try {
+    const parsed = JSON.parse(text) as {
+      message?: string;
+      detailedMessage?: string;
+      detailMessage?: string;
+      error?: string;
+    };
+    return (
+      parsed.message ||
+      parsed.detailedMessage ||
+      parsed.detailMessage ||
+      parsed.error ||
+      text
+    );
+  } catch {
+    return text;
+  }
+}
+
 export async function sendSignupOtp(body: {
   channel: 'EMAIL' | 'PHONE';
   email?: string;
   phone?: string;
+  role?: 'DOCTOR' | 'CLINIC' | 'PARENT';
 }) {
   const res = await fetch(`${API_BASE_URL}/auth/signup/otp/send`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    throw new Error(messageFromSignupErrorBody(await res.text(), 'Failed to send OTP'));
+  }
   return res.json();
 }
 
@@ -82,7 +107,9 @@ export async function verifySignupOtp(body: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    throw new Error(messageFromSignupErrorBody(await res.text(), 'Failed to verify OTP'));
+  }
   return res.json();
 }
 
