@@ -5,6 +5,7 @@ import { RootState } from '@/module/store/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatPetDobWithAge } from '@/utils/petAge';
+import { formatWeightKg } from '@/utils/formatWeight';
 
 export default function ParentHealthPage() {
   const { user } = useSelector((s: RootState) => s.authReducer);
@@ -55,7 +56,7 @@ export default function ParentHealthPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {pet.healthConditions || 'No conditions on file'} · Weight:{' '}
-                  {pet.weight != null ? `${pet.weight} kg` : '—'}
+                  {formatWeightKg(pet.weight)}
                 </p>
                 <Button size="sm" className="w-full" asChild>
                   <Link to={`/app/pets/${pet.uuid}`}>Open pet dashboard</Link>

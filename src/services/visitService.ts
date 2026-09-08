@@ -136,6 +136,17 @@ export async function fetchMyParentBookings(): Promise<ClinicBookingModel[]> {
   return res.data.data ?? [];
 }
 
+export async function patchParentBooking(
+  bookingUuid: string,
+  body: { slotStart?: string; notes?: string; status?: 'CANCELLED' }
+): Promise<ClinicBookingModel> {
+  const res = await axiosInstance.patch<ApiSuccessResponse<ClinicBookingModel>>(
+    `/user/bookings/${bookingUuid}`,
+    body
+  );
+  return res.data.data;
+}
+
 export async function fetchMyDoctorBookings(params?: string | DoctorScheduleParams): Promise<ClinicBookingModel[]> {
   const query =
     typeof params === 'string'

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { addDays, format, startOfDay } from 'date-fns';
+import { addDays, format } from 'date-fns';
+import { clinicTodayDate } from '@/utils/clinicDay';
 import { FileSpreadsheet, Plus, Trash2, FileDown, ExternalLink, Send, Banknote, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,6 +54,7 @@ export default function DoctorInvoices() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const hydratedRef = useRef<string | null>(null);
+  const petNameRef = useRef<HTMLInputElement | null>(null);
   const { clinic, clinicUuid, isPersonalPractice, loading: clinicLoading } = useActiveClinic();
 
   const [items, setItems] = useState<TreatmentLineItem[]>([emptyItem()]);
@@ -76,6 +78,7 @@ export default function DoctorInvoices() {
   const [invoiceTotal, setInvoiceTotal] = useState(0);
   const [invoicePages, setInvoicePages] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
   const submittingRef = useRef(false);
   const [busyUuid, setBusyUuid] = useState<string | null>(null);
   const [markPaidInvoice, setMarkPaidInvoice] = useState<ConsultationInvoice | null>(null);
@@ -138,7 +141,7 @@ export default function DoctorInvoices() {
       try {
         let from = state?.fromVisit;
         if (!from && visitQ) {
-          const today = startOfDay(new Date());
+          const today = clinicTodayDate();
           const fromDate = format(addDays(today, -7), 'yyyy-MM-dd');
           const toDate = format(today, 'yyyy-MM-dd');
           const mine = await fetchMyDoctorVisits({ from: fromDate, to: toDate }).catch(() => []);
@@ -262,7 +265,12 @@ export default function DoctorInvoices() {
   const createDraft = async (e: React.FormEvent, withWhatsApp: boolean) => {
     e.preventDefault();
     if (loading || submittingRef.current) return;
-    if (!petName.trim()) {
+    // Prefer live DOM value: browser autofill can fill the input without firing React onChange.
+    const resolvedPetName = (petNameRef.current?.value ?? petName).trim();
+    if (resolvedPetName && resolvedPetName !== petName) {
+      setPetName(resolvedPetName);
+    }
+    if (!resolvedPetName) {
       toast.error('Pet name is required');
       return;
     }
@@ -276,6 +284,7 @@ export default function DoctorInvoices() {
     }
     submittingRef.current = true;
     setLoading(true);
+    setSendingWhatsApp(withWhatsApp);
     try {
       const result = await createConsultationInvoice({
         items: items.map((item) => ({
@@ -293,7 +302,7 @@ export default function DoctorInvoices() {
         clinicUuid: linkClinicUuid || clinicUuid || undefined,
         petUuid: linkPetUuid,
         visitUuid: linkVisitUuid,
-        petName: petName.trim(),
+        petName: resolvedPetName,
         petBreed: petBreed.trim() || undefined,
         petSpecies: petSpecies.trim() || undefined,
         petWeight: petWeight.trim() || undefined,
@@ -340,6 +349,7 @@ export default function DoctorInvoices() {
     } finally {
       submittingRef.current = false;
       setLoading(false);
+      setSendingWhatsApp(false);
     }
   };
 
@@ -455,19 +465,19 @@ export default function DoctorInvoices() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Pet name *</Label>
-                <Input value={petName} onChange={(e) => setPetName(e.target.value)} placeholder="Bruno" />
+                <Input ref={petNameRef} name="petName" autoComplete="off" value={petName} onChange={(e) => setPetName(e.target.value)} onInput={(e) => setPetName((e.target as HTMLInputElement).value)} placeholder="Pet name" />
               </div>
               <div className="space-y-2">
                 <Label>Breed</Label>
-                <Input value={petBreed} onChange={(e) => setPetBreed(e.target.value)} placeholder="Golden Retriever" />
+                <Input value={petBreed} onChange={(e) => setPetBreed(e.target.value)} placeholder="Breed" />
               </div>
               <div className="space-y-2">
                 <Label>Species</Label>
-                <Input value={petSpecies} onChange={(e) => setPetSpecies(e.target.value)} placeholder="Dog" />
+                <Input value={petSpecies} onChange={(e) => setPetSpecies(e.target.value)} placeholder="Species" />
               </div>
               <div className="space-y-2">
                 <Label>Weight (kg)</Label>
-                <Input value={petWeight} onChange={(e) => setPetWeight(e.target.value)} placeholder="12" />
+                <Input value={petWeight} onChange={(e) => setPetWeight(e.target.value)} placeholder="e.g. 12" />
               </div>
               <div className="space-y-2">
                 <Label>Owner name</Label>
@@ -487,11 +497,11 @@ export default function DoctorInvoices() {
               </div>
               <div className="space-y-2">
                 <Label>Reason</Label>
-                <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Vomiting" />
+                <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for visit" />
               </div>
               <div className="space-y-2">
                 <Label>Diagnosis</Label>
-                <Input value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} placeholder="Acute Gastritis" />
+                <Input value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} placeholder="Diagnosis" />
               </div>
             </div>
 
@@ -635,7 +645,7 @@ export default function DoctorInvoices() {
 
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={loading || hydrating} variant="outline">
-                {loading ? 'Saving…' : 'Save draft'}
+                {loading && !sendingWhatsApp ? 'Saving…' : 'Save draft'}
               </Button>
               <Button
                 type="button"
@@ -643,7 +653,7 @@ export default function DoctorInvoices() {
                 onClick={(e) => void createDraft(e, true)}
               >
                 <Send className="h-4 w-4 mr-1.5" />
-                {loading ? 'Sending…' : 'Save and Send'}
+                {loading && sendingWhatsApp ? 'Sending…' : 'Save and Send'}
               </Button>
             </div>
           </form>
@@ -678,11 +688,12 @@ export default function DoctorInvoices() {
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatInr(Number(inv.amount))} ·{' '}
-                    {inv.paymentStatus || (inv.status === 'ISSUED' ? 'UNPAID' : inv.status)}
+                    {inv.paymentStatus ||
+                      (isInvoiceUnpaid(inv) ? 'UNPAID' : inv.status === 'DRAFT' ? 'DRAFT' : inv.status)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {inv.status !== 'ISSUED' ? <Badge variant="secondary">{inv.status}</Badge> : null}
+                  {inv.status === 'DRAFT' ? <Badge variant="secondary">DRAFT</Badge> : null}
                   {isInvoiceUnpaid(inv) && (
                     <>
                       <Button

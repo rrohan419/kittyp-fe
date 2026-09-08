@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ratingAdjective } from '@/components/schedule/weekCalendarUtils';
 import { ClinicBookingModel, ClinicVisitModel, VisitStatus } from '@/services/clinicService';
-import { fetchMyParentBookings, fetchMyParentVisits, rateParentVisit } from '@/services/visitService';
+import { fetchMyParentBookings, fetchMyParentVisits, patchParentBooking, rateParentVisit } from '@/services/visitService';
 import { toast } from 'sonner';
 import { petNameWithType } from '@/utils/petType';
 import { specializationLabel } from '@/utils/specialization';
@@ -139,6 +139,23 @@ export default function ParentAppointmentsPage() {
     setVisits((prev) => prev.map((v) => (v.uuid === visitUuid ? { ...v, parentRating: stars } : v)));
   }, []);
 
+  const cancelBooking = useCallback(
+    async (bookingUuid: string) => {
+      if (!window.confirm('Cancel this upcoming appointment?')) return;
+      try {
+        await patchParentBooking(bookingUuid, { status: 'CANCELLED' });
+        toast.success('Appointment cancelled');
+        await load(true);
+      } catch (err: unknown) {
+        const message =
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Could not cancel appointment';
+        toast.error(message);
+      }
+    },
+    [load]
+  );
+
   if (loading) {
     return (
       <div className="p-8 flex justify-center text-muted-foreground">
@@ -183,8 +200,18 @@ export default function ParentAppointmentsPage() {
                       specialization={b.doctorSpecialization}
                     />
                   </div>
-                  <div className="text-xs text-muted-foreground shrink-0 text-right">
-                    {d && isValid(d) ? format(d, 'EEE d MMM · h:mm a') : '—'}
+                  <div className="shrink-0 text-right space-y-1">
+                    <div className="text-xs text-muted-foreground">
+                      {d && isValid(d) ? format(d, 'EEE d MMM · h:mm a') : '—'}
+                    </div>
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="outline" asChild>
+                        <Link to={`/app/book?reschedule=${encodeURIComponent(b.uuid)}`}>Reschedule</Link>
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => void cancelBooking(b.uuid)}>
+                        Cancel
+                      </Button>
+                    </div>
                   </div>
                 </div>
               );
@@ -223,7 +250,9 @@ export default function ParentAppointmentsPage() {
               </CardContent>
             </Card>
           ) : (
-            upcomingBookings.map((b) => <BookingCard key={b.uuid} booking={b} />)
+            upcomingBookings.map((b) => (
+              <BookingCard key={b.uuid} booking={b} onCancel={cancelBooking} />
+            ))
           )}
         </TabsContent>
 
@@ -378,8 +407,15 @@ function VisitCard({
   );
 }
 
-function BookingCard({ booking: b }: { booking: ClinicBookingModel }) {
+function BookingCard({
+  booking: b,
+  onCancel,
+}: {
+  booking: ClinicBookingModel;
+  onCancel?: (uuid: string) => void;
+}) {
   const start = b.slotStart ? parseISO(b.slotStart) : null;
+  const canManage = Boolean(onCancel) && !['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes((b.status || '').toUpperCase());
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader className="pb-2">
@@ -410,6 +446,16 @@ function BookingCard({ booking: b }: { booking: ClinicBookingModel }) {
                 Join video
               </Link>
             </Button>
+          )}
+          {canManage && (
+            <>
+              <Button size="sm" variant="outline" asChild>
+                <Link to={`/app/book?reschedule=${encodeURIComponent(b.uuid)}`}>Reschedule</Link>
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => onCancel?.(b.uuid)}>
+                Cancel
+              </Button>
+            </>
           )}
           {b.petUuid && (
             <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
