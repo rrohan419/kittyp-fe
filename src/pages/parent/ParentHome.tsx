@@ -12,6 +12,8 @@ import { format, parseISO, isValid } from 'date-fns';
 import { toast } from 'sonner';
 import { RootState } from '@/module/store/store';
 import { formatPetDobWithAge } from '@/utils/petAge';
+import { formatClinicTodayLong } from '@/utils/clinicDay';
+import { formatWeightKg } from '@/utils/formatWeight';
 import { ClinicVisitModel } from '@/services/clinicService';
 import { fetchMyParentVisits } from '@/services/visitService';
 import {
@@ -143,7 +145,7 @@ export default function ParentHome() {
             {greeting}, {firstName}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {format(new Date(), 'EEEE, MMMM d')} — Here&apos;s how your pets are doing.
+            {formatClinicTodayLong()} — Here&apos;s how your pets are doing.
           </p>
         </div>
         <Button size="sm" asChild>
@@ -214,7 +216,7 @@ export default function ParentHome() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="rounded-xl bg-muted/50 p-3 text-center">
                     <p className="text-[10px] uppercase text-muted-foreground">Weight</p>
-                    <p className="font-semibold">{p.weight != null ? `${p.weight} kg` : '—'}</p>
+                    <p className="font-semibold">{formatWeightKg(p.weight)}</p>
                   </div>
                   <div className="rounded-xl bg-muted/50 p-3 text-center">
                     <p className="text-[10px] uppercase text-muted-foreground">Activity</p>

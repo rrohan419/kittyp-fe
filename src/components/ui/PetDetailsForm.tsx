@@ -21,6 +21,7 @@ import { PetImage } from "@/components/ui/PetImage";
 import { PetProfile } from "@/services/authService";
 import { AddPet, UpdatePet } from "@/services/UserService";
 import { formatPetDobWithAge } from "@/utils/petAge";
+import { formatWeightKg } from "@/utils/formatWeight";
 import { PetPhotoUpload } from './PetPhotoUpload';
 import { addPetToUser, removePetFromUser, updatePetInUser, setPetsLoading, setSaving } from '@/module/slice/AuthSlice';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
@@ -120,7 +121,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
         if (!rawWeight) return '';
         const numeric = extractNumericWeight(rawWeight);
         if (!numeric) return '';
-        return `${numeric} kg`;
+        return formatWeightKg(numeric, '');
     };
 
     const handleAddPet = async () => {

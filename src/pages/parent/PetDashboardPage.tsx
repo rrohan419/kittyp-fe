@@ -41,6 +41,7 @@ import { PetHealthTimeline } from '@/components/health/PetHealthTimeline';
 import { OwnerPetRecords } from '@/components/health/OwnerPetRecords';
 import { OwnerPetEditDialog } from '@/components/ui/OwnerPetEditDialog';
 import { PetProfile } from '@/services/authService';
+import { formatWeightKg } from '@/utils/formatWeight';
 
 export default function PetDashboardPage() {
   const { petId } = useParams<{ petId: string }>();
@@ -159,7 +160,7 @@ export default function PetDashboardPage() {
             <div className="flex flex-wrap gap-2 mt-2">
               <Badge variant="secondary">Active</Badge>
               {(dashboard?.latestWeight?.weight ?? pet?.weight) != null && (
-                <Badge variant="outline">{dashboard?.latestWeight?.weight ?? pet?.weight} kg</Badge>
+                <Badge variant="outline">{formatWeightKg(dashboard?.latestWeight?.weight ?? pet?.weight, "")}</Badge>
               )}
               {pet?.gender && <Badge variant="outline">{pet.gender}</Badge>}
               {pet?.microchipNumber && (

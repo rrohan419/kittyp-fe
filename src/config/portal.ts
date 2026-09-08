@@ -19,6 +19,7 @@ import {
   MoreHorizontal,
   ShieldCheck,
   Activity,
+  Receipt,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { getAuthItem } from '@/utils/authStorage';
@@ -56,6 +57,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Nutrition', path: '/app/nutrition', icon: Apple },
       { label: 'Health', path: '/app/health', icon: Heart },
       { label: 'Appointments', path: '/app/appointments', icon: Calendar },
+      { label: 'Billing', path: '/app/billing', icon: Receipt },
       { label: 'Cart', path: '/app/cart', icon: ShoppingCart },
       { label: 'Orders', path: '/app/orders', icon: ShoppingBag },
       { label: 'Articles', path: '/app/articles', icon: FileText },

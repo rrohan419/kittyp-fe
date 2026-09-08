@@ -30,6 +30,7 @@ import {
   discoverPersonalDoctors,
   fetchParentDoctorSlots,
 } from '@/services/discoverService';
+import { patchParentBooking } from '@/services/visitService';
 import { isAxiosError } from 'axios';
 import { PetNameType } from '@/components/ui/PetNameType';
 import { specializationLabel } from '@/utils/specialization';
@@ -116,6 +117,7 @@ function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng:
 export default function ScheduleVisitPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const rescheduleUuid = searchParams.get('reschedule');
   const { user } = useSelector((s: RootState) => s.authReducer);
   const pets = user?.ownerPets ?? [];
 
@@ -348,18 +350,26 @@ export default function ScheduleVisitPage() {
     }
     setBooking(true);
     try {
-      await createParentBooking({
-        clinicUuid: clinic.clinicUuid,
-        doctorUuid: doctor.doctorUuid,
-        petUuid,
-        slotStart,
-        notes: notes.trim() || undefined,
-        mode: clinic.personal ? 'VIDEO' : 'IN_PERSON',
-      });
-      toast.success('Appointment booked');
+      if (rescheduleUuid) {
+        await patchParentBooking(rescheduleUuid, {
+          slotStart,
+          notes: notes.trim() || undefined,
+        });
+        toast.success('Appointment rescheduled');
+      } else {
+        await createParentBooking({
+          clinicUuid: clinic.clinicUuid,
+          doctorUuid: doctor.doctorUuid,
+          petUuid,
+          slotStart,
+          notes: notes.trim() || undefined,
+          mode: clinic.personal ? 'VIDEO' : 'IN_PERSON',
+        });
+        toast.success('Appointment booked');
+      }
       navigate('/app/appointments');
     } catch (e) {
-      toast.error(apiErrorMessage(e, 'Could not book this slot'));
+      toast.error(apiErrorMessage(e, rescheduleUuid ? 'Could not reschedule' : 'Could not book this slot'));
       if (clinic && doctor) {
         try {
           setSlots(filterOpenSlots(await fetchParentDoctorSlots(clinic.clinicUuid, doctor.doctorUuid, date)));

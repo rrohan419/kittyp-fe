@@ -283,6 +283,11 @@ export async function fetchOwnerPetInvoices(
   return res.data.data ?? emptyPage<OwnerInvoice>(pageSize);
 }
 
+export async function fetchMyParentInvoices(): Promise<OwnerInvoice[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<OwnerInvoice[]>>('/user/invoices/mine');
+  return res.data.data ?? [];
+}
+
 export async function fetchOwnerInvoicePdfUrl(petUuid: string, invoiceUuid: string): Promise<string> {
   const res = await axiosInstance.get<ApiSuccessResponse<{ url: string }>>(
     `/pet/${petUuid}/invoices/${invoiceUuid}/pdf`
