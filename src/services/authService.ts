@@ -103,6 +103,7 @@ export interface SignupClinicData extends Omit<SignupData, 'role'> {
   clinicName: string;
   licenseNumber?: string;
   address?: string;
+  city?: string;
   phone?: string;
   timezone?: string;
 }

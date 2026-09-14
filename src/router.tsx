@@ -1,4 +1,5 @@
-import { createBrowserRouter, Navigate, lazy, Suspense } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { isEcommerceEnabled } from '@/config/features';
 import Index from "@/pages/Index";
 import Products from "@/pages/Products";

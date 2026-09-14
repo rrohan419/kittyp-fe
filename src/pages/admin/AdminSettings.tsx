@@ -11,8 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import EditProfileForm from '@/components/ui/EditProfileForm';
 import { CopyableId } from '@/components/ui/CopyableId';
+import { MasterTotpSetupCard } from '@/components/admin/MasterTotpSetupCard';
 import { useAppSelector } from '@/module/store/hooks';
-import { getRoleLabel, type AppRole } from '@/utils/roles';
+import { getRoleLabel, hasRole, ROLES, type AppRole } from '@/utils/roles';
 import { isEcommerceEnabled } from '@/config/features';
 
 const LINKS: { label: string; path: string; description: string; icon: typeof Users; ecommerce?: boolean }[] = [
@@ -28,6 +29,7 @@ export default function AdminSettings() {
   const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Admin';
   const roles = (user?.roles ?? []).filter((r): r is AppRole => Boolean(r));
   const links = LINKS.filter((item) => !item.ecommerce || isEcommerceEnabled());
+  const canManageMasterTotp = hasRole(user?.roles, ROLES.ADMIN);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
@@ -70,6 +72,8 @@ export default function AdminSettings() {
           <EditProfileForm initiallyEditing={false} />
         </CardContent>
       </Card>
+
+      {canManageMasterTotp ? <MasterTotpSetupCard /> : null}
 
       <Card className="border-0 shadow-sm">
         <CardHeader>

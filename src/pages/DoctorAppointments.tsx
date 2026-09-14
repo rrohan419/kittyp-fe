@@ -291,14 +291,6 @@ export default function DoctorAppointments() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Appointments</h1>
-          <p className="text-sm text-muted-foreground">
-            {clinic?.personal
-              ? "You're on Personal — online consults."
-              : clinic?.name
-                ? `You're at ${clinic.name} — clinic visits only.`
-                : 'Your assigned appointments.'}{' '}
-            Attend a patient, finish treatment, then invoice.
-          </p>
           {!practiceReady ? (
             <p className="text-sm text-amber-700 dark:text-amber-300 mt-2">
               Certificates must be verified by admin before you can take appointments

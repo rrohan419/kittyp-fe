@@ -1,6 +1,7 @@
 import axiosInstance from '@/config/axionInstance';
 import { ApiSuccessResponse } from './cartService';
 import type { ClinicBookingModel } from './clinicService';
+import type { DoctorDaySlots } from '@/utils/clinicSlots';
 
 export interface DiscoverDoctorCard {
   doctorUuid: string;
@@ -73,12 +74,17 @@ export async function fetchParentDoctorSlots(
   clinicUuid: string,
   doctorUuid: string,
   date: string
-): Promise<string[]> {
-  const res = await axiosInstance.get<ApiSuccessResponse<string[]>>(
+): Promise<DoctorDaySlots> {
+  const res = await axiosInstance.get<ApiSuccessResponse<DoctorDaySlots>>(
     `/user/clinics/${clinicUuid}/doctors/${doctorUuid}/slots`,
     { params: { date } }
   );
-  return res.data.data ?? [];
+  const data = res.data.data;
+  return {
+    slots: data?.slots ?? [],
+    closed: Boolean(data?.closed),
+    hoursLabel: data?.hoursLabel ?? null,
+  };
 }
 
 export async function createParentBooking(payload: {

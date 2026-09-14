@@ -166,7 +166,7 @@ export default function AdminOrganizations() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <div className="lg:col-span-2 space-y-3">
+          <div className="lg:col-span-2 space-y-3 max-h-[calc(100vh-14rem)] overflow-y-auto pr-1">
             {visible.map((clinic) => (
               <Card
                 key={clinic.uuid}
@@ -194,7 +194,7 @@ export default function AdminOrganizations() {
           </div>
 
           {selected && (
-            <Card className="lg:col-span-3 border-0 shadow-sm">
+            <Card className="lg:col-span-3 border-0 shadow-sm lg:sticky lg:top-4 self-start max-h-[calc(100vh-14rem)] overflow-y-auto">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Building2 className="h-5 w-5 text-primary" />

@@ -31,7 +31,6 @@ import {
   resolveEventDoctorUuid,
   nowLineOffsetPx,
   visibleHourRange,
-  weekHasFutureBookableSlots,
   withLanes,
 } from './weekCalendarUtils';
 
@@ -97,7 +96,6 @@ export function WeekCalendar({
     .sort((a, b) => a.start.getTime() - b.start.getTime());
   const doctorList = doctors ?? [];
   const colorByDoctor = doctorList.length > 0;
-  const weekHasBookableSlots = weekHasFutureBookableSlots(weekDays, hourRange, now);
 
   function visitBlockClass(ev: WeekCalEvent, urgent: boolean, attended: boolean): string {
     const doctorUuid = resolveEventDoctorUuid(ev);
@@ -155,7 +153,6 @@ export function WeekCalendar({
           <span className="font-bold text-foreground">
             {format(weekStart, 'd MMM')} – {format(weekEnd, 'd MMM')}
           </span>
-          {onSlotClick && weekHasBookableSlots ? ' · Click an empty time to book' : ''}
         </p>
         <div className="flex items-center gap-1">
           <Button

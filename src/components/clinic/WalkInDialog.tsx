@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
@@ -37,9 +37,11 @@ import {
   sendPetConsentOtp,
   verifyPetConsentOtp,
   VisitUrgency,
+  doctorLabel,
 } from '@/services/clinicService';
 import { fetchParentDoctorSlots } from '@/services/discoverService';
 import { isPracticeReady } from '@/services/doctorVerificationService';
+import { doctorSlotBusyHint, slotMinuteKey, slotStartParts } from '@/utils/clinicSlots';
 import { digitsOnlyPhone, validateEmail, validatePhone } from '@/utils/validation';
 import { toast } from 'sonner';
 import { notifyPortalRefresh } from '@/components/portal/PortalNotifications';
@@ -104,11 +106,6 @@ export function snapToHalfHour(date: Date): Date {
   return setMinutes(addHours(rounded, 1), 0);
 }
 
-function slotMinuteKey(raw: string): string {
-  const match = raw.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
-  return match ? match[1] : raw;
-}
-
 /** Default schedule start: ~3 hours from now, snapped to half hour. */
 function defaultScheduleParts() {
   const rounded = snapToHalfHour(addHours(new Date(), 3));
@@ -139,6 +136,7 @@ export function AddAppointmentDialog({
   const [saving, setSaving] = useState(false);
   const [searching, setSearching] = useState(false);
   const [busyHint, setBusyHint] = useState<string | null>(null);
+  const snapForRef = useRef('');
   const [emailLookup, setEmailLookup] = useState<OwnerEmailLookupModel | null>(null);
   const [matchedOwner, setMatchedOwner] = useState<ClinicOwnerModel | null>(null);
   const [consentCode, setConsentCode] = useState('');
@@ -299,6 +297,7 @@ export function AddAppointmentDialog({
       setTiming('now');
       setFieldErrors({});
       setBusyHint(null);
+      snapForRef.current = '';
       setEmailLookup(null);
       setMatchedOwner(null);
       setConsentCode('');
@@ -341,20 +340,30 @@ export function AddAppointmentDialog({
           if (Number.isNaN(raw.getTime())) return;
           const snapped = snapToHalfHour(raw);
           const startKey = slotMinuteKey(format(snapped, "yyyy-MM-dd'T'HH:mm:ss"));
-          const free = await fetchParentDoctorSlots(clinicUuid, resolvedDoctorUuid, form.slotDate);
+          const day = await fetchParentDoctorSlots(clinicUuid, resolvedDoctorUuid, form.slotDate);
           if (cancelled) return;
-          if (free.length === 0) {
-            setBusyHint('Doctor has no availability on this day');
-            return;
+          const snapKey = `${resolvedDoctorUuid}|${form.slotDate}`;
+          if (day.slots.length > 0 && snapForRef.current !== snapKey) {
+            snapForRef.current = snapKey;
+            const inList = day.slots.some((s) => slotMinuteKey(s) === startKey);
+            if (!inList) {
+              const next = slotStartParts(day.slots[0]);
+              if (next && (next.date !== form.slotDate || next.time !== form.slotTime)) {
+                setForm((s) => ({ ...s, slotDate: next.date, slotTime: next.time }));
+                setBusyHint(null);
+                return;
+              }
+            }
           }
-          const openSlot = free.some((s) => slotMinuteKey(s) === startKey);
-          if (!openSlot) {
-            setBusyHint(
-              `Doctor not available at ${format(snapped, 'h:mm a')} — outside working hours or already booked`
-            );
-            return;
-          }
-          setBusyHint(null);
+          setBusyHint(
+            doctorSlotBusyHint({
+              closed: day.closed,
+              slots: day.slots,
+              selectedKey: startKey,
+              selectedLabel: format(snapped, 'h:mm a'),
+              hoursLabel: day.hoursLabel,
+            })
+          );
         } catch {
           if (!cancelled) {
             setBusyHint('Could not confirm doctor availability for this time');
@@ -1187,7 +1196,7 @@ export function AddAppointmentDialog({
                       <SelectItem value="none">Unassigned</SelectItem>
                       {activeDoctors.map((d) => (
                         <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
-                          {d.name || d.email || d.doctorUuid}
+                          {doctorLabel(d) || d.doctorUuid}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1211,7 +1220,7 @@ export function AddAppointmentDialog({
                       <SelectItem value="none">Unassigned</SelectItem>
                       {activeDoctors.map((d) => (
                         <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
-                          {d.name || d.email || d.doctorUuid}
+                          {doctorLabel(d) || d.doctorUuid}
                         </SelectItem>
                       ))}
                     </SelectContent>

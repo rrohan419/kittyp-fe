@@ -44,6 +44,7 @@ export interface DoctorVerificationModel {
   submittedAt?: string;
   reviewedAt?: string;
   reviewNotes?: string;
+  experienceYears?: number | null;
 }
 
 export type ChecklistKey =
@@ -115,6 +116,13 @@ export async function verifySignupOtp(body: {
 
 export async function fetchMyDoctorProfile() {
   const res = await axiosInstance.get<ApiSuccessResponse<DoctorVerificationModel>>('/doctor/me');
+  return res.data.data;
+}
+
+export async function updateMyDoctorExperience(experienceYears: number | null) {
+  const res = await axiosInstance.put<ApiSuccessResponse<DoctorVerificationModel>>('/doctor/me', {
+    experienceYears,
+  });
   return res.data.data;
 }
 

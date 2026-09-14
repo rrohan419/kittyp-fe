@@ -310,6 +310,21 @@ export async function fetchDoctorWhatsAppSettings(): Promise<{
   return res.data.data;
 }
 
+export async function completeDoctorWhatsAppEmbeddedSignup(body: {
+  code: string;
+  wabaId: string;
+  phoneNumberId: string;
+}): Promise<{ whatsappConfigured: boolean; phoneNumberId: string; businessAccountId: string }> {
+  const res = await axiosInstance.post<
+    ApiSuccessResponse<{
+      whatsappConfigured: boolean;
+      phoneNumberId: string;
+      businessAccountId: string;
+    }>
+  >('/doctor/whatsapp-embedded-signup', body);
+  return res.data.data;
+}
+
 export async function updateDoctorWhatsAppSettings(body: {
   phoneNumberId: string;
   businessAccountId: string;
@@ -337,6 +352,20 @@ export async function fetchClinicWhatsAppSettings(clinicUuid: string): Promise<{
       businessAccountId: string;
     }>
   >(`/clinic/${clinicUuid}/whatsapp-settings`);
+  return res.data.data;
+}
+
+export async function completeClinicWhatsAppEmbeddedSignup(
+  clinicUuid: string,
+  body: { code: string; wabaId: string; phoneNumberId: string }
+): Promise<{ whatsappConfigured: boolean; phoneNumberId: string; businessAccountId: string }> {
+  const res = await axiosInstance.post<
+    ApiSuccessResponse<{
+      whatsappConfigured: boolean;
+      phoneNumberId: string;
+      businessAccountId: string;
+    }>
+  >(`/clinic/${clinicUuid}/whatsapp-embedded-signup`, body);
   return res.data.data;
 }
 

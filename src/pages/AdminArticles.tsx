@@ -105,9 +105,7 @@ const AdminArticles = ({
           <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 mb-8">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-              <p className="text-muted-foreground">
-                {description}
-              </p>
+              {description ? <p className="text-muted-foreground">{description}</p> : null}
             </div>
             <Button onClick={() => navigate(`${basePath}/new`)}>
               <Plus className="h-4 w-4 mr-2" />

@@ -32,6 +32,7 @@ import {
 import { statusLabel } from '@/services/doctorVerificationService';
 import { canViewDoctorCertificates } from '@/utils/roles';
 import { specializationLabel } from '@/utils/specialization';
+import { formatExperienceYears } from '@/utils/formatExperience';
 import { useDoctorsBasePath } from '@/hooks/useDoctorsBasePath';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -208,6 +209,7 @@ export default function ClinicDoctorDetail() {
     .join('')
     .slice(0, 2)
     .toUpperCase();
+  const experienceLabel = formatExperienceYears(detail?.experienceYears);
 
   if (clinicLoading || loading) {
     return (
@@ -295,6 +297,11 @@ export default function ClinicDoctorDetail() {
           )}
           <div className="min-w-0">
             <h1 className="text-2xl lg:text-3xl font-bold text-foreground truncate">{detail.name}</h1>
+            {experienceLabel ? (
+              <p className="text-[11px] font-normal tracking-wide text-muted-foreground mt-1">
+                {experienceLabel}
+              </p>
+            ) : null}
             <p className="text-sm text-muted-foreground mt-1">
               {specializationLabel(detail.specialization) || 'General'}
               {clinic?.name ? ` · ${clinic.name}` : ''}

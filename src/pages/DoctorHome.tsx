@@ -45,7 +45,6 @@ import {
   DoctorVerificationModel,
   fetchMyDoctorProfile,
   isPracticeReady,
-  statusLabel,
 } from '@/services/doctorVerificationService';
 import { formatPetDobWithAge } from '@/utils/petAge';
 import {
@@ -104,7 +103,6 @@ import {
   filterPracticeWeekEvents,
   visitEventTime,
   visibleHourRange,
-  weekHasFutureBookableSlots,
   withLanes,
 } from '@/components/schedule/weekCalendarUtils';
 
@@ -402,7 +400,6 @@ export default function DoctorHome() {
     () => visibleHourRange(weekEvents, todayInWeek ? now : undefined),
     [weekEvents, todayInWeek, now]
   );
-  const weekHasBookableSlots = weekHasFutureBookableSlots(weekDays, hourRange, now);
   const nowTop = todayInWeek ? nowLineOffsetPx(now, hourRange) : null;
   const nextTodayStart = useMemo(
     () =>
@@ -665,15 +662,6 @@ export default function DoctorHome() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
             {greeting}, {displayName}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {clinic?.personal
-              ? "You're on Personal — online consults."
-              : clinic?.name
-                ? `You're at ${clinic.name} — clinic visits only.`
-                : 'Your schedule'}
-            {profile?.status ? ` · ${statusLabel(profile.status)}` : ''}
-            {isVerified ? ' · Verified' : ''}
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="inline-flex rounded-md border p-0.5">
@@ -863,20 +851,13 @@ export default function DoctorHome() {
               Week calendar
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              {isPersonalPractice
-                ? 'Personal practice only — clinic-branch visits stay on the clinic board'
-                : clinic?.name
-                  ? `${clinic.name} only`
-                  : 'Active practice'}{' '}
-              ·{' '}
-              {viewMode === 'list'
-                ? format(weekAnchor, 'EEE, MMM d')
-                : (
-                    <span className="font-bold text-foreground">
-                      {format(weekStart, 'd MMM')} – {format(weekEnd, 'd MMM')}
-                    </span>
-                  )}
-              {viewMode === 'tiles' && weekHasBookableSlots ? ' · Click an empty time to book' : ''}
+              {viewMode === 'list' ? (
+                format(weekAnchor, 'EEE, MMM d')
+              ) : (
+                <span className="font-bold text-foreground">
+                  {format(weekStart, 'd MMM')} – {format(weekEnd, 'd MMM')}
+                </span>
+              )}
             </p>
             <div className="flex items-center gap-3 mt-1.5">
               <span className="inline-flex items-center gap-1.5 text-xs text-foreground">

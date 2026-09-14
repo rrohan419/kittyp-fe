@@ -38,6 +38,7 @@ export function WhatsAppSettingsForm({
   const [businessAccountId, setBusinessAccountId] = useState(businessAccountIdInitial);
   const [token, setToken] = useState('');
   const [saving, setSaving] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
 
   useEffect(() => {
     setPhoneNumberId(phoneNumberIdInitial);
@@ -50,9 +51,11 @@ export function WhatsAppSettingsForm({
   useEffect(() => {
     if (configured && mode === 'setup') {
       setMode('view');
+      setManualOpen(false);
     }
     if (!configured && mode === 'view') {
       setMode('setup');
+      setManualOpen(false);
     }
   }, [configured, mode]);
 
@@ -77,6 +80,9 @@ export function WhatsAppSettingsForm({
   const cancelForm = () => {
     resetFieldsFromSaved();
     setMode(configured ? 'view' : 'setup');
+    if (!configured) {
+      setManualOpen(false);
+    }
   };
 
   const save = async () => {
@@ -148,13 +154,29 @@ export function WhatsAppSettingsForm({
       ? 'Replace WhatsApp number'
       : mode === 'edit'
         ? 'Edit WhatsApp credentials'
-        : 'Connect WhatsApp';
+        : 'Manual Meta credentials';
+
+  if (mode === 'setup' && !manualOpen) {
+    return (
+      <div className="space-y-1">
+        {helperText ? <p className="text-sm text-muted-foreground">{helperText}</p> : null}
+        <Button type="button" variant="ghost" size="sm" className="px-0 h-auto" onClick={() => setManualOpen(true)}>
+          Enter credentials manually
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
       {helperText ? <p className="text-sm text-muted-foreground">{helperText}</p> : null}
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium text-foreground">{title}</p>
+        {mode === 'setup' && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => setManualOpen(false)}>
+            Hide
+          </Button>
+        )}
         {mode === 'edit' && (
           <Button type="button" variant="ghost" size="sm" onClick={openReplace}>
             Reset to new WhatsApp

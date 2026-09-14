@@ -34,6 +34,7 @@ import { patchParentBooking } from '@/services/visitService';
 import { isAxiosError } from 'axios';
 import { PetNameType } from '@/components/ui/PetNameType';
 import { specializationLabel } from '@/utils/specialization';
+import { formatExperienceYears } from '@/utils/formatExperience';
 import { filterOpenSlots } from '@/utils/clinicSlots';
 
 type Step = 'search' | 'book';
@@ -135,6 +136,7 @@ export default function ScheduleVisitPage() {
   const [petUuid, setPetUuid] = useState(searchParams.get('petId') || pets[0]?.uuid || '');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [slots, setSlots] = useState<string[]>([]);
+  const [slotsClosed, setSlotsClosed] = useState(false);
   const [slotStart, setSlotStart] = useState('');
   const [notes, setNotes] = useState('');
   const [booking, setBooking] = useState(false);
@@ -314,15 +316,17 @@ export default function ScheduleVisitPage() {
     let cancelled = false;
     setLoadingSlots(true);
     fetchParentDoctorSlots(clinic.clinicUuid, doctor.doctorUuid, date)
-      .then((s) => {
+      .then((day) => {
         if (!cancelled) {
-          setSlots(filterOpenSlots(s));
+          setSlots(filterOpenSlots(day.slots));
+          setSlotsClosed(day.closed);
           setSlotStart('');
         }
       })
       .catch(() => {
         if (!cancelled) {
           setSlots([]);
+          setSlotsClosed(false);
           toast.error('Could not load available slots');
         }
       })
@@ -372,7 +376,9 @@ export default function ScheduleVisitPage() {
       toast.error(apiErrorMessage(e, rescheduleUuid ? 'Could not reschedule' : 'Could not book this slot'));
       if (clinic && doctor) {
         try {
-          setSlots(filterOpenSlots(await fetchParentDoctorSlots(clinic.clinicUuid, doctor.doctorUuid, date)));
+          const day = await fetchParentDoctorSlots(clinic.clinicUuid, doctor.doctorUuid, date);
+          setSlots(filterOpenSlots(day.slots));
+          setSlotsClosed(day.closed);
         } catch {
           /* ignore */
         }
@@ -528,6 +534,7 @@ export default function ScheduleVisitPage() {
                     const d = practice.doctors[0];
                     const key = `${practice.clinicUuid}:${d.doctorUuid}`;
                     const selected = selectedDoctorKey === key;
+                    const exp = formatExperienceYears(d.experienceYears);
                     const meta = [
                       specialtyLabel(d.specialization),
                       distLabel ? `${distLabel} away` : null,
@@ -548,6 +555,11 @@ export default function ScheduleVisitPage() {
                           <div className="text-sm font-semibold text-foreground truncate">
                             {d.name}
                           </div>
+                          {exp ? (
+                            <div className="text-[11px] font-normal tracking-wide text-muted-foreground mt-0.5">
+                              {exp}
+                            </div>
+                          ) : null}
                           {meta ? (
                             <div className="text-xs text-muted-foreground truncate mt-0.5">{meta}</div>
                           ) : null}
@@ -585,13 +597,8 @@ export default function ScheduleVisitPage() {
                         {practice.doctors.map((d) => {
                           const key = `${practice.clinicUuid}:${d.doctorUuid}`;
                           const selected = selectedDoctorKey === key;
-                          const meta =
-                            [
-                              specialtyLabel(d.specialization),
-                              d.experienceYears != null ? `${d.experienceYears} yrs exp` : null,
-                            ]
-                              .filter(Boolean)
-                              .join(' · ') || 'Veterinarian';
+                          const exp = formatExperienceYears(d.experienceYears);
+                          const meta = specialtyLabel(d.specialization) || 'Veterinarian';
                           return (
                             <li key={key}>
                               <button
@@ -616,6 +623,11 @@ export default function ScheduleVisitPage() {
                                   <div className="text-sm font-medium text-foreground truncate">
                                     {d.name}
                                   </div>
+                                  {exp ? (
+                                    <div className="text-[11px] font-normal tracking-wide text-muted-foreground mt-0.5">
+                                      {exp}
+                                    </div>
+                                  ) : null}
                                   <div className="text-xs text-muted-foreground truncate mt-0.5">
                                     {meta}
                                   </div>
@@ -649,8 +661,17 @@ export default function ScheduleVisitPage() {
             <CardTitle className="text-base flex items-center gap-2">
               <Calendar className="h-4 w-4" /> Book with {doctor.name}
             </CardTitle>
+            {formatExperienceYears(doctor.experienceYears) ? (
+              <p className="text-[11px] font-normal tracking-wide text-muted-foreground pt-1">
+                {formatExperienceYears(doctor.experienceYears)}
+              </p>
+            ) : null}
             <p className="text-xs text-muted-foreground pt-1">
-              {[specialtyLabel(doctor.specialization), clinic.name, clinic.distanceKm != null ? `${clinic.distanceKm} km` : null]
+              {[
+                specialtyLabel(doctor.specialization),
+                clinic.name,
+                clinic.distanceKm != null ? `${clinic.distanceKm} km` : null,
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
@@ -710,7 +731,9 @@ export default function ScheduleVisitPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No free slots this day — try another date.</p>
+                <p className="text-sm text-muted-foreground">
+                  {slotsClosed ? 'Doctor is not working this day' : 'No remaining slots this day'}
+                </p>
               )}
             </div>
             <div className="space-y-2">

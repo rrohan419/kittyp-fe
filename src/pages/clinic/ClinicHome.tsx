@@ -299,12 +299,6 @@ export default function ClinicHome() {
             <Calendar className="h-5 w-5" />
             Week calendar
           </CardTitle>
-          {!clinic?.personal && (
-            <p className="text-sm text-muted-foreground">
-              Visits and scheduled appointments for this branch. Click an empty time to book, or a
-              slot for details.
-            </p>
-          )}
         </CardHeader>
         <CardContent>
           <WeekCalendar
@@ -329,7 +323,7 @@ export default function ClinicHome() {
               setAddSlot(start);
               setAddOpen(true);
             }}
-            emptyLabel="No visits or bookings this week — click an empty time to book."
+            emptyLabel="No visits or bookings this week."
             doctors={
               clinic?.personal
                 ? undefined

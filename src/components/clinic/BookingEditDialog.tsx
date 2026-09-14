@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { format, isValid, parseISO } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -25,9 +25,11 @@ import {
   ClinicBookingModel,
   ClinicDoctorModel,
   patchClinicBooking,
+  doctorLabel,
 } from '@/services/clinicService';
 import { fetchParentDoctorSlots } from '@/services/discoverService';
 import { petNameWithType } from '@/utils/petType';
+import { doctorSlotBusyHint, slotMinuteKey, slotStartParts } from '@/utils/clinicSlots';
 
 type Props = {
   open: boolean;
@@ -39,11 +41,6 @@ type Props = {
   lockedDoctorUuid?: string;
   onSaved: () => void;
 };
-
-function slotMinuteKey(raw: string): string {
-  const match = raw.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
-  return match ? match[1] : raw;
-}
 
 function ownSlotKey(slotStart?: string): string {
   if (!slotStart) return '';
@@ -75,6 +72,7 @@ export function BookingEditDialog({
   const [saving, setSaving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [busyHint, setBusyHint] = useState<string | null>(null);
+  const snapForRef = useRef('');
 
   const activeDoctors = useMemo(
     () => doctors.filter((d) => d.isActive !== false && d.doctorUuid),
@@ -91,6 +89,7 @@ export function BookingEditDialog({
     setSlotTime(start && isValid(start) ? format(start, 'HH:mm') : '');
     setNotes(booking.notes || '');
     setBusyHint(null);
+    snapForRef.current = '';
   }, [open, booking, lockedDoctorUuid]);
 
   useEffect(() => {
@@ -108,20 +107,36 @@ export function BookingEditDialog({
           const startKey = slotMinuteKey(format(snapped, "yyyy-MM-dd'T'HH:mm:ss"));
           const sameDoctor = resolvedDoctorUuid === (booking.doctorUuid || '');
           const keepingOwn = sameDoctor && startKey === ownSlotKey(booking.slotStart);
-          const free = await fetchParentDoctorSlots(clinicUuid, resolvedDoctorUuid, slotDate);
+          const day = await fetchParentDoctorSlots(clinicUuid, resolvedDoctorUuid, slotDate);
           if (cancelled) return;
-          if (free.length === 0) {
-            setBusyHint(keepingOwn ? null : 'Doctor has no availability on this day');
+          const snapKey = `${resolvedDoctorUuid}|${slotDate}`;
+          if (keepingOwn) {
+            snapForRef.current = snapKey;
+            setBusyHint(null);
             return;
           }
-          const openSlot = free.some((s) => slotMinuteKey(s) === startKey);
-          if (!openSlot && !keepingOwn) {
-            setBusyHint(
-              `Doctor not available at ${format(snapped, 'h:mm a')} — outside working hours or already booked`
-            );
-            return;
+          if (day.slots.length > 0 && snapForRef.current !== snapKey) {
+            snapForRef.current = snapKey;
+            const inList = day.slots.some((s) => slotMinuteKey(s) === startKey);
+            if (!inList) {
+              const next = slotStartParts(day.slots[0]);
+              if (next && (next.date !== slotDate || next.time !== slotTime)) {
+                setSlotDate(next.date);
+                setSlotTime(next.time);
+                setBusyHint(null);
+                return;
+              }
+            }
           }
-          setBusyHint(null);
+          setBusyHint(
+            doctorSlotBusyHint({
+              closed: day.closed,
+              slots: day.slots,
+              selectedKey: startKey,
+              selectedLabel: format(snapped, 'h:mm a'),
+              hoursLabel: day.hoursLabel,
+            })
+          );
         } catch {
           if (!cancelled) setBusyHint('Could not confirm doctor availability for this time');
         }
@@ -215,7 +230,7 @@ export function BookingEditDialog({
                   <SelectItem value="none">Select doctor</SelectItem>
                   {activeDoctors.map((d) => (
                     <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
-                      {d.name || d.email}
+                      {doctorLabel(d)}
                     </SelectItem>
                   ))}
                 </SelectContent>

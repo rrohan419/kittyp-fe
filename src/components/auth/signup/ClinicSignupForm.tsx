@@ -7,13 +7,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Building2, Mail, Phone, MapPin, Award, User, Lock } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin, Award, User, Lock, Eye, EyeOffIcon } from 'lucide-react';
 import { signupClinic } from '@/services/authService';
 import { sendSignupOtp, verifySignupOtp } from '@/services/doctorVerificationService';
 import {
   digitsOnlyPhone,
+  EMAIL_ALREADY_REGISTERED,
+  isEmailAlreadyRegistered,
+  isOtpFailed,
+  OTP_FAILED_MESSAGE,
+  validateClinicName,
   validateEmail,
   validatePassword,
+  validatePersonName,
   validatePhone,
 } from '@/utils/validation';
 
@@ -24,6 +30,10 @@ const ClinicSignupForm = () => {
   const [otpSending, setOtpSending] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [emailOtp, setEmailOtp] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [otpError, setOtpError] = useState('');
   const [form, setForm] = useState({
     clinicName: '',
     license: '',
@@ -51,7 +61,12 @@ const ClinicSignupForm = () => {
       await sendSignupOtp({ channel: 'EMAIL', email: form.adminEmail.trim(), role: 'CLINIC' });
       toast.success('OTP sent to your email');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send email OTP');
+      const message = err instanceof Error ? err.message : 'Failed to send email OTP';
+      if (isEmailAlreadyRegistered(message)) {
+        setEmailError(EMAIL_ALREADY_REGISTERED);
+      } else {
+        toast.error(message);
+      }
     } finally {
       setOtpSending(false);
     }
@@ -66,9 +81,11 @@ const ClinicSignupForm = () => {
     try {
       await verifySignupOtp({ channel: 'EMAIL', email: form.adminEmail.trim(), code: emailOtp.trim() });
       setEmailVerified(true);
+      setOtpError('');
       toast.success('Email verified');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Invalid email OTP');
+      const message = err instanceof Error ? err.message : 'Invalid email OTP';
+      setOtpError(isOtpFailed(message) ? OTP_FAILED_MESSAGE : message);
     } finally {
       setLoading(false);
     }
@@ -76,8 +93,19 @@ const ClinicSignupForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.clinicName || !form.adminFirstName) {
-      toast.error('Please fill in required fields.');
+    const clinicErr = validateClinicName(form.clinicName);
+    if (clinicErr) {
+      toast.error(clinicErr);
+      return;
+    }
+    const firstErr = validatePersonName(form.adminFirstName, 'First name');
+    if (firstErr) {
+      toast.error(firstErr);
+      return;
+    }
+    const lastErr = validatePersonName(form.adminLastName, 'Last name', false);
+    if (lastErr) {
+      toast.error(lastErr);
       return;
     }
     const emailErr = validateEmail(form.adminEmail);
@@ -105,7 +133,6 @@ const ClinicSignupForm = () => {
     }
     setLoading(true);
     try {
-      const address = [form.address, form.city].filter(Boolean).join(', ');
       await signupClinic({
         firstName: form.adminFirstName,
         lastName: form.adminLastName,
@@ -113,14 +140,19 @@ const ClinicSignupForm = () => {
         password: form.password,
         clinicName: form.clinicName,
         licenseNumber: form.license || undefined,
-        address: address || undefined,
+        address: form.address || undefined,
+        city: form.city || undefined,
         phone: form.adminPhone ? digitsOnlyPhone(form.adminPhone) : undefined,
       });
       setShowSuccess(true);
       toast.success('Clinic registration submitted');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Clinic signup failed';
-      toast.error(message);
+      if (isEmailAlreadyRegistered(message)) {
+        setEmailError(EMAIL_ALREADY_REGISTERED);
+      } else {
+        toast.error(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -226,12 +258,14 @@ const ClinicSignupForm = () => {
                             onChange={(e) => {
                               setEmailVerified(false);
                               setEmailOtp('');
+                              setEmailError('');
                               set('adminEmail', e.target.value);
                             }}
                             required
                             disabled={emailVerified}
                           />
                         </div>
+                        {emailError ? <p className="text-sm text-destructive">{emailError}</p> : null}
                         <div className="flex flex-wrap gap-2 mt-2">
                           <Button type="button" variant="outline" size="sm" onClick={sendEmailOtp} disabled={otpSending || emailVerified}>
                             {otpSending ? 'Sending…' : emailVerified ? 'Verified' : 'Send OTP'}
@@ -244,7 +278,10 @@ const ClinicSignupForm = () => {
                                 className="max-w-[140px] h-9"
                                 placeholder="OTP code"
                                 value={emailOtp}
-                                onChange={(e) => setEmailOtp(e.target.value)}
+                                onChange={(e) => {
+                                  setEmailOtp(e.target.value);
+                                  setOtpError('');
+                                }}
                               />
                               <Button type="button" size="sm" onClick={verifyEmail} disabled={loading || emailOtp.trim().length !== 6}>
                                 Verify
@@ -252,6 +289,7 @@ const ClinicSignupForm = () => {
                             </>
                           )}
                         </div>
+                        {otpError ? <p className="text-sm text-destructive">{otpError}</p> : null}
                       </div>
                       <div className="space-y-2 sm:col-span-2">
                         <Label htmlFor="password">Password *</Label>
@@ -260,15 +298,23 @@ const ClinicSignupForm = () => {
                           <Input
                             id="password"
                             name="password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             autoComplete="new-password"
-                            className="pl-10"
+                            className="pl-10 pr-10"
                             placeholder="8+ chars, upper, lower, number, special"
                             value={form.password}
                             onChange={(e) => set('password', e.target.value)}
                             required
                             minLength={8}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showPassword ? <EyeOffIcon className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Must be 8–72 characters with uppercase, lowercase, a number, and a special character.
@@ -281,15 +327,23 @@ const ClinicSignupForm = () => {
                           <Input
                             id="confirmPassword"
                             name="confirmPassword"
-                            type="password"
+                            type={showConfirmPassword ? 'text' : 'password'}
                             autoComplete="new-password"
-                            className="pl-10"
+                            className="pl-10 pr-10"
                             placeholder="Re-enter password"
                             value={form.confirmPassword}
                             onChange={(e) => set('confirmPassword', e.target.value)}
                             required
                             minLength={8}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((prev) => !prev)}
+                            className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                            aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showConfirmPassword ? <EyeOffIcon className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
                         </div>
                       </div>
                     </div>

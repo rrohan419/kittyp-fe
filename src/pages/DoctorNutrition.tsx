@@ -159,9 +159,6 @@ export default function DoctorNutrition() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Nutrition plans</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Generate, review, approve, and send a plan to the pet parent.
-          </p>
         </div>
         <Button asChild>
           <Link to="/doctor/nutrition/new">

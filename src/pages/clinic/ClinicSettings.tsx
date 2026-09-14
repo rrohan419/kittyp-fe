@@ -9,9 +9,11 @@ import { toast } from 'sonner';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { shutdownClinic, reopenClinic, updateClinic } from '@/services/clinicService';
 import {
+  completeClinicWhatsAppEmbeddedSignup,
   fetchClinicWhatsAppSettings,
   updateClinicWhatsAppSettings,
 } from '@/services/invoiceService';
+import { WhatsAppEmbeddedSignupButton } from '@/components/whatsapp/WhatsAppEmbeddedSignupButton';
 import { WhatsAppSettingsForm } from '@/components/whatsapp/WhatsAppSettingsForm';
 import { ClinicHoursDisplay, ClinicHoursEditor } from '@/components/clinic/ClinicHoursEditor';
 import {
@@ -395,11 +397,21 @@ export default function ClinicSettings() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
+            <WhatsAppEmbeddedSignupButton
+              onSuccess={async (data) => {
+                if (!clinicUuid) throw new Error('No clinic');
+                const res = await completeClinicWhatsAppEmbeddedSignup(clinicUuid, data);
+                setWaConfigured(!!res.whatsappConfigured);
+                setWaPhoneId(res.phoneNumberId || '');
+                setWaBusinessId(res.businessAccountId || '');
+                await refresh();
+              }}
+            />
             <WhatsAppSettingsForm
               configured={waConfigured}
               phoneNumberIdInitial={waPhoneId}
               businessAccountIdInitial={waBusinessId}
-              helperText="Enter only the Meta values from this practice’s WhatsApp Business account."
+              helperText="Prefer Connect with Meta. Manual IDs are only if Facebook Login is unavailable."
               onSave={async (values) => {
                 if (!clinicUuid) throw new Error('No clinic');
                 const res = await updateClinicWhatsAppSettings(clinicUuid, values);

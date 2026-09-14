@@ -5,8 +5,6 @@ import { useSelector } from 'react-redux';
 import { toast } from 'sonner';
 import { RootState } from '@/module/store/store';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import UserLocationDisplay from '@/components/ui/UserLocationDisplay';
 import { PetSelectionComponent } from '@/components/ui/PetSelectionComponent';
 import { NutritionPlanPreview } from '@/components/nutrition/NutritionPlanPreview';
 import { useNutritionPets } from '@/hooks/useNutritionPets';
@@ -17,7 +15,6 @@ import {
   handleAIError,
   hasNutritionPlanData,
   saveNutritionPlan,
-  type LocationData,
   type PetCarePlan,
 } from '@/services/aiService';
 import { fetchFilteredNutritionPlans, sendNutritionPlan } from '@/services/petNutritionService';
@@ -42,7 +39,6 @@ export default function DoctorNutritionGenerate() {
 
   const { pets, loading: petsLoading, sourceLabel } = useNutritionPets();
   const [selectedPetId, setSelectedPetId] = useState<string | null>(preselectedPet);
-  const [location, setLocation] = useState<LocationData | undefined>();
   const [isGenerating, setIsGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [plan, setPlan] = useState<PetCarePlan>(defaultPetCarePlan);
@@ -71,13 +67,9 @@ export default function DoctorNutritionGenerate() {
       toast.error('Selected patient not found');
       return;
     }
-    if (!location) {
-      toast.error('Share your location so the plan can account for local climate');
-      return;
-    }
     setIsGenerating(true);
     try {
-      const recommendation = await generateNutritionRecommendation(pet, user.uuid, location);
+      const recommendation = await generateNutritionRecommendation(pet, user.uuid);
       setPlan(recommendation);
       toast.success(`Plan generated for ${pet.name}. Review it, then save or send.`);
     } catch (error: unknown) {
@@ -175,26 +167,6 @@ export default function DoctorNutritionGenerate() {
         isGenerating={isGenerating}
         recommendations={plan}
       />
-
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base">Location</CardTitle>
-          <CardDescription>
-            Used to adjust hydration and calorie needs for local climate.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <UserLocationDisplay
-            onLocationUpdate={(data) => {
-              if (!data) return;
-              setLocation(data);
-            }}
-            onPermissionDenied={() =>
-              toast.error('Location is required to generate a personalized plan')
-            }
-          />
-        </CardContent>
-      </Card>
 
       {hasNutritionPlanData(plan) && (
         <>

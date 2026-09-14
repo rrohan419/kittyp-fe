@@ -40,12 +40,25 @@ import {
   Phone,
   FileCheck,
   ShieldCheck,
+  Eye,
+  EyeOffIcon,
 } from 'lucide-react';
 import { signupDoctor } from '@/services/authService';
 import { sendSignupOtp, verifySignupOtp, DOCTOR_STATUS_STEPS, statusLabel } from '@/services/doctorVerificationService';
 import { uploadSignupDocuments } from '@/services/fileUploadService';
 import ErrorDialog from '@/components/ui/error-dialog';
-import { digitsOnlyPhone, toE164Phone, validateEmail, validatePassword, validatePhone } from '@/utils/validation';
+import {
+  digitsOnlyPhone,
+  EMAIL_ALREADY_REGISTERED,
+  isEmailAlreadyRegistered,
+  isOtpFailed,
+  OTP_FAILED_MESSAGE,
+  toE164Phone,
+  validateEmail,
+  validatePassword,
+  validatePersonName,
+  validatePhone,
+} from '@/utils/validation';
 
 /** Value must match backend DoctorSpecialization enum names. */
 const specializations = [
@@ -84,8 +97,12 @@ const DoctorSignupForm = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [emailOtp, setEmailOtp] = useState('');
   const [phoneOtp, setPhoneOtp] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [otpError, setOtpError] = useState('');
   const [emailVerified, setEmailVerified] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
 
@@ -133,15 +150,27 @@ const DoctorSignupForm = () => {
 
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
+    const firstErr = validatePersonName(firstName, 'First name');
+    if (firstErr) {
+      toast.error(firstErr);
+      return;
+    }
+    const lastErr = validatePersonName(lastName, 'Last name', false);
+    if (lastErr) {
+      toast.error(lastErr);
+      return;
+    }
     if (password !== confirmPassword) {
       toast.error("Passwords don't match");
       return;
     }
     const emailErr = validateEmail(email);
     if (emailErr) {
+      setEmailError(emailErr);
       toast.error(emailErr);
       return;
     }
+    setEmailError('');
     const passErr = validatePassword(password);
     if (passErr) {
       toast.warning(passErr);
@@ -161,7 +190,12 @@ const DoctorSignupForm = () => {
       await sendSignupOtp({ channel: 'EMAIL', email: email.trim(), role: 'DOCTOR' });
       toast.success('OTP sent to your email');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send email OTP');
+      const message = err instanceof Error ? err.message : 'Failed to send email OTP';
+      if (isEmailAlreadyRegistered(message)) {
+        setEmailError(EMAIL_ALREADY_REGISTERED);
+      } else {
+        toast.error(message);
+      }
     } finally {
       setOtpSending(false);
     }
@@ -173,10 +207,12 @@ const DoctorSignupForm = () => {
     try {
       await verifySignupOtp({ channel: 'EMAIL', email: email.trim(), code: emailOtp.trim() });
       setEmailVerified(true);
+      setOtpError('');
       toast.success('Email verified');
       setStep(3);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Invalid email OTP');
+      const message = err instanceof Error ? err.message : 'Invalid email OTP';
+      setOtpError(isOtpFailed(message) ? OTP_FAILED_MESSAGE : message);
     } finally {
       setLoading(false);
     }
@@ -211,10 +247,12 @@ const DoctorSignupForm = () => {
         code: phoneOtp.trim(),
       });
       setPhoneVerified(true);
+      setOtpError('');
       toast.success('Phone verified');
       setStep(4);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Invalid phone OTP');
+      const message = err instanceof Error ? err.message : 'Invalid phone OTP';
+      setOtpError(isOtpFailed(message) ? OTP_FAILED_MESSAGE : message);
     } finally {
       setLoading(false);
     }
@@ -373,11 +411,15 @@ const DoctorSignupForm = () => {
                               placeholder="doctor@example.com"
                               className="pl-10"
                               value={email}
-                              onChange={(e) => setEmail(e.target.value)}
+                              onChange={(e) => {
+                                setEmail(e.target.value);
+                                setEmailError('');
+                              }}
                               required
                               readOnly={!!inviteToken}
                             />
                           </div>
+                          {emailError ? <p className="text-sm text-destructive">{emailError}</p> : null}
                           {inviteToken && (
                             <p className="text-xs text-muted-foreground">Email is locked to the invitation.</p>
                           )}
@@ -411,15 +453,23 @@ const DoctorSignupForm = () => {
                             <Input
                               id="password"
                               name="password"
-                              type="password"
+                              type={showPassword ? 'text' : 'password'}
                               autoComplete="new-password"
                               placeholder="••••••••"
-                              className="pl-10"
+                              className="pl-10 pr-10"
                               value={password}
                               onChange={(e) => setPassword(e.target.value)}
                               required
                               minLength={8}
                             />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword((prev) => !prev)}
+                              className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                              aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            >
+                              {showPassword ? <EyeOffIcon className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
                           </div>
                         </div>
                         <div className="space-y-2">
@@ -429,15 +479,23 @@ const DoctorSignupForm = () => {
                             <Input
                               id="confirmPassword"
                               name="confirmPassword"
-                              type="password"
+                              type={showConfirmPassword ? 'text' : 'password'}
                               autoComplete="new-password"
                               placeholder="••••••••"
-                              className="pl-10"
+                              className="pl-10 pr-10"
                               value={confirmPassword}
                               onChange={(e) => setConfirmPassword(e.target.value)}
                               required
                               minLength={8}
                             />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPassword((prev) => !prev)}
+                              className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                              aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                            >
+                              {showConfirmPassword ? <EyeOffIcon className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -468,6 +526,7 @@ const DoctorSignupForm = () => {
                         <Mail className="h-4 w-4 mr-2" />
                         {otpSending ? 'Sending…' : 'Send Email OTP'}
                       </Button>
+                      {emailError ? <p className="text-sm text-destructive">{emailError}</p> : null}
                       <div className="space-y-2">
                         <Label htmlFor="emailOtp">Email OTP</Label>
                         <Input
@@ -475,9 +534,13 @@ const DoctorSignupForm = () => {
                           inputMode="numeric"
                           placeholder="6-digit code"
                           value={emailOtp}
-                          onChange={(e) => setEmailOtp(e.target.value)}
+                          onChange={(e) => {
+                            setEmailOtp(e.target.value);
+                            setOtpError('');
+                          }}
                           required
                         />
+                        {otpError ? <p className="text-sm text-destructive">{otpError}</p> : null}
                       </div>
                       <div className="flex gap-3">
                         <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(1)}>
@@ -497,7 +560,7 @@ const DoctorSignupForm = () => {
                   <CardHeader>
                     <CardTitle className="text-xl">Verify Phone</CardTitle>
                     <CardDescription>
-                      Phone OTP is sent to your phone number
+                      SMS code, or authenticator code from Kittyp if SMS fails
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -519,9 +582,13 @@ const DoctorSignupForm = () => {
                           inputMode="numeric"
                           placeholder="6-digit code"
                           value={phoneOtp}
-                          onChange={(e) => setPhoneOtp(e.target.value)}
+                          onChange={(e) => {
+                            setPhoneOtp(e.target.value);
+                            setOtpError('');
+                          }}
                           required
                         />
+                        {otpError ? <p className="text-sm text-destructive">{otpError}</p> : null}
                       </div>
                       <div className="flex gap-3">
                         <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(2)}>
@@ -601,8 +668,8 @@ const DoctorSignupForm = () => {
                             type="number"
                             min="0"
                             max="60"
-                            placeholder="5"
-                            className="pl-10"
+                            placeholder="e.g. 5"
+                            className="pl-10 placeholder:text-muted-foreground/50"
                             value={yearsOfExperience}
                             onChange={(e) => setYearsOfExperience(e.target.value)}
                           />

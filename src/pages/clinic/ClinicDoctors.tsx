@@ -29,6 +29,7 @@ import {
   revokeDoctorInvite,
   isClinicActivated,
   CLINIC_NOT_ACTIVATED_MESSAGE,
+  doctorLabel,
 } from '@/services/clinicService';
 import { statusLabel } from '@/services/doctorVerificationService';
 import { toast } from 'sonner';
@@ -36,6 +37,7 @@ import { parseApiErrorMessage, validateEmail } from '@/utils/validation';
 import { canInviteDoctors, canViewDoctorCertificates } from '@/utils/roles';
 import { useDoctorsBasePath } from '@/hooks/useDoctorsBasePath';
 import { specializationLabel } from '@/utils/specialization';
+import { formatExperienceYears } from '@/utils/formatExperience';
 
 function DoctorRatingLine({
   rating,
@@ -407,7 +409,9 @@ export default function ClinicDoctors() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((d) => {
-            const initials = (d.name || '?')
+            const label = doctorLabel(d) || '?';
+            const exp = formatExperienceYears(d.experienceYears);
+            const initials = label
               .split(' ')
               .map((p) => p[0])
               .join('')
@@ -426,8 +430,13 @@ export default function ClinicDoctors() {
                         <span className="text-sm font-bold text-primary">{initials}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground truncate">{d.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="font-semibold text-foreground truncate">{label}</p>
+                        {exp ? (
+                          <p className="text-[11px] font-normal tracking-wide text-muted-foreground mt-0.5">
+                            {exp}
+                          </p>
+                        ) : null}
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
                           {specializationLabel(d.specialization) || 'General'}
                         </p>
                         <div className="mt-1">

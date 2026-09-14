@@ -6,7 +6,7 @@ export default function DoctorBlog() {
       basePath="/doctor/blog"
       ownArticlesOnly
       title="Blog"
-      description="Publish articles to the website article section as your doctor profile."
+      description=""
     />
   );
 }

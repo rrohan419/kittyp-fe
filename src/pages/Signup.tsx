@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { UserPlus, Mail, Lock, User, CheckCircleIcon } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, CheckCircleIcon, Eye, EyeOffIcon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { signup, socialSso, login } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
@@ -29,7 +29,13 @@ import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/module/store/store';
 import { validateAndSetUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
-import { validateEmail, validatePassword } from '@/utils/validation';
+import {
+  EMAIL_ALREADY_REGISTERED,
+  isEmailAlreadyRegistered,
+  validateEmail,
+  validatePassword,
+  validatePersonName,
+} from '@/utils/validation';
 import { isSignupRole, type SignupRole } from '@/utils/roles';
 import { clearAuthStorage, hasAuthToken } from '@/utils/authStorage';
 import SignupRoleToggle from '@/components/auth/signup/SignupRoleToggle';
@@ -64,6 +70,11 @@ const Signup = () => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [firstNameError, setFirstNameError] = useState('');
+  const [lastNameError, setLastNameError] = useState('');
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const handleGoogleSignup = () => googleLogin();
   const dispatch = useDispatch<AppDispatch>();
@@ -79,15 +90,27 @@ const Signup = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!firstName.trim()) {
-      toast.error('First name is required');
+    const firstErr = validatePersonName(firstName, 'First name');
+    if (firstErr) {
+      setFirstNameError(firstErr);
+      toast.error(firstErr);
       return;
     }
+    setFirstNameError('');
+    const lastErr = validatePersonName(lastName, 'Last name', false);
+    if (lastErr) {
+      setLastNameError(lastErr);
+      toast.error(lastErr);
+      return;
+    }
+    setLastNameError('');
     const emailErr = validateEmail(email);
     if (emailErr) {
+      setEmailError(emailErr);
       toast.error(emailErr);
       return;
     }
+    setEmailError('');
     const passwordErr = validatePassword(password);
     if (passwordErr) {
       toast.error(passwordErr);
@@ -122,8 +145,12 @@ const Signup = () => {
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Signup failed';
-      setErrorMessage(message);
-      setShowErrorDialog(true);
+      if (isEmailAlreadyRegistered(message)) {
+        setEmailError(EMAIL_ALREADY_REGISTERED);
+      } else {
+        setErrorMessage(message);
+        setShowErrorDialog(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -201,11 +228,15 @@ const Signup = () => {
                             placeholder="John"
                             className="pl-10"
                             value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
+                            onChange={(e) => {
+                              setFirstName(e.target.value);
+                              setFirstNameError('');
+                            }}
                             required
                             disabled={loading}
                           />
                         </div>
+                        {firstNameError ? <p className="text-sm text-destructive">{firstNameError}</p> : null}
                       </div>
 
                       <div className="space-y-2">
@@ -220,10 +251,14 @@ const Signup = () => {
                             placeholder="Doe"
                             className="pl-10"
                             value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
+                            onChange={(e) => {
+                              setLastName(e.target.value);
+                              setLastNameError('');
+                            }}
                             disabled={loading}
                           />
                         </div>
+                        {lastNameError ? <p className="text-sm text-destructive">{lastNameError}</p> : null}
                       </div>
 
                       <div className="space-y-2">
@@ -238,11 +273,15 @@ const Signup = () => {
                             placeholder="name@example.com"
                             className="pl-10"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(e) => {
+                              setEmail(e.target.value);
+                              setEmailError('');
+                            }}
                             required
                             disabled={loading}
                           />
                         </div>
+                        {emailError ? <p className="text-sm text-destructive">{emailError}</p> : null}
                       </div>
 
                       <div className="space-y-2">
@@ -252,15 +291,23 @@ const Signup = () => {
                           <Input
                             id="password"
                             name="password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             autoComplete="new-password"
                             placeholder="••••••••"
-                            className="pl-10"
+                            className="pl-10 pr-10"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             disabled={loading}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showPassword ? <EyeOffIcon className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
                         </div>
                       </div>
 
@@ -271,15 +318,23 @@ const Signup = () => {
                           <Input
                             id="confirmPassword"
                             name="confirmPassword"
-                            type="password"
+                            type={showConfirmPassword ? 'text' : 'password'}
                             autoComplete="new-password"
                             placeholder="••••••••"
-                            className="pl-10"
+                            className="pl-10 pr-10"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             required
                             disabled={loading}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((prev) => !prev)}
+                            className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                            aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showConfirmPassword ? <EyeOffIcon className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
                         </div>
                       </div>
 

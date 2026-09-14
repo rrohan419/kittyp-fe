@@ -45,6 +45,7 @@ import {
   patchClinicVisit,
   isClinicActivated,
   CLINIC_NOT_ACTIVATED_MESSAGE,
+  doctorLabel,
 } from '@/services/clinicService';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -292,10 +293,11 @@ export default function ClinicAppointments() {
       });
   }, [bookings]);
 
-  const doctorName = (doctorUuid?: string | null) => {
+  const doctorName = (doctorUuid?: string | null, fallback?: string | null) => {
+    if (fallback?.trim()) return fallback.trim();
     if (!doctorUuid) return null;
     const d = doctors.find((x) => x.doctorUuid === doctorUuid);
-    return d?.name || d?.email || null;
+    return doctorLabel(d) || null;
   };
 
   const patch = async (
@@ -434,7 +436,7 @@ export default function ClinicAppointments() {
             <SelectItem value="unassigned">Unassigned</SelectItem>
             {doctors.map((d) => (
               <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
-                {d.name}
+                {doctorLabel(d)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -492,7 +494,7 @@ export default function ClinicAppointments() {
                     {col.status === 'WAITLIST' &&
                       todayScheduledBookings.map((b) => {
                         const start = bookingStart(b);
-                        const doc = doctorName(b.doctorUuid);
+                        const doc = doctorName(b.doctorUuid, b.doctorName);
                         const canEdit = isEditableBooking(b, lockAssignee, lockedDoctorUuid);
                         return (
                           <div
@@ -676,7 +678,7 @@ export default function ClinicAppointments() {
             ) : (
               upcomingBookings.map((b) => {
                 const start = bookingStart(b);
-                const doc = doctorName(b.doctorUuid);
+                const doc = doctorName(b.doctorUuid, b.doctorName);
                 const canEdit = isEditableBooking(b, lockAssignee, lockedDoctorUuid);
                 return (
                   <Card key={b.uuid}>
@@ -768,7 +770,7 @@ export default function ClinicAppointments() {
                     .filter((d) => d.isActive !== false)
                     .map((d) => (
                       <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
-                        {d.name || d.email}
+                        {doctorLabel(d)}
                       </SelectItem>
                     ))}
                 </SelectContent>

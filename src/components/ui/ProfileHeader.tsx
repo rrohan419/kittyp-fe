@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,11 +17,30 @@ import { updateUserProfile } from '@/module/slice/AuthSlice';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { CopyableId } from '@/components/ui/CopyableId';
+import { fetchMyDoctorProfile } from '@/services/doctorVerificationService';
+import { hasRole, ROLES } from '@/utils/roles';
+import { formatExperienceYears } from '@/utils/formatExperience';
 
 const ProfileHeader: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.authReducer);
   const [open, setOpen] = useState(false);
+  const [experienceYears, setExperienceYears] = useState('');
+  const isDoctor = hasRole(user?.roles, ROLES.DOCTOR);
+
+  useEffect(() => {
+    if (!isDoctor) return;
+    void fetchMyDoctorProfile()
+      .then((p) => {
+        setExperienceYears(
+          p?.experienceYears != null && !Number.isNaN(Number(p.experienceYears))
+            ? String(p.experienceYears)
+            : ''
+        );
+      })
+      .catch(() => setExperienceYears(''));
+  }, [isDoctor, open]);
+
   return (
     <div className="animate-fade-in glass-effect rounded-xl shadow-md transition-default">
       <div className="container-padding py-8">
@@ -51,7 +70,14 @@ const ProfileHeader: React.FC = () => {
           </div>
           <div className="flex-grow text-center lg:text-left space-y-4">
             <div className="space-y-1">
-              <h1 className="text-2xl font-bold text-balance">{user.firstName} {user.lastName}</h1>
+              <h1 className="text-2xl font-bold text-balance">
+                {user.firstName} {user.lastName}
+              </h1>
+              {isDoctor && formatExperienceYears(experienceYears) ? (
+                <p className="text-[11px] font-normal tracking-wide text-muted-foreground">
+                  {formatExperienceYears(experienceYears)}
+                </p>
+              ) : null}
               <p className="text-muted-foreground">Member since {user.createdAt
                 ? format(new Date(user.createdAt), "do MMMM yyyy")
                 : "-"}</p>

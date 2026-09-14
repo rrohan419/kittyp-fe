@@ -173,7 +173,6 @@ export const VetAvailabilityManager: React.FC<VetAvailabilityManagerProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">Availability</h2>
-          <p className="text-muted-foreground">Set when you are available (Monday–Sunday).</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {hasUnsavedChanges && (

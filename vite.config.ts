@@ -1,13 +1,28 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
+import basicSsl from "@vitejs/plugin-basic-ssl";
+import fs from "node:fs";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
+const mkcertCert = path.resolve(__dirname, ".cert/localhost.pem");
+const mkcertKey = path.resolve(__dirname, ".cert/localhost-key.pem");
+const hasMkcert = fs.existsSync(mkcertCert) && fs.existsSync(mkcertKey);
+
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "localhost",
+    // ipv4first + host "localhost" binds 127.0.0.1 only; browsers hit ::1 first.
+    host: "::",
     port: 8080,
+    strictPort: true,
+    ...(hasMkcert
+      ? { https: { cert: fs.readFileSync(mkcertCert), key: fs.readFileSync(mkcertKey) } }
+      : {}),
+    hmr: {
+      host: "localhost",
+      port: 8080,
+    },
   },
   build: {
     sourcemap: false,
@@ -22,7 +37,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [
-    
+    !hasMkcert && basicSsl(),
     react(),
     mode === "development" && componentTagger(),
     VitePWA({

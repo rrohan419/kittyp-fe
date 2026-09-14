@@ -116,3 +116,19 @@ export const fetchAdminDashboardData = async (): Promise<AdminDashboardData> => 
   );
   return response.data.data;
 };
+
+export interface MasterTotpEnrollment {
+  enabled: boolean;
+  otpauthUri?: string | null;
+  issuer: string;
+  account: string;
+  periodSeconds: number;
+  digits: number;
+}
+
+export async function fetchMasterTotpEnrollment(): Promise<MasterTotpEnrollment> {
+  const response = await axiosInstance.get<ApiSuccessResponse<MasterTotpEnrollment>>(
+    '/admin/master-totp'
+  );
+  return response.data.data;
+}

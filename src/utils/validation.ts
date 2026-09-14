@@ -1,9 +1,28 @@
 import DOMPurify, { type Config } from 'dompurify';
 
 export const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,72}$/;
-export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+/** Letters, spaces, hyphen, apostrophe, period. */
+export const NAME_REGEX = /^[\p{L}][\p{L} .'-]{0,49}$/u;
+/** Clinic / practice names may include digits and a few punctuation marks. */
+export const CLINIC_NAME_REGEX = /^[\p{L}\p{N}][\p{L}\p{N} .,'&()-]{0,99}$/u;
 /** Exactly 10 digits (local number without country code). */
 export const PHONE_REGEX = /^\d{10}$/;
+
+export const EMAIL_ALREADY_REGISTERED =
+  'This email is already registered. Sign in or use a different email.';
+export const OTP_FAILED_MESSAGE =
+  'That code is invalid or expired. Request a new OTP and try again.';
+
+export function isEmailAlreadyRegistered(message: string): boolean {
+  const m = (message || '').toLowerCase();
+  return m.includes('already registered') || (m.includes('already exists') && m.includes('email'));
+}
+
+export function isOtpFailed(message: string): boolean {
+  const m = (message || '').toLowerCase();
+  return m.includes('otp') || m.includes('invalid or expired');
+}
 
 export function validatePassword(password: string): string | null {
   if (!password) return 'Password is required';
@@ -16,6 +35,24 @@ export function validatePassword(password: string): string | null {
 export function validateEmail(email: string, required = true): string | null {
   if (!email?.trim()) return required ? 'Email is required' : null;
   if (!EMAIL_REGEX.test(email.trim())) return 'Enter a valid email address';
+  return null;
+}
+
+export function validatePersonName(value: string, label: string, required = true): string | null {
+  const v = value?.trim() ?? '';
+  if (!v) return required ? `${label} is required` : null;
+  if (required && v.length < 2) return `${label} must be at least 2 characters`;
+  if (!NAME_REGEX.test(v)) {
+    return `${label} can only contain letters, spaces, hyphens, and apostrophes`;
+  }
+  return null;
+}
+
+export function validateClinicName(value: string): string | null {
+  const v = value?.trim() ?? '';
+  if (!v) return 'Clinic name is required';
+  if (v.length < 2) return 'Clinic name must be at least 2 characters';
+  if (!CLINIC_NAME_REGEX.test(v)) return 'Clinic name contains invalid characters';
   return null;
 }
 

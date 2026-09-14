@@ -20,6 +20,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { sendProfileOtp, updateUserDetails, verifyProfileOtp } from '@/services/UserService';
+import {
+  fetchMyDoctorProfile,
+  updateMyDoctorExperience,
+} from '@/services/doctorVerificationService';
+import { hasRole, ROLES } from '@/utils/roles';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { setUser } from '@/module/slice/AuthSlice';
@@ -40,6 +45,12 @@ const formSchema = z
       .optional()
       .refine((v) => !v || (!Number.isNaN(Number(v)) && Number(v) >= 1 && Number(v) <= 120), {
         message: 'Age must be between 1 and 120',
+      }),
+    experienceYears: z
+      .string()
+      .optional()
+      .refine((v) => !v || (!Number.isNaN(Number(v)) && Number(v) >= 0 && Number(v) <= 60), {
+        message: 'Years of experience must be between 0 and 60',
       }),
   })
   .superRefine((data, ctx) => {
@@ -87,6 +98,8 @@ const EditProfileForm = ({
   const [otpBusy, setOtpBusy] = useState<'EMAIL' | 'PHONE' | null>(null);
   /** Persisted phone shown with green tick after successful verify+save */
   const [confirmedPhone, setConfirmedPhone] = useState<string | null>(null);
+  const [savedExperience, setSavedExperience] = useState<string>('');
+  const isDoctor = hasRole(user?.roles, ROLES.DOCTOR);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -97,10 +110,27 @@ const EditProfileForm = ({
       phoneCountryCode: '+91',
       phoneNumber: '',
       age: '',
+      experienceYears: '',
     },
   });
 
   const watched = form.watch();
+
+  useEffect(() => {
+    if (!isDoctor) return;
+    void fetchMyDoctorProfile()
+      .then((p) => {
+        const years =
+          p?.experienceYears != null && !Number.isNaN(Number(p.experienceYears))
+            ? String(p.experienceYears)
+            : '';
+        setSavedExperience(years);
+        form.setValue('experienceYears', years);
+      })
+      .catch(() => {
+        setSavedExperience('');
+      });
+  }, [isDoctor, form]);
 
   useEffect(() => {
     if (user) {
@@ -111,6 +141,7 @@ const EditProfileForm = ({
         phoneCountryCode: user.phoneCountryCode || '+91',
         phoneNumber: user.phoneNumber || '',
         age: user.age != null ? String(user.age) : '',
+        experienceYears: savedExperience,
       });
       setEmailVerified(false);
       setPhoneVerified(false);
@@ -122,7 +153,7 @@ const EditProfileForm = ({
         setConfirmedPhone(`${user.phoneCountryCode || ''}${user.phoneNumber}`);
       }
     }
-  }, [user, form]);
+  }, [user, form, savedExperience]);
 
   const emailChanged = useMemo(() => {
     if (!user) return false;
@@ -220,6 +251,7 @@ const EditProfileForm = ({
         phoneCountryCode: user.phoneCountryCode || '+91',
         phoneNumber: user.phoneNumber || '',
         age: user.age != null ? String(user.age) : '',
+        experienceYears: savedExperience,
       });
     }
     setEditing(false);
@@ -267,6 +299,15 @@ const EditProfileForm = ({
       };
       dispatch(setUser(merged));
       setAuthItem('user', JSON.stringify(merged));
+
+      if (isDoctor) {
+        const raw = (values.experienceYears || '').trim();
+        const years = raw === '' ? null : Number(raw);
+        const updated = await updateMyDoctorExperience(years);
+        const next =
+          updated.experienceYears != null ? String(updated.experienceYears) : '';
+        setSavedExperience(next);
+      }
 
       if (values.phoneNumber?.trim()) {
         setConfirmedPhone(`${values.phoneCountryCode || ''}${values.phoneNumber.trim()}`);
@@ -323,6 +364,12 @@ const EditProfileForm = ({
             <p className="text-sm text-muted-foreground mb-1">Age</p>
             <p className="font-medium">{user.age != null ? user.age : 'Not provided'}</p>
           </div>
+          {isDoctor ? (
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Years of experience</p>
+              <p className="font-medium">{savedExperience || 'Not provided'}</p>
+            </div>
+          ) : null}
           <div>
             <p className="text-sm text-muted-foreground mb-1">Email</p>
             <p className="font-medium flex items-center gap-2">
@@ -408,6 +455,29 @@ const EditProfileForm = ({
               </FormItem>
             )}
           />
+
+          {isDoctor ? (
+            <FormField
+              control={form.control}
+              name="experienceYears"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Years of experience</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={60}
+                      placeholder="e.g. 5"
+                      className="placeholder:text-muted-foreground/50"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : null}
 
           <FormField
             control={form.control}
@@ -524,25 +594,23 @@ const EditProfileForm = ({
               >
                 {otpBusy === 'PHONE' ? 'Sending…' : phoneOtpSent ? 'Resend OTP' : 'Send OTP'}
               </Button>
-              {phoneOtpSent && (
-                <>
-                  <Input
-                    className="sm:max-w-[160px]"
-                    placeholder="Phone OTP"
-                    value={phoneOtp}
-                    onChange={(e) => setPhoneOtp(e.target.value)}
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={!phoneOtp.trim() || otpBusy === 'PHONE'}
-                    onClick={() => handleVerifyOtp('PHONE')}
-                  >
-                    Confirm
-                  </Button>
-                </>
-              )}
-              <p className="text-xs text-muted-foreground sm:ml-1">OTP is sent to your phone number</p>
+              <Input
+                className="sm:max-w-[160px]"
+                placeholder="Phone OTP"
+                value={phoneOtp}
+                onChange={(e) => setPhoneOtp(e.target.value)}
+              />
+              <Button
+                type="button"
+                size="sm"
+                disabled={!phoneOtp.trim() || otpBusy === 'PHONE'}
+                onClick={() => handleVerifyOtp('PHONE')}
+              >
+                Confirm
+              </Button>
+              <p className="text-xs text-muted-foreground sm:ml-1">
+                SMS code, or authenticator code from Kittyp if SMS fails
+              </p>
             </div>
           )}
 

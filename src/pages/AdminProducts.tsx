@@ -205,7 +205,7 @@ const AdminProducts = () => {
             <CardContent>
               {isLoading && <div className="py-4 text-center">Loading...</div>}
               {error && <div className="py-4 text-center text-red-500">{error}</div>}
-              <div className="rounded-md border">
+              <div className="rounded-md border max-h-[calc(100vh-18rem)] overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>

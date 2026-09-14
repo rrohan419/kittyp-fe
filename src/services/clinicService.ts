@@ -27,6 +27,12 @@ export interface ClinicModel {
   profileImageUrl?: string | null;
 }
 
+export function doctorLabel(d: { name?: string | null; email?: string | null } | undefined): string {
+  const name = d?.name?.trim();
+  if (name) return name;
+  return d?.email?.trim() || '';
+}
+
 export interface ClinicDoctorModel {
   doctorUuid: string;
   userUuid: string;

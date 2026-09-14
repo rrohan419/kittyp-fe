@@ -446,11 +446,6 @@ export default function DoctorInvoices() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Treatment Invoices</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {isPersonalPractice
-            ? 'Personal practice invoices. Prefill from a finished visit, then Save and Send to deliver the PDF on WhatsApp.'
-            : `Invoices for ${clinic?.name || 'this clinic'} — only visits you billed here. Switch clinics to see another branch.`}
-        </p>
       </div>
 
       {(fromVisitBanner || hydrating) && (
