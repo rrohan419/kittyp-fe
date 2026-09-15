@@ -1,4 +1,5 @@
 import axiosInstance from '@/config/axionInstance';
+import { toast } from 'sonner';
 import { ApiSuccessResponse } from './cartService';
 import { PaginationModel, emptyPage } from './adminService';
 
@@ -49,11 +50,44 @@ export interface ConsultationInvoice {
   createdAt?: string;
 }
 
-/** Create response: invoice always saved; WhatsApp is best-effort. */
+/** Create response: invoice always saved; WhatsApp/email are best-effort. */
 export interface CreateInvoiceResult {
   invoice: ConsultationInvoice;
   whatsappSent: boolean;
   whatsappError?: string | null;
+  emailSent?: boolean;
+  emailError?: string | null;
+}
+
+export function toastInvoiceSend(result: CreateInvoiceResult): void {
+  const n = result.invoice.invoiceNumber || '';
+  const wa = Boolean(result.whatsappSent);
+  const em = Boolean(result.emailSent);
+  if (wa && em) {
+    toast.success(`Invoice ${n} sent on WhatsApp and email`);
+    return;
+  }
+  if (wa) {
+    if (result.emailError) {
+      toast.warning(`Invoice ${n} sent on WhatsApp. Email failed: ${result.emailError}`);
+    } else {
+      toast.success(`Invoice ${n} sent on WhatsApp`);
+    }
+    return;
+  }
+  if (em) {
+    if (result.whatsappError) {
+      toast.warning(`Invoice ${n} emailed. WhatsApp failed: ${result.whatsappError}`);
+    } else {
+      toast.success(`Invoice ${n} emailed`);
+    }
+    return;
+  }
+  toast.warning(
+    `Invoice ${n} saved. ${
+      result.whatsappError || result.emailError || 'WhatsApp and email were not sent — use Send when ready.'
+    }`
+  );
 }
 
 export interface CreateTreatmentInvoicePayload {
@@ -155,12 +189,12 @@ export async function markInvoicePaid(
   return res.data.data;
 }
 
-/** Resend an existing invoice PDF via WhatsApp (document template). */
-export async function sendInvoiceWhatsApp(uuid: string): Promise<ConsultationInvoice> {
-  const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
+/** Resend an existing invoice PDF via WhatsApp and email. */
+export async function sendInvoiceWhatsApp(uuid: string): Promise<CreateInvoiceResult> {
+  const res = await axiosInstance.post<ApiSuccessResponse<CreateInvoiceResult | ConsultationInvoice>>(
     `/invoice/${uuid}/send-whatsapp`
   );
-  return res.data.data;
+  return normalizeCreateResult(res.data.data);
 }
 
 export async function fetchInvoicePdfUrl(uuid: string): Promise<string> {
@@ -186,12 +220,16 @@ function normalizeCreateResult(data: CreateInvoiceResult | ConsultationInvoice):
       invoice: r.invoice,
       whatsappSent: Boolean(r.whatsappSent),
       whatsappError: r.whatsappError ?? null,
+      emailSent: Boolean(r.emailSent),
+      emailError: r.emailError ?? null,
     };
   }
   return {
     invoice: data as ConsultationInvoice,
     whatsappSent: false,
     whatsappError: null,
+    emailSent: false,
+    emailError: null,
   };
 }
 
@@ -232,11 +270,11 @@ export async function markClinicInvoicePaid(
 export async function sendClinicInvoiceWhatsApp(
   clinicUuid: string,
   invoiceUuid: string
-): Promise<ConsultationInvoice> {
-  const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
+): Promise<CreateInvoiceResult> {
+  const res = await axiosInstance.post<ApiSuccessResponse<CreateInvoiceResult | ConsultationInvoice>>(
     `/clinic/${clinicUuid}/invoices/${invoiceUuid}/send-whatsapp`
   );
-  return res.data.data;
+  return normalizeCreateResult(res.data.data);
 }
 
 export async function fetchClinicInvoicePdfUrl(

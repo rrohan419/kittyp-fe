@@ -295,3 +295,8 @@
     background: rgba(255, 255, 255, 0.3);
   }
 }
+
+/* Google Places Autocomplete dropdown sits above cards/dialogs. */
+.pac-container {
+  z-index: 10000;
+}

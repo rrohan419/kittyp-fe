@@ -16,6 +16,12 @@ import {
 import { WhatsAppEmbeddedSignupButton } from '@/components/whatsapp/WhatsAppEmbeddedSignupButton';
 import { WhatsAppSettingsForm } from '@/components/whatsapp/WhatsAppSettingsForm';
 import { ClinicHoursDisplay, ClinicHoursEditor } from '@/components/clinic/ClinicHoursEditor';
+import { ClinicAddressSearch } from '@/components/clinic/ClinicAddressSearch';
+import {
+  EMPTY_CLINIC_ADDRESS,
+  type ParsedClinicAddress,
+  stitchClinicAddress,
+} from '@/utils/googlePlaces';
 import {
   type ClinicHourDay,
   defaultClinicHours,
@@ -41,6 +47,7 @@ export default function ClinicSettings() {
   const [city, setCity] = useState('');
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
+  const [location, setLocation] = useState<ParsedClinicAddress>(EMPTY_CLINIC_ADDRESS);
   const [savingLocation, setSavingLocation] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -68,7 +75,14 @@ export default function ClinicSettings() {
     setCity(clinic?.city ?? '');
     setLatitude(clinic?.latitude != null ? String(clinic.latitude) : '');
     setLongitude(clinic?.longitude != null ? String(clinic.longitude) : '');
-  }, [clinic?.city, clinic?.latitude, clinic?.longitude, clinic?.uuid]);
+    setLocation({
+      ...EMPTY_CLINIC_ADDRESS,
+      formattedAddress: clinic?.address ?? '',
+      city: clinic?.city ?? '',
+      latitude: clinic?.latitude ?? null,
+      longitude: clinic?.longitude ?? null,
+    });
+  }, [clinic?.address, clinic?.city, clinic?.latitude, clinic?.longitude, clinic?.uuid]);
 
   useEffect(() => {
     if (!clinicUuid || !canManageWhatsApp) {
@@ -119,6 +133,14 @@ export default function ClinicSettings() {
     }
   };
 
+  const applyLocation = (next: ParsedClinicAddress) => {
+    setLocation(next);
+    setAddress(stitchClinicAddress(next));
+    setCity(next.city);
+    setLatitude(next.latitude != null ? String(next.latitude) : '');
+    setLongitude(next.longitude != null ? String(next.longitude) : '');
+  };
+
   const fillFromBrowser = () => {
     if (!navigator.geolocation) {
       toast.error('Geolocation is not available');
@@ -128,6 +150,11 @@ export default function ClinicSettings() {
       (pos) => {
         setLatitude(pos.coords.latitude.toFixed(6));
         setLongitude(pos.coords.longitude.toFixed(6));
+        setLocation((prev) => ({
+          ...prev,
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        }));
         toast.success('Coordinates filled from your device');
       },
       () => toast.error('Could not read device location')
@@ -147,7 +174,7 @@ export default function ClinicSettings() {
       await updateClinic(clinicUuid, {
         name: clinic.name,
         licenseNumber: clinic.licenseNumber,
-        address: clinic.address,
+        address: address.trim() || stitchClinicAddress(location) || clinic.address,
         phone: clinic.phone,
         email: clinic.email,
         timezone: clinic.timezone,
@@ -304,7 +331,10 @@ export default function ClinicSettings() {
             <Input
               value={editingProfile ? address : clinic?.address ?? ''}
               readOnly={!editingProfile}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={(e) => {
+                setAddress(e.target.value);
+                setLocation((prev) => ({ ...prev, formattedAddress: e.target.value }));
+              }}
             />
           </div>
           <div className="space-y-2">
@@ -343,25 +373,31 @@ export default function ClinicSettings() {
               <MapPin className="h-4 w-4" /> Location for nearby search
             </CardTitle>
             <CardDescription>
-              City helps area search; latitude/longitude enable distance ranking for pet parents.
+              Search a place in India to fill address, city, and coordinates. City still helps area
+              search if GPS is missing.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>City / area</Label>
-              <Input
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="e.g. Pune"
-                disabled={isShutdown}
-              />
-            </div>
+            <ClinicAddressSearch
+              idPrefix="clinic-settings"
+              value={location}
+              onChange={applyLocation}
+              disabled={isShutdown}
+            />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Latitude</Label>
                 <Input
                   value={latitude}
-                  onChange={(e) => setLatitude(e.target.value)}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setLatitude(raw);
+                    const num = raw.trim() === '' ? null : Number(raw);
+                    setLocation((prev) => ({
+                      ...prev,
+                      latitude: num != null && Number.isFinite(num) ? num : null,
+                    }));
+                  }}
                   placeholder="18.5204"
                   disabled={isShutdown}
                 />
@@ -370,7 +406,15 @@ export default function ClinicSettings() {
                 <Label>Longitude</Label>
                 <Input
                   value={longitude}
-                  onChange={(e) => setLongitude(e.target.value)}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setLongitude(raw);
+                    const num = raw.trim() === '' ? null : Number(raw);
+                    setLocation((prev) => ({
+                      ...prev,
+                      longitude: num != null && Number.isFinite(num) ? num : null,
+                    }));
+                  }}
                   placeholder="73.8567"
                   disabled={isShutdown}
                 />

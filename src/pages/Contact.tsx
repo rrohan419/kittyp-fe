@@ -88,12 +88,12 @@ const Contact = () => {
                                                 Monday to Saturday, 9am - 7pm IST:
                                             </p>
                                             <a
-                                                href="https://wa.me/919876543210"
+                                                href="https://wa.me/918983837798"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="text-primary hover:text-primary/90 transition-colors"
                                             >
-                                                +91 98765 43210
+                                                +91 89838 37798
                                             </a>
                                         </div>
                                     </CardContent>
@@ -108,7 +108,7 @@ const Contact = () => {
                                                 Our headquarters:
                                             </p>
                                             <address className="not-italic text-foreground">
-                                                Bengaluru, Karnataka<br />
+                                                Pune, Maharashtra<br />
                                                 India
                                             </address>
                                         </div>

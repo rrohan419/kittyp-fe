@@ -5,6 +5,10 @@ import fs from "node:fs";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+import {
+  localhostMuxPlugin,
+  MUX_INTERNAL_PORT,
+} from "./vite-plugin-localhost-mux";
 
 const mkcertCert = path.resolve(__dirname, ".cert/localhost.pem");
 const mkcertKey = path.resolve(__dirname, ".cert/localhost-key.pem");
@@ -12,16 +16,38 @@ const hasMkcert = fs.existsSync(mkcertCert) && fs.existsSync(mkcertKey);
 
 export default defineConfig(({ mode }) => ({
   server: {
-    // ipv4first + host "localhost" binds 127.0.0.1 only; browsers hit ::1 first.
-    host: "::",
-    port: 8080,
+    host: "127.0.0.1",
+    port: MUX_INTERNAL_PORT,
     strictPort: true,
+    origin: "https://localhost:8080",
+    open: "https://localhost:8080",
+    headers: {
+      "Content-Security-Policy": "upgrade-insecure-requests",
+    },
     ...(hasMkcert
       ? { https: { cert: fs.readFileSync(mkcertCert), key: fs.readFileSync(mkcertKey) } }
       : {}),
     hmr: {
+      protocol: "wss",
       host: "localhost",
-      port: 8080,
+      clientPort: 8080,
+    },
+    proxy: {
+      "/api": {
+        target: "http://localhost:8002",
+        changeOrigin: true,
+        configure(proxy) {
+          proxy.on("proxyRes", (proxyRes) => {
+            const loc = proxyRes.headers.location;
+            if (typeof loc === "string") {
+              proxyRes.headers.location = loc.replace(
+                /^https?:\/\/(localhost|127\.0\.0\.1):8002/i,
+                "",
+              );
+            }
+          });
+        },
+      },
     },
   },
   build: {
@@ -37,13 +63,30 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [
+    localhostMuxPlugin(),
     !hasMkcert && basicSsl(),
+    {
+      name: "localhost-https-public-origin",
+      apply: "serve",
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          const host = String(req.headers.host || "");
+          if (host.includes(":18080")) {
+            res.statusCode = 302;
+            res.setHeader("Location", `https://localhost:8080${req.url || "/"}`);
+            res.end();
+            return;
+          }
+          next();
+        });
+      },
+    },
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "robots.txt", "sitemap.xml"],
-      injectRegister: "auto",
+      injectRegister: mode === "production" ? "auto" : false,
       strategies: "injectManifest",
       srcDir: "src",
       filename: "sw.ts",

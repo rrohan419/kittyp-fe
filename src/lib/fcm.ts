@@ -5,7 +5,10 @@ import { vapidKey } from '@/config/firebase.config';
 // Simple FCM token request with better error handling
 export async function requestFcmPermissionAndToken(): Promise<string | null> {
   try {
-    
+    if (import.meta.env.DEV) {
+      return null;
+    }
+
     // Check if service worker is supported
     if (!('serviceWorker' in navigator)) {
       console.warn('Service Worker not supported');

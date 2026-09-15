@@ -29,6 +29,7 @@ import {
   generateClinicInvoicePdf,
   markClinicInvoicePaid,
   sendClinicInvoiceWhatsApp,
+  toastInvoiceSend,
 } from '@/services/invoiceService';
 import { fetchClinicPetMedicalProfile, fetchClinicVisits, isClinicActivated, CLINIC_NOT_ACTIVATED_MESSAGE } from '@/services/clinicService';
 import { formatInr } from '@/services/availabilityService';
@@ -283,8 +284,8 @@ export default function ClinicInvoices() {
       toast.error('Pet name is required');
       return;
     }
-    if (withWhatsApp && !ownerPhone.trim()) {
-      toast.error('Owner phone is required to send on WhatsApp');
+    if (withWhatsApp && !ownerPhone.trim() && !ownerEmail.trim()) {
+      toast.error('Owner phone or email is required to send the invoice');
       return;
     }
     if (!items.length || items.some((i) => !i.description.trim())) {
@@ -335,15 +336,8 @@ export default function ClinicInvoices() {
         generatePdf: withWhatsApp,
         sendWhatsApp: withWhatsApp,
       });
-      const created = result.invoice;
-      if (withWhatsApp && result.whatsappSent) {
-        toast.success(`Invoice ${created.invoiceNumber || ''} sent on WhatsApp`);
-      } else if (withWhatsApp) {
-        toast.warning(
-          `Invoice ${created.invoiceNumber || ''} saved. ${
-            result.whatsappError || 'WhatsApp is not configured — use Send on the invoice row when ready.'
-          }`
-        );
+      if (withWhatsApp) {
+        toastInvoiceSend(result);
       } else {
         toast.success('Draft invoice created');
       }
@@ -402,7 +396,7 @@ export default function ClinicInvoices() {
     setBusyUuid(uuid);
     try {
       const sent = await sendClinicInvoiceWhatsApp(clinicUuid, uuid);
-      toast.success(`Invoice ${sent.invoiceNumber || ''} sent on WhatsApp`);
+      toastInvoiceSend(sent);
       await load();
     } catch (err: unknown) {
       const ax = err as {
@@ -413,7 +407,7 @@ export default function ClinicInvoices() {
         ax.response?.data?.message ||
           ax.response?.data?.detailedMessage ||
           ax.message ||
-          'Failed to send on WhatsApp'
+          'Failed to send invoice'
       );
     } finally {
       setBusyUuid(null);
@@ -747,7 +741,7 @@ export default function ClinicInvoices() {
                       <Button
                         size="sm"
                         variant="secondary"
-                        aria-label="Send WhatsApp"
+                        aria-label="Send invoice"
                         disabled={busyUuid === inv.uuid}
                         onClick={() => void onSendWhatsApp(inv.uuid)}
                       >

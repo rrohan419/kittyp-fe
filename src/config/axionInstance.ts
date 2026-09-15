@@ -36,6 +36,11 @@ const clearAuthData = () => {
   }
 };
 
+const stripLocalBackendOrigin = (url?: string) =>
+  url
+    ?.replace(/^https?:\/\/localhost:8002/, '')
+    ?.replace(/^https?:\/\/127\.0\.0\.1:8002/, '');
+
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: `${API_BASE_URL}`, // Your API base URL here
   timeout: 45000, // Timeout after 45 seconds
@@ -45,6 +50,11 @@ const axiosInstance: AxiosInstance = axios.create({
 // Add the JWT token to the request header
 axiosInstance.interceptors.request.use(
   (config) => {
+    const rewrittenBase = stripLocalBackendOrigin(config.baseURL);
+    const rewrittenUrl = stripLocalBackendOrigin(config.url);
+    if (rewrittenBase) config.baseURL = rewrittenBase;
+    if (rewrittenUrl) config.url = rewrittenUrl;
+
     const token = getAuthItem('access_token');
 
     // If the token exists, add it to the Authorization header

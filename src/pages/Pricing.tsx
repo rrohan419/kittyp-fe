@@ -13,7 +13,7 @@ const plans = [
     highlights: [
       'Appointments & front desk',
       'Doctor charts & pet records',
-      'Invoices (WhatsApp receipts)',
+      'Invoices (PDF)',
       'Staff & doctor invites',
     ],
     cta: 'Start pilot',
@@ -22,13 +22,14 @@ const plans = [
   },
   {
     name: 'Starter',
-    price: '₹999',
+    price: '₹1,999',
     period: '/ mo',
     blurb: 'Single-location practices leaving paper behind.',
     highlights: [
       'Everything in Pilot',
       'Unlimited appointments',
       'GST-ready invoices',
+      'WhatsApp invitations & receipts',
       'Email support',
     ],
     cta: 'Register your clinic',
@@ -37,7 +38,7 @@ const plans = [
   },
   {
     name: 'Clinic',
-    price: '₹2,499',
+    price: '₹3,999',
     period: '/ mo',
     blurb: 'Growing clinics with multiple doctors on the floor.',
     highlights: [
@@ -50,36 +51,6 @@ const plans = [
     to: '/signup/clinic-admin',
     featured: true,
   },
-  {
-    name: 'Hospital',
-    price: '₹6,999',
-    period: '/ mo',
-    blurb: 'Multi-branch hospitals and high-volume OPD.',
-    highlights: [
-      'Everything in Clinic',
-      'Multi-branch CRM',
-      'Advanced reporting',
-      'Dedicated onboarding',
-    ],
-    cta: 'Talk to us',
-    to: '/contact',
-    featured: false,
-  },
-  {
-    name: 'Enterprise',
-    price: 'Custom',
-    period: '',
-    blurb: 'Hospital groups and chains that need SSO, SLAs, and custom workflows.',
-    highlights: [
-      'Custom contracts',
-      'SSO / security review',
-      'Volume pricing',
-      'Named success manager',
-    ],
-    cta: 'Contact sales',
-    to: '/contact',
-    featured: false,
-  },
 ];
 
 const Pricing = () => {
@@ -89,7 +60,7 @@ const Pricing = () => {
         <title>Pricing — Kittyp</title>
         <meta
           name="description"
-          content="Kittyp clinic CRM pricing in INR: Pilot ₹0/21d, Starter ₹999/mo, Clinic ₹2499/mo, Hospital ₹6999/mo. Pet parents are free."
+          content="Kittyp clinic CRM pricing in INR: Pilot ₹0/21d, Starter ₹1999/mo, Clinic ₹3999/mo. Pet parents are free."
         />
         <link rel="canonical" href="https://kittyp.in/pricing" />
       </Helmet>

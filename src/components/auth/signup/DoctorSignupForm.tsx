@@ -182,6 +182,7 @@ const DoctorSignupForm = () => {
       return;
     }
     setStep(2);
+    void sendEmailOtp();
   };
 
   const sendEmailOtp = async () => {
