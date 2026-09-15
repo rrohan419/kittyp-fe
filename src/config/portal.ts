@@ -16,6 +16,7 @@ import {
   Heart,
   ShoppingBag,
   User,
+  MessageCircle,
   MoreHorizontal,
   ShieldCheck,
   Activity,
@@ -83,6 +84,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Nutrition', path: '/doctor/nutrition', icon: Apple },
       { label: 'Blog', path: '/doctor/blog', icon: FileText },
       { label: 'Invoices', path: '/doctor/invoices', icon: Package },
+      { label: 'WhatsApp', path: '/doctor/whatsapp', icon: MessageCircle },
       { label: 'Settings', path: '/doctor/settings', icon: Settings },
     ],
     bottomTabs: [
@@ -107,6 +109,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Staff', path: '/clinic/staff', icon: Users },
       { label: 'Articles', path: '/clinic/blog', icon: FileText },
       { label: 'Billing', path: '/clinic/invoices', icon: Package },
+      { label: 'WhatsApp', path: '/clinic/whatsapp', icon: MessageCircle },
       { label: 'Settings', path: '/clinic/settings', icon: Settings },
     ],
     bottomTabs: [

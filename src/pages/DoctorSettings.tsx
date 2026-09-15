@@ -25,11 +25,9 @@ import {
 } from '@/services/doctorVerificationService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { CopyableId } from '@/components/ui/CopyableId';
-import {
-  fetchDoctorWhatsAppSettings,
-  updateDoctorWhatsAppSettings,
-} from '@/services/invoiceService';
-import { WhatsAppSettingsForm } from '@/components/whatsapp/WhatsAppSettingsForm';
+import { fetchDoctorWhatsAppSettings } from '@/services/invoiceService';
+import { whatsappSettingsSummary } from '@/components/whatsapp/whatsappStatusCopy';
+import { Button } from '@/components/ui/button';
 import { AttendedPatientModel, fetchMyAttendedPatients } from '@/services/visitService';
 
 function DocLink({ href, label }: { href?: string | null; label: string }) {
@@ -90,8 +88,8 @@ export default function DoctorSettings() {
   const [attendedTotal, setAttendedTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [waConfigured, setWaConfigured] = useState(false);
-  const [waPhoneId, setWaPhoneId] = useState('');
-  const [waBusinessId, setWaBusinessId] = useState('');
+  const [waTemplatesReady, setWaTemplatesReady] = useState(false);
+  const [waTemplatesStatus, setWaTemplatesStatus] = useState<string | undefined>();
 
   useEffect(() => {
     void Promise.all([
@@ -112,20 +110,20 @@ export default function DoctorSettings() {
   useEffect(() => {
     if (!isPersonalPractice) {
       setWaConfigured(false);
-      setWaPhoneId('');
-      setWaBusinessId('');
+      setWaTemplatesReady(false);
+      setWaTemplatesStatus(undefined);
       return;
     }
     void fetchDoctorWhatsAppSettings()
       .then((wa) => {
         setWaConfigured(!!wa.whatsappConfigured);
-        setWaPhoneId(wa.phoneNumberId || '');
-        setWaBusinessId(wa.businessAccountId || '');
+        setWaTemplatesReady(!!wa.templatesReady || wa.invoiceTemplateStatus === 'APPROVED');
+        setWaTemplatesStatus(wa.invoiceTemplateStatus || wa.templatesStatus);
       })
       .catch(() => {
         setWaConfigured(false);
-        setWaPhoneId('');
-        setWaBusinessId('');
+        setWaTemplatesReady(false);
+        setWaTemplatesStatus(undefined);
       });
   }, [isPersonalPractice]);
 
@@ -206,23 +204,22 @@ export default function DoctorSettings() {
       {isPersonalPractice ? (
         <Card className="border-0 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg">WhatsApp number</CardTitle>
+            <CardTitle className="text-lg">WhatsApp Business</CardTitle>
             <CardDescription>
-              Used for Personal practice invoices and receipts. Practice branches use Practice Settings.
+              Used for Personal practice invoices. Practice branches use Clinic WhatsApp.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <WhatsAppSettingsForm
-              configured={waConfigured}
-              phoneNumberIdInitial={waPhoneId}
-              businessAccountIdInitial={waBusinessId}
-              onSave={async (values) => {
-                const res = await updateDoctorWhatsAppSettings(values);
-                setWaConfigured(!!res.whatsappConfigured);
-                setWaPhoneId(res.phoneNumberId || '');
-                setWaBusinessId(res.businessAccountId || '');
-              }}
-            />
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {whatsappSettingsSummary({
+                configured: waConfigured,
+                ready: waTemplatesReady,
+                templateStatus: waTemplatesStatus,
+              })}
+            </p>
+            <Button variant="outline" asChild>
+              <Link to="/doctor/whatsapp">Manage WhatsApp Business</Link>
+            </Button>
           </CardContent>
         </Card>
       ) : null}
