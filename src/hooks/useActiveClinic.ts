@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { setActiveClinic } from '@/module/slice/AuthSlice';
@@ -9,24 +9,50 @@ import {
   isPendingClinicPinned,
   resolveActiveClinicId,
 } from '@/utils/activeClinic';
+import { hasAnyRole, ROLES } from '@/utils/roles';
+
+/** Roles allowed to call GET /clinic/mine (clinic membership portal API). */
+const CLINIC_MINE_ROLES = [ROLES.DOCTOR, ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF] as const;
 
 /** Resolves the active clinic uuid + model for clinic portal pages. */
 export function useActiveClinic() {
   const dispatch = useDispatch<AppDispatch>();
   const activeClinicId = useSelector((s: RootState) => s.authReducer.activeClinicId);
+  const userRoles = useSelector((s: RootState) => s.authReducer.user?.roles);
+  const storedRoles = useMemo(() => {
+    if (userRoles?.length) return userRoles;
+    try {
+      const raw = getAuthItem('roles');
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as string[]) : undefined;
+    } catch {
+      return undefined;
+    }
+  }, [userRoles]);
+  const canFetchClinicMine = hasAnyRole(storedRoles, [...CLINIC_MINE_ROLES]);
   const [clinics, setClinics] = useState<ClinicModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    // Prefer /clinic/mine (owner + staff + doctor) — same as portal membership.
     let list: ClinicModel[] = [];
-    try {
-      list = await fetchMyClinics();
-    } catch {
-      list = await fetchUserClinics();
-    }
-    if (!list.length) {
+    if (canFetchClinicMine) {
+      // Prefer /clinic/mine (owner + staff + doctor) — same as portal membership.
+      try {
+        list = await fetchMyClinics();
+      } catch {
+        list = await fetchUserClinics();
+      }
+      if (!list.length) {
+        try {
+          list = await fetchUserClinics();
+        } catch {
+          list = [];
+        }
+      }
+    } else {
+      // Pet parents (and others): only /user/clinics — never hit /clinic/mine (403).
       try {
         list = await fetchUserClinics();
       } catch {
@@ -35,7 +61,7 @@ export function useActiveClinic() {
     }
     setClinics(list);
     return list;
-  }, []);
+  }, [canFetchClinicMine]);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,7 +95,7 @@ export function useActiveClinic() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch]);
+  }, [dispatch, refresh]);
 
   const clinicUuid =
     clinics.length === 0

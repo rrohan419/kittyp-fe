@@ -63,11 +63,17 @@ export function RoleGuard({ allowed, children }: RoleGuardProps) {
     }
   }
 
-  // Selected session role does not match this portal, but user holds an allowed role —
-  // enter the portal and sync (fixes doctor stuck with activeRole=CLINIC_ADMIN).
+  // Selected session role does not match this portal.
+  // Allow clinical cross-entry (doctor ↔ clinic admin/staff) by syncing activeRole.
+  // Do NOT silently pull platform admins/moderators into the pet-parent portal via /app.
   if (activeRole && !allowedRoles.includes(activeRole)) {
     const match = allowedRoles.find((r) => roles.includes(r));
-    if (match) {
+    const clinical = [ROLES.DOCTOR, ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF] as const;
+    const clinicalCross =
+      !!match &&
+      (clinical as readonly AppRole[]).includes(activeRole) &&
+      (clinical as readonly AppRole[]).includes(match);
+    if (clinicalCross && match) {
       return <SyncActiveRole role={match}>{children}</SyncActiveRole>;
     }
     if (roles.includes(activeRole)) {

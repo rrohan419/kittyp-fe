@@ -1,5 +1,5 @@
-import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
-import { GOOGLE_MAPS_API_KEY } from '@/config/env';
+import axiosInstance from '@/config/axionInstance';
+import { ApiSuccessResponse } from '@/services/cartService';
 
 export type PlaceAddressComponent = {
   long_name: string;
@@ -43,25 +43,53 @@ export const EMPTY_CLINIC_ADDRESS: ParsedClinicAddress = {
   longitude: null,
 };
 
-let optionsReady = false;
-let placesPromise: Promise<google.maps.PlacesLibrary> | null = null;
+type PlacePrediction = { placeId: string; description: string };
+type PlaceDetailsApi = {
+  name: string;
+  formattedAddress: string;
+  addressComponents: { longName: string; shortName: string; types: string[] }[];
+  latitude: number | null;
+  longitude: number | null;
+};
 
-export function hasGoogleMapsApiKey(): boolean {
-  return Boolean(GOOGLE_MAPS_API_KEY.trim());
+function placesBase(publicApi: boolean): string {
+  return publicApi ? '/public/places' : '/places';
 }
 
-export function loadPlacesLibrary(): Promise<google.maps.PlacesLibrary> {
-  if (!hasGoogleMapsApiKey()) {
-    return Promise.reject(new Error('Google Maps API key is not configured'));
-  }
-  if (!optionsReady) {
-    setOptions({ key: GOOGLE_MAPS_API_KEY.trim(), v: 'weekly' });
-    optionsReady = true;
-  }
-  if (!placesPromise) {
-    placesPromise = importLibrary('places');
-  }
-  return placesPromise;
+export async function fetchPlacePredictions(
+  query: string,
+  sessionToken: string,
+  publicApi: boolean
+): Promise<PlacePrediction[]> {
+  const res = await axiosInstance.post<
+    ApiSuccessResponse<{ predictions: PlacePrediction[] }>
+  >(`${placesBase(publicApi)}/autocomplete`, { query, sessionToken });
+  return res.data.data?.predictions ?? [];
+}
+
+export async function fetchPlaceDetails(
+  placeId: string,
+  sessionToken: string,
+  publicApi: boolean
+): Promise<ParsedClinicAddress> {
+  const res = await axiosInstance.post<ApiSuccessResponse<PlaceDetailsApi>>(
+    `${placesBase(publicApi)}/details`,
+    { placeId, sessionToken }
+  );
+  const d = res.data.data;
+  return parsePlaceAddress({
+    name: d.name,
+    formatted_address: d.formattedAddress,
+    address_components: (d.addressComponents ?? []).map((c) => ({
+      long_name: c.longName,
+      short_name: c.shortName,
+      types: c.types,
+    })),
+    geometry:
+      d.latitude != null && d.longitude != null
+        ? { location: { lat: () => d.latitude as number, lng: () => d.longitude as number } }
+        : null,
+  });
 }
 
 function componentOf(components: PlaceAddressComponent[], type: string): string {

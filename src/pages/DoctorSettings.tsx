@@ -262,7 +262,17 @@ export default function DoctorSettings() {
             />
           </CardContent>
         </Card>
-      ) : null}
+      ) : (
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg">WhatsApp number</CardTitle>
+            <CardDescription>
+              WhatsApp for clinic invoices is managed in Practice Settings by the clinic admin.
+              Switch to Personal practice to connect a number for your own online consults.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
 
       <Card className="border-0 shadow-sm">
         <CardHeader>

@@ -13,6 +13,7 @@ import { findAllSavedAddress } from '@/services/addressService';
 import { Button } from '@/components/ui/button';
 import { AddressModal } from '@/components/ui/AddressModal';
 import EditProfileForm from '@/components/ui/EditProfileForm';
+import ChangePasswordCard from '@/components/ui/ChangePasswordCard';
 import { getAuthItem } from '@/utils/authStorage';
 
 const PROFILE_TABS = ['favorites', 'details'] as const;
@@ -28,6 +29,13 @@ const Profile: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const [addressModalOpen, setAddressModalOpen] = useState(false);
+  const tabsRef = useRef<HTMLDivElement | null>(null);
+
+  const urlParams = new URLSearchParams(location.search);
+  const tabParam = urlParams.get('tab');
+  const stateTab = typeof location.state === 'string' ? location.state : undefined;
+  const defaultTab = resolveProfileTab(tabParam || stateTab);
+  const [currentTab, setCurrentTab] = useState<ProfileTab>(defaultTab);
 
   useEffect(() => {
     const token = getAuthItem('access_token');
@@ -47,6 +55,16 @@ const Profile: React.FC = () => {
     fetchAddresses();
   }, [user?.uuid]);
 
+  useEffect(() => {
+    setCurrentTab(defaultTab);
+  }, [defaultTab]);
+
+  const handleTabChange = (value: string) => {
+    const next = resolveProfileTab(value);
+    setCurrentTab(next);
+    navigate(`${location.pathname}?tab=${next}`, { replace: true });
+  };
+
   // Show loading while checking user state
   if (loading || (!isAuthenticated && getAuthItem('access_token'))) {
     return <Loading />;
@@ -57,24 +75,6 @@ const Profile: React.FC = () => {
     navigate('/login', { state: { from: location.pathname } });
     return null;
   }
-
-  const urlParams = new URLSearchParams(location.search);
-  const tabParam = urlParams.get('tab');
-  const stateTab = typeof location.state === 'string' ? location.state : undefined;
-  const defaultTab = resolveProfileTab(tabParam || stateTab);
-  const tabsRef = useRef<HTMLDivElement | null>(null);
-
-  const [currentTab, setCurrentTab] = useState<ProfileTab>(defaultTab);
-
-  useEffect(() => {
-    setCurrentTab(defaultTab);
-  }, [defaultTab]);
-
-  const handleTabChange = (value: string) => {
-    const next = resolveProfileTab(value);
-    setCurrentTab(next);
-    navigate(`${location.pathname}?tab=${next}`, { replace: true });
-  };
 
   return (
     <>
@@ -97,6 +97,8 @@ const Profile: React.FC = () => {
                 <TabsContent value="details" className="animate-fade-in">
                   <div className="bg-card rounded-xl shadow-sm p-6 sm:p-6 space-y-8">
                     <EditProfileForm initiallyEditing={false} />
+
+                    <ChangePasswordCard email={user.email || ''} />
 
                     <div className="border-t pt-6">
                       <h3 className="text-lg font-semibold mb-4">Addresses</h3>

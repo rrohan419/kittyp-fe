@@ -4,9 +4,8 @@ import { Label } from '@/components/ui/label';
 import { MapPin } from 'lucide-react';
 import {
   type ParsedClinicAddress,
-  hasGoogleMapsApiKey,
-  loadPlacesLibrary,
-  parsePlaceAddress,
+  fetchPlaceDetails,
+  fetchPlacePredictions,
   stitchClinicAddress,
 } from '@/utils/googlePlaces';
 
@@ -15,6 +14,7 @@ type Props = {
   onChange: (next: ParsedClinicAddress) => void;
   disabled?: boolean;
   idPrefix?: string;
+  publicApi?: boolean;
 };
 
 type Suggestion = {
@@ -22,37 +22,31 @@ type Suggestion = {
   description: string;
 };
 
-export function ClinicAddressSearch({ value, onChange, disabled, idPrefix = 'clinic-address' }: Props) {
+function newSessionToken(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+export function ClinicAddressSearch({
+  value,
+  onChange,
+  disabled,
+  idPrefix = 'clinic-address',
+  publicApi = false,
+}: Props) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-  const attributionRef = useRef<HTMLDivElement>(null);
-  const [ready, setReady] = useState(false);
-  const [loadError, setLoadError] = useState('');
+  const sessionTokenRef = useRef(newSessionToken());
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const skipPredictRef = useRef(false);
-  const keyConfigured = hasGoogleMapsApiKey();
 
   useEffect(() => {
-    if (disabled || !keyConfigured) return;
-    let cancelled = false;
-    void loadPlacesLibrary()
-      .then(() => {
-        if (!cancelled) setReady(true);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setLoadError('Address search is unavailable. Enter city, state, and postal code manually.');
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [disabled, keyConfigured]);
-
-  useEffect(() => {
-    if (!ready || disabled) return;
+    if (disabled) return;
     if (skipPredictRef.current) {
       skipPredictRef.current = false;
       return;
@@ -64,54 +58,40 @@ export function ClinicAddressSearch({ value, onChange, disabled, idPrefix = 'cli
       return;
     }
     const handle = window.setTimeout(() => {
-      const service = new google.maps.places.AutocompleteService();
-      service.getPlacePredictions(
-        { input, componentRestrictions: { country: 'in' } },
-        (predictions, status) => {
-          if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions?.length) {
-            setSuggestions([]);
-            setOpen(false);
-            return;
-          }
-          setSuggestions(
-            predictions.map((prediction) => ({
-              placeId: prediction.place_id,
-              description: prediction.description,
-            }))
-          );
-          setOpen(true);
-        }
-      );
+      void fetchPlacePredictions(input, sessionTokenRef.current, publicApi)
+        .then((predictions) => {
+          setLoadError('');
+          setSuggestions(predictions);
+          setOpen(predictions.length > 0);
+        })
+        .catch(() => {
+          setSuggestions([]);
+          setOpen(false);
+          setLoadError('Address search is unavailable. Enter city, state, and postal code manually.');
+        });
     }, 250);
     return () => window.clearTimeout(handle);
-  }, [query, ready, disabled]);
+  }, [query, disabled, publicApi]);
 
   const applyPlace = (placeId: string, description: string) => {
-    const attribution = attributionRef.current;
-    if (!attribution) return;
-    const service = new google.maps.places.PlacesService(attribution);
-    service.getDetails(
-      {
-        placeId,
-        fields: ['name', 'address_components', 'formatted_address', 'geometry'],
-      },
-      (place, status) => {
-        if (status !== google.maps.places.PlacesServiceStatus.OK || !place) return;
-        onChangeRef.current(parsePlaceAddress(place));
+    void fetchPlaceDetails(placeId, sessionTokenRef.current, publicApi)
+      .then((parsed) => {
+        onChangeRef.current(parsed);
         skipPredictRef.current = true;
         setQuery(description);
         setSuggestions([]);
         setOpen(false);
-      }
-    );
+        sessionTokenRef.current = newSessionToken();
+      })
+      .catch(() => {
+        setLoadError('Could not load that address. Enter it manually.');
+      });
   };
 
   const patch = (field: keyof ParsedClinicAddress, nextVal: string) => {
     const next = { ...value, [field]: nextVal, formattedAddress: '' };
     onChange({ ...next, formattedAddress: stitchClinicAddress(next) });
   };
-
-  const searchDisabled = disabled || !keyConfigured || Boolean(loadError);
 
   return (
     <div className="space-y-4">
@@ -126,7 +106,7 @@ export function ClinicAddressSearch({ value, onChange, disabled, idPrefix = 'cli
             className="pl-10"
             placeholder="Search a clinic, landmark, or street in India"
             value={query}
-            disabled={searchDisabled}
+            disabled={disabled}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => {
               if (suggestions.length) setOpen(true);
@@ -159,16 +139,11 @@ export function ClinicAddressSearch({ value, onChange, disabled, idPrefix = 'cli
             </ul>
           ) : null}
         </div>
-        <div ref={attributionRef} className="sr-only" aria-hidden />
-        {!keyConfigured ? (
-          <p className="text-xs text-muted-foreground">
-            Maps search is not configured. Enter city, state, and postal code below.
-          </p>
-        ) : loadError ? (
+        {loadError ? (
           <p className="text-xs text-destructive">{loadError}</p>
-        ) : ready ? (
+        ) : (
           <p className="text-xs text-muted-foreground">Pick a suggestion, then edit the parsed fields if needed.</p>
-        ) : null}
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

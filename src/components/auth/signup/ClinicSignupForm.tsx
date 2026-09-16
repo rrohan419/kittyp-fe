@@ -210,6 +210,7 @@ const ClinicSignupForm = () => {
                     value={clinicAddress}
                     onChange={setClinicAddress}
                     disabled={loading}
+                    publicApi
                   />
 
                   <div className="pt-2 border-t border-border">

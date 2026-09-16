@@ -1,3 +1,4 @@
+import HowToUse from './pages/HowToUse';
 import { Suspense, lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { isEcommerceEnabled } from '@/config/features';
@@ -213,6 +214,10 @@ export const router = createBrowserRouter(
         {
           path: "orders/:orderId",
           element: ecommerceElement(<PageTransition><OrderDetail /></PageTransition>),
+        },
+        {
+          path: "how-to-use",
+          element: <PageTransition><HowToUse /></PageTransition>,
         },
         {
           path: "about",
@@ -448,7 +453,7 @@ export const router = createBrowserRouter(
             },
             {
               path: "inventory",
-              element: <Navigate to="/clinic" replace />,
+              element: <PageTransition><ClinicInventory /></PageTransition>,
             },
             {
               path: "staff",
@@ -547,6 +552,10 @@ export const router = createBrowserRouter(
             {
               path: "health",
               element: <PageTransition><AdminSystemHealth /></PageTransition>,
+            },
+            {
+              path: "system-health",
+              element: <Navigate to="/admin/health" replace />,
             },
             {
               path: "articles",
