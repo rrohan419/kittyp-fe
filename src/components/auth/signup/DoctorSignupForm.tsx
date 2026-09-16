@@ -45,6 +45,7 @@ import {
 } from 'lucide-react';
 import { signupDoctor } from '@/services/authService';
 import { sendSignupOtp, verifySignupOtp, DOCTOR_STATUS_STEPS, statusLabel } from '@/services/doctorVerificationService';
+import { otpSendButtonLabel, useOtpResendCooldown } from '@/hooks/useOtpResendCooldown';
 import { uploadSignupDocuments } from '@/services/fileUploadService';
 import ErrorDialog from '@/components/ui/error-dialog';
 import {
@@ -145,6 +146,8 @@ const DoctorSignupForm = () => {
 
   const [loading, setLoading] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
+  const emailResend = useOtpResendCooldown();
+  const phoneResend = useOtpResendCooldown();
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -189,6 +192,7 @@ const DoctorSignupForm = () => {
     setOtpSending(true);
     try {
       await sendSignupOtp({ channel: 'EMAIL', email: email.trim(), role: 'DOCTOR' });
+      emailResend.start();
       toast.success('OTP sent to your email');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to send email OTP';
@@ -228,6 +232,7 @@ const DoctorSignupForm = () => {
         phone: fullPhone,
         email: email.trim(),
       });
+      phoneResend.start();
       toast.success('OTP sent to your phone (check your phone, or server logs in local)');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to send phone OTP');
@@ -520,12 +525,12 @@ const DoctorSignupForm = () => {
                       <Button
                         type="button"
                         variant="outline"
-                        className="w-full"
+                        className={`w-full ${emailResend.coolingDown ? 'bg-muted text-muted-foreground' : ''}`}
                         onClick={sendEmailOtp}
-                        disabled={otpSending}
+                        disabled={otpSending || emailResend.coolingDown}
                       >
                         <Mail className="h-4 w-4 mr-2" />
-                        {otpSending ? 'Sending…' : 'Send Email OTP'}
+                        {otpSendButtonLabel(otpSending, emailResend.remaining, 'Send Email OTP')}
                       </Button>
                       {emailError ? <p className="text-sm text-destructive">{emailError}</p> : null}
                       <div className="space-y-2">
@@ -569,12 +574,12 @@ const DoctorSignupForm = () => {
                       <Button
                         type="button"
                         variant="outline"
-                        className="w-full"
+                        className={`w-full ${phoneResend.coolingDown ? 'bg-muted text-muted-foreground' : ''}`}
                         onClick={sendPhoneOtp}
-                        disabled={otpSending}
+                        disabled={otpSending || phoneResend.coolingDown}
                       >
                         <Phone className="h-4 w-4 mr-2" />
-                        {otpSending ? 'Sending…' : 'Send Phone OTP'}
+                        {otpSendButtonLabel(otpSending, phoneResend.remaining, 'Send Phone OTP')}
                       </Button>
                       <div className="space-y-2">
                         <Label htmlFor="phoneOtp">Phone OTP</Label>

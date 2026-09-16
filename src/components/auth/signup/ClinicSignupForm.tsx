@@ -12,6 +12,7 @@ import { signupClinic } from '@/services/authService';
 import { ClinicAddressSearch } from '@/components/clinic/ClinicAddressSearch';
 import { EMPTY_CLINIC_ADDRESS, toClinicGeoPayload } from '@/utils/googlePlaces';
 import { sendSignupOtp, verifySignupOtp } from '@/services/doctorVerificationService';
+import { otpSendButtonLabel, useOtpResendCooldown } from '@/hooks/useOtpResendCooldown';
 import {
   digitsOnlyPhone,
   EMAIL_ALREADY_REGISTERED,
@@ -30,6 +31,7 @@ const ClinicSignupForm = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
+  const emailResend = useOtpResendCooldown();
   const [emailVerified, setEmailVerified] = useState(false);
   const [emailOtp, setEmailOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -60,6 +62,7 @@ const ClinicSignupForm = () => {
     setOtpSending(true);
     try {
       await sendSignupOtp({ channel: 'EMAIL', email: form.adminEmail.trim(), role: 'CLINIC' });
+      emailResend.start();
       toast.success('OTP sent to your email');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to send email OTP';
@@ -83,6 +86,7 @@ const ClinicSignupForm = () => {
       await verifySignupOtp({ channel: 'EMAIL', email: form.adminEmail.trim(), code: emailOtp.trim() });
       setEmailVerified(true);
       setOtpError('');
+      emailResend.reset();
       toast.success('Email verified');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Invalid email OTP';
@@ -256,6 +260,7 @@ const ClinicSignupForm = () => {
                               setEmailVerified(false);
                               setEmailOtp('');
                               setEmailError('');
+                              emailResend.reset();
                               set('adminEmail', e.target.value);
                             }}
                             required
@@ -264,8 +269,19 @@ const ClinicSignupForm = () => {
                         </div>
                         {emailError ? <p className="text-sm text-destructive">{emailError}</p> : null}
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <Button type="button" variant="outline" size="sm" onClick={sendEmailOtp} disabled={otpSending || emailVerified}>
-                            {otpSending ? 'Sending…' : emailVerified ? 'Verified' : 'Send OTP'}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className={emailResend.coolingDown ? 'bg-muted text-muted-foreground' : undefined}
+                            onClick={sendEmailOtp}
+                            disabled={otpSending || emailVerified || emailResend.coolingDown}
+                          >
+                            {otpSendButtonLabel(
+                              otpSending,
+                              emailResend.remaining,
+                              emailVerified ? 'Verified' : 'Send OTP'
+                            )}
                           </Button>
                           {!emailVerified && (
                             <>

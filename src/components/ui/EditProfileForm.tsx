@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 import { CheckCircle2, Pencil, X } from 'lucide-react';
 import { digitsOnlyPhone, EMAIL_REGEX, normalizeLocalPhone, PHONE_REGEX } from '@/utils/validation';
 import { setAuthItem } from '@/utils/authStorage';
+import { otpSendButtonLabel, useOtpResendCooldown } from '@/hooks/useOtpResendCooldown';
 
 const formSchema = z
   .object({
@@ -96,6 +97,8 @@ const EditProfileForm = ({
   const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [otpBusy, setOtpBusy] = useState<'EMAIL' | 'PHONE' | null>(null);
+  const emailResend = useOtpResendCooldown();
+  const phoneResend = useOtpResendCooldown();
   /** Persisted phone shown with green tick after successful verify+save */
   const [confirmedPhone, setConfirmedPhone] = useState<string | null>(null);
   const [savedExperience, setSavedExperience] = useState<string>('');
@@ -149,6 +152,8 @@ const EditProfileForm = ({
       setPhoneOtpSent(false);
       setEmailOtp('');
       setPhoneOtp('');
+      emailResend.reset();
+      phoneResend.reset();
       if (user.phoneNumber) {
         setConfirmedPhone(`${user.phoneCountryCode || ''}${user.phoneNumber}`);
       }
@@ -175,12 +180,14 @@ const EditProfileForm = ({
     setEmailVerified(false);
     setEmailOtpSent(false);
     setEmailOtp('');
+    emailResend.reset();
   }, [watched.email]);
 
   useEffect(() => {
     setPhoneVerified(false);
     setPhoneOtpSent(false);
     setPhoneOtp('');
+    phoneResend.reset();
   }, [watched.phoneCountryCode, watched.phoneNumber]);
 
   const handleSendOtp = async (channel: 'EMAIL' | 'PHONE') => {
@@ -189,6 +196,7 @@ const EditProfileForm = ({
       if (channel === 'EMAIL') {
         await sendProfileOtp({ channel: 'EMAIL', email: watched.email.trim() });
         setEmailOtpSent(true);
+        emailResend.start();
         toast.success('OTP sent to the new email');
       } else {
         const local = normalizeLocalPhone(watched.phoneNumber || '');
@@ -199,6 +207,7 @@ const EditProfileForm = ({
         const phone = `${watched.phoneCountryCode}${local}`.trim();
         await sendProfileOtp({ channel: 'PHONE', phone });
         setPhoneOtpSent(true);
+        phoneResend.start();
         toast.success('OTP sent to your phone (check your phone, or server logs in local)');
       }
     } catch (error: unknown) {
@@ -504,10 +513,15 @@ const EditProfileForm = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={otpBusy === 'EMAIL'}
+                className={emailResend.coolingDown ? 'bg-muted text-muted-foreground' : undefined}
+                disabled={otpBusy === 'EMAIL' || emailResend.coolingDown}
                 onClick={() => handleSendOtp('EMAIL')}
               >
-                {otpBusy === 'EMAIL' ? 'Sending…' : emailOtpSent ? 'Resend OTP' : 'Send OTP'}
+                {otpSendButtonLabel(
+                  otpBusy === 'EMAIL',
+                  emailResend.remaining,
+                  emailOtpSent ? 'Resend OTP' : 'Send OTP'
+                )}
               </Button>
               {emailOtpSent && (
                 <>
@@ -589,10 +603,15 @@ const EditProfileForm = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={otpBusy === 'PHONE'}
+                className={phoneResend.coolingDown ? 'bg-muted text-muted-foreground' : undefined}
+                disabled={otpBusy === 'PHONE' || phoneResend.coolingDown}
                 onClick={() => handleSendOtp('PHONE')}
               >
-                {otpBusy === 'PHONE' ? 'Sending…' : phoneOtpSent ? 'Resend OTP' : 'Send OTP'}
+                {otpSendButtonLabel(
+                  otpBusy === 'PHONE',
+                  phoneResend.remaining,
+                  phoneOtpSent ? 'Resend OTP' : 'Send OTP'
+                )}
               </Button>
               <Input
                 className="sm:max-w-[160px]"
