@@ -82,7 +82,7 @@ const initializeFirebase = async () => {
             title: 'Close'
           }
         ],
-        tag: 'kittyp-notification',
+        tag: videoNotificationTag(payload.data),
         renotify: true
       };
       
@@ -171,6 +171,18 @@ registerRoute(
     ],
   })
 );
+
+function videoNotificationTag(data?: Record<string, unknown>): string {
+  if (!data) return 'kittyp-notification';
+  const explicit = typeof data.tag === 'string' ? data.tag : '';
+  if (explicit) return explicit;
+  const bookingUuid = typeof data.bookingUuid === 'string' ? data.bookingUuid : '';
+  if (bookingUuid) return `kittyp-video-${bookingUuid}`;
+  const url = typeof data.url === 'string' ? data.url : '';
+  const consult = url.match(/\/consult\/([^/?#]+)/);
+  if (consult?.[1]) return `kittyp-video-${consult[1]}`;
+  return 'kittyp-notification';
+}
 
 // Handle notification clicks
 self.addEventListener('notificationclick', (event: NotificationClickEvent) => {

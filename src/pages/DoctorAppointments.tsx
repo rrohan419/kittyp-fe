@@ -44,7 +44,7 @@ import {
 import { DashboardAppointmentRow } from '@/components/schedule/DashboardAppointmentRow';
 import { petNameWithType } from '@/utils/petType';
 import { clearStuckUiLocks } from '@/utils/clearStuckUiLocks';
-import { consultPath, isVideoConsult } from '@/utils/consult';
+import { consultPath, doctorCanJoinVideo, isVideoConsult } from '@/utils/consult';
 import { hasAuthToken } from '@/utils/authStorage';
 import { attendedVisitSurfaceClass, isUrgentVisit } from '@/utils/visitUrgency';
 import { visitStatusLabel } from '@/utils/visitStatus';
@@ -338,14 +338,20 @@ export default function DoctorAppointments() {
                   status="Scheduled"
                   action={
                     <div className="flex flex-wrap items-center gap-2">
-                      {isVideoConsult(b.mode) && (
-                        <Button size="sm" variant="outline" asChild>
-                          <Link to={consultPath(b.uuid, 'doctor')}>
+                      {isVideoConsult(b.mode) &&
+                        (doctorCanJoinVideo(b.mode, b.videoJoinOpen) ? (
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to={consultPath(b.uuid, 'doctor')}>
+                              <Video className="h-4 w-4 mr-1" />
+                              Join video
+                            </Link>
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" disabled>
                             <Video className="h-4 w-4 mr-1" />
                             Join video
-                          </Link>
-                        </Button>
-                      )}
+                          </Button>
+                        ))}
                       <Button
                         size="sm"
                         onClick={() => void attendFromBooking(b.uuid)}

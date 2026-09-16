@@ -190,4 +190,53 @@ export async function fetchBookingVideo(
   return res.data.data;
 }
 
+export type VideoLiveInfo = {
+  bookingUuid: string;
+  live: boolean;
+  joinOpen?: boolean;
+};
+
+export async function fetchBookingVideoLive(
+  bookingUuid: string,
+  portal: 'parent' | 'doctor'
+): Promise<{ live: boolean; joinOpen: boolean }> {
+  const path =
+    portal === 'doctor'
+      ? `/doctor/bookings/${bookingUuid}/video/status`
+      : `/user/bookings/${bookingUuid}/video/status`;
+  const res = await axiosInstance.get<ApiSuccessResponse<VideoLiveInfo>>(path);
+  return {
+    live: Boolean(res.data.data?.live),
+    joinOpen: res.data.data?.joinOpen !== false,
+  };
+}
+
+export async function heartbeatDoctorVideo(bookingUuid: string): Promise<void> {
+  await axiosInstance.post(`/doctor/bookings/${bookingUuid}/video/heartbeat`);
+}
+
+export async function endDoctorVideo(bookingUuid: string): Promise<void> {
+  await axiosInstance.post(`/doctor/bookings/${bookingUuid}/video/end`);
+}
+
+export type IncomingVideoCall = {
+  bookingUuid: string;
+  title: string;
+  body: string;
+  joinPath: string;
+  callerName: string;
+  callerPhotoUrl?: string | null;
+};
+
+export async function fetchIncomingVideoCall(): Promise<IncomingVideoCall | null> {
+  const res = await axiosInstance.get<ApiSuccessResponse<IncomingVideoCall | null>>(
+    '/user/video-calls/incoming'
+  );
+  return res.data.data ?? null;
+}
+
+export async function ackIncomingVideoCall(bookingUuid: string): Promise<void> {
+  await axiosInstance.post(`/user/video-calls/${bookingUuid}/ack`);
+}
+
 export type { ClinicVisitModel, VisitChartModel, ClinicBookingModel };

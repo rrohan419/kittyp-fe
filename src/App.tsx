@@ -14,6 +14,7 @@ import { AuthInitializer } from "./components/auth/AuthInitializer";
 import { CartInitializer } from "./components/cart/CartInitializer";
 import { PWAInstaller } from "./components/PWAInstaller";
 import { FCMInitializer } from "./components/notifications/FCMInitializer";
+import { IncomingVideoCallModal } from "./components/notifications/IncomingVideoCallModal";
 import { isEcommerceEnabled } from "./config/features";
 
 /** Role portals render their own shell — hide the public marketing chrome. */
@@ -139,6 +140,7 @@ function App() {
                 <ScrollToTop />
                 <PWAInstaller />
                 <FCMInitializer />
+                <IncomingVideoCallModal />
               </div>
             </WithOptionalCart>
           </AuthInitializer>

@@ -109,7 +109,7 @@ export default function AdminOrganizations() {
       setClinics((prev) => prev.map((c) => (c.uuid === updated.uuid ? updated : c)));
       setSelected(updated);
       setFilter(status);
-      toast.success(status === 'VERIFIED' ? 'Clinic verified' : 'Clinic rejected');
+      toast.success(status === 'VERIFIED' ? 'Clinic published' : 'Clinic rejected');
     } catch (e: unknown) {
       toast.error(parseApiErrorMessage(e, 'Failed to update clinic status'));
     } finally {
@@ -127,7 +127,7 @@ export default function AdminOrganizations() {
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Clinics</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Organization clinics only. Verify before appointments, bookings, or inviting doctors. Solo doctor practices are reviewed under Doctors.
+            Organization clinics only. Publish before appointments, bookings, or inviting doctors. Solo doctor practices are reviewed under Doctors.
           </p>
         </div>
         <Select value={filter} onValueChange={setFilter}>
@@ -137,7 +137,7 @@ export default function AdminOrganizations() {
           <SelectContent>
             <SelectItem value="ALL">All</SelectItem>
             <SelectItem value="PENDING">Pending</SelectItem>
-            <SelectItem value="VERIFIED">Verified</SelectItem>
+            <SelectItem value="VERIFIED">Published</SelectItem>
             <SelectItem value="REJECTED">Rejected</SelectItem>
             <SelectItem value="SHUTDOWN">Shutdown</SelectItem>
           </SelectContent>
@@ -186,7 +186,7 @@ export default function AdminOrganizations() {
                     </p>
                   </div>
                   <Badge variant="secondary" className={statusBadgeClass(clinic.status)}>
-                    {clinicStatus(clinic.status)}
+                    {clinicStatus(clinic.status) === 'VERIFIED' ? 'Published' : clinicStatus(clinic.status)}
                   </Badge>
                 </CardContent>
               </Card>
@@ -237,7 +237,8 @@ export default function AdminOrganizations() {
                     {selected.whatsappConfigured ? 'Configured' : 'Not set'}
                   </p>
                   <p>
-                    <span className="text-muted-foreground">Status:</span> {selectedStatus || '—'}
+                    <span className="text-muted-foreground">Status:</span>{' '}
+                    {selectedStatus === 'VERIFIED' ? 'Published' : selectedStatus || '—'}
                   </p>
                 </div>
                 {hours && (
@@ -253,7 +254,7 @@ export default function AdminOrganizations() {
                       disabled={saving || selectedStatus === 'VERIFIED'}
                       onClick={() => void setStatus('VERIFIED')}
                     >
-                      Approve Verified
+                      Approve Published
                     </Button>
                     <Button
                       size="sm"

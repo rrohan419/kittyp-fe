@@ -259,6 +259,8 @@ export interface ClinicBookingModel {
   clinicUuid?: string;
   clinicName?: string;
   videoJoinUrl?: string | null;
+  videoLive?: boolean;
+  videoJoinOpen?: boolean;
 }
 
 export interface RetentionAlertModel {
@@ -361,7 +363,7 @@ export async function updateAdminClinicStatus(
 }
 
 export const CLINIC_NOT_ACTIVATED_MESSAGE =
-  'This clinic must be verified by admin before appointments, bookings, or adding doctors.';
+  'This clinic must be published by admin before appointments, bookings, or adding doctors.';
 
 export function isClinicActivated(status?: string | null, personal?: boolean): boolean {
   if (status === 'SHUTDOWN' || status === 'REJECTED') return false;

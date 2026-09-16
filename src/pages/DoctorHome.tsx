@@ -83,7 +83,7 @@ import { parseApiErrorMessage } from '@/utils/validation';
 import { canEditVisitChart } from '@/utils/visitChartLock';
 import { cn } from '@/lib/utils';
 import { petNameWithType } from '@/utils/petType';
-import { consultPath, isVideoConsult } from '@/utils/consult';
+import { consultPath, doctorCanJoinVideo, isVideoConsult } from '@/utils/consult';
 import { calendarBlockClass, isUrgentVisit } from '@/utils/visitUrgency';
 import { filterUrgentAttentionQueue, isAttendedCalendarVisit } from '@/utils/visitStatus';
 import { doctorAttendedCalendarBlockClass } from '@/components/schedule/doctorCalendarColor';
@@ -1238,14 +1238,23 @@ export default function DoctorHome() {
             <Button variant="outline" onClick={() => setEventDetail(null)}>
               Close
             </Button>
-            {eventDetail?.kind === 'booking' && isVideoConsult(eventDetail.booking?.mode) && eventDetail.booking?.uuid ? (
-              <Button variant="outline" asChild>
-                <Link to={consultPath(eventDetail.booking.uuid, 'doctor')}>
-                  <Video className="h-4 w-4 mr-1" />
-                  Join video
-                </Link>
-              </Button>
-            ) : null}
+            {eventDetail?.kind === 'booking' && isVideoConsult(eventDetail.booking?.mode) && eventDetail.booking?.uuid
+              ? doctorCanJoinVideo(eventDetail.booking.mode, eventDetail.booking.videoJoinOpen)
+                ? (
+                    <Button variant="outline" asChild>
+                      <Link to={consultPath(eventDetail.booking.uuid, 'doctor')}>
+                        <Video className="h-4 w-4 mr-1" />
+                        Join video
+                      </Link>
+                    </Button>
+                  )
+                : (
+                    <Button variant="outline" disabled>
+                      <Video className="h-4 w-4 mr-1" />
+                      Join video
+                    </Button>
+                  )
+              : null}
             {eventDetail?.kind === 'visit' &&
             (eventDetail.visit?.status === 'IN_PROGRESS' || canEditVisitChart(eventDetail.visit)) ? (
               <Button

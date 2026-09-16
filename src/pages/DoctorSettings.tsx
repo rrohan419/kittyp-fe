@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { format, parseISO, isValid } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,7 +20,6 @@ import {
   ExternalLink,
   CheckCircle2,
   XCircle,
-  PawPrint,
 } from 'lucide-react';
 import { useAppSelector } from '@/module/store/hooks';
 import { specializationLabel } from '@/utils/specialization';
@@ -42,7 +39,6 @@ import {
 } from '@/services/invoiceService';
 import { WhatsAppEmbeddedSignupButton } from '@/components/whatsapp/WhatsAppEmbeddedSignupButton';
 import { WhatsAppSettingsForm } from '@/components/whatsapp/WhatsAppSettingsForm';
-import { AttendedPatientModel, fetchMyAttendedPatients } from '@/services/visitService';
 
 function DocLink({ href, label }: { href?: string | null; label: string }) {
   if (!href) {
@@ -88,18 +84,10 @@ function CheckRow({ label, ok }: { label: string; ok: boolean }) {
   );
 }
 
-function formatWhen(raw?: string) {
-  if (!raw) return null;
-  const d = parseISO(raw);
-  return isValid(d) ? format(d, 'MMM d, yyyy') : null;
-}
-
 export default function DoctorSettings() {
   const user = useAppSelector((s) => s.authReducer.user);
   const { isPersonalPractice } = useActiveClinic();
   const [profile, setProfile] = useState<DoctorVerificationModel | null>(null);
-  const [attended, setAttended] = useState<AttendedPatientModel[]>([]);
-  const [attendedTotal, setAttendedTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [waConfigured, setWaConfigured] = useState(false);
   const [waPhoneId, setWaPhoneId] = useState('');
@@ -108,22 +96,15 @@ export default function DoctorSettings() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
 
   useEffect(() => {
-    void Promise.all([
-      fetchMyDoctorProfile().catch(() => null),
-      fetchMyAttendedPatients(undefined, { pageNumber: 1, pageSize: 20 }).catch(() => ({
-        models: [] as AttendedPatientModel[],
-        totalElements: 0,
-      })),
-    ])
-      .then(([p, a]) => {
+    void fetchMyDoctorProfile()
+      .catch(() => null)
+      .then((p) => {
         setProfile(p);
         setExperienceYears(
           p?.experienceYears != null && !Number.isNaN(Number(p.experienceYears))
             ? String(p.experienceYears)
             : ''
         );
-        setAttended(a.models ?? []);
-        setAttendedTotal(a.totalElements ?? 0);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -172,7 +153,7 @@ export default function DoctorSettings() {
               {isVerified ? (
                 <Badge className="bg-emerald-600 hover:bg-emerald-600 gap-1">
                   <BadgeCheck className="h-3.5 w-3.5" />
-                  Verified
+                  Published
                 </Badge>
               ) : profile ? (
                 <Badge variant="secondary">{statusLabel(profile.status)}</Badge>
@@ -282,64 +263,6 @@ export default function DoctorSettings() {
           </CardContent>
         </Card>
       ) : null}
-
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between gap-2">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <PawPrint className="h-4 w-4" /> Pets attended
-            </CardTitle>
-            <p className="text-sm text-muted-foreground font-normal mt-1">
-              Pets and owners from visits you treated across practices.
-            </p>
-          </div>
-          <Badge variant="secondary">{attendedTotal}</Badge>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {attended.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              Finish treatment on a visit and the pet + owner will appear here.
-            </p>
-          ) : (
-            attended.slice(0, 20).map((row) => (
-              <div
-                key={`${row.petUuid}-${row.clinicUuid || 'x'}`}
-                className="rounded-xl border border-border px-3 py-2.5 space-y-1"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {row.petName}
-                      {row.ownerName ? ` · ${row.ownerName}` : ''}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {[row.species, row.breed].filter(Boolean).join(' · ') || 'Pet'}
-                      {row.ownerPhone ? ` · ${row.ownerPhone}` : ''}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {row.clinicName || 'Practice'}
-                      {row.lastAssessment ? ` · ${row.lastAssessment}` : ''}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <Badge variant="secondary" className="text-[10px]">
-                      {row.visitCount} visit{row.visitCount === 1 ? '' : 's'}
-                    </Badge>
-                    {formatWhen(row.lastVisitAt) && (
-                      <p className="text-[10px] text-muted-foreground mt-1">{formatWhen(row.lastVisitAt)}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-          {attended.length > 0 && (
-            <Link to="/doctor/appointments" className="text-xs text-primary font-medium inline-block pt-1">
-              Open My visits →
-            </Link>
-          )}
-        </CardContent>
-      </Card>
 
       <Card className="border-0 shadow-sm">
         <CardHeader>

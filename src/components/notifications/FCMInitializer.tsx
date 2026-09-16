@@ -4,6 +4,8 @@ import { RootState } from '@/module/store/store';
 import { firebaseService } from '@/services/firebase.service';
 import { isFirebaseConfigured } from '@/config/firebase.config';
 import { toast } from 'sonner';
+import { isVideoCallPush } from '@/utils/consult';
+import { notifyIncomingVideoRefresh } from '@/components/notifications/IncomingVideoCallModal';
 
 export function FCMInitializer() {
   const [fcmToken, setFcmToken] = useState<string | null>(null);
@@ -58,7 +60,11 @@ export function FCMInitializer() {
         }
 
         const subscribed = await firebaseService.subscribeToForegroundMessages(
-          ({ title, body }) => {
+          ({ title, body, data }) => {
+            if (isVideoCallPush(data)) {
+              notifyIncomingVideoRefresh();
+              return;
+            }
             toast(title, {
               description: body,
               duration: 5000,

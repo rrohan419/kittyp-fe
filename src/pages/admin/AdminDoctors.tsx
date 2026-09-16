@@ -135,7 +135,11 @@ export default function AdminDoctors() {
   const setStatus = async (status: DoctorStatus) => {
     if (!selected) return;
     if ((status === 'VERIFIED' || status === 'PUBLISHED') && !allApplicableChecksPassed(selected)) {
-      toast.error('Complete all applicable checklist items before Verified / Published');
+      toast.error(
+        status === 'PUBLISHED'
+          ? 'Complete all applicable checklist items before Published'
+          : 'Complete all applicable checklist items before Verified'
+      );
       return;
     }
     setSaving(true);

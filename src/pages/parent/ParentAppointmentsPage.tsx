@@ -12,7 +12,7 @@ import { fetchMyParentBookings, fetchMyParentVisits, patchParentBooking, ratePar
 import { toast } from 'sonner';
 import { petNameWithType } from '@/utils/petType';
 import { specializationLabel } from '@/utils/specialization';
-import { consultPath, isVideoConsult } from '@/utils/consult';
+import { consultPath, isVideoConsult, parentCanJoinVideo } from '@/utils/consult';
 
 const ACTIVE: VisitStatus[] = ['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS', 'CHECKING_OUT'];
 const DONE: VisitStatus[] = ['COMPLETED', 'CANCELLED', 'NO_SHOW'];
@@ -91,7 +91,7 @@ export default function ParentAppointmentsPage() {
 
   useEffect(() => {
     void load(false);
-    const t = setInterval(() => void load(true), 15000);
+    const t = setInterval(() => void load(true), 4000);
     const onFocus = () => void load(true);
     window.addEventListener('focus', onFocus);
     return () => {
@@ -204,7 +204,8 @@ export default function ParentAppointmentsPage() {
                     <div className="text-xs text-muted-foreground">
                       {d && isValid(d) ? format(d, 'EEE d MMM · h:mm a') : '—'}
                     </div>
-                    <div className="flex justify-end gap-1">
+                    <div className="flex justify-end flex-wrap gap-1">
+                      <ParentVideoJoinButton booking={b} />
                       <Button size="sm" variant="outline" asChild>
                         <Link to={`/app/book?reschedule=${encodeURIComponent(b.uuid)}`}>Reschedule</Link>
                       </Button>
@@ -407,6 +408,28 @@ function VisitCard({
   );
 }
 
+function ParentVideoJoinButton({ booking: b }: { booking: ClinicBookingModel }) {
+  if (!isVideoConsult(b.mode)) {
+    return null;
+  }
+  if (parentCanJoinVideo(b.mode, b.videoLive, b.videoJoinOpen)) {
+    return (
+      <Button size="sm" asChild>
+        <Link to={consultPath(b.uuid, 'parent')}>
+          <Video className="h-4 w-4 mr-1" />
+          Join video
+        </Link>
+      </Button>
+    );
+  }
+  return (
+    <Button size="sm" disabled>
+      <Video className="h-4 w-4 mr-1" />
+      Join video
+    </Button>
+  );
+}
+
 function BookingCard({
   booking: b,
   onCancel,
@@ -439,14 +462,7 @@ function BookingCard({
         />
         {b.notes && <p className="text-xs">{b.notes}</p>}
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          {isVideoConsult(b.mode) && (
-            <Button size="sm" asChild>
-              <Link to={consultPath(b.uuid, 'parent')}>
-                <Video className="h-4 w-4 mr-1" />
-                Join video
-              </Link>
-            </Button>
-          )}
+          <ParentVideoJoinButton booking={b} />
           {canManage && (
             <>
               <Button size="sm" variant="outline" asChild>

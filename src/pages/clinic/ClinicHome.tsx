@@ -213,8 +213,8 @@ export default function ClinicHome() {
 
       {clinic && clinic.status !== 'SHUTDOWN' && clinic.status !== 'VERIFIED' && (
         <div className="rounded-xl border border-amber-300/60 bg-amber-50/50 px-4 py-3 text-sm text-amber-800">
-          This clinic is {clinic.status === 'REJECTED' ? 'rejected' : 'pending admin verification'}.
-          Appointments, bookings, and doctor invites stay locked until an admin verifies it.
+          This clinic is {clinic.status === 'REJECTED' ? 'rejected' : 'pending admin review'}.
+          Appointments, bookings, and doctor invites stay locked until an admin publishes it.
         </div>
       )}
 

@@ -166,11 +166,12 @@ export function statusLabel(status: DoctorStatus | string | null | undefined): s
   if (!status) return 'Unknown';
   const key = String(status).toUpperCase();
   const labels: Record<string, string> = {
+    REGISTERED: 'Registered',
     DRAFT: 'Draft',
     DOCUMENTS_SUBMITTED: 'Gov ID / docs pending review',
     UNDER_REVIEW: 'Under review',
     VERIFIED: 'Verified',
-    PUBLISHED: 'Verified',
+    PUBLISHED: 'Published',
     REJECTED: 'Rejected',
     NEEDS_MORE_INFO: 'Needs more info',
   };

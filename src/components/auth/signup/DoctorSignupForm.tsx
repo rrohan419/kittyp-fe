@@ -769,7 +769,7 @@ const DoctorSignupForm = () => {
             <DialogTitle className="text-center">Documents Submitted</DialogTitle>
             <DialogDescription className="text-center">
               Your personal doctor account is created. Admin will review your documents before the
-              Verified badge. Clinic practices are registered and verified separately.
+              Published badge. Clinic practices are registered and published separately.
             </DialogDescription>
           </DialogHeader>
           <ol className="space-y-2 my-2">
