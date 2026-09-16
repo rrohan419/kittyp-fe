@@ -55,7 +55,7 @@ export function MasterTotpSetupCard() {
           Master authenticator
         </CardTitle>
         <CardDescription>
-          Scan once on the admin phone. That 6-digit code is the SMS OTP fallback when TextBee
+          Scan once on the admin phone. That 6-digit code is the SMS OTP fallback when SMS Gate
           fails.
         </CardDescription>
       </CardHeader>
