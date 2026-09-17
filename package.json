@@ -12,7 +12,10 @@
     "build:dev": "vite build --mode development",
     "build:prod": "vite build --mode production",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:local": "NODE_OPTIONS=--dns-result-order=ipv4first vite --mode devlocal --open https://localhost:8080",
+    "env:check": "bash scripts/run-local.sh --check",
+    "start:local": "bash scripts/run-local.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
