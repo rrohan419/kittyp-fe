@@ -116,7 +116,7 @@ const Login = () => {
 
       finishAuth(user?.roles);
     } catch (error: any) {
-      console.error("Signin Error:", error);
+      console.error("Signin Error:", error instanceof Error ? error.message : "login_failed");
       setErrorMessage(error.message || 'Login failed');
       setShowErrorDialog(true);
     } finally {
@@ -144,7 +144,7 @@ const Login = () => {
 
         finishAuth(user?.roles);
       } catch (error: any) {
-        console.error("Google Login Error:", error);
+        console.error("Google Login Error:", error instanceof Error ? error.message : "google_login_failed");
         toast.error("Google Signup Failed", {
           description: "Authentication error. Please try again.",
         });
@@ -153,7 +153,7 @@ const Login = () => {
       }
     },
     onError: (errorResponse) => {
-      console.error("Google Login Error:", errorResponse);
+      console.error("Google Login Error:", "google_login_failed");
       toast.error("Google Signup Failed", {
         description: "Authentication error. Please try again.",
       });
