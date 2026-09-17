@@ -228,24 +228,6 @@ const ClinicSignupForm = () => {
                         <Input id="adminLastName" name="adminLastName" autoComplete="family-name" placeholder="Doe" value={form.adminLastName} onChange={(e) => set('adminLastName', e.target.value)} />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="adminPhone">Phone (10 digits)</Label>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="adminPhone"
-                            name="adminPhone"
-                            type="tel"
-                            autoComplete="tel"
-                            inputMode="numeric"
-                            maxLength={10}
-                            className="pl-10"
-                            placeholder="9876543210"
-                            value={form.adminPhone}
-                            onChange={(e) => set('adminPhone', digitsOnlyPhone(e.target.value))}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2 sm:col-span-2">
                         <Label htmlFor="adminEmail">Email *</Label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -304,6 +286,24 @@ const ClinicSignupForm = () => {
                           )}
                         </div>
                         {otpError ? <p className="text-sm text-destructive">{otpError}</p> : null}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="adminPhone">Phone (10 digits)</Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="adminPhone"
+                            name="adminPhone"
+                            type="tel"
+                            autoComplete="tel"
+                            inputMode="numeric"
+                            maxLength={10}
+                            className="pl-10"
+                            placeholder="9876543210"
+                            value={form.adminPhone}
+                            onChange={(e) => set('adminPhone', digitsOnlyPhone(e.target.value))}
+                          />
+                        </div>
                       </div>
                       <div className="space-y-2 sm:col-span-2">
                         <Label htmlFor="password">Password *</Label>
