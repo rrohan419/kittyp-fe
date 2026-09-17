@@ -110,6 +110,10 @@ const DoctorSignupForm = () => {
   const [verifiedPhoneValue, setVerifiedPhoneValue] = useState('');
   const [emailOtpSending, setEmailOtpSending] = useState(false);
   const [phoneOtpSending, setPhoneOtpSending] = useState(false);
+  const [emailVerifying, setEmailVerifying] = useState(false);
+  const [phoneVerifying, setPhoneVerifying] = useState(false);
+  const [emailOtpError, setEmailOtpError] = useState('');
+  const [phoneOtpError, setPhoneOtpError] = useState('');
 
   const [specialization, setSpecialization] = useState('');
   const [registrationNumber, setRegistrationNumber] = useState('');
@@ -162,6 +166,7 @@ const DoctorSignupForm = () => {
   const sendEmailOtp = async (opts?: { silent?: boolean }) => {
     if (emailStillVerified) return;
     setEmailOtpSending(true);
+    setEmailOtpError('');
     try {
       await sendSignupOtp({ channel: 'EMAIL', email: email.trim(), role: 'DOCTOR' });
       emailResend.start();
@@ -181,19 +186,27 @@ const DoctorSignupForm = () => {
   const sendPhoneOtp = async (opts?: { silent?: boolean }) => {
     if (phoneStillVerified) return;
     setPhoneOtpSending(true);
+    setPhoneOtpError('');
     try {
       const fullPhone = toE164Phone(phone);
-      await sendSignupOtp({
+      const res = (await sendSignupOtp({
         channel: 'PHONE',
         phone: fullPhone,
         email: email.trim(),
-      });
+      })) as { data?: { message?: string }; message?: string };
       phoneResend.start();
       if (!opts?.silent) {
-        toast.success('OTP sent to your phone (check SMS, or server logs in local)');
+        const serverMsg = res?.data?.message || res?.message || '';
+        if (/sms unavailable|sent to email/i.test(serverMsg)) {
+          toast.success('SMS unavailable — phone OTP emailed (look for Phone OTP, not the email OTP)');
+        } else {
+          toast.success('Phone OTP sent (SMS). If SMS fails, check email for a Phone OTP message.');
+        }
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send phone OTP');
+      const message = err instanceof Error ? err.message : 'Failed to send phone OTP';
+      setPhoneOtpError(message);
+      toast.error(message);
     } finally {
       setPhoneOtpSending(false);
     }
@@ -264,26 +277,38 @@ const DoctorSignupForm = () => {
 
   const verifyEmail = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (emailStillVerified) return;
-    setLoading(true);
+    if (emailStillVerified || emailVerifying) return;
+    setEmailVerifying(true);
+    setEmailOtpError('');
     try {
-      await verifySignupOtp({ channel: 'EMAIL', email: email.trim(), code: emailOtp.trim() });
+      await verifySignupOtp({
+        channel: 'EMAIL',
+        email: email.trim(),
+        phone: toE164Phone(phone),
+        code: emailOtp.trim(),
+      });
       setEmailVerified(true);
       setVerifiedEmailValue(email.trim().toLowerCase());
-      setOtpError('');
+      const usedEmailCode = emailOtp.trim();
+      setEmailOtp('');
+      // Same digits in the phone box are almost certainly the email OTP — clear them.
+      if (phoneOtp.trim() && phoneOtp.trim() === usedEmailCode) {
+        setPhoneOtp('');
+      }
       toast.success('Email verified');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Invalid email OTP';
-      setOtpError(isOtpFailed(message) ? OTP_FAILED_MESSAGE : message);
+      setEmailOtpError(isOtpFailed(message) ? OTP_FAILED_MESSAGE : message);
     } finally {
-      setLoading(false);
+      setEmailVerifying(false);
     }
   };
 
   const verifyPhone = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (phoneStillVerified) return;
-    setLoading(true);
+    if (phoneStillVerified || phoneVerifying) return;
+    setPhoneVerifying(true);
+    setPhoneOtpError('');
     try {
       const fullPhone = toE164Phone(phone);
       await verifySignupOtp({
@@ -294,13 +319,17 @@ const DoctorSignupForm = () => {
       });
       setPhoneVerified(true);
       setVerifiedPhoneValue(phone.replace(/\D/g, ''));
-      setOtpError('');
+      const usedPhoneCode = phoneOtp.trim();
+      setPhoneOtp('');
+      if (emailOtp.trim() && emailOtp.trim() === usedPhoneCode) {
+        setEmailOtp('');
+      }
       toast.success('Phone verified');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Invalid phone OTP';
-      setOtpError(isOtpFailed(message) ? OTP_FAILED_MESSAGE : message);
+      setPhoneOtpError(isOtpFailed(message) ? OTP_FAILED_MESSAGE : message);
     } finally {
-      setLoading(false);
+      setPhoneVerifying(false);
     }
   };
 
@@ -559,7 +588,7 @@ const DoctorSignupForm = () => {
                   <CardHeader>
                     <CardTitle className="text-xl">Verify email &amp; phone</CardTitle>
                     <CardDescription>
-                      Codes are sent automatically. Enter both OTPs here — verified channels stay locked if you go back.
+                      Codes are sent automatically. Email OTP and phone OTP are different — use each in its own box. Verified channels stay locked if you go back.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -601,23 +630,28 @@ const DoctorSignupForm = () => {
                             <Label htmlFor="emailOtp">Email OTP</Label>
                             <Input
                               id="emailOtp"
+                              name="kittyp-signup-email-otp"
+                              autoComplete="off"
                               inputMode="numeric"
-                              placeholder="6-digit code"
+                              placeholder="6-digit code from email"
                               value={emailOtp}
                               onChange={(e) => {
                                 setEmailOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
-                                setOtpError('');
+                                setEmailOtpError('');
                               }}
                               maxLength={6}
                             />
                             <Button
                               type="button"
                               className="w-full"
-                              disabled={loading || emailOtp.length !== 6}
+                              disabled={emailVerifying || phoneVerifying || emailOtp.length !== 6}
                               onClick={() => void verifyEmail()}
                             >
-                              {loading ? 'Verifying…' : 'Verify email'}
+                              {emailVerifying ? 'Verifying email…' : 'Verify email'}
                             </Button>
+                            {emailOtpError ? (
+                              <p className="text-sm text-destructive">{emailOtpError}</p>
+                            ) : null}
                           </div>
                         ) : null}
                       </div>
@@ -657,25 +691,33 @@ const DoctorSignupForm = () => {
                         {!phoneStillVerified ? (
                           <div className="space-y-2">
                             <Label htmlFor="phoneOtp">Phone OTP</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Use the SMS code, or the email titled for phone — not your email OTP.
+                            </p>
                             <Input
                               id="phoneOtp"
+                              name="kittyp-signup-phone-otp"
+                              autoComplete="one-time-code"
                               inputMode="numeric"
-                              placeholder="6-digit code"
+                              placeholder="6-digit phone code"
                               value={phoneOtp}
                               onChange={(e) => {
                                 setPhoneOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
-                                setOtpError('');
+                                setPhoneOtpError('');
                               }}
                               maxLength={6}
                             />
                             <Button
                               type="button"
                               className="w-full"
-                              disabled={loading || phoneOtp.length !== 6}
+                              disabled={phoneVerifying || emailVerifying || phoneOtp.length !== 6}
                               onClick={() => void verifyPhone()}
                             >
-                              {loading ? 'Verifying…' : 'Verify phone'}
+                              {phoneVerifying ? 'Verifying phone…' : 'Verify phone'}
                             </Button>
+                            {phoneOtpError ? (
+                              <p className="text-sm text-destructive">{phoneOtpError}</p>
+                            ) : null}
                           </div>
                         ) : null}
                       </div>
