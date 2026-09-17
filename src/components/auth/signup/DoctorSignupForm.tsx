@@ -80,9 +80,8 @@ const specializations = [
 
 const STEPS = [
   { id: 1, label: 'Account' },
-  { id: 2, label: 'Email OTP' },
-  { id: 3, label: 'Phone OTP' },
-  { id: 4, label: 'Documents' },
+  { id: 2, label: 'Verify' },
+  { id: 3, label: 'Documents' },
 ] as const;
 
 const DoctorSignupForm = () => {
@@ -106,6 +105,11 @@ const DoctorSignupForm = () => {
   const [otpError, setOtpError] = useState('');
   const [emailVerified, setEmailVerified] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  /** Email/phone that passed OTP — changing the field clears verification. */
+  const [verifiedEmailValue, setVerifiedEmailValue] = useState('');
+  const [verifiedPhoneValue, setVerifiedPhoneValue] = useState('');
+  const [emailOtpSending, setEmailOtpSending] = useState(false);
+  const [phoneOtpSending, setPhoneOtpSending] = useState(false);
 
   const [specialization, setSpecialization] = useState('');
   const [registrationNumber, setRegistrationNumber] = useState('');
@@ -145,11 +149,71 @@ const DoctorSignupForm = () => {
   const [governmentIdFile, setGovernmentIdFile] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(false);
-  const [otpSending, setOtpSending] = useState(false);
   const emailResend = useOtpResendCooldown();
   const phoneResend = useOtpResendCooldown();
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const emailStillVerified =
+    emailVerified && verifiedEmailValue !== '' && verifiedEmailValue === email.trim().toLowerCase();
+  const phoneStillVerified =
+    phoneVerified && verifiedPhoneValue !== '' && verifiedPhoneValue === phone.replace(/\D/g, '');
+
+  const sendEmailOtp = async (opts?: { silent?: boolean }) => {
+    if (emailStillVerified) return;
+    setEmailOtpSending(true);
+    try {
+      await sendSignupOtp({ channel: 'EMAIL', email: email.trim(), role: 'DOCTOR' });
+      emailResend.start();
+      if (!opts?.silent) toast.success('OTP sent to your email');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to send email OTP';
+      if (isEmailAlreadyRegistered(message)) {
+        setEmailError(EMAIL_ALREADY_REGISTERED);
+      } else {
+        toast.error(message);
+      }
+    } finally {
+      setEmailOtpSending(false);
+    }
+  };
+
+  const sendPhoneOtp = async (opts?: { silent?: boolean }) => {
+    if (phoneStillVerified) return;
+    setPhoneOtpSending(true);
+    try {
+      const fullPhone = toE164Phone(phone);
+      await sendSignupOtp({
+        channel: 'PHONE',
+        phone: fullPhone,
+        email: email.trim(),
+      });
+      phoneResend.start();
+      if (!opts?.silent) {
+        toast.success('OTP sent to your phone (check SMS, or server logs in local)');
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send phone OTP');
+    } finally {
+      setPhoneOtpSending(false);
+    }
+  };
+
+  /** Enter verify step: auto-send email + phone OTPs once (skip channels already verified). */
+  const goToVerifyStep = () => {
+    setStep(2);
+    setOtpError('');
+    void (async () => {
+      const tasks: Promise<void>[] = [];
+      if (!(emailVerified && verifiedEmailValue === email.trim().toLowerCase())) {
+        tasks.push(sendEmailOtp({ silent: false }));
+      }
+      if (!(phoneVerified && verifiedPhoneValue === phone.replace(/\D/g, ''))) {
+        tasks.push(sendPhoneOtp({ silent: false }));
+      }
+      await Promise.all(tasks);
+    })();
+  };
 
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,37 +248,30 @@ const DoctorSignupForm = () => {
       toast.error(phoneErr);
       return;
     }
-    setStep(2);
-    void sendEmailOtp();
-  };
-
-  const sendEmailOtp = async () => {
-    setOtpSending(true);
-    try {
-      await sendSignupOtp({ channel: 'EMAIL', email: email.trim(), role: 'DOCTOR' });
-      emailResend.start();
-      toast.success('OTP sent to your email');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to send email OTP';
-      if (isEmailAlreadyRegistered(message)) {
-        setEmailError(EMAIL_ALREADY_REGISTERED);
-      } else {
-        toast.error(message);
-      }
-    } finally {
-      setOtpSending(false);
+    // Changing account contact after verify invalidates that channel only.
+    if (verifiedEmailValue && verifiedEmailValue !== email.trim().toLowerCase()) {
+      setEmailVerified(false);
+      setVerifiedEmailValue('');
+      setEmailOtp('');
     }
+    if (verifiedPhoneValue && verifiedPhoneValue !== phone.replace(/\D/g, '')) {
+      setPhoneVerified(false);
+      setVerifiedPhoneValue('');
+      setPhoneOtp('');
+    }
+    goToVerifyStep();
   };
 
-  const verifyEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const verifyEmail = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (emailStillVerified) return;
     setLoading(true);
     try {
       await verifySignupOtp({ channel: 'EMAIL', email: email.trim(), code: emailOtp.trim() });
       setEmailVerified(true);
+      setVerifiedEmailValue(email.trim().toLowerCase());
       setOtpError('');
       toast.success('Email verified');
-      setStep(3);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Invalid email OTP';
       setOtpError(isOtpFailed(message) ? OTP_FAILED_MESSAGE : message);
@@ -223,26 +280,9 @@ const DoctorSignupForm = () => {
     }
   };
 
-  const sendPhoneOtp = async () => {
-    setOtpSending(true);
-    try {
-      const fullPhone = toE164Phone(phone);
-      await sendSignupOtp({
-        channel: 'PHONE',
-        phone: fullPhone,
-        email: email.trim(),
-      });
-      phoneResend.start();
-      toast.success('OTP sent to your phone (check your phone, or server logs in local)');
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send phone OTP');
-    } finally {
-      setOtpSending(false);
-    }
-  };
-
-  const verifyPhone = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const verifyPhone = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (phoneStillVerified) return;
     setLoading(true);
     try {
       const fullPhone = toE164Phone(phone);
@@ -253,9 +293,9 @@ const DoctorSignupForm = () => {
         code: phoneOtp.trim(),
       });
       setPhoneVerified(true);
+      setVerifiedPhoneValue(phone.replace(/\D/g, ''));
       setOtpError('');
       toast.success('Phone verified');
-      setStep(4);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Invalid phone OTP';
       setOtpError(isOtpFailed(message) ? OTP_FAILED_MESSAGE : message);
@@ -507,7 +547,7 @@ const DoctorSignupForm = () => {
                       </div>
 
                       <Button type="submit" className="w-full">
-                        Continue to Email OTP
+                        Continue to verification
                       </Button>
                     </form>
                   </CardContent>
@@ -517,99 +557,151 @@ const DoctorSignupForm = () => {
               {step === 2 && (
                 <>
                   <CardHeader>
-                    <CardTitle className="text-xl">Verify Email</CardTitle>
-                    <CardDescription>We&apos;ll send a one-time code to {email}</CardDescription>
+                    <CardTitle className="text-xl">Verify email &amp; phone</CardTitle>
+                    <CardDescription>
+                      Codes are sent automatically. Enter both OTPs here — verified channels stay locked if you go back.
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <form onSubmit={verifyEmail} className="space-y-4">
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Email OTP */}
+                      <div className="space-y-3 rounded-lg border p-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="font-medium flex items-center gap-2">
+                              <Mail className="h-4 w-4" /> Email
+                            </p>
+                            <p className="text-xs text-muted-foreground break-all">{email}</p>
+                          </div>
+                          {emailStillVerified ? (
+                            <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded">
+                              Verified
+                            </span>
+                          ) : null}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={`w-full ${
+                            emailStillVerified || emailResend.coolingDown
+                              ? 'bg-muted text-muted-foreground'
+                              : ''
+                          }`}
+                          onClick={() => void sendEmailOtp()}
+                          disabled={
+                            emailStillVerified || emailOtpSending || emailResend.coolingDown
+                          }
+                        >
+                          {emailStillVerified
+                            ? 'Verified'
+                            : otpSendButtonLabel(emailOtpSending, emailResend.remaining, 'Send Email OTP')}
+                        </Button>
+                        {!emailStillVerified ? (
+                          <div className="space-y-2">
+                            <Label htmlFor="emailOtp">Email OTP</Label>
+                            <Input
+                              id="emailOtp"
+                              inputMode="numeric"
+                              placeholder="6-digit code"
+                              value={emailOtp}
+                              onChange={(e) => {
+                                setEmailOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
+                                setOtpError('');
+                              }}
+                              maxLength={6}
+                            />
+                            <Button
+                              type="button"
+                              className="w-full"
+                              disabled={loading || emailOtp.length !== 6}
+                              onClick={() => void verifyEmail()}
+                            >
+                              {loading ? 'Verifying…' : 'Verify email'}
+                            </Button>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {/* Phone OTP */}
+                      <div className="space-y-3 rounded-lg border p-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="font-medium flex items-center gap-2">
+                              <Phone className="h-4 w-4" /> Phone
+                            </p>
+                            <p className="text-xs text-muted-foreground">{phone}</p>
+                          </div>
+                          {phoneStillVerified ? (
+                            <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded">
+                              Verified
+                            </span>
+                          ) : null}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={`w-full ${
+                            phoneStillVerified || phoneResend.coolingDown
+                              ? 'bg-muted text-muted-foreground'
+                              : ''
+                          }`}
+                          onClick={() => void sendPhoneOtp()}
+                          disabled={
+                            phoneStillVerified || phoneOtpSending || phoneResend.coolingDown
+                          }
+                        >
+                          {phoneStillVerified
+                            ? 'Verified'
+                            : otpSendButtonLabel(phoneOtpSending, phoneResend.remaining, 'Send Phone OTP')}
+                        </Button>
+                        {!phoneStillVerified ? (
+                          <div className="space-y-2">
+                            <Label htmlFor="phoneOtp">Phone OTP</Label>
+                            <Input
+                              id="phoneOtp"
+                              inputMode="numeric"
+                              placeholder="6-digit code"
+                              value={phoneOtp}
+                              onChange={(e) => {
+                                setPhoneOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
+                                setOtpError('');
+                              }}
+                              maxLength={6}
+                            />
+                            <Button
+                              type="button"
+                              className="w-full"
+                              disabled={loading || phoneOtp.length !== 6}
+                              onClick={() => void verifyPhone()}
+                            >
+                              {loading ? 'Verifying…' : 'Verify phone'}
+                            </Button>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {otpError ? <p className="text-sm text-destructive">{otpError}</p> : null}
+                    {emailError ? <p className="text-sm text-destructive">{emailError}</p> : null}
+
+                    <div className="flex gap-3">
+                      <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(1)}>
+                        Back
+                      </Button>
                       <Button
                         type="button"
-                        variant="outline"
-                        className={`w-full ${emailResend.coolingDown ? 'bg-muted text-muted-foreground' : ''}`}
-                        onClick={sendEmailOtp}
-                        disabled={otpSending || emailResend.coolingDown}
+                        className="flex-1"
+                        disabled={!emailStillVerified || !phoneStillVerified}
+                        onClick={() => setStep(3)}
                       >
-                        <Mail className="h-4 w-4 mr-2" />
-                        {otpSendButtonLabel(otpSending, emailResend.remaining, 'Send Email OTP')}
+                        Continue to Documents
                       </Button>
-                      {emailError ? <p className="text-sm text-destructive">{emailError}</p> : null}
-                      <div className="space-y-2">
-                        <Label htmlFor="emailOtp">Email OTP</Label>
-                        <Input
-                          id="emailOtp"
-                          inputMode="numeric"
-                          placeholder="6-digit code"
-                          value={emailOtp}
-                          onChange={(e) => {
-                            setEmailOtp(e.target.value);
-                            setOtpError('');
-                          }}
-                          required
-                        />
-                        {otpError ? <p className="text-sm text-destructive">{otpError}</p> : null}
-                      </div>
-                      <div className="flex gap-3">
-                        <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(1)}>
-                          Back
-                        </Button>
-                        <Button type="submit" className="flex-1" disabled={loading || emailOtp.length !== 6}>
-                          {loading ? 'Verifying…' : 'Verify & Continue'}
-                        </Button>
-                      </div>
-                    </form>
+                    </div>
                   </CardContent>
                 </>
               )}
 
               {step === 3 && (
-                <>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Verify Phone</CardTitle>
-                    <CardDescription>
-                      SMS code, or authenticator code from Kittyp if SMS fails
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <form onSubmit={verifyPhone} className="space-y-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className={`w-full ${phoneResend.coolingDown ? 'bg-muted text-muted-foreground' : ''}`}
-                        onClick={sendPhoneOtp}
-                        disabled={otpSending || phoneResend.coolingDown}
-                      >
-                        <Phone className="h-4 w-4 mr-2" />
-                        {otpSendButtonLabel(otpSending, phoneResend.remaining, 'Send Phone OTP')}
-                      </Button>
-                      <div className="space-y-2">
-                        <Label htmlFor="phoneOtp">Phone OTP</Label>
-                        <Input
-                          id="phoneOtp"
-                          inputMode="numeric"
-                          placeholder="6-digit code"
-                          value={phoneOtp}
-                          onChange={(e) => {
-                            setPhoneOtp(e.target.value);
-                            setOtpError('');
-                          }}
-                          required
-                        />
-                        {otpError ? <p className="text-sm text-destructive">{otpError}</p> : null}
-                      </div>
-                      <div className="flex gap-3">
-                        <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(2)}>
-                          Back
-                        </Button>
-                        <Button type="submit" className="flex-1" disabled={loading || phoneOtp.length !== 6}>
-                          {loading ? 'Verifying…' : 'Verify & Continue'}
-                        </Button>
-                      </div>
-                    </form>
-                  </CardContent>
-                </>
-              )}
-
-              {step === 4 && (
                 <>
                   <CardHeader>
                     <CardTitle className="text-xl">Professional Documents</CardTitle>
@@ -734,7 +826,7 @@ const DoctorSignupForm = () => {
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => setStep(3)}
+                          onClick={() => setStep(2)}
                           className="flex-1"
                           disabled={loading}
                         >
