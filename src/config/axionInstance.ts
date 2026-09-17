@@ -38,8 +38,8 @@ const clearAuthData = () => {
 
 const stripLocalBackendOrigin = (url?: string) =>
   url
-    ?.replace(/^https?:\/\/localhost:8002/, '')
-    ?.replace(/^https?:\/\/127\.0\.0\.1:8002/, '');
+    ?.replace(/^https?:\/\/localhost:8082/, '')
+    ?.replace(/^https?:\/\/127\.0\.0\.1:8082/, '');
 
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: `${API_BASE_URL}`, // Your API base URL here

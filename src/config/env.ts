@@ -1,9 +1,9 @@
-/** HTTPS localhost talking to HTTP :8002 is mixed content. Keep local API same-origin. */
+/** HTTPS localhost talking to HTTP :8082 is mixed content. Keep local API same-origin. */
 function toSameOriginLocalApi(url: string | undefined): string {
   if (!url) return '';
   return url
-    .replace(/^https?:\/\/localhost:8002/, '')
-    .replace(/^https?:\/\/127\.0\.0\.1:8002/, '');
+    .replace(/^https?:\/\/localhost:8082/, '')
+    .replace(/^https?:\/\/127\.0\.0\.1:8082/, '');
 }
 
 export const API_BASE_URL = toSameOriginLocalApi(import.meta.env.VITE_API_BASE_URL);

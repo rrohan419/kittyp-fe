@@ -34,14 +34,14 @@ export default defineConfig(({ mode }) => ({
     },
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8002",
+        target: "http://127.0.0.1:8082",
         changeOrigin: true,
         configure(proxy) {
           proxy.on("proxyRes", (proxyRes) => {
             const loc = proxyRes.headers.location;
             if (typeof loc === "string") {
               proxyRes.headers.location = loc.replace(
-                /^https?:\/\/(localhost|127\.0\.0\.1):8002/i,
+                /^https?:\/\/(localhost|127\.0\.0\.1):8082/i,
                 "",
               );
             }
