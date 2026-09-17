@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => ({
     },
     proxy: {
       "/api": {
-        target: "http://localhost:8002",
+        target: "http://127.0.0.1:8002",
         changeOrigin: true,
         configure(proxy) {
           proxy.on("proxyRes", (proxyRes) => {
