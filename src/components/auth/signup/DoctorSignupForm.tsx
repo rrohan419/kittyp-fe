@@ -47,7 +47,14 @@ import { openMsg91OtpWidget } from '@/services/msg91Widget';
 import { uploadSignupDocuments } from '@/services/fileUploadService';
 import ErrorDialog from '@/components/ui/error-dialog';
 import { CooldownTimer } from '@/components/ui/cooldown-timer';
-import { digitsOnlyPhone, toE164Phone, validateEmail, validatePassword, validatePhone } from '@/utils/validation';
+import {
+  digitsOnlyPhone,
+  parseApiErrorMessage,
+  toE164Phone,
+  validateEmail,
+  validatePassword,
+  validatePhone,
+} from '@/utils/validation';
 
 /** Value must match backend DoctorSpecialization enum names. */
 const specializations = [
@@ -181,7 +188,9 @@ const DoctorSignupForm = () => {
       setEmailCooldown(OTP_RESEND_COOLDOWN_SECONDS);
       toast.success('OTP sent to your email');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send email OTP');
+      toast.error(
+        parseApiErrorMessage(err instanceof Error ? err.message : err, 'Failed to send email OTP')
+      );
     } finally {
       setOtpSending(false);
     }
