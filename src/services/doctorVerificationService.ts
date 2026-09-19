@@ -58,7 +58,7 @@ export type ChecklistKey =
   | 'checkClinicPhotos';
 
 export async function sendSignupOtp(body: {
-  channel: 'EMAIL' | 'PHONE';
+  channel: 'EMAIL' | 'PHONE' | 'WHATSAPP';
   email?: string;
   phone?: string;
 }) {
@@ -72,10 +72,11 @@ export async function sendSignupOtp(body: {
 }
 
 export async function verifySignupOtp(body: {
-  channel: 'EMAIL' | 'PHONE';
+  channel: 'EMAIL' | 'PHONE' | 'WHATSAPP';
   email?: string;
   phone?: string;
-  code: string;
+  code?: string;
+  accessToken?: string;
 }) {
   const res = await fetch(`${API_BASE_URL}/auth/signup/otp/verify`, {
     method: 'POST',
