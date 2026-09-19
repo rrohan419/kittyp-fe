@@ -171,6 +171,13 @@ export interface PlatformUserSearchModel {
   alreadyClient: boolean;
 }
 
+export interface OwnerEmailLookupModel {
+  found: boolean;
+  source?: 'CLINIC' | 'PLATFORM' | 'BOTH' | string;
+  owner?: ClinicOwnerModel | null;
+  platformUser?: PlatformUserSearchModel | null;
+}
+
 export interface ClinicOwnerProfileModel {
   owner: ClinicOwnerModel;
   billingStatus: string;
@@ -664,6 +671,49 @@ export async function ensureClinicOwnerFromUser(
   return res.data.data;
 }
 
+export async function lookupOwnerByEmail(
+  clinicUuid: string,
+  ownerEmail: string
+): Promise<OwnerEmailLookupModel> {
+  const res = await axiosInstance.get<ApiSuccessResponse<OwnerEmailLookupModel>>(
+    `/clinic/${clinicUuid}/owners/lookup`,
+    { params: { q: ownerEmail.trim() } }
+  );
+  return res.data.data;
+}
+
+export async function admitClinicPet(
+  clinicUuid: string,
+  petUuid: string
+): Promise<ClinicPetListModel> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ClinicPetListModel>>(
+    `/clinic/${clinicUuid}/pets/${encodeURIComponent(petUuid)}/admit`
+  );
+  return res.data.data;
+}
+
+export async function sendPetConsentOtp(
+  clinicUuid: string,
+  ownerUuid: string,
+  petName: string
+): Promise<void> {
+  await axiosInstance.post(`/clinic/${clinicUuid}/owners/${ownerUuid}/pets/consent/send`, {
+    petName,
+  });
+}
+
+export async function verifyPetConsentOtp(
+  clinicUuid: string,
+  ownerUuid: string,
+  petName: string,
+  code: string
+): Promise<void> {
+  await axiosInstance.post(`/clinic/${clinicUuid}/owners/${ownerUuid}/pets/consent/verify`, {
+    petName,
+    code,
+  });
+}
+
 export async function createClinicOwner(
   clinicUuid: string,
   payload: {
@@ -882,7 +932,7 @@ export async function createClinicBooking(
       address?: string;
     };
     newPet?: { name: string; species?: string; breed?: string; gender?: string };
-    doctorUuid: string;
+    doctorUuid?: string;
     slotStart: string;
     slotEnd?: string;
     durationMinutes?: number;

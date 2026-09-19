@@ -127,7 +127,7 @@ export default function AdminOrganizations() {
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Clinics</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Verify a clinic before it can take appointments, bookings, or invite doctors.
+            Organization clinics only. Verify before appointments, bookings, or inviting doctors. Solo doctor practices are reviewed under Doctors.
           </p>
         </div>
         <Select value={filter} onValueChange={setFilter}>

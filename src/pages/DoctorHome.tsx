@@ -534,7 +534,8 @@ export default function DoctorHome() {
         const billableOnDoctor = !visitClinic || visitClinic === clinicUuid;
         setChartVisit(null);
         await loadSchedule();
-        if (billableOnDoctor) {
+        // Organization clinics: reception bills from Checkout. Personal practice: doctor invoices.
+        if (billableOnDoctor && isPersonalPractice) {
           const fromVisit = {
             visitUuid: completed.uuid || chartVisit.uuid,
             clinicUuid: visitClinic,
@@ -554,7 +555,7 @@ export default function DoctorHome() {
             state: { fromVisit },
           });
         } else {
-          toast.success('Treatment finished — ready to invoice');
+          toast.success('Treatment finished — sent to reception Checkout for billing');
         }
         return;
       } else {
@@ -1117,7 +1118,9 @@ export default function DoctorHome() {
               <p className="text-xs text-muted-foreground mt-1">
                 {chartVisit?.status === 'CHECKING_OUT' || chartVisit?.status === 'COMPLETED'
                   ? 'Treatment finished. Prescription is editable for one hour after checkout.'
-                  : 'Last clinical step before billing. Finish treatment opens the invoice for this visit.'}
+                  : isPersonalPractice
+                    ? 'Last clinical step before billing. Finish treatment opens the invoice for this visit.'
+                    : 'Last clinical step. Finish treatment sends the visit to reception Checkout for billing.'}
               </p>
             </div>
             <div>

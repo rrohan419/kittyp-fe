@@ -40,11 +40,13 @@ interface WrappedUserResponse {
   status: number;
 }
 
-interface AdminDashboardData {
+export interface AdminDashboardData {
   totalOrders: number;
   productCount: number;
-  usersCount : number;
-  articleCount : number;
+  usersCount: number;
+  articleCount: number;
+  pendingDoctorsCount: number;
+  clinicsCount: number;
 }
 
 export const fetchAllUsers = async (
@@ -54,6 +56,25 @@ export const fetchAllUsers = async (
 ): Promise<PaginationModel<UserProfile>> => {
   const response = await axiosInstance.get<WrappedPaginationResponse<UserProfile>>(
     '/admin/users',
+    {
+      params: {
+        pageNumber,
+        pageSize,
+        q: q.trim() || undefined,
+      },
+    }
+  );
+  return response.data.data;
+};
+
+/** Pet-owner accounts only (ROLE_USER, no staff roles). */
+export const fetchPetOwners = async (
+  pageNumber: number = 1,
+  pageSize: number = 10,
+  q: string = ''
+): Promise<PaginationModel<UserProfile>> => {
+  const response = await axiosInstance.get<WrappedPaginationResponse<UserProfile>>(
+    '/admin/parents',
     {
       params: {
         pageNumber,
