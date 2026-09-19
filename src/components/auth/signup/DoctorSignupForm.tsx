@@ -43,8 +43,10 @@ import {
 } from 'lucide-react';
 import { signupDoctor } from '@/services/authService';
 import { sendSignupOtp, verifySignupOtp, DOCTOR_STATUS_STEPS, statusLabel } from '@/services/doctorVerificationService';
+import { openMsg91OtpWidget } from '@/services/msg91Widget';
 import { uploadSignupDocuments } from '@/services/fileUploadService';
 import ErrorDialog from '@/components/ui/error-dialog';
+import { CooldownTimer } from '@/components/ui/cooldown-timer';
 import { digitsOnlyPhone, toE164Phone, validateEmail, validatePassword, validatePhone } from '@/utils/validation';
 
 /** Value must match backend DoctorSpecialization enum names. */
@@ -71,6 +73,8 @@ const STEPS = [
   { id: 4, label: 'Documents' },
 ] as const;
 
+const OTP_RESEND_COOLDOWN_SECONDS = 30;
+
 const DoctorSignupForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -86,6 +90,7 @@ const DoctorSignupForm = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [emailOtp, setEmailOtp] = useState('');
   const [phoneOtp, setPhoneOtp] = useState('');
+  const [phoneOtpMethod, setPhoneOtpMethod] = useState<'WHATSAPP' | 'PHONE'>('WHATSAPP');
   const [emailVerified, setEmailVerified] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
 
@@ -128,8 +133,21 @@ const DoctorSignupForm = () => {
 
   const [loading, setLoading] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
+  const [emailCooldown, setEmailCooldown] = useState(0);
+  const [phoneCooldown, setPhoneCooldown] = useState(0);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    if (emailCooldown === 0 && phoneCooldown === 0) return;
+
+    const timer = window.setInterval(() => {
+      setEmailCooldown((seconds) => Math.max(0, seconds - 1));
+      setPhoneCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [emailCooldown, phoneCooldown]);
 
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,9 +174,11 @@ const DoctorSignupForm = () => {
   };
 
   const sendEmailOtp = async () => {
+    if (emailCooldown > 0) return;
     setOtpSending(true);
     try {
       await sendSignupOtp({ channel: 'EMAIL', email: email.trim() });
+      setEmailCooldown(OTP_RESEND_COOLDOWN_SECONDS);
       toast.success('OTP sent to your email');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to send email OTP');
@@ -182,18 +202,45 @@ const DoctorSignupForm = () => {
     }
   };
 
-  const sendPhoneOtp = async () => {
+  const sendWhatsAppOtp = async () => {
+    if (phoneCooldown > 0) return;
     setOtpSending(true);
     try {
       const fullPhone = toE164Phone(phone);
       await sendSignupOtp({
-        channel: 'PHONE',
+        channel: 'WHATSAPP',
         phone: fullPhone,
         email: email.trim(),
       });
-      toast.success('OTP sent to your phone (check your phone, or server logs in local)');
+      setPhoneCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+      setPhoneOtpMethod('WHATSAPP');
+      toast.success('OTP sent to your WhatsApp number');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to send phone OTP');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const usePhoneOtpFallback = async () => {
+    if (phoneCooldown > 0) return;
+    setOtpSending(true);
+    try {
+      const fullPhone = toE164Phone(phone);
+      const accessToken = await openMsg91OtpWidget(fullPhone);
+      await verifySignupOtp({
+        channel: 'PHONE',
+        phone: fullPhone,
+        email: email.trim(),
+        accessToken,
+      });
+      setPhoneCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+      setPhoneOtpMethod('PHONE');
+      setPhoneVerified(true);
+      toast.success('Phone verified');
+      setStep(4);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to verify phone with MSG91');
     } finally {
       setOtpSending(false);
     }
@@ -205,7 +252,7 @@ const DoctorSignupForm = () => {
     try {
       const fullPhone = toE164Phone(phone);
       await verifySignupOtp({
-        channel: 'PHONE',
+        channel: 'WHATSAPP',
         phone: fullPhone,
         email: email.trim(),
         code: phoneOtp.trim(),
@@ -463,10 +510,14 @@ const DoctorSignupForm = () => {
                         variant="outline"
                         className="w-full"
                         onClick={sendEmailOtp}
-                        disabled={otpSending}
+                        disabled={otpSending || emailCooldown > 0}
                       >
                         <Mail className="h-4 w-4 mr-2" />
-                        {otpSending ? 'Sending…' : 'Send Email OTP'}
+                        {otpSending ? 'Sending…' : emailCooldown > 0 ? (
+                          <span className="inline-flex items-center gap-2">
+                            <CooldownTimer seconds={emailCooldown} />
+                          </span>
+                        ) : 'Send Email OTP'}
                       </Button>
                       <div className="space-y-2">
                         <Label htmlFor="emailOtp">Email OTP</Label>
@@ -497,7 +548,7 @@ const DoctorSignupForm = () => {
                   <CardHeader>
                     <CardTitle className="text-xl">Verify Phone</CardTitle>
                     <CardDescription>
-                      Phone OTP is sent to your phone number
+                      WhatsApp is the primary verification method. Phone OTP is available as a fallback.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -506,31 +557,51 @@ const DoctorSignupForm = () => {
                         type="button"
                         variant="outline"
                         className="w-full"
-                        onClick={sendPhoneOtp}
-                        disabled={otpSending}
+                        onClick={sendWhatsAppOtp}
+                        disabled={otpSending || phoneCooldown > 0}
                       >
                         <Phone className="h-4 w-4 mr-2" />
-                        {otpSending ? 'Sending…' : 'Send Phone OTP'}
+                        {otpSending ? 'Sending…' : phoneCooldown > 0 ? (
+                          <span className="inline-flex items-center gap-2">
+                            <CooldownTimer seconds={phoneCooldown} />
+                          </span>
+                        ) : 'Send WhatsApp OTP'}
                       </Button>
-                      <div className="space-y-2">
-                        <Label htmlFor="phoneOtp">Phone OTP</Label>
-                        <Input
-                          id="phoneOtp"
-                          inputMode="numeric"
-                          placeholder="6-digit code"
-                          value={phoneOtp}
-                          onChange={(e) => setPhoneOtp(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="flex gap-3">
+                      {phoneOtpMethod === 'WHATSAPP' && (
+                        <div className="space-y-2">
+                          <Label htmlFor="phoneOtp">WhatsApp OTP</Label>
+                          <Input
+                            id="phoneOtp"
+                            inputMode="numeric"
+                            placeholder="6-digit code"
+                            value={phoneOtp}
+                            onChange={(e) => setPhoneOtp(e.target.value)}
+                            required
+                          />
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="w-full"
+                        onClick={usePhoneOtpFallback}
+                        disabled={otpSending || phoneCooldown > 0}
+                      >
+                        {phoneCooldown > 0 ? `Use phone OTP instead (${phoneCooldown}s)` : 'Use phone OTP instead'}
+                      </Button>
+                      {phoneOtpMethod === 'WHATSAPP' && <div className="flex gap-3">
                         <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(2)}>
                           Back
                         </Button>
                         <Button type="submit" className="flex-1" disabled={loading}>
                           {loading ? 'Verifying…' : 'Verify & Continue'}
                         </Button>
-                      </div>
+                      </div>}
+                      {phoneOtpMethod === 'PHONE' && (
+                        <Button type="button" variant="outline" className="w-full" onClick={() => setStep(4)}>
+                          Continue
+                        </Button>
+                      )}
                     </form>
                   </CardContent>
                 </>
@@ -632,6 +703,7 @@ const DoctorSignupForm = () => {
                             id="degree"
                             type="file"
                             accept="image/*,.pdf"
+                            className="cursor-pointer file:cursor-pointer"
                             onChange={(e) => setDegreeFile(e.target.files?.[0] ?? null)}
                             required
                           />
@@ -642,6 +714,7 @@ const DoctorSignupForm = () => {
                             id="regCert"
                             type="file"
                             accept="image/*,.pdf"
+                            className="cursor-pointer file:cursor-pointer"
                             onChange={(e) => setRegistrationCertFile(e.target.files?.[0] ?? null)}
                             required
                           />
@@ -652,6 +725,7 @@ const DoctorSignupForm = () => {
                             id="govId"
                             type="file"
                             accept="image/*,.pdf"
+                            className="cursor-pointer file:cursor-pointer"
                             onChange={(e) => setGovernmentIdFile(e.target.files?.[0] ?? null)}
                           />
                         </div>

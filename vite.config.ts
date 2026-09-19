@@ -51,10 +51,10 @@ export default defineConfig(({ mode }) => ({
       },
       
       manifest: {
-        name: "Kittyp - Eco-Friendly Pet Products",
+        name: "Kittyp",
         short_name: "Kittyp",
         description:
-          "Pure by Nature, Trusted by You",
+          "Kittyp is a platform that connects pet owners with trusted veterinarians and pet care services. Our mission is to make pet healthcare accessible, reliable, and convenient for everyone.",
         start_url: "/",
         display: "standalone",
         background_color: "#ffffff",
