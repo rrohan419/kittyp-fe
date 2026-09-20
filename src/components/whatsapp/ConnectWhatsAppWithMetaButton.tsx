@@ -25,6 +25,7 @@ declare global {
 type SessionData = {
   wabaId?: string;
   phoneNumberId?: string;
+  event?: string;
 };
 
 function loadFacebookSdk(appId: string, apiVersion: string): Promise<void> {
@@ -92,14 +93,21 @@ export function ConnectWhatsAppWithMetaButton({
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (!event.origin.includes('facebook.com') && !event.origin.includes('fb.com')) {
+      try {
+        const origin = new URL(event.origin).hostname;
+        if (origin !== 'facebook.com' && !origin.endsWith('.facebook.com')) return;
+      } catch {
         return;
       }
       try {
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
         if (data?.type !== 'WA_EMBEDDED_SIGNUP') return;
-        const payload = data.data || data;
+        sessionRef.current.event = typeof data.event === 'string' ? data.event : undefined;
+        const payload = data.data || {};
         if (payload?.waba_id) sessionRef.current.wabaId = String(payload.waba_id);
+        if (!sessionRef.current.wabaId && Array.isArray(payload?.waba_ids) && payload.waba_ids.length === 1) {
+          sessionRef.current.wabaId = String(payload.waba_ids[0]);
+        }
         if (payload?.phone_number_id) sessionRef.current.phoneNumberId = String(payload.phone_number_id);
       } catch {
         // ignore non-JSON messages
@@ -134,6 +142,15 @@ export function ConnectWhatsAppWithMetaButton({
               );
               return;
             }
+            const signupEvent = sessionRef.current.event;
+            if (signupEvent && !signupEvent.startsWith('FINISH')) {
+              toast.error(
+                signupEvent === 'CANCEL'
+                  ? 'WhatsApp signup was cancelled. KittyP did not save a connection.'
+                  : 'Meta could not complete WhatsApp signup. KittyP did not save a connection.'
+              );
+              return;
+            }
             const body = {
               code,
               wabaId: sessionRef.current.wabaId,
@@ -162,8 +179,6 @@ export function ConnectWhatsAppWithMetaButton({
         override_default_response_type: true,
         extras: {
           setup: {},
-          featureType: '',
-          sessionInfoVersion: '3',
         },
       }
     );
