@@ -290,18 +290,66 @@ export async function fetchOwnerInvoicePdfUrl(petUuid: string, invoiceUuid: stri
   return res.data.data.url;
 }
 
-export async function fetchDoctorWhatsAppSettings(): Promise<{
+export type WhatsAppTemplateRow = {
+  name: string;
+  status: string;
+  detail?: string;
+};
+
+export type WhatsAppSettingsResponse = {
   whatsappConfigured: boolean;
   phoneNumberId: string;
   businessAccountId: string;
-}> {
-  const res = await axiosInstance.get<
-    ApiSuccessResponse<{
-      whatsappConfigured: boolean;
-      phoneNumberId: string;
-      businessAccountId: string;
-    }>
-  >('/doctor/whatsapp-settings');
+  connectionStatus?: string;
+  invoiceTemplateStatus?: string;
+  whatsappReadyToSend?: boolean;
+  templatesStatus?: string;
+  templatesReady?: boolean;
+  templatesMessage?: string;
+  templates?: WhatsAppTemplateRow[];
+};
+
+export type WhatsAppEmbeddedSignupConfig = {
+  enabled: boolean;
+  appId: string;
+  configId: string;
+  apiVersion: string;
+};
+
+export async function fetchWhatsAppEmbeddedSignupConfig(): Promise<WhatsAppEmbeddedSignupConfig> {
+  const res = await axiosInstance.get<ApiSuccessResponse<WhatsAppEmbeddedSignupConfig>>(
+    '/public/whatsapp/embedded-signup-config'
+  );
+  return res.data.data;
+}
+
+export async function connectClinicWhatsAppEmbedded(
+  clinicUuid: string,
+  body: { code: string; wabaId?: string; phoneNumberId?: string }
+): Promise<WhatsAppSettingsResponse> {
+  const res = await axiosInstance.post<ApiSuccessResponse<WhatsAppSettingsResponse>>(
+    `/clinic/${clinicUuid}/whatsapp/connect/embedded`,
+    body
+  );
+  return res.data.data;
+}
+
+export async function connectDoctorWhatsAppEmbedded(body: {
+  code: string;
+  wabaId?: string;
+  phoneNumberId?: string;
+}): Promise<WhatsAppSettingsResponse> {
+  const res = await axiosInstance.post<ApiSuccessResponse<WhatsAppSettingsResponse>>(
+    '/doctor/whatsapp/connect/embedded',
+    body
+  );
+  return res.data.data;
+}
+
+export async function fetchDoctorWhatsAppSettings(): Promise<WhatsAppSettingsResponse> {
+  const res = await axiosInstance.get<ApiSuccessResponse<WhatsAppSettingsResponse>>(
+    '/doctor/whatsapp-settings'
+  );
   return res.data.data;
 }
 
@@ -309,43 +357,43 @@ export async function updateDoctorWhatsAppSettings(body: {
   phoneNumberId: string;
   businessAccountId: string;
   token?: string;
-}): Promise<{ whatsappConfigured: boolean; phoneNumberId: string; businessAccountId: string }> {
-  const res = await axiosInstance.put<
-    ApiSuccessResponse<{
-      whatsappConfigured: boolean;
-      phoneNumberId: string;
-      businessAccountId: string;
-    }>
-  >('/doctor/whatsapp-settings', body);
+}): Promise<WhatsAppSettingsResponse> {
+  const res = await axiosInstance.put<ApiSuccessResponse<WhatsAppSettingsResponse>>(
+    '/doctor/whatsapp-settings',
+    body
+  );
   return res.data.data;
 }
 
-export async function fetchClinicWhatsAppSettings(clinicUuid: string): Promise<{
-  whatsappConfigured: boolean;
-  phoneNumberId: string;
-  businessAccountId: string;
-}> {
-  const res = await axiosInstance.get<
-    ApiSuccessResponse<{
-      whatsappConfigured: boolean;
-      phoneNumberId: string;
-      businessAccountId: string;
-    }>
-  >(`/clinic/${clinicUuid}/whatsapp-settings`);
+export async function setupDoctorWhatsAppTemplates(): Promise<WhatsAppSettingsResponse> {
+  const res = await axiosInstance.post<ApiSuccessResponse<WhatsAppSettingsResponse>>(
+    '/doctor/whatsapp-settings/setup-templates'
+  );
+  return res.data.data;
+}
+
+export async function fetchClinicWhatsAppSettings(clinicUuid: string): Promise<WhatsAppSettingsResponse> {
+  const res = await axiosInstance.get<ApiSuccessResponse<WhatsAppSettingsResponse>>(
+    `/clinic/${clinicUuid}/whatsapp-settings`
+  );
   return res.data.data;
 }
 
 export async function updateClinicWhatsAppSettings(
   clinicUuid: string,
   body: { phoneNumberId: string; businessAccountId: string; token?: string }
-): Promise<{ whatsappConfigured: boolean; phoneNumberId: string; businessAccountId: string }> {
-  const res = await axiosInstance.put<
-    ApiSuccessResponse<{
-      whatsappConfigured: boolean;
-      phoneNumberId: string;
-      businessAccountId: string;
-    }>
-  >(`/clinic/${clinicUuid}/whatsapp-settings`, body);
+): Promise<WhatsAppSettingsResponse> {
+  const res = await axiosInstance.put<ApiSuccessResponse<WhatsAppSettingsResponse>>(
+    `/clinic/${clinicUuid}/whatsapp-settings`,
+    body
+  );
+  return res.data.data;
+}
+
+export async function setupClinicWhatsAppTemplates(clinicUuid: string): Promise<WhatsAppSettingsResponse> {
+  const res = await axiosInstance.post<ApiSuccessResponse<WhatsAppSettingsResponse>>(
+    `/clinic/${clinicUuid}/whatsapp-settings/setup-templates`
+  );
   return res.data.data;
 }
 

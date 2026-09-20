@@ -58,6 +58,7 @@ import DoctorPatients from './pages/DoctorPatients';
 import DoctorMessages from './pages/DoctorMessages';
 import DoctorAnalytics from './pages/DoctorAnalytics';
 import DoctorSettings from './pages/DoctorSettings';
+import DoctorWhatsApp from './pages/DoctorWhatsApp';
 
 // Clinic Portal
 import { ClinicLayout } from './pages/clinic/ClinicLayout';
@@ -73,6 +74,7 @@ import ClinicInventory from './pages/clinic/ClinicInventory';
 import ClinicStaff from './pages/clinic/ClinicStaff';
 import ClinicReports from './pages/clinic/ClinicReports';
 import ClinicSettings from './pages/clinic/ClinicSettings';
+import ClinicWhatsApp from './pages/clinic/ClinicWhatsApp';
 import ClinicInvoices from './pages/clinic/ClinicInvoices';
 import ClinicRetention from './pages/clinic/ClinicRetention';
 import ClinicBlog from './pages/clinic/ClinicBlog';
@@ -383,6 +385,10 @@ export const router = createBrowserRouter(
               path: "settings",
               element: <PageTransition><DoctorSettings /></PageTransition>,
             },
+            {
+              path: "whatsapp",
+              element: <PageTransition><DoctorWhatsApp /></PageTransition>,
+            },
           ],
         },
         {
@@ -486,6 +492,14 @@ export const router = createBrowserRouter(
               element: (
                 <RoleGuard allowed={[ROLES.CLINIC_ADMIN]}>
                   <PageTransition><ClinicSettings /></PageTransition>
+                </RoleGuard>
+              ),
+            },
+            {
+              path: "whatsapp",
+              element: (
+                <RoleGuard allowed={[ROLES.CLINIC_ADMIN]}>
+                  <PageTransition><ClinicWhatsApp /></PageTransition>
                 </RoleGuard>
               ),
             },

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import type { WhatsAppSettingsResponse, WhatsAppTemplateRow } from '@/services/invoiceService';
 
 export type WhatsAppSettingsValues = {
   phoneNumberId: string;
@@ -19,18 +20,78 @@ function maskId(id: string): string {
   return `${t.slice(0, 4)}…${t.slice(-4)}`;
 }
 
+function TemplateStatusPanel({
+  templatesReady,
+  templatesStatus,
+  templatesMessage,
+  templates,
+  onRetrySetup,
+  retrying,
+}: {
+  templatesReady?: boolean;
+  templatesStatus?: string;
+  templatesMessage?: string;
+  templates?: WhatsAppTemplateRow[];
+  onRetrySetup?: () => Promise<void>;
+  retrying?: boolean;
+}) {
+  if (!templatesStatus && !templatesMessage) return null;
+  const ready = !!templatesReady;
+  return (
+    <div
+      className={`rounded-lg border px-3 py-3 space-y-2 ${
+        ready
+          ? 'border-emerald-200/80 bg-emerald-50/40 dark:border-emerald-900/40 dark:bg-emerald-950/20'
+          : 'border-border bg-muted/30'
+      }`}
+    >
+      <p className="text-sm font-medium text-foreground">
+        {ready ? 'Message templates ready' : 'Message templates'}
+      </p>
+      {templatesMessage ? (
+        <p className="text-xs text-muted-foreground">{templatesMessage}</p>
+      ) : null}
+      {templates && templates.length > 0 ? (
+        <ul className="text-xs text-muted-foreground space-y-1">
+          {templates.map((t) => (
+            <li key={t.name}>
+              <span className="font-medium text-foreground">{t.name}</span>: {t.status}
+              {t.detail ? ` — ${t.detail}` : ''}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {onRetrySetup && !ready ? (
+        <Button type="button" variant="outline" size="sm" disabled={retrying} onClick={() => void onRetrySetup()}>
+          {retrying ? 'Setting up…' : 'Retry template setup'}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 /** Meta Cloud API credentials — only the three fields needed to send. Token is write-only. */
 export function WhatsAppSettingsForm({
   configured,
   phoneNumberIdInitial = '',
   businessAccountIdInitial = '',
+  templatesReady,
+  templatesStatus,
+  templatesMessage,
+  templates,
   onSave,
+  onRetryTemplates,
   helperText,
 }: {
   configured: boolean;
   phoneNumberIdInitial?: string;
   businessAccountIdInitial?: string;
-  onSave: (values: WhatsAppSettingsValues) => Promise<void>;
+  templatesReady?: boolean;
+  templatesStatus?: string;
+  templatesMessage?: string;
+  templates?: WhatsAppTemplateRow[];
+  onSave: (values: WhatsAppSettingsValues) => Promise<WhatsAppSettingsResponse | void>;
+  onRetryTemplates?: () => Promise<WhatsAppSettingsResponse | void>;
   helperText?: string;
 }) {
   const [mode, setMode] = useState<FormMode>(configured ? 'view' : 'setup');
@@ -38,6 +99,13 @@ export function WhatsAppSettingsForm({
   const [businessAccountId, setBusinessAccountId] = useState(businessAccountIdInitial);
   const [token, setToken] = useState('');
   const [saving, setSaving] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [localTemplates, setLocalTemplates] = useState({
+    templatesReady,
+    templatesStatus,
+    templatesMessage,
+    templates,
+  });
 
   useEffect(() => {
     setPhoneNumberId(phoneNumberIdInitial);
@@ -48,6 +116,10 @@ export function WhatsAppSettingsForm({
   }, [businessAccountIdInitial]);
 
   useEffect(() => {
+    setLocalTemplates({ templatesReady, templatesStatus, templatesMessage, templates });
+  }, [templatesReady, templatesStatus, templatesMessage, templates]);
+
+  useEffect(() => {
     if (configured && mode === 'setup') {
       setMode('view');
     }
@@ -55,6 +127,16 @@ export function WhatsAppSettingsForm({
       setMode('setup');
     }
   }, [configured, mode]);
+
+  const applyTemplateResponse = (res?: WhatsAppSettingsResponse | void) => {
+    if (!res) return;
+    setLocalTemplates({
+      templatesReady: res.templatesReady,
+      templatesStatus: res.templatesStatus,
+      templatesMessage: res.templatesMessage,
+      templates: res.templates,
+    });
+  };
 
   const resetFieldsFromSaved = () => {
     setPhoneNumberId(phoneNumberIdInitial);
@@ -99,16 +181,22 @@ export function WhatsAppSettingsForm({
     }
     setSaving(true);
     try {
-      await onSave({
+      const res = await onSave({
         phoneNumberId: phoneNumberId.trim(),
         businessAccountId: businessAccountId.trim(),
         token: token.trim() || undefined,
       });
+      applyTemplateResponse(res);
       setToken('');
       setMode('view');
-      toast.success(
-        mode === 'replace' ? 'WhatsApp number replaced' : 'WhatsApp connected'
-      );
+      if (res?.templatesReady) {
+        toast.success('WhatsApp connected — invoice templates ready');
+      } else if (res?.templatesMessage) {
+        toast.success('WhatsApp connected');
+        toast.message(res.templatesMessage);
+      } else {
+        toast.success(mode === 'replace' ? 'WhatsApp number replaced' : 'WhatsApp connected');
+      }
     } catch (e: unknown) {
       const ax = e as { response?: { data?: { message?: string; detailedMessage?: string } }; message?: string };
       toast.error(
@@ -119,6 +207,32 @@ export function WhatsAppSettingsForm({
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const retryTemplates = async () => {
+    if (!onRetryTemplates) return;
+    setRetrying(true);
+    try {
+      const res = await onRetryTemplates();
+      applyTemplateResponse(res);
+      if (res?.templatesReady) {
+        toast.success('Templates approved — you can send invoices on WhatsApp');
+      } else if (res?.templatesMessage) {
+        toast.message(res.templatesMessage);
+      } else {
+        toast.success('Template setup refreshed');
+      }
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { message?: string; detailedMessage?: string } }; message?: string };
+      toast.error(
+        ax.response?.data?.detailedMessage ||
+          ax.response?.data?.message ||
+          ax.message ||
+          'Template setup failed'
+      );
+    } finally {
+      setRetrying(false);
     }
   };
 
@@ -139,6 +253,14 @@ export function WhatsAppSettingsForm({
             Edit
           </Button>
         </div>
+        <TemplateStatusPanel
+          templatesReady={localTemplates.templatesReady}
+          templatesStatus={localTemplates.templatesStatus}
+          templatesMessage={localTemplates.templatesMessage}
+          templates={localTemplates.templates}
+          onRetrySetup={onRetryTemplates ? retryTemplates : undefined}
+          retrying={retrying}
+        />
       </div>
     );
   }
@@ -166,6 +288,10 @@ export function WhatsAppSettingsForm({
           Enter Meta credentials for the new number. Saved only after successful verification.
         </p>
       )}
+      <p className="text-xs text-muted-foreground">
+        KittyP will create the required invoice message template on your WhatsApp Business Account after
+        connect (Meta still reviews it before you can send).
+      </p>
       <div className="space-y-2">
         <Label htmlFor="wa-phone-id">Phone Number ID</Label>
         <Input
@@ -204,7 +330,7 @@ export function WhatsAppSettingsForm({
           autoComplete="new-password"
         />
         <p className="text-xs text-muted-foreground">
-          Permanent system-user token — never shown again after save
+          Permanent system-user token with messaging + template management — never shown again after save
         </p>
       </div>
       <div className="flex flex-wrap gap-2">

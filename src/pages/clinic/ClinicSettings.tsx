@@ -10,9 +10,8 @@ import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { shutdownClinic, reopenClinic, updateClinic } from '@/services/clinicService';
 import {
   fetchClinicWhatsAppSettings,
-  updateClinicWhatsAppSettings,
 } from '@/services/invoiceService';
-import { WhatsAppSettingsForm } from '@/components/whatsapp/WhatsAppSettingsForm';
+import { whatsappSettingsSummary } from '@/components/whatsapp/whatsappStatusCopy';
 import { ClinicHoursDisplay, ClinicHoursEditor } from '@/components/clinic/ClinicHoursEditor';
 import {
   type ClinicHourDay,
@@ -32,8 +31,8 @@ export default function ClinicSettings() {
   const { clinic, clinicUuid, refresh } = useActiveClinic();
   const [acting, setActing] = useState(false);
   const [waConfigured, setWaConfigured] = useState(false);
-  const [waPhoneId, setWaPhoneId] = useState('');
-  const [waBusinessId, setWaBusinessId] = useState('');
+  const [waTemplatesReady, setWaTemplatesReady] = useState(false);
+  const [waTemplatesStatus, setWaTemplatesStatus] = useState<string | undefined>();
   const isShutdown = clinic?.status === 'SHUTDOWN';
 
   const [city, setCity] = useState('');
@@ -71,20 +70,20 @@ export default function ClinicSettings() {
   useEffect(() => {
     if (!clinicUuid || !canManageWhatsApp) {
       setWaConfigured(false);
-      setWaPhoneId('');
-      setWaBusinessId('');
+      setWaTemplatesReady(false);
+      setWaTemplatesStatus(undefined);
       return;
     }
     void fetchClinicWhatsAppSettings(clinicUuid)
       .then((wa) => {
         setWaConfigured(!!wa.whatsappConfigured);
-        setWaPhoneId(wa.phoneNumberId || '');
-        setWaBusinessId(wa.businessAccountId || '');
+        setWaTemplatesReady(!!wa.templatesReady || wa.invoiceTemplateStatus === 'APPROVED');
+        setWaTemplatesStatus(wa.invoiceTemplateStatus || wa.templatesStatus);
       })
       .catch(() => {
         setWaConfigured(!!clinic?.whatsappConfigured);
-        setWaPhoneId('');
-        setWaBusinessId('');
+        setWaTemplatesReady(false);
+        setWaTemplatesStatus(undefined);
       });
   }, [clinicUuid, clinic?.whatsappConfigured, canManageWhatsApp]);
 
@@ -389,26 +388,22 @@ export default function ClinicSettings() {
       {canManageWhatsApp && (
         <Card className="border-0 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base">WhatsApp number</CardTitle>
+            <CardTitle className="text-base">WhatsApp Business</CardTitle>
             <CardDescription>
-              One practice number for all doctors at this branch — invoices and receipts send from here.
+              Connect your practice WhatsApp number with Meta — invoices send from one shared number.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <WhatsAppSettingsForm
-              configured={waConfigured}
-              phoneNumberIdInitial={waPhoneId}
-              businessAccountIdInitial={waBusinessId}
-              helperText="Enter only the Meta values from this practice’s WhatsApp Business account."
-              onSave={async (values) => {
-                if (!clinicUuid) throw new Error('No clinic');
-                const res = await updateClinicWhatsAppSettings(clinicUuid, values);
-                setWaConfigured(!!res.whatsappConfigured);
-                setWaPhoneId(res.phoneNumberId || '');
-                setWaBusinessId(res.businessAccountId || '');
-                await refresh();
-              }}
-            />
+            <p className="text-sm text-muted-foreground">
+              {whatsappSettingsSummary({
+                configured: waConfigured,
+                ready: waTemplatesReady,
+                templateStatus: waTemplatesStatus,
+              })}
+            </p>
+            <Button variant="outline" asChild>
+              <Link to="/clinic/whatsapp">Manage WhatsApp Business</Link>
+            </Button>
           </CardContent>
         </Card>
       )}
