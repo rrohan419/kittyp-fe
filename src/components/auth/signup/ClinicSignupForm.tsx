@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,20 +10,30 @@ import { toast } from 'sonner';
 import { Building2, Mail, Phone, MapPin, Award, User, Lock } from 'lucide-react';
 import { signupClinic } from '@/services/authService';
 import { sendSignupOtp, verifySignupOtp } from '@/services/doctorVerificationService';
+import { CooldownTimer } from '@/components/ui/cooldown-timer';
+import { openMsg91OtpWidget } from '@/services/msg91Widget';
 import {
   digitsOnlyPhone,
+  toE164Phone,
   validateEmail,
   validatePassword,
   validatePhone,
 } from '@/utils/validation';
+
+const OTP_RESEND_COOLDOWN_SECONDS = 30;
 
 const ClinicSignupForm = () => {
   const navigate = useNavigate();
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
+  const [emailCooldown, setEmailCooldown] = useState(0);
+  const [phoneCooldown, setPhoneCooldown] = useState(0);
   const [emailVerified, setEmailVerified] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
   const [emailOtp, setEmailOtp] = useState('');
+  const [phoneOtp, setPhoneOtp] = useState('');
+  const [phoneOtpMethod, setPhoneOtpMethod] = useState<'WHATSAPP' | 'PHONE'>('WHATSAPP');
   const [form, setForm] = useState({
     clinicName: '',
     license: '',
@@ -38,9 +48,21 @@ const ClinicSignupForm = () => {
     about: '',
   });
 
+  useEffect(() => {
+    if (emailCooldown === 0 && phoneCooldown === 0) return;
+
+    const timer = window.setInterval(() => {
+      setEmailCooldown((seconds) => Math.max(0, seconds - 1));
+      setPhoneCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [emailCooldown, phoneCooldown]);
+
   const set = (k: keyof typeof form, v: string) => setForm((s) => ({ ...s, [k]: v }));
 
   const sendEmailOtp = async () => {
+    if (emailCooldown > 0) return;
     const emailErr = validateEmail(form.adminEmail);
     if (emailErr) {
       toast.error(emailErr);
@@ -49,6 +71,7 @@ const ClinicSignupForm = () => {
     setOtpSending(true);
     try {
       await sendSignupOtp({ channel: 'EMAIL', email: form.adminEmail.trim() });
+      setEmailCooldown(OTP_RESEND_COOLDOWN_SECONDS);
       toast.success('OTP sent to your email');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to send email OTP');
@@ -74,6 +97,69 @@ const ClinicSignupForm = () => {
     }
   };
 
+  const sendWhatsAppOtp = async () => {
+    if (phoneCooldown > 0) return;
+    setOtpSending(true);
+    try {
+      await sendSignupOtp({
+        channel: 'WHATSAPP',
+        phone: toE164Phone(form.adminPhone),
+        email: form.adminEmail.trim(),
+      });
+      setPhoneCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+      setPhoneOtpMethod('WHATSAPP');
+      toast.success('OTP sent to your WhatsApp number');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send phone OTP');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const usePhoneOtpFallback = async () => {
+    if (phoneCooldown > 0) return;
+    setOtpSending(true);
+    try {
+      const accessToken = await openMsg91OtpWidget(toE164Phone(form.adminPhone));
+      await verifySignupOtp({
+        channel: 'PHONE',
+        phone: toE164Phone(form.adminPhone),
+        email: form.adminEmail.trim(),
+        accessToken,
+      });
+      setPhoneCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+      setPhoneOtpMethod('PHONE');
+      setPhoneVerified(true);
+      toast.success('Phone verified');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to verify phone with MSG91');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const verifyPhone = async () => {
+    if (!phoneOtp.trim()) {
+      toast.error('Enter the WhatsApp OTP');
+      return;
+    }
+    setLoading(true);
+    try {
+      await verifySignupOtp({
+        channel: 'WHATSAPP',
+        phone: toE164Phone(form.adminPhone),
+        email: form.adminEmail.trim(),
+        code: phoneOtp.trim(),
+      });
+      setPhoneVerified(true);
+      toast.success('Phone verified');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Invalid phone OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.clinicName || !form.adminFirstName) {
@@ -85,8 +171,8 @@ const ClinicSignupForm = () => {
       toast.error(emailErr);
       return;
     }
-    if (!emailVerified) {
-      toast.error('Verify your email with OTP before submitting');
+    if (!emailVerified || !phoneVerified) {
+      toast.error('Verify your email and phone with OTP before submitting');
       return;
     }
     const passErr = validatePassword(form.password);
@@ -98,7 +184,7 @@ const ClinicSignupForm = () => {
       toast.error("Passwords don't match");
       return;
     }
-    const phoneErr = validatePhone(form.adminPhone, false);
+    const phoneErr = validatePhone(form.adminPhone, true);
     if (phoneErr) {
       toast.error(phoneErr);
       return;
@@ -207,9 +293,55 @@ const ClinicSignupForm = () => {
                             className="pl-10"
                             placeholder="9876543210"
                             value={form.adminPhone}
-                            onChange={(e) => set('adminPhone', digitsOnlyPhone(e.target.value))}
+                              onChange={(e) => {
+                                setPhoneVerified(false);
+                                setPhoneOtp('');
+                                setPhoneOtpMethod('WHATSAPP');
+                                set('adminPhone', digitsOnlyPhone(e.target.value));
+                              }}
+                              required
                           />
                         </div>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={sendWhatsAppOtp}
+                              disabled={otpSending || phoneVerified || phoneCooldown > 0}
+                            >
+                              <Phone className="h-4 w-4 mr-2" />
+                              {otpSending ? 'Sending…' : phoneVerified ? 'Verified' : phoneCooldown > 0 ? <CooldownTimer seconds={phoneCooldown} /> : 'Send WhatsApp OTP'}
+                            </Button>
+                            {!phoneVerified && phoneOtpMethod === 'WHATSAPP' && (
+                              <>
+                                <Input
+                                  id="phoneOtp"
+                                  name="phoneOtp"
+                                  inputMode="numeric"
+                                  className="max-w-[140px] h-9"
+                                  placeholder="OTP code"
+                                  value={phoneOtp}
+                                  onChange={(e) => setPhoneOtp(e.target.value)}
+                                />
+                                <Button type="button" size="sm" onClick={verifyPhone} disabled={loading || !phoneOtp.trim()}>
+                                  Verify
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                          {!phoneVerified && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="px-0"
+                              onClick={usePhoneOtpFallback}
+                              disabled={otpSending || phoneCooldown > 0}
+                            >
+                              {phoneCooldown > 0 ? `Use phone OTP instead (${phoneCooldown}s)` : 'Use phone OTP instead'}
+                            </Button>
+                          )}
                       </div>
                       <div className="space-y-2 sm:col-span-2">
                         <Label htmlFor="adminEmail">Email *</Label>
@@ -233,8 +365,8 @@ const ClinicSignupForm = () => {
                           />
                         </div>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <Button type="button" variant="outline" size="sm" onClick={sendEmailOtp} disabled={otpSending || emailVerified}>
-                            {otpSending ? 'Sending…' : emailVerified ? 'Verified' : 'Send OTP'}
+                          <Button type="button" variant="outline" size="sm" onClick={sendEmailOtp} disabled={otpSending || emailVerified || emailCooldown > 0}>
+                            {otpSending ? 'Sending…' : emailVerified ? 'Verified' : emailCooldown > 0 ? <CooldownTimer seconds={emailCooldown} /> : 'Send OTP'}
                           </Button>
                           {!emailVerified && (
                             <>
@@ -300,7 +432,7 @@ const ClinicSignupForm = () => {
                     <Textarea rows={4} placeholder="Tell us about your services and team…" value={form.about} onChange={(e) => set('about', e.target.value)} className="resize-none" />
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={loading || !emailVerified}>
+                  <Button type="submit" className="w-full" disabled={loading || !emailVerified || !phoneVerified}>
                     <Building2 className="h-4 w-4 mr-2" />
                     {loading ? 'Submitting…' : 'Submit Application'}
                   </Button>
