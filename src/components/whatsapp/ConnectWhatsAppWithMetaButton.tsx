@@ -79,7 +79,7 @@ export function ConnectWhatsAppWithMetaButton({
         if (cancelled) return;
         setConfig(cfg);
         if (cfg.enabled && cfg.appId && cfg.configId) {
-          await loadFacebookSdk(cfg.appId, cfg.apiVersion || 'v21.0');
+          await loadFacebookSdk(cfg.appId, cfg.apiVersion || 'v26.0');
           if (!cancelled) setSdkReady(true);
         }
       })
