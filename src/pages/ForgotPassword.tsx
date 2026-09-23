@@ -32,7 +32,7 @@ const ForgotPassword = () => {
       }
     } catch (error) {
       toast.error("Error", {
-        description: "Failed to send verification code. Please try again."
+        description: error.response.data.message
       });
     } finally {
       setIsSubmitting(false);

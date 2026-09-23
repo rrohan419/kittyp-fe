@@ -221,6 +221,7 @@ export function AddAppointmentDialog({
         const merged: SearchHit[] = [];
 
         for (const hit of petHits) {
+          if (hit.kind !== 'pet') continue;
           if (seenPet.has(hit.pet.petUuid)) continue;
           seenPet.add(hit.pet.petUuid);
           if (hit.pet.ownerUuid) seenOwner.add(hit.pet.ownerUuid);
@@ -228,6 +229,7 @@ export function AddAppointmentDialog({
           merged.push(hit);
         }
         for (const hit of ownerPetHits) {
+          if (hit.kind !== 'owner') continue;
           if (seenPet.has(hit.pet.petUuid)) continue;
           seenPet.add(hit.pet.petUuid);
           if (hit.owner.ownerUuid) seenOwner.add(hit.owner.ownerUuid);
@@ -235,6 +237,7 @@ export function AddAppointmentDialog({
           merged.push(hit);
         }
         for (const hit of userHits) {
+          if (hit.kind !== 'user') continue;
           if (seenUser.has(hit.user.userUuid)) continue;
           const ownerKey = hit.user.clinicOwnerUuid;
           const emailKey = hit.user.email?.toLowerCase();
@@ -816,7 +819,7 @@ export function AddAppointmentDialog({
                     <Loader2 className="h-5 w-5 animate-spin" />
                   </div>
                 ) : (
-                  <div className="border rounded-md max-h-52 overflow-y-auto divide-y mt-2">
+                  <div className="border border-border rounded-md max-h-52 overflow-y-auto divide-y divide-border mt-2 bg-background">
                     {hits.length === 0 ? (
                       <p className="p-3 text-sm text-muted-foreground">
                         {debouncedQ.trim().length >= APPOINTMENT_SEARCH_MIN
@@ -829,7 +832,7 @@ export function AddAppointmentDialog({
                           <button
                             key={`user-${hit.user.userUuid}`}
                             type="button"
-                            className="w-full text-left px-3 py-2.5 text-sm hover:bg-muted/60"
+                            className="w-full text-left px-3 py-2.5 text-sm text-foreground hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                             onClick={() => void selectPlatformUser(hit.user)}
                           >
                             <div className="font-medium flex items-center gap-2">
@@ -845,10 +848,11 @@ export function AddAppointmentDialog({
                             ) : null}
                           </button>
                         ) : (
-                          <button
+                          <Button
                             key={hit.pet.petUuid}
                             type="button"
-                            className="w-full text-left px-3 py-2.5 text-sm hover:bg-muted/60"
+                            variant="ghost"
+                            className="h-auto min-h-12 w-full justify-start rounded-none px-3 py-2.5 text-left text-sm text-foreground hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                             onClick={() => void selectPet(hit.pet)}
                           >
                             <PetNameType name={hit.pet.name} type={hit.pet.species} />
@@ -860,7 +864,7 @@ export function AddAppointmentDialog({
                                 .filter(Boolean)
                                 .join(' · ')}
                             </p>
-                          </button>
+                          </Button>
                         )
                       )
                     )}

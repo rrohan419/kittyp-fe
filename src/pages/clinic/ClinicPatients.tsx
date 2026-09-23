@@ -42,9 +42,12 @@ import { resolveClinicSearchTarget } from '@/utils/clinicSearchNavigate';
 import {
   ClinicOwnerModel,
   ClinicPetListModel,
+  PlatformPetIntakeModel,
   PlatformUserSearchModel,
   addClinicPatient,
+  admitClinicPet,
   ensureClinicOwnerFromUser,
+  fetchPlatformUserPets,
   fetchClinicOwners,
   fetchClinicPets,
   searchPlatformUsers,
@@ -89,9 +92,14 @@ export default function ClinicPatients() {
   const [platformUsers, setPlatformUsers] = useState<PlatformUserSearchModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  const [intakeMode, setIntakeMode] = useState<'manual' | 'account'>('manual');
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [selectingUserUuid, setSelectingUserUuid] = useState<string | null>(null);
+  const [selectedPlatformUser, setSelectedPlatformUser] = useState<PlatformUserSearchModel | null>(null);
+  const [platformPets, setPlatformPets] = useState<PlatformPetIntakeModel[]>([]);
+  const [platformPetsLoading, setPlatformPetsLoading] = useState(false);
+  const [admittingPetUuid, setAdmittingPetUuid] = useState<string | null>(null);
 
   const set = (key: keyof typeof emptyForm, value: string) =>
     setForm((s) => ({ ...s, [key]: value }));
@@ -282,15 +290,52 @@ export default function ClinicPatients() {
     setSelectingUserUuid(user.userUuid);
     try {
       const owner = await ensureClinicOwnerFromUser(targetClinic, user.userUuid);
+      setSelectedPlatformUser({ ...user, clinicOwnerUuid: owner.ownerUuid, alreadyClient: true });
+      setPlatformPetsLoading(true);
+      const userPets = await fetchPlatformUserPets(targetClinic, user.userUuid);
+      setPlatformPets(userPets);
+      setIntakeMode('account');
+      setAddOpen(true);
       toast.success(`${owner.name} ready as clinic client`);
-      navigate(`/clinic/owners/${owner.ownerUuid}`);
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         'Could not select user';
       toast.error(message);
     } finally {
+      setPlatformPetsLoading(false);
       setSelectingUserUuid(null);
+    }
+  };
+
+  const openManualAdd = () => {
+    setIntakeMode('manual');
+    setSelectedPlatformUser(null);
+    setPlatformPets([]);
+    setAddOpen(true);
+  };
+
+  const admitPlatformPetToClinic = async (pet: PlatformPetIntakeModel) => {
+    if (!clinicUuid) return;
+    if (pet.admitted) {
+      navigate(`/clinic/pets/${pet.petUuid}`);
+      return;
+    }
+    setAdmittingPetUuid(pet.petUuid);
+    try {
+      await admitClinicPet(clinicUuid, pet.petUuid);
+      setPlatformPets((current) => current.map((item) =>
+        item.petUuid === pet.petUuid ? { ...item, admitted: true } : item
+      ));
+      toast.success(`${pet.name} admitted to the clinic`);
+      await reload();
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Could not admit pet to this clinic';
+      toast.error(message);
+    } finally {
+      setAdmittingPetUuid(null);
     }
   };
 
@@ -374,7 +419,7 @@ export default function ClinicPatients() {
                 : 'Select a clinic branch to view records'}
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)} disabled={!clinicUuid} className="shadow-md shadow-primary/20">
+        <Button onClick={openManualAdd} disabled={!clinicUuid} className="shadow-md shadow-primary/20">
           <Plus className="h-4 w-4 mr-2" />
           Add client
         </Button>
@@ -502,7 +547,7 @@ export default function ClinicPatients() {
                           {selectingUserUuid === u.userUuid ? (
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
                           ) : null}
-                          {u.alreadyClient ? 'Open client' : 'Select'}
+                          {u.alreadyClient ? 'Manage pets' : 'Select'}
                         </Button>
                       </div>
                     </CardContent>
@@ -741,12 +786,90 @@ export default function ClinicPatients() {
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add client & pet</DialogTitle>
+            <DialogTitle>{intakeMode === 'account' ? 'Add KittyP patient' : 'Add client & pet'}</DialogTitle>
             <DialogDescription>
-              Creates a clinic client for {clinic?.name || 'the active branch'} (not a KittyP login). Link happens later
-              when they sign up with the same email or phone.
+              {intakeMode === 'account'
+                ? 'Choose which visible pets from this KittyP account should be admitted to the clinic.'
+                : `Creates a clinic client for ${clinic?.name || 'the active branch'}. Link happens later when they sign up with the same email or phone.`}
             </DialogDescription>
           </DialogHeader>
+          {intakeMode === 'account' ? (
+            <div className="space-y-4">
+              {selectedPlatformUser && (
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                  <p className="font-semibold">{selectedPlatformUser.name}</p>
+                  <p className="text-sm text-muted-foreground">{selectedPlatformUser.email || 'No email on file'}</p>
+                  <p className="font-mono text-[11px] text-muted-foreground mt-1 break-all">
+                    KittyP ID: {selectedPlatformUser.userUuid}
+                  </p>
+                </div>
+              )}
+              {platformPetsLoading ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" /> Loading account pets…
+                </div>
+              ) : platformPets.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border py-8 px-4 text-center">
+                  <PawPrint className="h-8 w-8 text-primary/40 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">This account has no eligible pets yet.</p>
+                  {selectedPlatformUser?.clinicOwnerUuid && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-4"
+                      onClick={() => navigate(`/clinic/owners/${selectedPlatformUser.clinicOwnerUuid}`)}
+                    >
+                      Add a new pet to this client
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Pets on this account</p>
+                  {platformPets.map((pet) => (
+                    <div
+                      key={pet.petUuid}
+                      className="flex items-center gap-3 rounded-xl border border-border p-3"
+                    >
+                      <PetPhoto
+                        photoUrl={pet.photoUrl}
+                        name={pet.name}
+                        species={pet.species}
+                        seed={pet.globalPetId || pet.petUuid}
+                        className="h-12 w-12 rounded-lg bg-muted/40 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{pet.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {[pet.species, pet.breed].filter(Boolean).join(' · ') || 'Pet details not provided'}
+                        </p>
+                        {pet.patientNumber && (
+                          <p className="font-mono text-[10px] text-muted-foreground truncate">{pet.patientNumber}</p>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={pet.admitted ? 'outline' : 'default'}
+                        disabled={admittingPetUuid !== null}
+                        onClick={() => void admitPlatformPetToClinic(pet)}
+                      >
+                        {admittingPetUuid === pet.petUuid ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : null}
+                        {pet.admitted ? 'Open patient' : 'Admit'}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
+                  Done
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
           <form onSubmit={handleAdd} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -804,7 +927,21 @@ export default function ClinicPatients() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="petType">Species / type</Label>
-                  <Input id="petType" value={form.petType} onChange={(e) => set('petType', e.target.value)} />
+                  <Select
+                    value={form.petType || undefined}
+                    onValueChange={(value) => set('petType', value)}
+                  >
+                    <SelectTrigger id="petType">
+                      <SelectValue placeholder="Select species" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CAT">Cat</SelectItem>
+                      <SelectItem value="DOG">Dog</SelectItem>
+                      <SelectItem value="BIRD">Bird</SelectItem>
+                      <SelectItem value="RABBIT">Rabbit</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="petBreed">Breed</Label>
@@ -854,6 +991,7 @@ export default function ClinicPatients() {
               </Button>
             </DialogFooter>
           </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>

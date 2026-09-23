@@ -180,12 +180,16 @@ export const login = async (data: AuthData): Promise<{ token: string; roles: str
 };
 
 export const sendPasswordResetCode = async (email: string): Promise<boolean> => {
-  const loginResponse = await axiosInstance.get<WrappedPasswordResetResponse>('/auth/send-code?email=' + email);
+  const loginResponse = await axiosInstance.get<WrappedPasswordResetResponse>('/auth/send-code', {
+    params: { email: email.trim() },
+  });
   return loginResponse.data.data;
 };
 
 export const verifyPasswordResetCode = async (code: string, email: string): Promise<boolean> => {
-  const loginResponse = await axiosInstance.get<WrappedPasswordResetResponse>('/auth/verify-code?code=' + code + '&email=' + email);
+  const loginResponse = await axiosInstance.get<WrappedPasswordResetResponse>('/auth/verify-code', {
+    params: { code, email: email.trim() },
+  });
   return loginResponse.data.data;
 };
 

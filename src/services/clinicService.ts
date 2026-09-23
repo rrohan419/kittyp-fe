@@ -171,6 +171,21 @@ export interface PlatformUserSearchModel {
   alreadyClient: boolean;
 }
 
+export interface PlatformPetIntakeModel {
+  petUuid: string;
+  globalPetId?: string;
+  name: string;
+  species?: string;
+  breed?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  weight?: string;
+  microchipNumber?: string;
+  photoUrl?: string;
+  patientNumber?: string;
+  admitted: boolean;
+}
+
 export interface OwnerEmailLookupModel {
   found: boolean;
   source?: 'CLINIC' | 'PLATFORM' | 'BOTH' | string;
@@ -669,6 +684,16 @@ export async function ensureClinicOwnerFromUser(
     { userUuid }
   );
   return res.data.data;
+}
+
+export async function fetchPlatformUserPets(
+  clinicUuid: string,
+  userUuid: string
+): Promise<PlatformPetIntakeModel[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<PlatformPetIntakeModel[]>>(
+    `/clinic/${clinicUuid}/users/${encodeURIComponent(userUuid)}/pets`
+  );
+  return res.data.data ?? [];
 }
 
 export async function lookupOwnerByEmail(

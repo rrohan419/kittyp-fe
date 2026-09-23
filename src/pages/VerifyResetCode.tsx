@@ -6,17 +6,32 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { ArrowLeft } from 'lucide-react';
 import { sendPasswordResetCode, verifyPasswordResetCode } from '@/services/authService';
 import { toast } from 'sonner';
+import { CooldownTimer } from '@/components/ui/cooldown-timer';
 import { 
   InputOTP, 
   InputOTPGroup, 
   InputOTPSlot 
 } from '@/components/ui/input-otp';
 
+const RESEND_COOLDOWN_SECONDS = 30;
+
 const VerifyResetCode = () => {
   const [code, setCode] = useState('');
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SECONDS);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (resendCooldown === 0) return;
+
+    const timer = window.setInterval(() => {
+      setResendCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [resendCooldown]);
 
 useEffect(() => {
   const performPasswordReset = async () => {
@@ -65,16 +80,22 @@ useEffect(() => {
   };
 
   const handleResend = async () => {
-    if (!email) {
+    if (!email || resendCooldown > 0 || isResending) {
+      if (!email) {
       toast.error("No email found. Please restart the password reset process.");
       navigate('/forgot-password');
+      }
       return;
     }
+    setIsResending(true);
     try {
       await sendPasswordResetCode(email);
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
       toast.success("A new verification code has been sent to your email.");
     } catch {
       toast.error("Failed to resend verification code. Please try again.");
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -129,9 +150,10 @@ useEffect(() => {
                       variant="link" 
                       type="button" 
                       onClick={handleResend}
+                      disabled={isResending || resendCooldown > 0}
                       className="text-kitty-600 hover:text-kitty-700"
                     >
-                      Didn't receive a code? Resend
+                      {isResending ? 'Sending...' : resendCooldown > 0 ? <CooldownTimer seconds={resendCooldown} /> : "Didn't receive a code? Resend"}
                     </Button>
                   </div>
                 </form>
