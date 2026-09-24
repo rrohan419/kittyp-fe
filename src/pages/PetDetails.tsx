@@ -42,6 +42,8 @@ const PetDetail: React.FC = () => {
     toggleMealCompletion,
     toggleSupplementCompletion,
     logWeight,
+    error: nutritionError,
+    retry: retryNutrition,
   } = useNutrition(uuid || '');
 
   // Set the selected pet based on URL param
@@ -222,20 +224,33 @@ const PetDetail: React.FC = () => {
             </TabsList>
 
             <TabsContent value="nutrition">
-              {nutritionPlan && stats ? (
+              {nutritionLoading ? (
+                <Card className="p-6 text-center text-muted-foreground">
+                  Loading nutrition data...
+                </Card>
+              ) : nutritionError ? (
+                <Card className="p-6 text-center">
+                  <p className="text-muted-foreground mb-4">{nutritionError}</p>
+                  <Button variant="outline" onClick={retryNutrition}>Try again</Button>
+                </Card>
+              ) : nutritionPlan && stats ? (
                 <NutritionDashboard
                   profile={nutritionPlan.petProfileSummary}
                   stats={stats}
                 />
               ) : (
                 <Card className="p-6 text-center text-muted-foreground">
-                  Loading nutrition data...
+                  No active nutrition plan is available for this pet.
                 </Card>
               )}
             </TabsContent>
 
             <TabsContent value="calendar">
-              {nutritionPlan ? (
+              {nutritionLoading ? (
+                <Card className="p-6 text-center text-muted-foreground">Loading nutrition logs...</Card>
+              ) : nutritionError ? (
+                <Card className="p-6 text-center text-muted-foreground">{nutritionError}</Card>
+              ) : nutritionPlan && nutritionPlan.dailyLogs.length > 0 ? (
                 <div className="space-y-4">
                   <NutritionCalendar
                     dailyLogs={nutritionPlan.dailyLogs}
@@ -265,13 +280,17 @@ const PetDetail: React.FC = () => {
                 </div>
               ) : (
                 <Card className="p-6 text-center text-muted-foreground">
-                  Loading calendar data...
+                  No feeding logs or scheduled nutrition days are available.
                 </Card>
               )}
             </TabsContent>
 
             <TabsContent value="progress">
-              {nutritionPlan ? (
+              {nutritionLoading ? (
+                <Card className="p-6 text-center text-muted-foreground">Loading progress data...</Card>
+              ) : nutritionError ? (
+                <Card className="p-6 text-center text-muted-foreground">{nutritionError}</Card>
+              ) : nutritionPlan ? (
                 <ProgressCharts
                   weightHistory={nutritionPlan.weightHistory}
                   dailyLogs={nutritionPlan.dailyLogs}
@@ -283,7 +302,7 @@ const PetDetail: React.FC = () => {
                 />
               ) : (
                 <Card className="p-6 text-center text-muted-foreground">
-                  Loading progress data...
+                  No nutrition plan is available.
                 </Card>
               )}
             </TabsContent>

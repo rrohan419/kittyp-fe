@@ -189,8 +189,8 @@ export function AddAppointmentDialog({
         if (cancelled) return;
         const pets = petsPage.models ?? [];
         const owners = ownersPage.models ?? [];
-        const petHits: SearchHit[] = pets.slice(0, 30).map((pet) => ({ kind: 'pet', pet }));
-        const ownerPetHits: SearchHit[] = [];
+        const petHits = pets.slice(0, 30).map((pet) => ({ kind: 'pet' as const, pet }));
+        const ownerPetHits: Extract<SearchHit, { kind: 'owner' }>[] = [];
         for (const owner of owners.slice(0, 20)) {
           const petsOfOwner = owner.pets ?? [];
           if (petsOfOwner.length === 0) continue;
@@ -220,7 +220,7 @@ export function AddAppointmentDialog({
             });
           }
         }
-        const userHits: SearchHit[] = users.slice(0, 20).map((user) => ({ kind: 'user', user }));
+        const userHits = users.slice(0, 20).map((user) => ({ kind: 'user' as const, user }));
         const seenPet = new Set<string>();
         const seenOwner = new Set<string>();
         const seenUser = new Set<string>();
@@ -437,7 +437,12 @@ export function AddAppointmentDialog({
 
   const afterOwnerAttached = async (owner: ClinicOwnerModel, user?: PlatformUserSearchModel) => {
     const petsOfOwner = owner.pets ?? [];
-    if (petsOfOwner.length > 0) {
+    const pending = petsOfOwner.filter((pet) => pet.clinicPatient === false);
+    if (pending.length > 1) {
+      toast.message('This client has more than one pet. Search and select the pet for this visit.');
+      return;
+    }
+    if (petsOfOwner.length === 1) {
       const op = petsOfOwner[0];
       await selectPet({
         petUuid: op.petUuid,
@@ -686,11 +691,12 @@ export function AddAppointmentDialog({
   };
 
   const ownerPetCount = emailLookup?.owner?.petCount ?? matchedOwner?.petCount ?? 0;
+  const linkedOwner = Boolean(emailLookup?.owner?.linked || matchedOwner?.linked);
   const needsOwnerConsent =
     mode === 'new' &&
     timing === 'schedule' &&
     !selectedPet &&
-    ownerPetCount > 0;
+    (ownerPetCount > 0 || linkedOwner);
 
   const patientPayload = () => {
     if (mode === 'existing' && selectedPet) {

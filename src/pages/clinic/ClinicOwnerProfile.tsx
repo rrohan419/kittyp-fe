@@ -32,9 +32,13 @@ import {
   User,
 } from 'lucide-react';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
+  ClinicOwnerPetModel,
   ClinicOwnerProfileModel,
   addPetToClinicOwner,
+  admitClinicPet,
+  admitOwnerPets,
   fetchClinicOwnerProfile,
   sendPetConsentOtp,
   verifyPetConsentOtp,
@@ -70,6 +74,9 @@ export default function ClinicOwnerProfile() {
   const [consentVerified, setConsentVerified] = useState(false);
   const [consentSending, setConsentSending] = useState(false);
   const [consentVerifying, setConsentVerifying] = useState(false);
+  const [pickedPetIds, setPickedPetIds] = useState<string[]>([]);
+  const [associating, setAssociating] = useState(false);
+  const [consentPet, setConsentPet] = useState<ClinicOwnerPetModel | null>(null);
 
   const reload = async () => {
     if (!clinicUuid || !ownerUuid) return;
@@ -103,7 +110,7 @@ export default function ClinicOwnerProfile() {
     };
   }, [clinicUuid, ownerUuid, clinicLoading]);
 
-  const needsPetConsent = (profile?.owner.petCount ?? profile?.owner.pets?.length ?? 0) > 0;
+  const needsPetConsent = Boolean(profile?.owner.linked) || (profile?.owner.petCount ?? 0) > 0;
 
   const handleAddPet = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,6 +188,72 @@ export default function ClinicOwnerProfile() {
     }
   };
 
+  const togglePickedPet = (petUuid: string, checked: boolean) => {
+    setPickedPetIds((current) =>
+      checked ? [...current, petUuid] : current.filter((id) => id !== petUuid)
+    );
+  };
+
+  const associatePickedPets = async (petUuids: string[]) => {
+    if (!clinicUuid || !ownerUuid || petUuids.length === 0) return;
+    setAssociating(true);
+    try {
+      await admitOwnerPets(clinicUuid, ownerUuid, petUuids);
+      toast.success(petUuids.length === 1 ? 'Pet associated with this clinic' : 'Selected pets associated with this clinic');
+      setPickedPetIds([]);
+      await reload();
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Could not associate pet';
+      toast.error(message);
+    } finally {
+      setAssociating(false);
+    }
+  };
+
+  const handleSendExistingConsent = async (pet: ClinicOwnerPetModel) => {
+    if (!clinicUuid || !ownerUuid) return;
+    setConsentPet(pet);
+    setConsentSending(true);
+    setConsentVerified(false);
+    try {
+      await sendPetConsentOtp(clinicUuid, ownerUuid, pet.name);
+      toast.success('Consent code sent to owner email');
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Failed to send consent code';
+      toast.error(message);
+    } finally {
+      setConsentSending(false);
+    }
+  };
+
+  const handleAdmitExistingPet = async (pet: ClinicOwnerPetModel) => {
+    if (!clinicUuid || !ownerUuid || !consentCode.trim()) {
+      toast.error('Enter the code from the owner');
+      return;
+    }
+    setConsentVerifying(true);
+    try {
+      await verifyPetConsentOtp(clinicUuid, ownerUuid, pet.name, consentCode.trim());
+      await admitClinicPet(clinicUuid, pet.petUuid);
+      toast.success(`${pet.name} added to this clinic`);
+      setConsentPet(null);
+      setConsentCode('');
+      setConsentVerified(false);
+      await reload();
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Could not add pet';
+      toast.error(message);
+    } finally {
+      setConsentVerifying(false);
+    }
+  };
+
   if (clinicLoading || loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-24 text-muted-foreground">
@@ -204,6 +277,8 @@ export default function ClinicOwnerProfile() {
   }
 
   const owner = profile.owner;
+  const pendingPets = owner.pets.filter((pet) => pet.clinicPatient === false);
+  const choosingFirstPets = (owner.petCount ?? 0) === 0 && pendingPets.length > 1;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
@@ -279,7 +354,28 @@ export default function ClinicOwnerProfile() {
       </Card>
 
       <div>
-        <h2 className="text-lg font-semibold mb-3">Pets</h2>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h2 className="text-lg font-semibold">Pets</h2>
+          {choosingFirstPets ? (
+            <Button
+              size="sm"
+              disabled={associating || pickedPetIds.length === 0}
+              onClick={() => void associatePickedPets(pickedPetIds)}
+            >
+              {associating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Associate selected
+            </Button>
+          ) : null}
+        </div>
+        {pendingPets.length > 0 && (
+          <p className="text-sm text-muted-foreground mb-3">
+            {choosingFirstPets
+              ? 'This KittyP account has more than one pet. Choose which pets belong at this clinic. The client-attach confirmation already covers this first choice.'
+              : (owner.petCount ?? 0) === 0
+                ? 'This pet is on their KittyP account. Add it to open the clinic chart.'
+                : 'Pets the owner added on KittyP are not clinic patients until you request their consent.'}
+          </p>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {owner.pets.map((p) => (
             <Card key={p.petUuid} className="border-0 shadow-sm overflow-hidden">
@@ -311,9 +407,62 @@ export default function ClinicOwnerProfile() {
                   )}
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Button variant="outline" size="sm" asChild className="w-full">
-                    <Link to={crm.pet(p.petUuid)}>Open pet profile</Link>
-                  </Button>
+                  {p.clinicPatient !== false ? (
+                    <Button variant="outline" size="sm" asChild className="w-full">
+                      <Link to={crm.pet(p.petUuid)}>Open pet profile</Link>
+                    </Button>
+                  ) : choosingFirstPets || (owner.petCount ?? 0) === 0 ? (
+                    choosingFirstPets ? (
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={pickedPetIds.includes(p.petUuid)}
+                          onCheckedChange={(checked) => togglePickedPet(p.petUuid, checked === true)}
+                        />
+                        Associate with this clinic
+                      </label>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={associating}
+                        onClick={() => void associatePickedPets([p.petUuid])}
+                      >
+                        Add to this clinic
+                      </Button>
+                    )
+                  ) : (
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={consentSending && consentPet?.petUuid === p.petUuid}
+                        onClick={() => void handleSendExistingConsent(p)}
+                      >
+                        {consentSending && consentPet?.petUuid === p.petUuid ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                        ) : null}
+                        Request owner consent
+                      </Button>
+                      {consentPet?.petUuid === p.petUuid ? (
+                        <div className="flex gap-2">
+                          <Input
+                            className="h-8"
+                            placeholder="Code"
+                            value={consentCode}
+                            onChange={(e) => setConsentCode(e.target.value)}
+                          />
+                          <Button
+                            size="sm"
+                            disabled={consentVerifying || !consentCode.trim()}
+                            onClick={() => void handleAdmitExistingPet(p)}
+                          >
+                            Add
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -371,7 +520,9 @@ export default function ClinicOwnerProfile() {
             <div className="rounded-md border px-3 py-2.5 space-y-2">
               <p className="text-sm font-medium">Owner consent (email OTP)</p>
               <p className="text-xs text-muted-foreground">
-                Required from the second pet onward. A one-time code is emailed for this pet name only.
+                {owner.linked
+                  ? 'KittyP-linked clients need an email OTP for every new pet added by the clinic.'
+                  : 'Required from the second pet onward. A one-time code is emailed for this pet name only.'}
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -466,7 +617,7 @@ export default function ClinicOwnerProfile() {
               <Button type="button" variant="outline" onClick={() => setAddOpen(false)} disabled={saving}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving || !consentVerified}>
+              <Button type="submit" disabled={saving || (needsPetConsent && !consentVerified)}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Add pet
               </Button>

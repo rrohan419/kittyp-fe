@@ -453,7 +453,7 @@ export const router = createBrowserRouter(
             },
             {
               path: "inventory",
-              element: <Navigate to="/clinic" replace />,
+              element: <PageTransition><ClinicInventory /></PageTransition>,
             },
             {
               path: "staff",

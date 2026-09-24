@@ -5,44 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { ListPager } from '@/components/ui/ListPager';
 import {
   RetentionAlertModel,
   fetchRetentionAlerts,
   notifyRetentionAlert,
 } from '@/services/clinicService';
-
-const FALLBACK: RetentionAlertModel[] = [
-  {
-    id: '1',
-    petUuid: 'demo-1',
-    petName: 'Whiskers',
-    ownerName: 'Sarah Miller',
-    type: 'VACCINATION_DUE',
-    message: 'Rabies booster due in 3 months. Offer a 15% wellness visit discount.',
-    dueInDays: 90,
-    status: 'OPEN',
-  },
-  {
-    id: '2',
-    petUuid: 'demo-2',
-    petName: 'Buddy',
-    ownerName: 'Raj Patel',
-    type: 'BOOSTER_OVERDUE',
-    message: 'DHPP booster is 12 days overdue. Send a retention reminder.',
-    dueInDays: -12,
-    status: 'OPEN',
-  },
-  {
-    id: '3',
-    petUuid: 'demo-3',
-    petName: 'Luna',
-    ownerName: 'Anita Desai',
-    type: 'LAPSED_PATIENT',
-    message: 'No clinic visit in 8 months. Re-engage with a checkup offer.',
-    dueInDays: 0,
-    status: 'OPEN',
-  },
-];
 
 function alertIcon(type: string) {
   if (type === 'LAPSED_PATIENT') return CalendarClock;
@@ -52,28 +20,32 @@ function alertIcon(type: string) {
 export default function ClinicRetention() {
   const { clinicUuid, clinic } = useActiveClinic();
   const [alerts, setAlerts] = useState<RetentionAlertModel[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalAlerts, setTotalAlerts] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [fallback, setFallback] = useState(false);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!clinicUuid) {
-      setAlerts(FALLBACK);
-      setFallback(true);
+      setAlerts([]);
       setLoading(false);
       return;
     }
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setError(false);
       try {
-        const data = await fetchRetentionAlerts(clinicUuid);
+        const data = await fetchRetentionAlerts(clinicUuid, { pageNumber: page, pageSize: 20 });
         if (cancelled) return;
-        setAlerts(data.length ? data : FALLBACK);
-        setFallback(!data.length);
+        setAlerts(data.models);
+        setTotalPages(data.totalPages);
+        setTotalAlerts(data.totalElements);
       } catch {
         if (!cancelled) {
-          setAlerts(FALLBACK);
-          setFallback(true);
+          setAlerts([]);
+          setError(true);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -82,7 +54,7 @@ export default function ClinicRetention() {
     return () => {
       cancelled = true;
     };
-  }, [clinicUuid]);
+  }, [clinicUuid, page]);
 
   const openCount = useMemo(
     () => alerts.filter((a) => String(a.status).toUpperCase() === 'OPEN').length,
@@ -90,9 +62,8 @@ export default function ClinicRetention() {
   );
 
   const sendReminder = async (id: string) => {
-    if (!clinicUuid || fallback) {
-      setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, status: 'SENT' } : a)));
-      toast.success('Retention reminder queued (demo)');
+    if (!clinicUuid) {
+      toast.error('Select a clinic before sending a reminder');
       return;
     }
     try {
@@ -122,13 +93,17 @@ export default function ClinicRetention() {
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="w-fit">
             <Bell className="h-3.5 w-3.5 mr-1" />
-            {openCount} open
+            {openCount} open on this page
           </Badge>
         </div>
       </div>
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading alerts…</p>
+      ) : error ? (
+        <p className="text-sm text-destructive">Unable to load retention alerts. Please try again.</p>
+      ) : alerts.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No retention alerts found.</p>
       ) : (
         <div className="space-y-3">
           {alerts.map((alert) => {
@@ -173,6 +148,7 @@ export default function ClinicRetention() {
               </Card>
             );
           })}
+          <ListPager page={page} totalPages={totalPages} totalElements={totalAlerts} noun="alerts" disabled={loading} onPageChange={setPage} />
         </div>
       )}
     </div>

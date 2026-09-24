@@ -384,7 +384,11 @@ export default function ClinicPatients() {
     try {
       await verifyClientAttachOtp(clinicUuid, attachUser.userUuid, attachCode.trim());
       const owner = await ensureClinicOwnerFromUser(clinicUuid, attachUser.userUuid);
+      const pending = (owner.pets ?? []).filter((pet) => pet.clinicPatient === false);
       toast.success(`${owner.name} attached as clinic client`);
+      if (pending.length > 1) {
+        toast.message('This client has more than one pet. Choose which ones to associate with the clinic.');
+      }
       resetAddDialog();
       setAddOpen(false);
       navigate(crm.owner(owner.ownerUuid));
