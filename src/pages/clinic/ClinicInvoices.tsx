@@ -32,8 +32,11 @@ import {
 import { fetchClinicPetMedicalProfile, fetchClinicVisits } from '@/services/clinicService';
 import { formatInr } from '@/services/availabilityService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { useAppSelector } from '@/module/store/hooks';
+import { hasRole, ROLES } from '@/utils/roles';
 import { collectInvoicePayment, isInvoiceUnpaid, toastInvoicePaymentError } from '@/utils/collectInvoicePayment';
 import { MarkInvoicePaidDialog } from '@/components/invoice/MarkInvoicePaidDialog';
+import { WhatsAppSendGate } from '@/components/invoice/WhatsAppSendGate';
 import { ListPager } from '@/components/ui/ListPager';
 
 const emptyItem = (): TreatmentLineItem => ({
@@ -53,6 +56,8 @@ export default function ClinicInvoices() {
   const [searchParams] = useSearchParams();
   const hydratedRef = useRef<string | null>(null);
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
+  const user = useAppSelector((s) => s.authReducer.user);
+  const canConfigureWhatsApp = hasRole(user?.roles, ROLES.CLINIC_ADMIN);
 
   const [items, setItems] = useState<TreatmentLineItem[]>([emptyItem()]);
   const [petName, setPetName] = useState('');
@@ -327,7 +332,7 @@ export default function ClinicInvoices() {
       } else if (withWhatsApp) {
         toast.warning(
           `Invoice ${created.invoiceNumber || ''} saved. ${
-            result.whatsappError || 'WhatsApp is not configured — use Send on the invoice row when ready.'
+            result.whatsappError || 'WhatsApp is not configured — use the WhatsApp button on the invoice row when ready.'
           }`
         );
       } else {
@@ -435,13 +440,16 @@ export default function ClinicInvoices() {
     }
   };
 
+  const whatsappChecking = clinicLoading;
+  const whatsappBlocked = clinic?.whatsappConfigured !== true;
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Clinic invoices</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {clinic?.name ? `${clinic.name} · ` : ''}
-          Create invoices for clinic visits and send on the clinic WhatsApp number.
+          Create invoices for clinic visits. WhatsApp sends the PDF now. The invoice email goes out when it is paid.
         </p>
       </div>
 
@@ -449,7 +457,7 @@ export default function ClinicInvoices() {
         <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
           {hydrating
             ? 'Loading patient details from the visit…'
-            : 'Patient details prefilled from the visit. Add line items, then Save and Send on WhatsApp.'}
+            : 'Patient details prefilled from the visit. Add line items, then Save and send WhatsApp. The invoice email goes out when it is paid.'}
         </div>
       )}
 
@@ -649,14 +657,16 @@ export default function ClinicInvoices() {
               <Button type="submit" disabled={loading || hydrating} variant="outline">
                 {loading ? 'Saving…' : 'Save draft'}
               </Button>
-              <Button
-                type="button"
-                disabled={loading || hydrating}
-                onClick={(e) => void createDraft(e, true)}
-              >
-                <Send className="h-4 w-4 mr-1.5" />
-                {loading ? 'Sending…' : 'Save and Send'}
-              </Button>
+              <WhatsAppSendGate blocked={whatsappBlocked} checking={whatsappChecking} configureTo={canConfigureWhatsApp ? '/clinic/whatsapp' : undefined}>
+                <Button
+                  type="button"
+                  disabled={loading || hydrating || whatsappBlocked}
+                  onClick={(e) => void createDraft(e, true)}
+                >
+                  <Send className="h-4 w-4 mr-1.5" />
+                  {loading ? 'Sending…' : 'Save and send WhatsApp'}
+                </Button>
+              </WhatsAppSendGate>
             </div>
           </form>
         </CardContent>
@@ -724,15 +734,17 @@ export default function ClinicInvoices() {
                       >
                         <ExternalLink className="h-3.5 w-3.5 mr-1" /> PDF
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        aria-label="Send WhatsApp"
-                        disabled={busyUuid === inv.uuid}
-                        onClick={() => void onSendWhatsApp(inv.uuid)}
-                      >
-                        <Send className="h-3.5 w-3.5" />
-                      </Button>
+                      <WhatsAppSendGate blocked={whatsappBlocked} checking={whatsappChecking} configureTo={canConfigureWhatsApp ? '/clinic/whatsapp' : undefined}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          aria-label="Send invoice on WhatsApp"
+                          disabled={busyUuid === inv.uuid || whatsappBlocked}
+                          onClick={() => void onSendWhatsApp(inv.uuid)}
+                        >
+                          <Send className="h-3.5 w-3.5 mr-1" /> WhatsApp
+                        </Button>
+                      </WhatsAppSendGate>
                     </>
                   ) : (
                     <Button
