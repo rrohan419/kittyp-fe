@@ -29,6 +29,7 @@ import {
   Mail,
   Loader2,
   Plus,
+  Calendar,
   Phone,
   Link2,
   User,
@@ -86,6 +87,7 @@ export default function ClinicPatients() {
   const { pathname } = useLocation();
   const crm = clinicCrmPaths(pathname);
   const canAddClients = Boolean(clinicUuid) && !isPersonalPractice;
+  const branchClinics = clinics.filter((c) => c.personal !== true);
   const [tab, setTab] = useState(searchParams.get('tab') === 'pets' ? 'pets' : 'clients');
   const [search, setSearch] = useState(searchParams.get('q') || '');
   const [searchAllBranches, setSearchAllBranches] = useState(false);
@@ -118,6 +120,10 @@ export default function ClinicPatients() {
     setForm((s) => ({ ...s, [key]: value }));
 
   useEffect(() => {
+    if (isPersonalPractice) setSearchAllBranches(false);
+  }, [isPersonalPractice]);
+
+  useEffect(() => {
     setOwnerPage(1);
     setPetPage(1);
   }, [search, clinicUuid, searchAllBranches]);
@@ -138,7 +144,7 @@ export default function ClinicPatients() {
     }
     if (searchAllBranches) {
       const results = await Promise.all(
-        clinics.map(async (c) => {
+        branchClinics.map(async (c) => {
           const [o, p, users] = await Promise.all([
             fetchClinicOwners(c.uuid, search || undefined, { pageNumber: 1, pageSize: 20 }),
             fetchClinicPets(c.uuid, search || undefined, { pageNumber: 1, pageSize: 20 }),
@@ -206,7 +212,7 @@ export default function ClinicPatients() {
       try {
         if (searchAllBranches) {
           const results = await Promise.all(
-            clinics.map(async (c) => {
+            branchClinics.map(async (c) => {
               const [o, p, users] = await Promise.all([
                 fetchClinicOwners(c.uuid, search || undefined, { pageNumber: 1, pageSize: 20 }),
                 fetchClinicPets(c.uuid, search || undefined, { pageNumber: 1, pageSize: 20 }),
@@ -554,19 +560,38 @@ export default function ClinicPatients() {
           <h1 className="text-2xl font-semibold tracking-tight">Clients & Pets</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isPersonalPractice
-              ? 'Add client is available when you switch to an affiliated clinic.'
+              ? 'Your personal practice roster.'
               : searchAllBranches
-              ? 'Searching across all your branches'
+              ? 'Searching clinic branches'
               : clinic?.name
                 ? `Showing records for ${clinic.name} only`
                 : 'Select a clinic branch to view records'}
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)} disabled={!canAddClients} className="shadow-md shadow-primary/20">
-          <Plus className="h-4 w-4 mr-2" />
-          Add client
-        </Button>
+        {canAddClients ? (
+          <Button onClick={() => setAddOpen(true)} className="shadow-md shadow-primary/20">
+            <Plus className="h-4 w-4 mr-2" />
+            Add client
+          </Button>
+        ) : null}
       </div>
+
+      {isPersonalPractice ? (
+        <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+          <p className="font-medium inline-flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-primary shrink-0" />
+            Clients and pets are added from appointments
+          </p>
+          <p className="text-muted-foreground mt-1">
+            Book or complete an appointment and the client and pet show up here. This page does not have a separate add button on personal practice.
+          </p>
+          <Button variant="link" className="h-auto p-0 mt-2" asChild>
+            <Link to={pathname.startsWith('/doctor') ? '/doctor/appointments' : '/clinic/appointments'}>
+              Go to appointments
+            </Link>
+          </Button>
+        </div>
+      ) : null}
 
       <div className="space-y-3">
         <div className="relative">
@@ -582,6 +607,7 @@ export default function ClinicPatients() {
             onChange={(e) => onSearchChange(e.target.value)}
           />
         </div>
+        {!isPersonalPractice ? (
         <label
           className={cn(
             'inline-flex items-center gap-2 text-xs sm:text-sm cursor-pointer select-none rounded-full px-3 py-1.5 border transition-colors',
@@ -599,6 +625,7 @@ export default function ClinicPatients() {
           <Building2 className="h-3.5 w-3.5" />
           Search in all branches
         </label>
+        ) : null}
       </div>
 
       <Tabs value={tab} onValueChange={onTabChange}>
@@ -792,7 +819,9 @@ export default function ClinicPatients() {
                 <div className="rounded-xl border border-dashed border-border py-14 text-center bg-muted/30">
                   <User className="h-8 w-8 text-primary/40 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">
-                    No clients found{searchAllBranches ? ' across branches' : ' at this branch'}.
+                    {isPersonalPractice
+                      ? 'No clients yet. They appear here after an appointment.'
+                      : `No clients found${searchAllBranches ? ' across branches' : ' at this branch'}.`}
                   </p>
                 </div>
               )}
@@ -905,7 +934,9 @@ export default function ClinicPatients() {
                 <div className="col-span-full rounded-xl border border-dashed border-border py-14 text-center bg-muted/30">
                   <PawPrint className="h-8 w-8 text-primary/40 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">
-                    No pets found{searchAllBranches ? ' across branches' : ' for this clinic'}.
+                    {isPersonalPractice
+                      ? 'No pets yet. They appear here after an appointment.'
+                      : `No pets found${searchAllBranches ? ' across branches' : ' for this clinic'}.`}
                   </p>
                 </div>
               )}
