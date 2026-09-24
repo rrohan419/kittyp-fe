@@ -58,10 +58,7 @@ function resolvePortalUser(
   config: PortalConfig,
   user: RootState['authReducer']['user']
 ): PortalConfig['user'] {
-  if (!user?.firstName && !user?.lastName) {
-    return config.user;
-  }
-  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
   const name =
     config.basePath === '/doctor' && fullName
       ? `Dr. ${fullName}`

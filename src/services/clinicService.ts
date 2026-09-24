@@ -143,6 +143,8 @@ export interface ClinicOwnerPetModel {
   photoUrl?: string;
   patientNumber?: string;
   lastVisit?: string;
+  /** False when the pet is on the KittyP account but not enrolled at this clinic yet. */
+  clinicPatient?: boolean;
 }
 
 export interface ClinicOwnerModel {
@@ -308,6 +310,110 @@ export interface ClinicStatsModel {
   clinicRating?: number | null;
   clinicReviewsCount?: number | null;
   clinicRatingLabel?: string | null;
+}
+
+export interface ClinicReportSeriesPoint {
+  label: string;
+  value: number;
+}
+
+export interface ClinicReportServiceBreakdown {
+  name: string;
+  count: number;
+  percentage: number;
+}
+
+export interface ClinicReportDoctorPerformance {
+  doctorUuid: string;
+  name: string;
+  specialization?: string;
+  visits: number;
+  rating?: number | null;
+}
+
+export interface ClinicReportsModel {
+  periodLabel: string;
+  totalRevenue: number;
+  totalVisits: number;
+  newPatients: number;
+  growthPercentage?: number | null;
+  revenueSeries: ClinicReportSeriesPoint[];
+  serviceBreakdown: ClinicReportServiceBreakdown[];
+  doctorPerformance: ClinicReportDoctorPerformance[];
+}
+
+export type ClinicInventoryCategory = 'MEDICATION' | 'SUPPLY' | 'EQUIPMENT' | 'FOOD' | string;
+
+export interface ClinicInventoryItem {
+  uuid: string;
+  name: string;
+  category: ClinicInventoryCategory;
+  quantity: number;
+  unit: string;
+  reorderLevel: number;
+  unitPrice: number;
+  active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ClinicInventoryRequest {
+  name: string;
+  category: ClinicInventoryCategory;
+  quantity: number;
+  unit: string;
+  reorderLevel: number;
+  unitPrice: number;
+  active?: boolean;
+}
+
+export async function fetchClinicReports(
+  clinicUuid: string,
+  months = 6
+): Promise<ClinicReportsModel> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ClinicReportsModel>>(
+    `/clinic/${clinicUuid}/reports`,
+    { params: { months } }
+  );
+  return res.data.data;
+}
+
+export async function fetchClinicInventory(
+  clinicUuid: string,
+  params: { pageNumber?: number; pageSize?: number } = {}
+): Promise<PaginationModel<ClinicInventoryItem>> {
+  const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<ClinicInventoryItem>>>(
+    `/clinic/${clinicUuid}/inventory`,
+    { params }
+  );
+  return res.data.data ?? emptyPage(params.pageSize ?? 10);
+}
+
+export async function createClinicInventoryItem(
+  clinicUuid: string,
+  payload: ClinicInventoryRequest
+): Promise<ClinicInventoryItem> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ClinicInventoryItem>>(
+    `/clinic/${clinicUuid}/inventory`,
+    payload
+  );
+  return res.data.data;
+}
+
+export async function updateClinicInventoryItem(
+  clinicUuid: string,
+  itemUuid: string,
+  payload: ClinicInventoryRequest
+): Promise<ClinicInventoryItem> {
+  const res = await axiosInstance.patch<ApiSuccessResponse<ClinicInventoryItem>>(
+    `/clinic/${clinicUuid}/inventory/${itemUuid}`,
+    payload
+  );
+  return res.data.data;
+}
+
+export async function deleteClinicInventoryItem(clinicUuid: string, itemUuid: string): Promise<void> {
+  await axiosInstance.delete(`/clinic/${clinicUuid}/inventory/${itemUuid}`);
 }
 
 export interface ClinicCreateRequest {
@@ -671,6 +777,18 @@ export async function ensureClinicOwnerFromUser(
   return res.data.data;
 }
 
+export async function sendClientAttachOtp(clinicUuid: string, userUuid: string): Promise<void> {
+  await axiosInstance.post(`/clinic/${clinicUuid}/owners/attach-consent/send`, { userUuid });
+}
+
+export async function verifyClientAttachOtp(
+  clinicUuid: string,
+  userUuid: string,
+  code: string
+): Promise<void> {
+  await axiosInstance.post(`/clinic/${clinicUuid}/owners/attach-consent/verify`, { userUuid, code });
+}
+
 export async function lookupOwnerByEmail(
   clinicUuid: string,
   ownerEmail: string
@@ -678,6 +796,18 @@ export async function lookupOwnerByEmail(
   const res = await axiosInstance.get<ApiSuccessResponse<OwnerEmailLookupModel>>(
     `/clinic/${clinicUuid}/owners/lookup`,
     { params: { q: ownerEmail.trim() } }
+  );
+  return res.data.data;
+}
+
+export async function admitOwnerPets(
+  clinicUuid: string,
+  ownerUuid: string,
+  petUuids: string[]
+): Promise<ClinicOwnerModel> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ClinicOwnerModel>>(
+    `/clinic/${clinicUuid}/owners/${ownerUuid}/pets/admit`,
+    { petUuids }
   );
   return res.data.data;
 }
@@ -992,11 +1122,15 @@ export async function fetchClinicPetVisits(
   return res.data.data ?? [];
 }
 
-export async function fetchRetentionAlerts(clinicUuid: string): Promise<RetentionAlertModel[]> {
-  const res = await axiosInstance.get<ApiSuccessResponse<RetentionAlertModel[]>>(
-    `/clinic/${clinicUuid}/retention-alerts`
+export async function fetchRetentionAlerts(
+  clinicUuid: string,
+  params: { pageNumber?: number; pageSize?: number; status?: string; type?: string } = {}
+): Promise<PaginationModel<RetentionAlertModel>> {
+  const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<RetentionAlertModel>>>(
+    `/clinic/${clinicUuid}/retention-alerts`,
+    { params }
   );
-  return res.data.data ?? [];
+  return res.data.data ?? emptyPage(params.pageSize ?? 10);
 }
 
 export async function notifyRetentionAlert(clinicUuid: string, alertId: string): Promise<void> {

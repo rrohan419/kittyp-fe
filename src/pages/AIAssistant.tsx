@@ -22,7 +22,6 @@ import {
   generateVetTriageAssessment,
   sendAIChatMessage,
   createAIChatSession,
-  getRemainingQuota,
   handleAIError,
   AIError,
   type PetCarePlan,
@@ -83,7 +82,7 @@ const FloatingParticles: React.FC = () => {
 };
 
 // Vet Triage Component with enhanced chat functionality
-const VetTriageTab: React.FC<{ savedPets: any[] }> = ({ savedPets }) => {
+const VetTriageTab: React.FC<{ savedPets: PetProfile[]; userId?: string }> = ({ savedPets, userId }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [useManualEntry, setUseManualEntry] = useState(false);
   const [manualPetData, setManualPetData] = useState({
@@ -116,13 +115,11 @@ const VetTriageTab: React.FC<{ savedPets: any[] }> = ({ savedPets }) => {
   }>>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [dailyChatCount, setDailyChatCount] = useState(2); // Mock: user has used 2 chats today
-  const [isPremium, setIsPremium] = useState(false);
+  const [chatSession, setChatSession] = useState<AIChatSession | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const DAILY_FREE_LIMIT = 5;
-
-  const selectedPet = savedPets.find(pet => pet.id === triageData.petId) ||
+  const selectedPet = savedPets.find(pet => pet.uuid === triageData.petId) ||
     (useManualEntry ? { ...manualPetData, id: 'manual' } : null);
 
   const emergencySymptoms = [
@@ -178,59 +175,51 @@ const VetTriageTab: React.FC<{ savedPets: any[] }> = ({ savedPets }) => {
   };
 
   const generateAssessment = async () => {
+    const selectedSavedPet = savedPets.find(pet => pet.uuid === triageData.petId);
+    if (!userId || !selectedSavedPet) {
+      setChatError('A saved pet and an authenticated account are required for AI triage.');
+      return;
+    }
+
     setIsAssessing(true);
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    const urgencyLevel = triageData.symptoms.length > 3 ? 'HIGH' :
-      triageData.symptoms.length > 1 ? 'MEDIUM' : 'LOW';
-
-    setAssessment({
-      urgencyLevel,
-      recommendation: urgencyLevel === 'HIGH' ? 'Schedule vet visit within 24 hours' :
-        urgencyLevel === 'MEDIUM' ? 'Monitor and schedule vet visit within 3-5 days' :
-          'Continue monitoring, schedule routine check-up',
-      message: `Based on ${selectedPet?.name}'s symptoms and your responses, here's our assessment...`,
-      symptoms: triageData.symptoms,
-      actions: urgencyLevel === 'HIGH' ? [
-        'Contact your veterinarian today',
-        'Monitor symptoms closely',
-        'Keep pet comfortable and calm',
-        'Restrict activity if needed'
-      ] : [
-        'Continue to monitor symptoms',
-        'Maintain normal feeding schedule',
-        'Schedule routine vet visit',
-        'Note any changes in behavior'
-      ]
-    });
-
-    setIsAssessing(false);
-    setCurrentStep(4);
+    setChatError(null);
+    try {
+      const result = await generateVetTriageAssessment(
+        triageData.symptoms,
+        selectedSavedPet,
+        userId,
+        triageData.additionalInfo
+      );
+      setAssessment(result);
+      setCurrentStep(4);
+    } catch (error) {
+      setChatError(handleAIError(error).userMessage || 'AI triage is currently unavailable.');
+    } finally {
+      setIsAssessing(false);
+    }
   };
 
-  const handleStartChat = () => {
-    if (dailyChatCount >= DAILY_FREE_LIMIT && !isPremium) {
-      return; // Will show upgrade prompt
+  const handleStartChat = async () => {
+    const selectedSavedPet = savedPets.find(pet => pet.uuid === triageData.petId);
+    if (!userId || !selectedSavedPet) {
+      setChatError('A saved pet and an authenticated account are required to start AI chat.');
+      return;
     }
 
-    if (dailyChatCount >= DAILY_FREE_LIMIT && !isPremium) {
-      return; // Will show upgrade prompt
-    }
-
-    setShowChat(true);
-    if (chatMessages.length === 0) {
-      // Add welcome message
-      setChatMessages([{
-        id: '1',
-        type: 'ai',
-        content: `Hello! I'm Dr. AI, your virtual veterinary assistant. I'm here to help with ${selectedPet?.name || 'your pet'}'s health concerns. What would you like to discuss today?`,
-        timestamp: new Date()
-      }]);
+    setChatError(null);
+    try {
+      const session = await createAIChatSession(userId, selectedSavedPet.uuid, { petProfile: selectedSavedPet });
+      setChatSession(session);
+      setChatMessages(session.messages || []);
+      setShowChat(true);
+    } catch (error) {
+      setChatError(handleAIError(error).userMessage || 'AI chat is currently unavailable.');
     }
   };
 
   const sendChatMessage = async () => {
-    if (!newMessage.trim() || dailyChatCount >= DAILY_FREE_LIMIT && !isPremium) return;
+    const selectedSavedPet = savedPets.find(pet => pet.uuid === triageData.petId);
+    if (!newMessage.trim() || !userId || !chatSession || !selectedSavedPet) return;
 
     const userMessage = {
       id: Date.now().toString(),
@@ -242,32 +231,21 @@ const VetTriageTab: React.FC<{ savedPets: any[] }> = ({ savedPets }) => {
     setChatMessages(prev => [...prev, userMessage]);
     setNewMessage('');
     setIsTyping(true);
-    setDailyChatCount(prev => prev + 1);
-
-    // Simulate AI response
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    const aiResponse = {
-      id: (Date.now() + 1).toString(),
-      type: 'ai' as const,
-      content: generateAIVetResponse(newMessage),
-      timestamp: new Date()
-    };
-
-    setChatMessages(prev => [...prev, aiResponse]);
-    setIsTyping(false);
-  };
-
-  const generateAIVetResponse = (userMessage: string): string => {
-    const responses = [
-      "Based on what you've described, this could be a few different things. Can you tell me more about when this started and if there are any other symptoms?",
-      "That's definitely something to keep an eye on. How is your pet's appetite and energy level? Any changes in behavior?",
-      "I understand your concern. While I can't replace an in-person examination, I can help guide you on next steps. Have you noticed any pattern to these symptoms?",
-      "Thank you for that information. Based on what you've shared, I'd recommend monitoring closely and considering a vet visit if symptoms persist or worsen.",
-      "This sounds like it could benefit from professional examination. In the meantime, ensure your pet is comfortable and has access to fresh water."
-    ];
-
-    return responses[Math.floor(Math.random() * responses.length)];
+    setChatError(null);
+    try {
+      const aiMessage = await sendAIChatMessage(
+        newMessage,
+        chatSession.id,
+        userId,
+        selectedSavedPet.uuid,
+        { petProfile: selectedSavedPet }
+      );
+      setChatMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      setChatError(handleAIError(error).userMessage || 'AI chat is currently unavailable.');
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   return (
@@ -340,47 +318,17 @@ const VetTriageTab: React.FC<{ savedPets: any[] }> = ({ savedPets }) => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/20">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <MessageCircle className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-primary">Free Daily Chats</h4>
-                      <p className="text-sm text-primary/80">
-                        {DAILY_FREE_LIMIT - dailyChatCount} of {DAILY_FREE_LIMIT} chats remaining today
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-3 h-3 rounded-full ${dailyChatCount < DAILY_FREE_LIMIT ? 'bg-green-500' : 'bg-red-500'}`} />
-                    <span className="text-sm font-medium">
-                      {dailyChatCount < DAILY_FREE_LIMIT ? 'Available' : 'Limit Reached'}
-                    </span>
-                  </div>
-                </div>
-
-                {dailyChatCount >= DAILY_FREE_LIMIT && !isPremium ? (
-                  <div className="p-6 bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl border border-primary/20 text-center">
-                    <Crown className="h-12 w-12 mx-auto mb-4 text-primary" />
-                    <h3 className="text-lg font-semibold text-primary mb-2">Upgrade to Premium</h3>
-                    <p className="text-primary/80 mb-4">Get unlimited AI vet chats and priority support</p>
-                    <Button className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white">
-                      <Crown className="h-4 w-4 mr-2" />
-                      Upgrade Now
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={handleStartChat}
-                    size="lg"
-                    className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white shadow-lg"
-                  >
-                    <MessageCircle className="h-5 w-5 mr-2" />
-                    Start Chat with AI Vet
-                    <ArrowRight className="h-5 w-5 ml-2" />
-                  </Button>
-                )}
+                <p className="text-sm text-muted-foreground">Chat availability and usage are managed by the AI service.</p>
+                {chatError && <p className="text-sm text-destructive">{chatError}</p>}
+                <Button
+                  onClick={handleStartChat}
+                  size="lg"
+                  className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white shadow-lg"
+                >
+                  <MessageCircle className="h-5 w-5 mr-2" />
+                  Start Chat with AI Vet
+                  <ArrowRight className="h-5 w-5 ml-2" />
+                </Button>
               </CardContent>
             </Card>
           </motion.div>
@@ -404,7 +352,7 @@ const VetTriageTab: React.FC<{ savedPets: any[] }> = ({ savedPets }) => {
                   <div>
                     <CardTitle className="text-lg">Dr. AI - Veterinary Assistant</CardTitle>
                     <CardDescription className="text-primary-foreground/80">
-                      Online • Chats: {dailyChatCount}/{DAILY_FREE_LIMIT}
+                      Connected to the AI service
                     </CardDescription>
                   </div>
                 </div>
@@ -440,7 +388,7 @@ const VetTriageTab: React.FC<{ savedPets: any[] }> = ({ savedPets }) => {
                         <p className="text-sm">{message.content}</p>
                         <p className={`text-xs mt-1 ${message.type === 'user' ? 'text-primary-foreground/80' : 'text-gray-500'
                           }`}>
-                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
                     </motion.div>
@@ -476,16 +424,7 @@ const VetTriageTab: React.FC<{ savedPets: any[] }> = ({ savedPets }) => {
 
               {/* Chat Input */}
               <div className="p-4 border-t bg-gray-50">
-                {dailyChatCount >= DAILY_FREE_LIMIT && !isPremium ? (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-gray-600 mb-2">Daily limit reached</p>
-                    <Button size="sm" className="bg-primary hover:bg-primary/90">
-                      <Crown className="h-4 w-4 mr-2" />
-                      Upgrade for Unlimited Chats
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex space-x-2">
+                <div className="flex space-x-2">
                     <Input
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
@@ -501,8 +440,7 @@ const VetTriageTab: React.FC<{ savedPets: any[] }> = ({ savedPets }) => {
                     >
                       <Send className="h-4 w-4" />
                     </Button>
-                  </div>
-                )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -518,7 +456,6 @@ export default function AIAssistant() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(true);
-  const [quota, setQuota] = useState({ nutrition: 10, vetChat: 20, vetTriage: 5 });
   const [location, setLocation] = useState<LocationData | null>(null);
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   const [isSwitchingPet, setIsSwitchingPet] = useState(false);
@@ -661,14 +598,6 @@ export default function AIAssistant() {
         }
       }
 
-      // Check quota
-      const remainingQuota = getRemainingQuota(user.uuid);
-      console.log('Remaining quota:', remainingQuota);
-      if (remainingQuota.nutrition <= 0) {
-        toast.error('Daily nutrition generation limit reached. Please try again tomorrow or upgrade to premium.');
-        return;
-      }
-
       // Check if location is available
       if (!location) {
         setShowLocationPrompt(true);
@@ -680,7 +609,6 @@ export default function AIAssistant() {
       setRecommendations(recommendation);
       setPlanPetId(selectedPetId);
       setIsPlanSaved(false);
-      setQuota(remainingQuota);
 
       toast.success(`Nutrition plan ready for ${selectedPet.name}. Review it below and save when ready.`);
 
@@ -1149,7 +1077,7 @@ export default function AIAssistant() {
                 )}
 
                 {selectedFeature === 'vet-triage' && (
-                  <VetTriageTab savedPets={savedPets} />
+                  <VetTriageTab savedPets={savedPets} userId={user?.uuid} />
                 )}
               </motion.div>
 

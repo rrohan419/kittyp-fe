@@ -14,7 +14,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { PaymentLoader } from "@/components/ui/PaymentLoader";
 import { ArrowLeft, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
-import { Address, AddressModel, fetchSavedAddresses, findAllSavedAddress, deleteAddress } from "@/services/addressService";
+import { AddressModel, findAllSavedAddress, deleteAddress } from "@/services/addressService";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import {
     callRazorpayCreateOrder,
@@ -52,7 +52,7 @@ export default function Checkout() {
     const [isProcessingOrder, setIsProcessingOrder] = useState(false);
     const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(false);
 
-    const [paymentTimeout, setPaymentTimeout] = useState<NodeJS.Timeout | null>(null);
+    const [paymentTimeout, setPaymentTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
     const [isPaymentPending, setIsPaymentPending] = useState(false);
     const [isPaymentVerifying, setIsPaymentVerifying] = useState(false);
     const [isRedirecting, setIsRedirecting] = useState(false);

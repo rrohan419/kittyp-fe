@@ -19,15 +19,13 @@ export const ProductRecommendations = ({ products }: ProductRecommendationsProps
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {products.map((product) => (
+        {products.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No product recommendations are available in this plan.</p>
+        ) : products.map((product) => (
           <Card key={product.id} className="overflow-hidden">
-            <div className="aspect-square relative overflow-hidden bg-muted">
-              <img
-                src={product.imageUrl}
-                alt={product.name}
-                className="object-cover w-full h-full transition-transform hover:scale-105"
-              />
-            </div>
+            {product.imageUrl && <div className="aspect-square relative overflow-hidden bg-muted">
+              <img src={product.imageUrl} alt={product.name} className="object-cover w-full h-full transition-transform hover:scale-105" />
+            </div>}
             <div className="p-4">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <h4 className="font-semibold line-clamp-2">{product.name}</h4>
