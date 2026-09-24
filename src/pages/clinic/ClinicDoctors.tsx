@@ -120,18 +120,20 @@ export default function ClinicDoctors() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clinicUuid, canInvite]);
 
-  // Personal / single-doctor clinics: open the profile directly (no tile list).
+  // Personal practice only: one doctor opens their own profile. Clinic admins stay on the card list.
+  const soleDoctor = doctors.length === 1 ? doctors[0] : null;
+  const shouldAutoOpenProfile =
+    !clinicAdminContext &&
+    !!clinicUuid &&
+    !!soleDoctor?.doctorUuid &&
+    (clinic?.personal === true ||
+      (!!user?.uuid && !!soleDoctor.userUuid && user.uuid === soleDoctor.userUuid));
+
   useEffect(() => {
-    if (loading || autoOpened || !clinicUuid || doctors.length !== 1) return;
-    const only = doctors[0];
-    if (!only?.doctorUuid) return;
-    const selfMatch =
-      !!user?.uuid && !!only.userUuid && user.uuid === only.userUuid;
-    if (clinic?.personal || selfMatch || doctors.length === 1) {
-      setAutoOpened(true);
-      navigate(`${doctorsBase}/${only.doctorUuid}`, { replace: true });
-    }
-  }, [loading, autoOpened, clinicUuid, doctors, clinic?.personal, user?.uuid, navigate, doctorsBase]);
+    if (loading || autoOpened || !shouldAutoOpenProfile || !soleDoctor?.doctorUuid) return;
+    setAutoOpened(true);
+    navigate(`${doctorsBase}/${soleDoctor.doctorUuid}`, { replace: true });
+  }, [loading, autoOpened, shouldAutoOpenProfile, soleDoctor, navigate, doctorsBase]);
 
   const filtered = useMemo(
     () =>
@@ -278,7 +280,7 @@ export default function ClinicDoctors() {
     }
   };
 
-  if (loading || (doctors.length === 1 && !autoOpened && clinicUuid)) {
+  if (loading || (shouldAutoOpenProfile && !autoOpened)) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto flex items-center justify-center py-16 text-muted-foreground gap-2">
         <Loader2 className="h-5 w-5 animate-spin" /> Opening profile…
