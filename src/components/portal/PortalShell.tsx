@@ -98,14 +98,18 @@ export function PortalShell({ config }: PortalShellProps) {
     ROLES.CLINIC_STAFF,
   ]);
   const isClinicPortal = config.basePath === '/clinic';
-  const { clinicUuid } = useActiveClinic();
+  const isDoctorPortal = config.basePath === '/doctor';
+  const { clinicUuid, isPersonalPractice } = useActiveClinic();
   const appointmentCount = useAppointmentNavCount(activeRole, clinicUuid);
   const appointmentBadge = appointmentCount > 0 ? String(appointmentCount) : undefined;
   const withAppointmentBadge = (items: NavItem[]) =>
     items.map((item) =>
       item.path.includes('/appointments') ? { ...item, badge: appointmentBadge } : item
     );
-  const navItems = withAppointmentBadge(config.navItems);
+  const visibleNav = config.navItems.filter(
+    (item) => isPersonalPractice || !isDoctorPortal || item.path !== '/doctor/whatsapp'
+  );
+  const navItems = withAppointmentBadge(visibleNav);
   const bottomTabs = withAppointmentBadge(config.bottomTabs);
 
   useEffect(() => {

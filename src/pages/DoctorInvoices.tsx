@@ -28,6 +28,7 @@ import {
   generateInvoicePdf,
   markInvoicePaid,
   sendInvoiceWhatsApp,
+  fetchDoctorWhatsAppSettings,
 } from '@/services/invoiceService';
 import { fetchClinicPetMedicalProfile } from '@/services/clinicService';
 import { fetchMyDoctorVisits } from '@/services/visitService';
@@ -35,6 +36,7 @@ import { formatInr } from '@/services/availabilityService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { collectInvoicePayment, isInvoiceUnpaid, toastInvoicePaymentError } from '@/utils/collectInvoicePayment';
 import { MarkInvoicePaidDialog } from '@/components/invoice/MarkInvoicePaidDialog';
+import { WhatsAppSendGate } from '@/components/invoice/WhatsAppSendGate';
 import { ListPager } from '@/components/ui/ListPager';
 
 const emptyItem = (): TreatmentLineItem => ({
@@ -78,6 +80,7 @@ export default function DoctorInvoices() {
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
   const [busyUuid, setBusyUuid] = useState<string | null>(null);
+  const [doctorWaConfigured, setDoctorWaConfigured] = useState<boolean | null>(null);
   const [markPaidInvoice, setMarkPaidInvoice] = useState<ConsultationInvoice | null>(null);
   const [hydrating, setHydrating] = useState(false);
   const [linkClinicUuid, setLinkClinicUuid] = useState<string | undefined>();
@@ -123,6 +126,26 @@ export default function DoctorInvoices() {
       /* keep visit-provided fields */
     }
   };
+
+  useEffect(() => {
+    if (!isPersonalPractice) return;
+    let cancelled = false;
+    setDoctorWaConfigured(null);
+    void fetchDoctorWhatsAppSettings()
+      .then((wa) => {
+        if (!cancelled) setDoctorWaConfigured(!!wa.whatsappConfigured);
+      })
+      .catch(() => {
+        if (!cancelled) setDoctorWaConfigured(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPersonalPractice]);
+
+  const whatsappConfigureTo = isPersonalPractice ? '/doctor/whatsapp' : undefined;
+  const whatsappChecking = isPersonalPractice ? doctorWaConfigured === null : clinicLoading;
+  const whatsappBlocked = isPersonalPractice ? doctorWaConfigured !== true : clinic?.whatsappConfigured !== true;
 
   useEffect(() => {
     const state = location.state as LocationState;
@@ -315,7 +338,7 @@ export default function DoctorInvoices() {
       } else if (withWhatsApp) {
         toast.warning(
           `Invoice ${created.invoiceNumber || ''} saved. ${
-            result.whatsappError || 'WhatsApp is not configured — use Send on the invoice row when ready.'
+            result.whatsappError || 'WhatsApp is not configured — use the WhatsApp button on the invoice row when ready.'
           }`
         );
       } else {
@@ -428,7 +451,7 @@ export default function DoctorInvoices() {
         <h1 className="text-2xl font-bold">Treatment Invoices</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {isPersonalPractice
-            ? 'Personal practice invoices. Prefill from a finished visit, then Save and Send to deliver the PDF on WhatsApp.'
+            ? 'Personal practice invoices. Prefill from a finished visit, then Save and send WhatsApp to deliver the PDF. The invoice email goes out when it is paid.'
             : `Invoices for ${clinic?.name || 'this clinic'} — only visits you billed here. Switch clinics to see another branch.`}
         </p>
       </div>
@@ -437,7 +460,7 @@ export default function DoctorInvoices() {
         <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
           {hydrating
             ? 'Loading patient details from the visit…'
-            : 'Patient details prefilled from the visit. Add line items, then Save and Send on WhatsApp.'}
+            : 'Patient details prefilled from the visit. Add line items, then Save and send WhatsApp. The invoice email goes out when it is paid.'}
         </div>
       )}
 
@@ -637,14 +660,20 @@ export default function DoctorInvoices() {
               <Button type="submit" disabled={loading || hydrating} variant="outline">
                 {loading ? 'Saving…' : 'Save draft'}
               </Button>
-              <Button
-                type="button"
-                disabled={loading || hydrating}
-                onClick={(e) => void createDraft(e, true)}
+              <WhatsAppSendGate
+                blocked={whatsappBlocked}
+                checking={whatsappChecking}
+                configureTo={whatsappConfigureTo}
               >
-                <Send className="h-4 w-4 mr-1.5" />
-                {loading ? 'Sending…' : 'Save and Send'}
-              </Button>
+                <Button
+                  type="button"
+                  disabled={loading || hydrating || whatsappBlocked}
+                  onClick={(e) => void createDraft(e, true)}
+                >
+                  <Send className="h-4 w-4 mr-1.5" />
+                  {loading ? 'Sending…' : 'Save and send WhatsApp'}
+                </Button>
+              </WhatsAppSendGate>
             </div>
           </form>
         </CardContent>
@@ -712,15 +741,21 @@ export default function DoctorInvoices() {
                       >
                         <ExternalLink className="h-3.5 w-3.5 mr-1" /> PDF
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        aria-label="Send WhatsApp"
-                        disabled={busyUuid === inv.uuid}
-                        onClick={() => void onSendWhatsApp(inv.uuid)}
+                      <WhatsAppSendGate
+                        blocked={whatsappBlocked}
+                        checking={whatsappChecking}
+                        configureTo={whatsappConfigureTo}
                       >
-                        <Send className="h-3.5 w-3.5" />
-                      </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          aria-label="Send invoice on WhatsApp"
+                          disabled={busyUuid === inv.uuid || whatsappBlocked}
+                          onClick={() => void onSendWhatsApp(inv.uuid)}
+                        >
+                          <Send className="h-3.5 w-3.5 mr-1" /> WhatsApp
+                        </Button>
+                      </WhatsAppSendGate>
                     </>
                   ) : (
                     <Button
