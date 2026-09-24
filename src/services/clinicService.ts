@@ -671,6 +671,18 @@ export async function ensureClinicOwnerFromUser(
   return res.data.data;
 }
 
+export async function sendClientAttachOtp(clinicUuid: string, userUuid: string): Promise<void> {
+  await axiosInstance.post(`/clinic/${clinicUuid}/owners/attach-consent/send`, { userUuid });
+}
+
+export async function verifyClientAttachOtp(
+  clinicUuid: string,
+  userUuid: string,
+  code: string
+): Promise<void> {
+  await axiosInstance.post(`/clinic/${clinicUuid}/owners/attach-consent/verify`, { userUuid, code });
+}
+
 export async function lookupOwnerByEmail(
   clinicUuid: string,
   ownerEmail: string

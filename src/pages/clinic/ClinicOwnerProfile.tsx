@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,7 @@ import { PetPhoto } from '@/components/clinic/PetPhoto';
 import { formatPetDobWithAge } from '@/utils/petAge';
 import { PetPhotoField } from '@/components/clinic/PetPhotoField';
 import { toast } from 'sonner';
+import { clinicCrmPaths } from '@/utils/clinicCrmPaths';
 
 const emptyPet = {
   name: '',
@@ -57,6 +58,8 @@ const emptyPet = {
 
 export default function ClinicOwnerProfile() {
   const { ownerUuid = '' } = useParams();
+  const { pathname } = useLocation();
+  const crm = clinicCrmPaths(pathname);
   const { clinicUuid, loading: clinicLoading } = useActiveClinic();
   const [profile, setProfile] = useState<ClinicOwnerProfileModel | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,10 +103,12 @@ export default function ClinicOwnerProfile() {
     };
   }, [clinicUuid, ownerUuid, clinicLoading]);
 
+  const needsPetConsent = (profile?.owner.petCount ?? profile?.owner.pets?.length ?? 0) > 0;
+
   const handleAddPet = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clinicUuid || !ownerUuid || !petForm.name.trim()) return;
-    if (!consentVerified) {
+    if (needsPetConsent && !consentVerified) {
       toast.error('Verify owner email consent before adding this pet');
       return;
     }
@@ -188,7 +193,7 @@ export default function ClinicOwnerProfile() {
     return (
       <div className="p-6 max-w-3xl mx-auto space-y-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/clinic/patients">
+          <Link to={crm.clients}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Link>
@@ -204,7 +209,7 @@ export default function ClinicOwnerProfile() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/clinic/patients">
+          <Link to={crm.clients}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Clients & Pets
           </Link>
@@ -307,7 +312,7 @@ export default function ClinicOwnerProfile() {
                 </div>
                 <div className="flex flex-col gap-2">
                   <Button variant="outline" size="sm" asChild className="w-full">
-                    <Link to={`/clinic/pets/${p.petUuid}`}>Open pet profile</Link>
+                    <Link to={crm.pet(p.petUuid)}>Open pet profile</Link>
                   </Button>
                 </div>
               </CardContent>
@@ -362,10 +367,11 @@ export default function ClinicOwnerProfile() {
                 />
               </div>
             </div>
+            {needsPetConsent ? (
             <div className="rounded-md border px-3 py-2.5 space-y-2">
               <p className="text-sm font-medium">Owner consent (email OTP)</p>
               <p className="text-xs text-muted-foreground">
-                A one-time code is emailed to the owner for this pet name only.
+                Required from the second pet onward. A one-time code is emailed for this pet name only.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -403,6 +409,11 @@ export default function ClinicOwnerProfile() {
                 ) : null}
               </div>
             </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                First pet for this client does not need an email OTP.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Gender</Label>

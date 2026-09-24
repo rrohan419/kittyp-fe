@@ -14,7 +14,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { PaymentLoader } from "@/components/ui/PaymentLoader";
 import { ArrowLeft, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
-import { Address, AddressModel, fetchSavedAddresses, findAllSavedAddress, deleteAddress } from "@/services/addressService";
+import { Address, AddressModel, findAllSavedAddress, deleteAddress } from "@/services/addressService";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import {
     callRazorpayCreateOrder,

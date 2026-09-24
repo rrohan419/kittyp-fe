@@ -338,6 +338,14 @@ export const router = createBrowserRouter(
               element: <PageTransition><ClinicPatientDashboard /></PageTransition>,
             },
             {
+              path: "clients",
+              element: <PageTransition><ClinicPatients /></PageTransition>,
+            },
+            {
+              path: "owners/:ownerUuid",
+              element: <PageTransition><ClinicOwnerProfile /></PageTransition>,
+            },
+            {
               path: "doctors",
               element: <PageTransition><ClinicDoctors /></PageTransition>,
             },

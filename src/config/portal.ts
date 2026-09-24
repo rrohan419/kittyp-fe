@@ -81,6 +81,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Appointments', path: '/doctor/appointments', icon: Calendar },
       { label: 'Availability', path: '/doctor/availability', icon: Clock },
       { label: 'Patients', path: '/doctor/patients', icon: Users },
+      { label: 'Clients', path: '/doctor/clients', icon: PawPrint },
       { label: 'Nutrition', path: '/doctor/nutrition', icon: Apple },
       { label: 'Blog', path: '/doctor/blog', icon: FileText },
       { label: 'Invoices', path: '/doctor/invoices', icon: Package },
