@@ -252,6 +252,9 @@ const Signup = () => {
                             disabled={loading}
                           />
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                          Must be 8–72 characters with uppercase, lowercase, a number, and a special character.
+                        </p>
                       </div>
 
                       <div className="space-y-2">
