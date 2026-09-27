@@ -179,7 +179,7 @@ export default function PetDashboardPage() {
           <CardContent className="p-4 flex gap-3 items-start">
             <Lightbulb className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-semibold uppercase text-primary">AI Tip of the Day</p>
+              <p className="text-xs font-semibold uppercase text-primary">Tip of the Day</p>
               <p className="text-sm mt-1">{dashboard.tipOfTheDay.tip}</p>
             </div>
           </CardContent>

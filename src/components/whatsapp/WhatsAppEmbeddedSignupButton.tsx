@@ -53,7 +53,8 @@ declare global {
 
 const SDK_SRC = 'https://connect.facebook.net/en_US/sdk.js';
 const SDK_ID = 'facebook-jssdk';
-const IDS_WAIT_MS = 8000;
+/** Meta postMessage IDs often arrive after FB.login code; wait longer than 8s. */
+const IDS_WAIT_MS = 20000;
 
 function loadFacebookSdk(appId: string): void {
   const init = () => {
@@ -228,7 +229,12 @@ export function WhatsAppEmbeddedSignupButton({
           if (submittingRef.current || idsRef.current) {
             return;
           }
-          toast.error(facebookLoginEditSettingsHint());
+          // Code without WABA/phone IDs = reused Facebook session; need Edit Settings.
+          toast.error(
+            codeRef.current
+              ? facebookLoginEditSettingsHint()
+              : 'WhatsApp signup did not return a login code. Try Connect with Meta again.'
+          );
         }, IDS_WAIT_MS);
       },
       {

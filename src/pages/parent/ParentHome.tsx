@@ -23,6 +23,8 @@ import {
   deleteReminder,
   fetchMyReminders,
 } from '@/services/reminderService';
+import { fetchTipOfTheDay } from '@/services/petDashboardService';
+import { tipOfTheDayFallback } from '@/utils/dailyPetTip';
 
 const ACTIVE = new Set(['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS', 'CHECKING_OUT']);
 
@@ -42,17 +44,7 @@ export default function ParentHome() {
   const [remDue, setRemDue] = useState('');
   const [remNote, setRemNote] = useState('');
   const [savingRem, setSavingRem] = useState(false);
-
-  const tip = useMemo(() => {
-    const tips = [
-      'Fresh water daily keeps kidneys happier — refill bowls morning and night.',
-      'A short play session before meals can reduce begging and support healthy weight.',
-      'Check gums weekly: healthy pink color is a quick at-home wellness signal.',
-      'Keep vaccine and deworming dates in your pet dashboard so boosters never slip.',
-    ];
-    const day = new Date().getDate();
-    return tips[day % tips.length];
-  }, []);
+  const [tip, setTip] = useState(() => tipOfTheDayFallback());
 
   const loadVisits = useCallback(async () => {
     try {
@@ -72,10 +64,22 @@ export default function ParentHome() {
     }
   }, []);
 
+  const primaryPetUuid = pets[0]?.uuid;
+
+  const loadTip = useCallback(async () => {
+    try {
+      const next = await fetchTipOfTheDay(primaryPetUuid);
+      if (next?.tip) setTip(next.tip);
+    } catch {
+      setTip(tipOfTheDayFallback());
+    }
+  }, [primaryPetUuid]);
+
   useEffect(() => {
     void loadVisits();
     void loadReminders();
-  }, [loadVisits, loadReminders]);
+    void loadTip();
+  }, [loadVisits, loadReminders, loadTip]);
 
   useEffect(() => {
     if (searchParams.get('reminders') === '1') {
@@ -162,7 +166,7 @@ export default function ParentHome() {
             <Lightbulb className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary">AI Tip of the Day</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Tip of the Day</p>
             <p className="text-sm text-foreground mt-1 leading-relaxed">{tip}</p>
           </div>
         </CardContent>

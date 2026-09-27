@@ -1065,3 +1065,255 @@ export async function markClinicVaccineGiven(
   );
   return res.data.data;
 }
+
+export type InventoryCategory = 'medication' | 'supply' | 'equipment' | 'food';
+export type InventoryStockStatus = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+export type InventoryExpiryStatus = 'NORMAL' | 'EXPIRING_SOON' | 'EXPIRED';
+export type InventoryMovementType =
+  | 'STOCK_IN'
+  | 'STOCK_OUT'
+  | 'ADJUSTMENT'
+  | 'RETURN'
+  | 'EXPIRED'
+  | 'DAMAGED';
+
+export interface ClinicInventoryLot {
+  uuid: string;
+  itemUuid?: string;
+  itemName?: string;
+  lotNumber?: string;
+  manufacturer?: string;
+  manufacturedOn?: string;
+  expiresOn?: string;
+  quantity: number;
+  expiryStatus?: InventoryExpiryStatus;
+}
+
+export interface ClinicInventoryItem {
+  uuid: string;
+  name: string;
+  category: InventoryCategory | string;
+  stock: number;
+  unit?: string;
+  minStock?: number;
+  barcode?: string;
+  gtin?: string;
+  sku?: string;
+  manufacturer?: string;
+  trackStock?: boolean;
+  price: number;
+  purchasePrice?: number;
+  stockStatus?: InventoryStockStatus;
+  expiryStatus?: InventoryExpiryStatus;
+  earliestExpiry?: string;
+  lots?: ClinicInventoryLot[];
+}
+
+export interface ClinicInventoryItemRequest {
+  name: string;
+  category: InventoryCategory | string;
+  stock: number;
+  price: number;
+  unit?: string;
+  minStock?: number;
+  barcode?: string;
+  gtin?: string;
+  sku?: string;
+  manufacturer?: string;
+  trackStock?: boolean;
+  purchasePrice?: number;
+  lotNumber?: string;
+  manufacturedOn?: string;
+  expiresOn?: string;
+}
+
+export interface InventoryMovement {
+  uuid: string;
+  itemUuid?: string;
+  itemName?: string;
+  lotUuid?: string;
+  lotNumber?: string;
+  type: InventoryMovementType;
+  quantity: number;
+  previousQty: number;
+  newQty: number;
+  invoiceUuid?: string;
+  notes?: string;
+  createdAt?: string;
+}
+
+export interface InventoryMovementRequest {
+  itemUuid: string;
+  lotUuid?: string;
+  type: InventoryMovementType;
+  quantity: number;
+  notes?: string;
+  lotNumber?: string;
+  manufacturedOn?: string;
+  expiresOn?: string;
+  manufacturer?: string;
+}
+
+export interface InventoryScanResult {
+  found: boolean;
+  rawCode: string;
+  gtin?: string;
+  lotNumber?: string;
+  expiresOn?: string;
+  serial?: string;
+  item?: ClinicInventoryItem | null;
+  suggestedName?: string | null;
+}
+
+export interface InventoryConsumptionRow {
+  itemUuid: string;
+  name: string;
+  quantity: number;
+}
+
+export interface InventoryDashboard {
+  totalItems: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  expiringSoonCount: number;
+  expiredCount: number;
+  totalStockQuantity: number;
+  stockValue: number;
+  consumed7d: number;
+  consumed30d: number;
+  consumed90d: number;
+  lowStock: ClinicInventoryItem[];
+  expiringSoon: ClinicInventoryLot[];
+  expired: ClinicInventoryLot[];
+  mostConsumed30d: InventoryConsumptionRow[];
+  leastConsumed30d: InventoryConsumptionRow[];
+  recentlyAdded: ClinicInventoryItem[];
+  recentlyUpdated: ClinicInventoryItem[];
+  recentMovements: InventoryMovement[];
+}
+
+export interface InventoryAlert {
+  alertType: string;
+  itemUuid?: string;
+  itemName?: string;
+  message?: string;
+  lastNotifiedAt?: string;
+  resolved: boolean;
+}
+
+export interface InventoryWeeklyReport {
+  clinicUuid: string;
+  clinicName?: string;
+  weekStart: string;
+  weekEnd: string;
+  lowStock: ClinicInventoryItem[];
+  outOfStock: ClinicInventoryItem[];
+  expiringSoon: ClinicInventoryLot[];
+  expired: ClinicInventoryLot[];
+  mostConsumed: InventoryConsumptionRow[];
+  leastConsumed: InventoryConsumptionRow[];
+  stockAdded: number;
+  stockConsumed: number;
+  significantChanges: InventoryMovement[];
+}
+
+export async function fetchClinicInventory(
+  clinicUuid: string,
+  opts?: { q?: string; stockStatus?: string; expiryStatus?: string }
+): Promise<ClinicInventoryItem[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ClinicInventoryItem[]>>(
+    `/clinic/${clinicUuid}/inventory`,
+    {
+      params: {
+        q: opts?.q?.trim() || undefined,
+        stockStatus: opts?.stockStatus || undefined,
+        expiryStatus: opts?.expiryStatus || undefined,
+      },
+    }
+  );
+  return res.data.data ?? [];
+}
+
+export async function fetchInventoryDashboard(clinicUuid: string): Promise<InventoryDashboard> {
+  const res = await axiosInstance.get<ApiSuccessResponse<InventoryDashboard>>(
+    `/clinic/${clinicUuid}/inventory/dashboard`
+  );
+  return res.data.data;
+}
+
+export async function fetchInventoryMovements(
+  clinicUuid: string,
+  page = 0,
+  size = 20
+): Promise<{ content: InventoryMovement[]; totalElements?: number }> {
+  const res = await axiosInstance.get<
+    ApiSuccessResponse<{ content: InventoryMovement[]; totalElements?: number }>
+  >(`/clinic/${clinicUuid}/inventory/movements`, { params: { page, size } });
+  return res.data.data ?? { content: [] };
+}
+
+export async function createInventoryMovement(
+  clinicUuid: string,
+  payload: InventoryMovementRequest
+): Promise<InventoryMovement> {
+  const res = await axiosInstance.post<ApiSuccessResponse<InventoryMovement>>(
+    `/clinic/${clinicUuid}/inventory/movements`,
+    payload
+  );
+  return res.data.data;
+}
+
+export async function scanInventoryBarcode(
+  clinicUuid: string,
+  rawCode: string
+): Promise<InventoryScanResult> {
+  const res = await axiosInstance.post<ApiSuccessResponse<InventoryScanResult>>(
+    `/clinic/${clinicUuid}/inventory/scan`,
+    { rawCode }
+  );
+  return res.data.data;
+}
+
+export async function fetchInventoryAlerts(clinicUuid: string): Promise<InventoryAlert[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<InventoryAlert[]>>(
+    `/clinic/${clinicUuid}/inventory/alerts`
+  );
+  return res.data.data ?? [];
+}
+
+export async function fetchInventoryWeeklyReport(clinicUuid: string): Promise<InventoryWeeklyReport> {
+  const res = await axiosInstance.get<ApiSuccessResponse<InventoryWeeklyReport>>(
+    `/clinic/${clinicUuid}/inventory/reports/weekly`
+  );
+  return res.data.data;
+}
+
+export async function createClinicInventoryItem(
+  clinicUuid: string,
+  payload: ClinicInventoryItemRequest
+): Promise<ClinicInventoryItem> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ClinicInventoryItem>>(
+    `/clinic/${clinicUuid}/inventory`,
+    payload
+  );
+  return res.data.data;
+}
+
+export async function updateClinicInventoryItem(
+  clinicUuid: string,
+  itemUuid: string,
+  payload: ClinicInventoryItemRequest
+): Promise<ClinicInventoryItem> {
+  const res = await axiosInstance.put<ApiSuccessResponse<ClinicInventoryItem>>(
+    `/clinic/${clinicUuid}/inventory/${itemUuid}`,
+    payload
+  );
+  return res.data.data;
+}
+
+export async function deleteClinicInventoryItem(
+  clinicUuid: string,
+  itemUuid: string
+): Promise<void> {
+  await axiosInstance.delete(`/clinic/${clinicUuid}/inventory/${itemUuid}`);
+}

@@ -41,11 +41,58 @@ export function validateEmail(email: string, required = true): string | null {
 export function validatePersonName(value: string, label: string, required = true): string | null {
   const v = value?.trim() ?? '';
   if (!v) return required ? `${label} is required` : null;
-  if (required && v.length < 2) return `${label} must be at least 2 characters`;
+  if (v.length < 2) return `${label} must be at least 2 characters`;
   if (!NAME_REGEX.test(v)) {
     return `${label} can only contain letters, spaces, hyphens, and apostrophes`;
   }
   return null;
+}
+
+/** Strip digits/symbols while typing a person name (letters, spaces, . ' - only). */
+export function sanitizePersonNameInput(raw: string, maxLen = 50): string {
+  return (raw || '').replace(/[^\p{L} .'-]/gu, '').slice(0, maxLen);
+}
+
+/** Optional pet weight in kg. Empty is OK; otherwise a finite number in [0.1, 500], max 2 decimals. */
+export function validatePetWeightKg(value: string): string | null {
+  const v = value?.trim() ?? '';
+  if (!v) return null;
+  if (v.endsWith('.')) return 'Weight must be a valid number (kg)';
+  if (/\.\d{3,}/.test(v)) return 'Weight can have at most 2 decimal places';
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 'Weight must be a valid number (kg)';
+  if (n < 0.1 || n > 500) return 'Weight must be between 0.1 and 500 kg';
+  return null;
+}
+
+/** Optional body temp °C. Empty OK; else finite in [30, 45], max 2 decimals. */
+export function validatePetTempC(value: string): string | null {
+  const v = value?.trim() ?? '';
+  if (!v) return null;
+  if (v.endsWith('.')) return 'Temperature must be a valid number (°C)';
+  if (/\.\d{3,}/.test(v)) return 'Temperature can have at most 2 decimal places';
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 'Temperature must be a valid number (°C)';
+  if (n < 30 || n > 45) return 'Temperature must be between 30 and 45 °C';
+  return null;
+}
+
+/**
+ * Digits + optional single decimal point; caps fractional digits.
+ * Strips letters; no spinner field needed (use type="text").
+ */
+export function sanitizeDecimalInput(raw: string, maxDecimals = 2): string {
+  const cleaned = (raw || '').replace(/[^\d.]/g, '');
+  const dot = cleaned.indexOf('.');
+  if (dot === -1) return cleaned;
+  const intPart = cleaned.slice(0, dot);
+  const frac = cleaned.slice(dot + 1).replace(/\./g, '').slice(0, Math.max(0, maxDecimals));
+  return `${intPart}.${frac}`;
+}
+
+/** Digits + optional single decimal (max 2 places) for pet weight. */
+export function sanitizePetWeightInput(raw: string): string {
+  return sanitizeDecimalInput(raw, 2);
 }
 
 export function validateClinicName(value: string): string | null {
@@ -105,9 +152,9 @@ export function validatePhone(phone: string, required = false): string | null {
   return null;
 }
 
-/** Digits-only local phone for inputs; normalizes country-code pastes to 10 digits. */
-export function digitsOnlyPhone(value: string, _maxLen = 10): string {
-  return normalizeLocalPhone(value);
+/** Digits-only local phone for inputs; hard-caps at 10 digits. */
+export function digitsOnlyPhone(value: string, maxLen = 10): string {
+  return normalizeLocalPhone(value).slice(0, maxLen);
 }
 
 /** E.164-style full phone for OTP/API (India default). */

@@ -15,6 +15,8 @@ type Props = {
   disabled?: boolean;
   idPrefix?: string;
   publicApi?: boolean;
+  /** When true, only Google Places selection is allowed — parsed fields are read-only. */
+  fieldsReadOnly?: boolean;
 };
 
 type Suggestion = {
@@ -35,6 +37,7 @@ export function ClinicAddressSearch({
   disabled,
   idPrefix = 'clinic-address',
   publicApi = false,
+  fieldsReadOnly = false,
 }: Props) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -67,11 +70,15 @@ export function ClinicAddressSearch({
         .catch(() => {
           setSuggestions([]);
           setOpen(false);
-          setLoadError('Address search is unavailable. Enter city, state, and postal code manually.');
+          setLoadError(
+            fieldsReadOnly
+              ? 'Address search is unavailable. Try again later.'
+              : 'Address search is unavailable. Enter city, state, and postal code manually.'
+          );
         });
     }, 250);
     return () => window.clearTimeout(handle);
-  }, [query, disabled, publicApi]);
+  }, [query, disabled, publicApi, fieldsReadOnly]);
 
   const applyPlace = (placeId: string, description: string) => {
     void fetchPlaceDetails(placeId, sessionTokenRef.current, publicApi)
@@ -84,7 +91,11 @@ export function ClinicAddressSearch({
         sessionTokenRef.current = newSessionToken();
       })
       .catch(() => {
-        setLoadError('Could not load that address. Enter it manually.');
+        setLoadError(
+          fieldsReadOnly
+            ? 'Could not load that address. Try another suggestion.'
+            : 'Could not load that address. Enter it manually.'
+        );
       });
   };
 
@@ -141,6 +152,10 @@ export function ClinicAddressSearch({
         </div>
         {loadError ? (
           <p className="text-xs text-destructive">{loadError}</p>
+        ) : fieldsReadOnly ? (
+          <p className="text-xs text-muted-foreground">
+            Pick a Google Places suggestion. Address fields cannot be typed manually.
+          </p>
         ) : (
           <p className="text-xs text-muted-foreground">Pick a suggestion, then edit the parsed fields if needed.</p>
         )}
@@ -155,7 +170,8 @@ export function ClinicAddressSearch({
             autoComplete="street-address"
             placeholder="Street / building"
             value={value.street}
-            disabled={disabled}
+            disabled={disabled || fieldsReadOnly}
+            readOnly={fieldsReadOnly}
             onChange={(e) => patch('street', e.target.value)}
           />
         </div>
@@ -167,7 +183,8 @@ export function ClinicAddressSearch({
             autoComplete="address-level2"
             placeholder="City"
             value={value.city}
-            disabled={disabled}
+            disabled={disabled || fieldsReadOnly}
+            readOnly={fieldsReadOnly}
             onChange={(e) => patch('city', e.target.value)}
           />
         </div>
@@ -179,7 +196,8 @@ export function ClinicAddressSearch({
             autoComplete="address-level1"
             placeholder="State"
             value={value.state}
-            disabled={disabled}
+            disabled={disabled || fieldsReadOnly}
+            readOnly={fieldsReadOnly}
             onChange={(e) => patch('state', e.target.value)}
           />
         </div>
@@ -190,7 +208,8 @@ export function ClinicAddressSearch({
             name={`${idPrefix}-district`}
             placeholder="District"
             value={value.district}
-            disabled={disabled}
+            disabled={disabled || fieldsReadOnly}
+            readOnly={fieldsReadOnly}
             onChange={(e) => patch('district', e.target.value)}
           />
         </div>
@@ -202,7 +221,8 @@ export function ClinicAddressSearch({
             autoComplete="postal-code"
             placeholder="Postal code"
             value={value.postalCode}
-            disabled={disabled}
+            disabled={disabled || fieldsReadOnly}
+            readOnly={fieldsReadOnly}
             onChange={(e) => patch('postalCode', e.target.value)}
           />
         </div>
@@ -214,7 +234,8 @@ export function ClinicAddressSearch({
             autoComplete="country-name"
             placeholder="Country"
             value={value.country}
-            disabled={disabled}
+            disabled={disabled || fieldsReadOnly}
+            readOnly={fieldsReadOnly}
             onChange={(e) => patch('country', e.target.value)}
           />
         </div>

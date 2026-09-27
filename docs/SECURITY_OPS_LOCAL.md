@@ -18,6 +18,10 @@ set +a
 export SPRING_PROFILES_ACTIVE=local
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
+PowerShell (quote `-D…` or PowerShell splits on `.`):
+```powershell
+.\mvnw spring-boot:run "-Dspring-boot.run.profiles=local"
+```
 
 ### Frontend
 ```bash
@@ -25,6 +29,7 @@ cd kittyp-fe
 cp .env.example .env.devlocal # once; set VITE_META_* (required, no code fallbacks)
 ./scripts/run-local.sh --check
 ./scripts/run-local.sh
+# or: npm run local
 ```
 FE: https://localhost:8080 → Vite proxy → http://127.0.0.1:8082
 

@@ -48,9 +48,9 @@ export async function fetchPetDashboard(petUuid: string): Promise<PetDashboardMo
   return res.data.data;
 }
 
-export async function fetchTipOfTheDay(petUuid: string): Promise<TipOfTheDay> {
+export async function fetchTipOfTheDay(petUuid?: string): Promise<TipOfTheDay> {
   const res = await axiosInstance.get<ApiSuccessResponse<TipOfTheDay>>('/ai/tip-of-the-day', {
-    params: { petUuid },
+    params: petUuid ? { petUuid } : undefined,
   });
   return res.data.data;
 }

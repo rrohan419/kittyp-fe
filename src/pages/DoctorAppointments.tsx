@@ -52,6 +52,7 @@ import { cn } from '@/lib/utils';
 import { fetchMyDoctorProfile, isPracticeReady, statusLabel } from '@/services/doctorVerificationService';
 import { resolveLockedDoctorUuid } from '@/utils/roles';
 import { toast } from 'sonner';
+import { validatePetTempC, validatePetWeightKg } from '@/utils/validation';
 import { parseApiErrorMessage } from '@/utils/validation';
 import { canEditVisitChart } from '@/utils/visitChartLock';
 import type { InvoiceFromVisitState } from '@/services/invoiceService';
@@ -224,6 +225,16 @@ export default function DoctorAppointments() {
     }
     if (andComplete && !notes.assessment.trim()) {
       toast.error('Add an assessment / diagnosis before completing');
+      return;
+    }
+    const weightErr = validatePetWeightKg(vitals.weightKg);
+    if (weightErr) {
+      toast.error(weightErr);
+      return;
+    }
+    const tempErr = validatePetTempC(vitals.temperatureC);
+    if (tempErr) {
+      toast.error(tempErr);
       return;
     }
     setBusy(true);

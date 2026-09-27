@@ -23,6 +23,8 @@ export interface TreatmentLineItem {
   discount?: number;
   tax?: number;
   total?: number;
+  inventoryItemUuid?: string;
+  lotUuid?: string;
 }
 
 export interface ConsultationInvoice {
@@ -59,34 +61,38 @@ export interface CreateInvoiceResult {
   emailError?: string | null;
 }
 
+const INVOICE_SEND_TOAST_MS = 3000;
+
 export function toastInvoiceSend(result: CreateInvoiceResult): void {
   const n = result.invoice.invoiceNumber || '';
   const wa = Boolean(result.whatsappSent);
   const em = Boolean(result.emailSent);
+  const opts = { duration: INVOICE_SEND_TOAST_MS };
   if (wa && em) {
-    toast.success(`Invoice ${n} sent on WhatsApp and email`);
+    toast.success(`Invoice ${n} sent on WhatsApp and email`, opts);
     return;
   }
   if (wa) {
     if (result.emailError) {
-      toast.warning(`Invoice ${n} sent on WhatsApp. Email failed: ${result.emailError}`);
+      toast.warning(`Invoice ${n} sent on WhatsApp. Email failed: ${result.emailError}`, opts);
     } else {
-      toast.success(`Invoice ${n} sent on WhatsApp`);
+      toast.success(`Invoice ${n} sent on WhatsApp`, opts);
     }
     return;
   }
   if (em) {
     if (result.whatsappError) {
-      toast.warning(`Invoice ${n} emailed. WhatsApp failed: ${result.whatsappError}`);
+      toast.warning(`Invoice ${n} emailed. WhatsApp failed: ${result.whatsappError}`, opts);
     } else {
-      toast.success(`Invoice ${n} emailed`);
+      toast.success(`Invoice ${n} emailed`, opts);
     }
     return;
   }
   toast.warning(
     `Invoice ${n} saved. ${
       result.whatsappError || result.emailError || 'WhatsApp and email were not sent — use Send when ready.'
-    }`
+    }`,
+    opts
   );
 }
 

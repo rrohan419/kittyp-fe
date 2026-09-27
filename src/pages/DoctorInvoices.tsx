@@ -18,6 +18,15 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
+  digitsOnlyPhone,
+  sanitizePersonNameInput,
+  sanitizePetWeightInput,
+  validateEmail,
+  validatePersonName,
+  validatePetWeightKg,
+  validatePhone,
+} from '@/utils/validation';
+import {
   ConsultationInvoice,
   ITEM_TYPE_OPTIONS,
   InvoiceFromVisitState,
@@ -31,7 +40,7 @@ import {
   sendInvoiceWhatsApp,
   toastInvoiceSend,
 } from '@/services/invoiceService';
-import { fetchClinicPetMedicalProfile, isClinicActivated, CLINIC_NOT_ACTIVATED_MESSAGE } from '@/services/clinicService';
+import { fetchClinicPetMedicalProfile, fetchClinicInventory, ClinicInventoryItem, isClinicActivated, CLINIC_NOT_ACTIVATED_MESSAGE } from '@/services/clinicService';
 import { fetchMyDoctorVisits } from '@/services/visitService';
 import { formatInr } from '@/services/availabilityService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
@@ -60,6 +69,7 @@ export default function DoctorInvoices() {
   const clinicActivated = isClinicActivated(clinic?.status, clinic?.personal);
 
   const [items, setItems] = useState<TreatmentLineItem[]>([emptyItem()]);
+  const [inventoryCatalog, setInventoryCatalog] = useState<ClinicInventoryItem[]>([]);
   const [petName, setPetName] = useState('');
   const [petBreed, setPetBreed] = useState('');
   const [petSpecies, setPetSpecies] = useState('');
@@ -95,8 +105,8 @@ export default function DoctorInvoices() {
     if (from.petName) setPetName(from.petName);
     if (from.petBreed) setPetBreed(from.petBreed);
     if (from.petSpecies) setPetSpecies(from.petSpecies);
-    if (from.ownerName) setOwnerName(from.ownerName);
-    if (from.ownerPhone) setOwnerPhone(from.ownerPhone);
+    if (from.ownerName) setOwnerName(sanitizePersonNameInput(from.ownerName));
+    if (from.ownerPhone) setOwnerPhone(digitsOnlyPhone(from.ownerPhone));
     if (from.ownerEmail) setOwnerEmail(from.ownerEmail);
     if (from.reason) setReason(from.reason);
     if (from.diagnosis) setDiagnosis(from.diagnosis);
@@ -205,6 +215,16 @@ export default function DoctorInvoices() {
   }, [clinicLoading, clinicUuid]);
 
   useEffect(() => {
+    if (!clinicUuid) {
+      setInventoryCatalog([]);
+      return;
+    }
+    void fetchClinicInventory(clinicUuid)
+      .then(setInventoryCatalog)
+      .catch(() => setInventoryCatalog([]));
+  }, [clinicUuid]);
+
+  useEffect(() => {
     const invoiceQ = searchParams.get('invoice');
     if (!invoiceQ || hydratedRef.current === `invoice:${invoiceQ}`) return;
     if (clinicLoading) return;
@@ -276,6 +296,26 @@ export default function DoctorInvoices() {
       toast.error('Pet name is required');
       return;
     }
+    const weightErr = validatePetWeightKg(petWeight);
+    if (weightErr) {
+      toast.error(weightErr);
+      return;
+    }
+    const ownerNameErr = validatePersonName(ownerName, 'Owner name', false);
+    if (ownerNameErr) {
+      toast.error(ownerNameErr);
+      return;
+    }
+    const phoneErr = validatePhone(ownerPhone, false);
+    if (phoneErr) {
+      toast.error(phoneErr);
+      return;
+    }
+    const emailErr = validateEmail(ownerEmail, false);
+    if (emailErr) {
+      toast.error(emailErr);
+      return;
+    }
     const billingClinic = linkClinicUuid || clinicUuid;
     if (billingClinic && clinic && !isPersonalPractice && !clinicActivated) {
       toast.error(CLINIC_NOT_ACTIVATED_MESSAGE);
@@ -314,7 +354,7 @@ export default function DoctorInvoices() {
         petSpecies: petSpecies.trim() || undefined,
         petWeight: petWeight.trim() || undefined,
         ownerName: ownerName.trim() || undefined,
-        ownerPhone: ownerPhone.trim() || undefined,
+        ownerPhone: ownerPhone.trim() ? digitsOnlyPhone(ownerPhone) : undefined,
         ownerEmail: ownerEmail.trim() || undefined,
         reason: reason.trim() || undefined,
         diagnosis: diagnosis.trim() || undefined,
@@ -395,7 +435,8 @@ export default function DoctorInvoices() {
         ax.response?.data?.message ||
           ax.response?.data?.detailedMessage ||
           ax.message ||
-          'Failed to send invoice'
+          'Failed to send invoice',
+        { duration: 3000 }
       );
     } finally {
       setBusyUuid(null);
@@ -476,15 +517,37 @@ export default function DoctorInvoices() {
               </div>
               <div className="space-y-2">
                 <Label>Weight (kg)</Label>
-                <Input value={petWeight} onChange={(e) => setPetWeight(e.target.value)} placeholder="e.g. 12" />
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  value={petWeight}
+                  onChange={(e) => setPetWeight(sanitizePetWeightInput(e.target.value))}
+                  placeholder="e.g. 12"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Owner name</Label>
-                <Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
+                <Input
+                  autoComplete="name"
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(sanitizePersonNameInput(e.target.value))}
+                  placeholder="Owner full name"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Owner phone</Label>
-                <Input value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} />
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  maxLength={10}
+                  value={ownerPhone}
+                  onChange={(e) => setOwnerPhone(digitsOnlyPhone(e.target.value))}
+                  onInput={(e) => setOwnerPhone(digitsOnlyPhone((e.target as HTMLInputElement).value))}
+                  placeholder="10-digit mobile"
+                />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Owner email</Label>
@@ -538,12 +601,65 @@ export default function DoctorInvoices() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="sm:col-span-4">
+                  <div className="sm:col-span-4 space-y-1">
+                    {(item.itemType === 'MEDICINE' || item.itemType === 'CONSUMABLE') &&
+                    inventoryCatalog.length > 0 ? (
+                      <Select
+                        value={item.inventoryItemUuid || '__manual__'}
+                        onValueChange={(v) => {
+                          if (v === '__manual__') {
+                            updateItem(index, { inventoryItemUuid: undefined, lotUuid: undefined });
+                            return;
+                          }
+                          const inv = inventoryCatalog.find((c) => c.uuid === v);
+                          if (!inv) return;
+                          const fefoLot = [...(inv.lots || [])]
+                            .filter((l) => Number(l.quantity) > 0)
+                            .sort((a, b) => {
+                              if (!a.expiresOn) return 1;
+                              if (!b.expiresOn) return -1;
+                              return a.expiresOn.localeCompare(b.expiresOn);
+                            })[0];
+                          updateItem(index, {
+                            inventoryItemUuid: inv.uuid,
+                            description: inv.name,
+                            unitPrice: Number(inv.price) || item.unitPrice,
+                            unit: inv.unit,
+                            lotUuid: fefoLot?.uuid,
+                          });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Link inventory" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__manual__">Free-text (no stock)</SelectItem>
+                          {inventoryCatalog.map((inv) => (
+                            <SelectItem key={inv.uuid} value={inv.uuid}>
+                              {inv.name} · on hand {Number(inv.stock)}
+                              {inv.earliestExpiry ? ` · FEFO ${inv.earliestExpiry}` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : null}
                     <Input
                       placeholder="Description"
                       value={item.description}
-                      onChange={(e) => updateItem(index, { description: e.target.value })}
+                      onChange={(e) =>
+                        updateItem(index, {
+                          description: e.target.value,
+                          inventoryItemUuid: undefined,
+                          lotUuid: undefined,
+                        })
+                      }
                     />
+                    {item.inventoryItemUuid ? (
+                      <p className="text-[10px] text-muted-foreground">
+                        Linked to inventory
+                        {item.lotUuid ? ' · FEFO lot selected' : ''}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="sm:col-span-2">
                     <Input

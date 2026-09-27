@@ -78,6 +78,12 @@ import {
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { toast } from 'sonner';
+import {
+  sanitizeDecimalInput,
+  sanitizePetWeightInput,
+  validatePetTempC,
+  validatePetWeightKg,
+} from '@/utils/validation';
 import { notifyInviteAddressed } from '@/components/portal/PortalNotifications';
 import { parseApiErrorMessage } from '@/utils/validation';
 import { canEditVisitChart } from '@/utils/visitChartLock';
@@ -514,6 +520,16 @@ export default function DoctorHome() {
     }
     if (andComplete && !form.assessment.trim()) {
       toast.error('Add an assessment / diagnosis before completing');
+      return;
+    }
+    const weightErr = validatePetWeightKg(form.weightKg);
+    if (weightErr) {
+      toast.error(weightErr);
+      return;
+    }
+    const tempErr = validatePetTempC(form.temperatureC);
+    if (tempErr) {
+      toast.error(tempErr);
       return;
     }
     setBusy(true);
@@ -1065,13 +1081,33 @@ export default function DoctorHome() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label>Weight (kg)</Label>
-                <Input value={form.weightKg} onChange={(e) => setForm((s) => ({ ...s, weightKg: e.target.value }))} />
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  value={form.weightKg}
+                  onChange={(e) =>
+                    setForm((s) => ({ ...s, weightKg: sanitizePetWeightInput(e.target.value) }))
+                  }
+                  placeholder="e.g. 12.5"
+                />
               </div>
               <div>
                 <Label>Temp (°C)</Label>
                 <Input
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   value={form.temperatureC}
-                  onChange={(e) => setForm((s) => ({ ...s, temperatureC: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((s) => ({
+                      ...s,
+                      temperatureC: sanitizeDecimalInput(e.target.value, 2),
+                    }))
+                  }
+                  placeholder="e.g. 38.5"
                 />
               </div>
             </div>

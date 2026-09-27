@@ -1,8 +1,12 @@
 import { format, isValid, parseISO } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { sanitizeDecimalInput, sanitizePetWeightInput } from '@/utils/validation';
 import type { ChartVitalsSlice } from './chartTabs';
 import type { VitalHistoryItem } from './prescriptionsFromVisits';
+
+const NO_SPINNER =
+  '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
 
 function formatVisitDate(value: string | null): string {
   if (!value) return '—';
@@ -29,16 +33,26 @@ export function VitalsTab({ editable, vitals, onVitalsChange, history = [] }: Vi
           <Label htmlFor="chart-weight">Weight (kg)</Label>
           <Input
             id="chart-weight"
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
+            className={NO_SPINNER}
             value={vitals.weightKg}
-            onChange={(e) => set('weightKg', e.target.value)}
+            onChange={(e) => set('weightKg', sanitizePetWeightInput(e.target.value))}
+            placeholder="e.g. 12.5"
           />
         </div>
         <div>
           <Label htmlFor="chart-temp">Temp (°C)</Label>
           <Input
             id="chart-temp"
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
+            className={NO_SPINNER}
             value={vitals.temperatureC}
-            onChange={(e) => set('temperatureC', e.target.value)}
+            onChange={(e) => set('temperatureC', sanitizeDecimalInput(e.target.value, 2))}
+            placeholder="e.g. 38.5"
           />
         </div>
       </div>

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Building2, AlertTriangle, Plus, Power, MapPin, Pencil } from 'lucide-react';
+import { Building2, AlertTriangle, Plus, Power, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { shutdownClinic, reopenClinic, updateClinic } from '@/services/clinicService';
@@ -18,25 +18,42 @@ import { WhatsAppSettingsForm } from '@/components/whatsapp/WhatsAppSettingsForm
 import { ClinicHoursDisplay, ClinicHoursEditor } from '@/components/clinic/ClinicHoursEditor';
 import { ClinicAddressSearch } from '@/components/clinic/ClinicAddressSearch';
 import {
-  EMPTY_CLINIC_ADDRESS,
-  type ParsedClinicAddress,
-  stitchClinicAddress,
-} from '@/utils/googlePlaces';
-import {
   type ClinicHourDay,
   defaultClinicHours,
   parseOperatingHours,
   serializeOperatingHours,
 } from '@/utils/clinicHours';
+import {
+  EMPTY_CLINIC_ADDRESS,
+  type ParsedClinicAddress,
+  toClinicGeoPayload,
+} from '@/utils/googlePlaces';
 import { Link } from 'react-router-dom';
 import { RootState } from '@/module/store/store';
 import { ROLES, hasAnyRole, hasRole } from '@/utils/roles';
 import { CopyableId } from '@/components/ui/CopyableId';
+import { digitsOnlyPhone, validateEmail, validatePhone } from '@/utils/validation';
+
+function clinicToParsedAddress(clinic: {
+  address?: string | null;
+  city?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}): ParsedClinicAddress {
+  return {
+    ...EMPTY_CLINIC_ADDRESS,
+    formattedAddress: clinic.address?.trim() || '',
+    street: clinic.address?.trim() || '',
+    city: clinic.city?.trim() || '',
+    latitude: clinic.latitude ?? null,
+    longitude: clinic.longitude ?? null,
+  };
+}
 
 export default function ClinicSettings() {
   const { user } = useSelector((state: RootState) => state.authReducer);
   const canManageWhatsApp = hasRole(user?.roles, ROLES.CLINIC_ADMIN);
-  const canManageLocation = hasAnyRole(user?.roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF, ROLES.DOCTOR]);
+  const canEditProfile = hasAnyRole(user?.roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF, ROLES.DOCTOR]);
   const { clinic, clinicUuid, refresh } = useActiveClinic();
   const [acting, setActing] = useState(false);
   const [waConfigured, setWaConfigured] = useState(false);
@@ -44,18 +61,13 @@ export default function ClinicSettings() {
   const [waBusinessId, setWaBusinessId] = useState('');
   const isShutdown = clinic?.status === 'SHUTDOWN';
 
-  const [city, setCity] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
-  const [location, setLocation] = useState<ParsedClinicAddress>(EMPTY_CLINIC_ADDRESS);
-  const [savingLocation, setSavingLocation] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [name, setName] = useState('');
   const [licenseNumber, setLicenseNumber] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
+  const [clinicAddress, setClinicAddress] = useState<ParsedClinicAddress>(EMPTY_CLINIC_ADDRESS);
   const [hours, setHours] = useState<ClinicHourDay[]>([]);
   const [legacyHours, setLegacyHours] = useState<string | null>(null);
 
@@ -64,25 +76,12 @@ export default function ClinicSettings() {
     setName(clinic.name ?? '');
     setLicenseNumber(clinic.licenseNumber ?? '');
     setEmail(clinic.email ?? '');
-    setPhone(clinic.phone ?? '');
-    setAddress(clinic.address ?? '');
+    setPhone(digitsOnlyPhone(clinic.phone ?? ''));
+    setClinicAddress(clinicToParsedAddress(clinic));
     const parsed = parseOperatingHours(clinic.operatingHours);
     setHours(parsed.days);
     setLegacyHours(parsed.legacyText);
   }, [clinic, editingProfile]);
-
-  useEffect(() => {
-    setCity(clinic?.city ?? '');
-    setLatitude(clinic?.latitude != null ? String(clinic.latitude) : '');
-    setLongitude(clinic?.longitude != null ? String(clinic.longitude) : '');
-    setLocation({
-      ...EMPTY_CLINIC_ADDRESS,
-      formattedAddress: clinic?.address ?? '',
-      city: clinic?.city ?? '',
-      latitude: clinic?.latitude ?? null,
-      longitude: clinic?.longitude ?? null,
-    });
-  }, [clinic?.address, clinic?.city, clinic?.latitude, clinic?.longitude, clinic?.uuid]);
 
   useEffect(() => {
     if (!clinicUuid || !canManageWhatsApp) {
@@ -133,91 +132,36 @@ export default function ClinicSettings() {
     }
   };
 
-  const applyLocation = (next: ParsedClinicAddress) => {
-    setLocation(next);
-    setAddress(stitchClinicAddress(next));
-    setCity(next.city);
-    setLatitude(next.latitude != null ? String(next.latitude) : '');
-    setLongitude(next.longitude != null ? String(next.longitude) : '');
-  };
-
-  const fillFromBrowser = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not available');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLatitude(pos.coords.latitude.toFixed(6));
-        setLongitude(pos.coords.longitude.toFixed(6));
-        setLocation((prev) => ({
-          ...prev,
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-        }));
-        toast.success('Coordinates filled from your device');
-      },
-      () => toast.error('Could not read device location')
-    );
-  };
-
-  const saveLocation = async () => {
-    if (!clinicUuid || !clinic) return;
-    const lat = latitude.trim() === '' ? null : Number(latitude);
-    const lng = longitude.trim() === '' ? null : Number(longitude);
-    if ((lat != null && !Number.isFinite(lat)) || (lng != null && !Number.isFinite(lng))) {
-      toast.error('Latitude and longitude must be numbers');
-      return;
-    }
-    setSavingLocation(true);
-    try {
-      await updateClinic(clinicUuid, {
-        name: clinic.name,
-        licenseNumber: clinic.licenseNumber,
-        address: address.trim() || stitchClinicAddress(location) || clinic.address,
-        phone: clinic.phone,
-        email: clinic.email,
-        timezone: clinic.timezone,
-        operatingHours: clinic.operatingHours,
-        city: city.trim() || undefined,
-        latitude: lat,
-        longitude: lng,
-        profileImageUrl: clinic.profileImageUrl || undefined,
-      });
-      await refresh();
-      toast.success('Clinic location saved');
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save location');
-    } finally {
-      setSavingLocation(false);
-    }
-  };
-
   const saveProfile = async () => {
     if (!clinicUuid || !clinic) return;
     if (!name.trim()) {
       toast.error('Practice name is required');
       return;
     }
-    const lat = latitude.trim() === '' ? clinic.latitude ?? null : Number(latitude);
-    const lng = longitude.trim() === '' ? clinic.longitude ?? null : Number(longitude);
-    if ((lat != null && !Number.isFinite(lat)) || (lng != null && !Number.isFinite(lng))) {
-      toast.error('Latitude and longitude must be numbers');
+    const phoneErr = validatePhone(phone, false);
+    if (phoneErr) {
+      toast.error(phoneErr);
+      return;
+    }
+    const emailErr = validateEmail(email, false);
+    if (emailErr) {
+      toast.error(emailErr);
       return;
     }
     setSavingProfile(true);
     try {
+      const geo = toClinicGeoPayload(clinicAddress);
       await updateClinic(clinicUuid, {
         name: name.trim(),
         licenseNumber: licenseNumber.trim() || undefined,
-        address: address.trim() || undefined,
-        phone: phone.trim() || undefined,
+        address: geo.address || clinic.address || undefined,
+        phone: phone.trim() ? digitsOnlyPhone(phone) : undefined,
         email: email.trim() || undefined,
         timezone: clinic.timezone,
         operatingHours: serializeOperatingHours(hours),
-        city: city.trim() || undefined,
-        latitude: lat,
-        longitude: lng,
+        city: geo.city || clinic.city || undefined,
+        latitude: geo.latitude ?? clinic.latitude ?? null,
+        longitude: geo.longitude ?? clinic.longitude ?? null,
         profileImageUrl: clinic.profileImageUrl || undefined,
       });
       await refresh();
@@ -257,13 +201,14 @@ export default function ClinicSettings() {
       <Card className="border-0 shadow-sm">
         <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
           <CardTitle className="text-base">Practice Profile</CardTitle>
-          {canManageLocation && !isShutdown && !editingProfile && (
+          {canEditProfile && !isShutdown && !editingProfile && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => {
                 if (!hours.length) setHours(defaultClinicHours());
+                if (clinic) setClinicAddress(clinicToParsedAddress(clinic));
                 setEditingProfile(true);
               }}
             >
@@ -320,22 +265,35 @@ export default function ClinicSettings() {
               <Label>Phone</Label>
               <Input
                 type="tel"
+                inputMode="numeric"
+                autoComplete="tel"
                 value={editingProfile ? phone : clinic?.phone ?? ''}
                 readOnly={!editingProfile}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(digitsOnlyPhone(e.target.value))}
               />
+              {editingProfile ? (
+                <p className="text-[11px] text-muted-foreground">10-digit mobile number</p>
+              ) : null}
             </div>
           </div>
           <div className="space-y-2">
             <Label>Address</Label>
-            <Input
-              value={editingProfile ? address : clinic?.address ?? ''}
-              readOnly={!editingProfile}
-              onChange={(e) => {
-                setAddress(e.target.value);
-                setLocation((prev) => ({ ...prev, formattedAddress: e.target.value }));
-              }}
-            />
+            {editingProfile ? (
+              <ClinicAddressSearch
+                idPrefix="settings-clinic"
+                value={clinicAddress}
+                onChange={setClinicAddress}
+                disabled={savingProfile}
+                fieldsReadOnly
+              />
+            ) : (
+              <>
+                <Input value={clinic?.address ?? '—'} readOnly />
+                <p className="text-[11px] text-muted-foreground">
+                  Change via Google Places when editing profile.
+                </p>
+              </>
+            )}
           </div>
           <div className="space-y-2">
             <Label>Operating Hours</Label>
@@ -365,72 +323,6 @@ export default function ClinicSettings() {
           </p>
         </CardContent>
       </Card>
-
-      {canManageLocation && (
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <MapPin className="h-4 w-4" /> Location for nearby search
-            </CardTitle>
-            <CardDescription>
-              Search a place in India to fill address, city, and coordinates. City still helps area
-              search if GPS is missing.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <ClinicAddressSearch
-              idPrefix="clinic-settings"
-              value={location}
-              onChange={applyLocation}
-              disabled={isShutdown}
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Latitude</Label>
-                <Input
-                  value={latitude}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    setLatitude(raw);
-                    const num = raw.trim() === '' ? null : Number(raw);
-                    setLocation((prev) => ({
-                      ...prev,
-                      latitude: num != null && Number.isFinite(num) ? num : null,
-                    }));
-                  }}
-                  placeholder="18.5204"
-                  disabled={isShutdown}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Longitude</Label>
-                <Input
-                  value={longitude}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    setLongitude(raw);
-                    const num = raw.trim() === '' ? null : Number(raw);
-                    setLocation((prev) => ({
-                      ...prev,
-                      longitude: num != null && Number.isFinite(num) ? num : null,
-                    }));
-                  }}
-                  placeholder="73.8567"
-                  disabled={isShutdown}
-                />
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" onClick={fillFromBrowser} disabled={isShutdown}>
-                Use my device location
-              </Button>
-              <Button type="button" onClick={() => void saveLocation()} disabled={isShutdown || savingLocation}>
-                {savingLocation ? 'Saving…' : 'Save location'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {canManageWhatsApp && (
         <Card className="border-0 shadow-sm">
