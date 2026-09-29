@@ -1,11 +1,6 @@
 import type { ConsultationInvoice } from '@/services/invoiceService';
 
-type PayableInvoice = Pick<
-  ConsultationInvoice,
-  'status' | 'paymentStatus' | 'amount' | 'paidAmount' | 'balance'
->;
-
-export function invoiceRemainingBalance(invoice: PayableInvoice): number {
+export function invoiceRemainingBalance(invoice: ConsultationInvoice): number {
   if (typeof invoice.balance === 'number') {
     return invoice.balance;
   }
@@ -14,7 +9,7 @@ export function invoiceRemainingBalance(invoice: PayableInvoice): number {
   return Math.max(0, amount - paid);
 }
 
-export function isInvoiceUnpaid(invoice: PayableInvoice): boolean {
+export function isInvoiceUnpaid(invoice: ConsultationInvoice): boolean {
   if (invoice.status === 'PAID' || invoice.paymentStatus === 'PAID') {
     return false;
   }

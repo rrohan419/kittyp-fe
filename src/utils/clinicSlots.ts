@@ -83,8 +83,13 @@ export function doctorSlotBusyHint(args: {
   selectedLabel: string;
   hoursLabel?: string | null;
   keepingOwn?: boolean;
+  /** Clinic-local `yyyy-MM-ddTHH:mm` for "now". Past selections get a clearer hint than empty remaining slots. */
+  nowKey?: string | null;
 }): string | null {
   if (args.keepingOwn) return null;
+  if (args.nowKey && args.selectedKey < args.nowKey) {
+    return 'This time has already passed — pick a later slot';
+  }
   if (args.closed) return 'Doctor is not working this day';
   if (args.slots.length === 0) return 'No remaining slots this day';
   const open = args.slots.some((s) => slotMinuteKey(s) === args.selectedKey);

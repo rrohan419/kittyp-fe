@@ -29,7 +29,7 @@ import {
 } from '@/services/clinicService';
 import { fetchParentDoctorSlots } from '@/services/discoverService';
 import { petNameWithType } from '@/utils/petType';
-import { doctorSlotBusyHint, slotMinuteKey, slotStartParts } from '@/utils/clinicSlots';
+import { doctorSlotBusyHint, slotMinuteKey, slotStartParts, clinicLocalDateTimeKey, DEFAULT_CLINIC_TIMEZONE } from '@/utils/clinicSlots';
 
 type Props = {
   open: boolean;
@@ -135,6 +135,7 @@ export function BookingEditDialog({
               selectedKey: startKey,
               selectedLabel: format(snapped, 'h:mm a'),
               hoursLabel: day.hoursLabel,
+              nowKey: clinicLocalDateTimeKey(DEFAULT_CLINIC_TIMEZONE),
             })
           );
         } catch {

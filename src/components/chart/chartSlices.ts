@@ -1,4 +1,5 @@
 import type { VisitChartModel } from '@/services/clinicService';
+import { sanitizePetWeightInput } from '@/utils/validation';
 import { EMPTY_NOTES, EMPTY_VITALS, type ChartNotesSlice, type ChartVitalsSlice } from './chartTabs';
 
 type VisitWithChart = {
@@ -13,7 +14,7 @@ export function chartSlicesFromVisit(visit: VisitWithChart): {
   const vitals = visit.chart?.vitals as { weightKg?: number; temperatureC?: number } | undefined;
   return {
     vitals: {
-      weightKg: vitals?.weightKg != null ? String(vitals.weightKg) : EMPTY_VITALS.weightKg,
+      weightKg: vitals?.weightKg != null ? sanitizePetWeightInput(String(vitals.weightKg)) : EMPTY_VITALS.weightKg,
       temperatureC: vitals?.temperatureC != null ? String(vitals.temperatureC) : EMPTY_VITALS.temperatureC,
     },
     notes: {

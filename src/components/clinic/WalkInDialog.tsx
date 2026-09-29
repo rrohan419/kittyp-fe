@@ -41,6 +41,7 @@ import {
   VisitUrgency,
 } from '@/services/clinicService';
 import { fetchParentDoctorSlots } from '@/services/discoverService';
+import { doctorSlotBusyHint, slotMinuteKey, clinicLocalDateTimeKey, DEFAULT_CLINIC_TIMEZONE } from '@/utils/clinicSlots';
 import { isPracticeReady } from '@/services/doctorVerificationService';
 import { digitsOnlyPhone, validateEmail, validatePhone } from '@/utils/validation';
 import { toast } from 'sonner';
@@ -100,11 +101,6 @@ export function snapToHalfHour(date: Date): Date {
     return setMinutes(rounded, 30);
   }
   return setMinutes(addHours(rounded, 1), 0);
-}
-
-function slotMinuteKey(raw: string): string {
-  const match = raw.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
-  return match ? match[1] : raw;
 }
 
 /** Default schedule start: ~3 hours from now, snapped to half hour. */
@@ -343,20 +339,18 @@ export function AddAppointmentDialog({
           if (Number.isNaN(raw.getTime())) return;
           const snapped = snapToHalfHour(raw);
           const startKey = slotMinuteKey(format(snapped, "yyyy-MM-dd'T'HH:mm:ss"));
-          const free = await fetchParentDoctorSlots(clinicUuid, resolvedDoctorUuid, form.slotDate);
+          const day = await fetchParentDoctorSlots(clinicUuid, resolvedDoctorUuid, form.slotDate);
           if (cancelled) return;
-          if (free.length === 0) {
-            setBusyHint('Doctor has no availability on this day');
-            return;
-          }
-          const openSlot = free.some((s) => slotMinuteKey(s) === startKey);
-          if (!openSlot) {
-            setBusyHint(
-              `Doctor not available at ${format(snapped, 'h:mm a')} — outside working hours or already booked`
-            );
-            return;
-          }
-          setBusyHint(null);
+          setBusyHint(
+            doctorSlotBusyHint({
+              closed: day.closed,
+              slots: day.slots,
+              selectedKey: startKey,
+              selectedLabel: format(snapped, 'h:mm a'),
+              hoursLabel: day.hoursLabel,
+              nowKey: clinicLocalDateTimeKey(DEFAULT_CLINIC_TIMEZONE),
+            })
+          );
         } catch {
           if (!cancelled) {
             setBusyHint('Could not confirm doctor availability for this time');

@@ -7,7 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Building2, Mail, Phone, MapPin, Award, User, Lock } from 'lucide-react';
+import { Building2, Mail, Phone, Award, User, Lock } from 'lucide-react';
+import { ClinicAddressSearch } from '@/components/clinic/ClinicAddressSearch';
+import {
+  EMPTY_CLINIC_ADDRESS,
+  type ParsedClinicAddress,
+  toClinicGeoPayload,
+} from '@/utils/googlePlaces';
 import { signupClinic } from '@/services/authService';
 import { sendSignupOtp, verifySignupOtp } from '@/services/doctorVerificationService';
 import { CooldownTimer } from '@/components/ui/cooldown-timer';
@@ -34,11 +40,10 @@ const ClinicSignupForm = () => {
   const [emailOtp, setEmailOtp] = useState('');
   const [phoneOtp, setPhoneOtp] = useState('');
   const [phoneOtpMethod, setPhoneOtpMethod] = useState<'WHATSAPP' | 'PHONE'>('WHATSAPP');
+  const [clinicAddress, setClinicAddress] = useState<ParsedClinicAddress>(EMPTY_CLINIC_ADDRESS);
   const [form, setForm] = useState({
     clinicName: '',
     license: '',
-    address: '',
-    city: '',
     adminFirstName: '',
     adminLastName: '',
     adminEmail: '',
@@ -191,7 +196,7 @@ const ClinicSignupForm = () => {
     }
     setLoading(true);
     try {
-      const address = [form.address, form.city].filter(Boolean).join(', ');
+      const geo = toClinicGeoPayload(clinicAddress);
       await signupClinic({
         firstName: form.adminFirstName,
         lastName: form.adminLastName,
@@ -199,7 +204,10 @@ const ClinicSignupForm = () => {
         password: form.password,
         clinicName: form.clinicName,
         licenseNumber: form.license || undefined,
-        address: address || undefined,
+        address: geo.address,
+        city: geo.city,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
         phone: form.adminPhone ? digitsOnlyPhone(form.adminPhone) : undefined,
       });
       setShowSuccess(true);
@@ -251,19 +259,14 @@ const ClinicSignupForm = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="address">Street Address</Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input id="address" name="address" autoComplete="street-address" className="pl-10" placeholder="123 Pet Street" value={form.address} onChange={(e) => set('address', e.target.value)} />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="city">City</Label>
-                      <Input id="city" name="city" autoComplete="address-level2" placeholder="City" value={form.city} onChange={(e) => set('city', e.target.value)} />
-                    </div>
-                  </div>
+                  <ClinicAddressSearch
+                    idPrefix="signup-clinic"
+                    value={clinicAddress}
+                    onChange={setClinicAddress}
+                    disabled={loading}
+                    publicApi
+                    fieldsReadOnly
+                  />
 
                   <div className="pt-2 border-t border-border">
                     <p className="text-sm font-medium mb-3 mt-3">Admin Account</p>

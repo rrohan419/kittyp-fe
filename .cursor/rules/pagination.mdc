@@ -1,0 +1,9 @@
+# Pagination required for growing collections
+
+When building or changing APIs and UI that return **collections that can grow** (admin lists, clinic clients/patients, bookings/visits history, search results, tips catalogs):
+
+- Use **server-side pagination** (`page` / `size`, Spring `Page`, or the project’s existing `PaginationModel`).
+- Do **not** load unbounded `findAll()` / dump full arrays into the client for those cases.
+- Tiny fixed sets (enums, day-of-week, static config) are fine without pagination.
+
+Apply this to both kittyp-fe and kittyp-be.

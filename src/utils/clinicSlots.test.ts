@@ -36,6 +36,19 @@ describe('doctorSlotBusyHint', () => {
     );
   });
 
+  it('says the selected time is in the past before treating the day as empty', () => {
+    assert.equal(
+      doctorSlotBusyHint({
+        closed: false,
+        slots: [],
+        nowKey: '2026-09-29T18:21',
+        selectedKey: '2026-09-29T13:30',
+        selectedLabel: '1:30 PM',
+      }),
+      'This time has already passed — pick a later slot'
+    );
+  });
+
   it('names hours when the selected time is outside the list', () => {
     assert.equal(
       doctorSlotBusyHint({

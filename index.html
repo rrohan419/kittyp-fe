@@ -6,27 +6,11 @@
   <script>
     (function () {
       if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
-      var origin = "https://localhost:8080";
-      if (location.protocol === "http:" || location.port === "18080") {
-        location.replace(origin + location.pathname + location.search + location.hash);
-        return;
-      }
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.getRegistrations().then(function (regs) {
           regs.forEach(function (r) { r.unregister(); });
         });
       }
-      function stripBackend(u) {
-        return typeof u === "string"
-          ? u.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8002/i, "")
-          : u;
-      }
-      var fetch_ = window.fetch;
-      window.fetch = function (input, init) {
-        if (typeof input === "string") input = stripBackend(input);
-        else if (input instanceof Request) input = new Request(stripBackend(input.url), input);
-        return fetch_.call(this, input, init);
-      };
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />

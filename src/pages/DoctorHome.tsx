@@ -141,7 +141,9 @@ function chartFormFromVisit(visit: ClinicVisitModel, petWeight = '') {
     plan: visit.chart?.plan || '',
     nextVisitNotes: visit.chart?.nextVisitNotes || '',
     internalNotes: visit.chart?.internalNotes || '',
-    weightKg: String((visit.chart?.vitals as { weightKg?: number })?.weightKg ?? petWeight),
+    weightKg: sanitizePetWeightInput(
+      String((visit.chart?.vitals as { weightKg?: number })?.weightKg ?? petWeight)
+    ),
     temperatureC: String((visit.chart?.vitals as { temperatureC?: number })?.temperatureC ?? ''),
   };
 }

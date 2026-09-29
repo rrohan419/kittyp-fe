@@ -1,5 +1,4 @@
 import axiosInstance from '@/config/axionInstance';
-import { toast } from 'sonner';
 import { ApiSuccessResponse } from './cartService';
 import { PaginationModel, emptyPage } from './adminService';
 
@@ -23,8 +22,6 @@ export interface TreatmentLineItem {
   discount?: number;
   tax?: number;
   total?: number;
-  inventoryItemUuid?: string;
-  lotUuid?: string;
 }
 
 export interface ConsultationInvoice {
@@ -52,48 +49,11 @@ export interface ConsultationInvoice {
   createdAt?: string;
 }
 
-/** Create response: invoice always saved; WhatsApp/email are best-effort. */
+/** Create response: invoice always saved; WhatsApp is best-effort. */
 export interface CreateInvoiceResult {
   invoice: ConsultationInvoice;
   whatsappSent: boolean;
   whatsappError?: string | null;
-  emailSent?: boolean;
-  emailError?: string | null;
-}
-
-const INVOICE_SEND_TOAST_MS = 3000;
-
-export function toastInvoiceSend(result: CreateInvoiceResult): void {
-  const n = result.invoice.invoiceNumber || '';
-  const wa = Boolean(result.whatsappSent);
-  const em = Boolean(result.emailSent);
-  const opts = { duration: INVOICE_SEND_TOAST_MS };
-  if (wa && em) {
-    toast.success(`Invoice ${n} sent on WhatsApp and email`, opts);
-    return;
-  }
-  if (wa) {
-    if (result.emailError) {
-      toast.warning(`Invoice ${n} sent on WhatsApp. Email failed: ${result.emailError}`, opts);
-    } else {
-      toast.success(`Invoice ${n} sent on WhatsApp`, opts);
-    }
-    return;
-  }
-  if (em) {
-    if (result.whatsappError) {
-      toast.warning(`Invoice ${n} emailed. WhatsApp failed: ${result.whatsappError}`, opts);
-    } else {
-      toast.success(`Invoice ${n} emailed`, opts);
-    }
-    return;
-  }
-  toast.warning(
-    `Invoice ${n} saved. ${
-      result.whatsappError || result.emailError || 'WhatsApp and email were not sent — use Send when ready.'
-    }`,
-    opts
-  );
 }
 
 export interface CreateTreatmentInvoicePayload {
@@ -195,12 +155,12 @@ export async function markInvoicePaid(
   return res.data.data;
 }
 
-/** Resend an existing invoice PDF via WhatsApp and email. */
-export async function sendInvoiceWhatsApp(uuid: string): Promise<CreateInvoiceResult> {
-  const res = await axiosInstance.post<ApiSuccessResponse<CreateInvoiceResult | ConsultationInvoice>>(
+/** Resend an existing invoice PDF via WhatsApp (document template). */
+export async function sendInvoiceWhatsApp(uuid: string): Promise<ConsultationInvoice> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
     `/invoice/${uuid}/send-whatsapp`
   );
-  return normalizeCreateResult(res.data.data);
+  return res.data.data;
 }
 
 export async function fetchInvoicePdfUrl(uuid: string): Promise<string> {
@@ -226,16 +186,12 @@ function normalizeCreateResult(data: CreateInvoiceResult | ConsultationInvoice):
       invoice: r.invoice,
       whatsappSent: Boolean(r.whatsappSent),
       whatsappError: r.whatsappError ?? null,
-      emailSent: Boolean(r.emailSent),
-      emailError: r.emailError ?? null,
     };
   }
   return {
     invoice: data as ConsultationInvoice,
     whatsappSent: false,
     whatsappError: null,
-    emailSent: false,
-    emailError: null,
   };
 }
 
@@ -276,11 +232,11 @@ export async function markClinicInvoicePaid(
 export async function sendClinicInvoiceWhatsApp(
   clinicUuid: string,
   invoiceUuid: string
-): Promise<CreateInvoiceResult> {
-  const res = await axiosInstance.post<ApiSuccessResponse<CreateInvoiceResult | ConsultationInvoice>>(
+): Promise<ConsultationInvoice> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
     `/clinic/${clinicUuid}/invoices/${invoiceUuid}/send-whatsapp`
   );
-  return normalizeCreateResult(res.data.data);
+  return res.data.data;
 }
 
 export async function fetchClinicInvoicePdfUrl(
@@ -325,11 +281,6 @@ export async function fetchOwnerPetInvoices(
     { params: { pageNumber, pageSize } }
   );
   return res.data.data ?? emptyPage<OwnerInvoice>(pageSize);
-}
-
-export async function fetchMyParentInvoices(): Promise<OwnerInvoice[]> {
-  const res = await axiosInstance.get<ApiSuccessResponse<OwnerInvoice[]>>('/user/invoices/mine');
-  return res.data.data ?? [];
 }
 
 export async function fetchOwnerInvoicePdfUrl(petUuid: string, invoiceUuid: string): Promise<string> {
@@ -402,21 +353,6 @@ export async function fetchDoctorWhatsAppSettings(): Promise<WhatsAppSettingsRes
   return res.data.data;
 }
 
-export async function completeDoctorWhatsAppEmbeddedSignup(body: {
-  code: string;
-  wabaId: string;
-  phoneNumberId: string;
-}): Promise<{ whatsappConfigured: boolean; phoneNumberId: string; businessAccountId: string }> {
-  const res = await axiosInstance.post<
-    ApiSuccessResponse<{
-      whatsappConfigured: boolean;
-      phoneNumberId: string;
-      businessAccountId: string;
-    }>
-  >('/doctor/whatsapp-embedded-signup', body);
-  return res.data.data;
-}
-
 export async function updateDoctorWhatsAppSettings(body: {
   phoneNumberId: string;
   businessAccountId: string;
@@ -440,20 +376,6 @@ export async function fetchClinicWhatsAppSettings(clinicUuid: string): Promise<W
   const res = await axiosInstance.get<ApiSuccessResponse<WhatsAppSettingsResponse>>(
     `/clinic/${clinicUuid}/whatsapp-settings`
   );
-  return res.data.data;
-}
-
-export async function completeClinicWhatsAppEmbeddedSignup(
-  clinicUuid: string,
-  body: { code: string; wabaId: string; phoneNumberId: string }
-): Promise<{ whatsappConfigured: boolean; phoneNumberId: string; businessAccountId: string }> {
-  const res = await axiosInstance.post<
-    ApiSuccessResponse<{
-      whatsappConfigured: boolean;
-      phoneNumberId: string;
-      businessAccountId: string;
-    }>
-  >(`/clinic/${clinicUuid}/whatsapp-embedded-signup`, body);
   return res.data.data;
 }
 

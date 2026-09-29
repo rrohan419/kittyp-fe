@@ -38,5 +38,5 @@ if [[ "${1:-}" == "--check" ]]; then
 fi
 
 MODE="${VITE_MODE:-devlocal}"
-echo "Starting Kittyp FE mode=$MODE (https://localhost:8080)"
+echo "Starting Kittyp FE mode=$MODE (http://localhost:8080)"
 exec npm run dev:local

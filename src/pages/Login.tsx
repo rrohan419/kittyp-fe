@@ -146,7 +146,7 @@ const Login = () => {
       } catch (error: any) {
         console.error("Google Login Error:", error instanceof Error ? error.message : "google_login_failed");
         toast.error("Google Signup Failed", {
-          description: "Authentication error. Please try again.",
+          description: error instanceof Error ? error.message : "Authentication error. Please try again.",
         });
       } finally {
         setLoading(false);

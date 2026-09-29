@@ -9,12 +9,9 @@ import { toast } from 'sonner';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { shutdownClinic, reopenClinic, updateClinic } from '@/services/clinicService';
 import {
-  completeClinicWhatsAppEmbeddedSignup,
   fetchClinicWhatsAppSettings,
-  updateClinicWhatsAppSettings,
 } from '@/services/invoiceService';
-import { WhatsAppEmbeddedSignupButton } from '@/components/whatsapp/WhatsAppEmbeddedSignupButton';
-import { WhatsAppSettingsForm } from '@/components/whatsapp/WhatsAppSettingsForm';
+import { whatsappSettingsSummary } from '@/components/whatsapp/whatsappStatusCopy';
 import { ClinicHoursDisplay, ClinicHoursEditor } from '@/components/clinic/ClinicHoursEditor';
 import { ClinicAddressSearch } from '@/components/clinic/ClinicAddressSearch';
 import {
@@ -57,8 +54,6 @@ export default function ClinicSettings() {
   const { clinic, clinicUuid, refresh } = useActiveClinic();
   const [acting, setActing] = useState(false);
   const [waConfigured, setWaConfigured] = useState(false);
-  const [waPhoneId, setWaPhoneId] = useState('');
-  const [waBusinessId, setWaBusinessId] = useState('');
   const isShutdown = clinic?.status === 'SHUTDOWN';
 
   const [editingProfile, setEditingProfile] = useState(false);
@@ -86,20 +81,14 @@ export default function ClinicSettings() {
   useEffect(() => {
     if (!clinicUuid || !canManageWhatsApp) {
       setWaConfigured(false);
-      setWaPhoneId('');
-      setWaBusinessId('');
       return;
     }
     void fetchClinicWhatsAppSettings(clinicUuid)
       .then((wa) => {
         setWaConfigured(!!wa.whatsappConfigured);
-        setWaPhoneId(wa.phoneNumberId || '');
-        setWaBusinessId(wa.businessAccountId || '');
       })
       .catch(() => {
         setWaConfigured(!!clinic?.whatsappConfigured);
-        setWaPhoneId('');
-        setWaBusinessId('');
       });
   }, [clinicUuid, clinic?.whatsappConfigured, canManageWhatsApp]);
 
@@ -327,36 +316,18 @@ export default function ClinicSettings() {
       {canManageWhatsApp && (
         <Card className="border-0 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base">WhatsApp number</CardTitle>
+            <CardTitle className="text-base">WhatsApp Business</CardTitle>
             <CardDescription>
-              One practice number for all doctors at this branch — invoices and receipts send from here.
+              Connect your practice WhatsApp number with Meta — invoices send from one shared number.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <WhatsAppEmbeddedSignupButton
-              onSuccess={async (data) => {
-                if (!clinicUuid) throw new Error('No clinic');
-                const res = await completeClinicWhatsAppEmbeddedSignup(clinicUuid, data);
-                setWaConfigured(!!res.whatsappConfigured);
-                setWaPhoneId(res.phoneNumberId || '');
-                setWaBusinessId(res.businessAccountId || '');
-                await refresh();
-              }}
-            />
-            <WhatsAppSettingsForm
-              configured={waConfigured}
-              phoneNumberIdInitial={waPhoneId}
-              businessAccountIdInitial={waBusinessId}
-              helperText="Prefer Connect with Meta. Manual IDs are only if Facebook Login is unavailable."
-              onSave={async (values) => {
-                if (!clinicUuid) throw new Error('No clinic');
-                const res = await updateClinicWhatsAppSettings(clinicUuid, values);
-                setWaConfigured(!!res.whatsappConfigured);
-                setWaPhoneId(res.phoneNumberId || '');
-                setWaBusinessId(res.businessAccountId || '');
-                await refresh();
-              }}
-            />
+            <p className="text-sm text-muted-foreground">
+              {whatsappSettingsSummary({ configured: waConfigured, ready: waConfigured })}
+            </p>
+            <Button variant="outline" asChild>
+              <Link to="/clinic/whatsapp">Manage WhatsApp Business</Link>
+            </Button>
           </CardContent>
         </Card>
       )}

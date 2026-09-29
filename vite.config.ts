@@ -6,8 +6,17 @@ import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "localhost",
+    // Bind IPv6 any (::). On Windows, http://localhost:8080 uses ::1; 127.0.0.1 still works via mapped v4.
+    host: "::",
     port: 8080,
+    strictPort: true,
+    open: "http://localhost:8080/",
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:8082",
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     sourcemap: false,
@@ -22,7 +31,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [
-    
     react(),
     mode === "development" && componentTagger(),
     VitePWA({

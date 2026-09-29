@@ -1,17 +1,23 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { Building2, MapPin, Phone, Mail } from 'lucide-react';
+import { Building2, Phone, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { ClinicAddressSearch } from '@/components/clinic/ClinicAddressSearch';
 import { AppDispatch } from '@/module/store/store';
 import { setActiveClinic } from '@/module/slice/AuthSlice';
 import { createClinic } from '@/services/clinicService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import {
+  EMPTY_CLINIC_ADDRESS,
+  type ParsedClinicAddress,
+  toClinicGeoPayload,
+} from '@/utils/googlePlaces';
 import { digitsOnlyPhone, validatePhone } from '@/utils/validation';
 
 export default function ClinicCreateClinic() {
@@ -19,10 +25,10 @@ export default function ClinicCreateClinic() {
   const dispatch = useDispatch<AppDispatch>();
   const { refresh } = useActiveClinic();
   const [loading, setLoading] = useState(false);
+  const [clinicAddress, setClinicAddress] = useState<ParsedClinicAddress>(EMPTY_CLINIC_ADDRESS);
   const [form, setForm] = useState({
     name: '',
     licenseNumber: '',
-    address: '',
     phone: '',
     email: '',
     operatingHours: '',
@@ -43,10 +49,14 @@ export default function ClinicCreateClinic() {
     }
     setLoading(true);
     try {
+      const geo = toClinicGeoPayload(clinicAddress);
       const clinic = await createClinic({
         name: form.name.trim(),
         licenseNumber: form.licenseNumber || undefined,
-        address: form.address || undefined,
+        address: geo.address,
+        city: geo.city,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
         phone: form.phone ? digitsOnlyPhone(form.phone) : undefined,
         email: form.email || undefined,
         operatingHours: form.operatingHours || undefined,
@@ -100,19 +110,13 @@ export default function ClinicCreateClinic() {
                 placeholder="VC-2024-1234"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="address"
-                  className="pl-9"
-                  value={form.address}
-                  onChange={(e) => set('address', e.target.value)}
-                  placeholder="123 Pet Street"
-                />
-              </div>
-            </div>
+            <ClinicAddressSearch
+              idPrefix="create-clinic"
+              value={clinicAddress}
+              onChange={setClinicAddress}
+              disabled={loading}
+              fieldsReadOnly
+            />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone (10 digits)</Label>

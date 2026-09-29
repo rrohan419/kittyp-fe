@@ -70,7 +70,6 @@ import ClinicPatients from './pages/clinic/ClinicPatients';
 import ClinicPatientDashboard from './pages/clinic/ClinicPatientDashboard';
 import ClinicOwnerProfile from './pages/clinic/ClinicOwnerProfile';
 import ClinicCreateClinic from './pages/clinic/ClinicCreateClinic';
-import ClinicInventory from './pages/clinic/ClinicInventory';
 import ClinicStaff from './pages/clinic/ClinicStaff';
 import ClinicReports from './pages/clinic/ClinicReports';
 import ClinicSettings from './pages/clinic/ClinicSettings';
@@ -450,10 +449,6 @@ export const router = createBrowserRouter(
             {
               path: "retention",
               element: <PageTransition><ClinicRetention /></PageTransition>,
-            },
-            {
-              path: "inventory",
-              element: <PageTransition><ClinicInventory /></PageTransition>,
             },
             {
               path: "staff",

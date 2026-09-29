@@ -61,7 +61,7 @@ export function InvoicePdfDialog({ open, invoiceUuid, onOpenChange, fetchUrl }: 
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
           ) : url ? (
-            <iframe title="Invoice PDF" src={`${url}#zoom=page-width`} className="h-full w-full border-0 bg-white" />
+            <iframe title="Invoice PDF" src={url} className="h-full w-full border-0" />
           ) : null}
         </div>
         <DialogFooter>
