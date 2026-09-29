@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { addDays, format } from 'date-fns';
-import { clinicTodayDate } from '@/utils/clinicDay';
+import { addDays, format, startOfDay } from 'date-fns';
 import { FileSpreadsheet, Plus, Trash2, FileDown, ExternalLink, Send, Banknote, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,15 +17,6 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
-  digitsOnlyPhone,
-  sanitizePersonNameInput,
-  sanitizePetWeightInput,
-  validateEmail,
-  validatePersonName,
-  validatePetWeightKg,
-  validatePhone,
-} from '@/utils/validation';
-import {
   ConsultationInvoice,
   ITEM_TYPE_OPTIONS,
   InvoiceFromVisitState,
@@ -38,13 +28,15 @@ import {
   generateClinicInvoicePdf,
   markClinicInvoicePaid,
   sendClinicInvoiceWhatsApp,
-  toastInvoiceSend,
 } from '@/services/invoiceService';
-import { fetchClinicPetMedicalProfile, fetchClinicVisits, fetchClinicInventory, ClinicInventoryItem, isClinicActivated, CLINIC_NOT_ACTIVATED_MESSAGE } from '@/services/clinicService';
+import { fetchClinicPetMedicalProfile, fetchClinicVisits } from '@/services/clinicService';
 import { formatInr } from '@/services/availabilityService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { useAppSelector } from '@/module/store/hooks';
+import { hasRole, ROLES } from '@/utils/roles';
 import { collectInvoicePayment, isInvoiceUnpaid, toastInvoicePaymentError } from '@/utils/collectInvoicePayment';
 import { MarkInvoicePaidDialog } from '@/components/invoice/MarkInvoicePaidDialog';
+import { WhatsAppSendGate } from '@/components/invoice/WhatsAppSendGate';
 import { ListPager } from '@/components/ui/ListPager';
 
 const emptyItem = (): TreatmentLineItem => ({
@@ -63,12 +55,11 @@ export default function ClinicInvoices() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const hydratedRef = useRef<string | null>(null);
-  const petNameRef = useRef<HTMLInputElement | null>(null);
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
-  const clinicActivated = isClinicActivated(clinic?.status, clinic?.personal);
+  const user = useAppSelector((s) => s.authReducer.user);
+  const canConfigureWhatsApp = hasRole(user?.roles, ROLES.CLINIC_ADMIN);
 
   const [items, setItems] = useState<TreatmentLineItem[]>([emptyItem()]);
-  const [inventoryCatalog, setInventoryCatalog] = useState<ClinicInventoryItem[]>([]);
   const [petName, setPetName] = useState('');
   const [petBreed, setPetBreed] = useState('');
   const [petSpecies, setPetSpecies] = useState('');
@@ -89,7 +80,6 @@ export default function ClinicInvoices() {
   const [invoiceTotal, setInvoiceTotal] = useState(0);
   const [invoicePages, setInvoicePages] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
   const submittingRef = useRef(false);
   const [busyUuid, setBusyUuid] = useState<string | null>(null);
   const [markPaidInvoice, setMarkPaidInvoice] = useState<ConsultationInvoice | null>(null);
@@ -104,8 +94,8 @@ export default function ClinicInvoices() {
     if (from.petName) setPetName(from.petName);
     if (from.petBreed) setPetBreed(from.petBreed);
     if (from.petSpecies) setPetSpecies(from.petSpecies);
-    if (from.ownerName) setOwnerName(sanitizePersonNameInput(from.ownerName));
-    if (from.ownerPhone) setOwnerPhone(digitsOnlyPhone(from.ownerPhone));
+    if (from.ownerName) setOwnerName(from.ownerName);
+    if (from.ownerPhone) setOwnerPhone(from.ownerPhone);
     if (from.ownerEmail) setOwnerEmail(from.ownerEmail);
     if (from.reason) setReason(from.reason);
     if (from.diagnosis) setDiagnosis(from.diagnosis);
@@ -152,7 +142,7 @@ export default function ClinicInvoices() {
       try {
         let from = state?.fromVisit;
         if (!from && visitQ && clinicUuid) {
-          const today = clinicTodayDate();
+          const today = startOfDay(new Date());
           const days = await Promise.all(
             [0, 1, 2, 3, 4, 5, 6].map((offset) =>
               fetchClinicVisits(clinicUuid, {
@@ -223,16 +213,6 @@ export default function ClinicInvoices() {
   }, [clinicUuid]);
 
   useEffect(() => {
-    if (!clinicUuid) {
-      setInventoryCatalog([]);
-      return;
-    }
-    void fetchClinicInventory(clinicUuid)
-      .then(setInventoryCatalog)
-      .catch(() => setInventoryCatalog([]));
-  }, [clinicUuid]);
-
-  useEffect(() => {
     const invoiceQ = searchParams.get('invoice');
     if (!invoiceQ || hydratedRef.current === `invoice:${invoiceQ}`) return;
     if (!clinicUuid) return;
@@ -295,37 +275,12 @@ export default function ClinicInvoices() {
   const createDraft = async (e: React.FormEvent, withWhatsApp: boolean) => {
     e.preventDefault();
     if (loading || submittingRef.current) return;
-    // Prefer live DOM value: browser autofill can fill the input without firing React onChange.
-    const resolvedPetName = (petNameRef.current?.value ?? petName).trim();
-    if (resolvedPetName && resolvedPetName !== petName) {
-      setPetName(resolvedPetName);
-    }
-    if (!resolvedPetName) {
+    if (!petName.trim()) {
       toast.error('Pet name is required');
       return;
     }
-    const weightErr = validatePetWeightKg(petWeight);
-    if (weightErr) {
-      toast.error(weightErr);
-      return;
-    }
-    const ownerNameErr = validatePersonName(ownerName, 'Owner name', false);
-    if (ownerNameErr) {
-      toast.error(ownerNameErr);
-      return;
-    }
-    const phoneErr = validatePhone(ownerPhone, false);
-    if (phoneErr) {
-      toast.error(phoneErr);
-      return;
-    }
-    const emailErr = validateEmail(ownerEmail, false);
-    if (emailErr) {
-      toast.error(emailErr);
-      return;
-    }
-    if (withWhatsApp && !ownerPhone.trim() && !ownerEmail.trim()) {
-      toast.error('Owner phone or email is required to send the invoice');
+    if (withWhatsApp && !ownerPhone.trim()) {
+      toast.error('Owner phone is required to send on WhatsApp');
       return;
     }
     if (!items.length || items.some((i) => !i.description.trim())) {
@@ -336,13 +291,8 @@ export default function ClinicInvoices() {
       toast.error('Select a clinic first');
       return;
     }
-    if (!clinicActivated) {
-      toast.error(CLINIC_NOT_ACTIVATED_MESSAGE);
-      return;
-    }
     submittingRef.current = true;
     setLoading(true);
-    setSendingWhatsApp(withWhatsApp);
     try {
       const result = await createClinicInvoice(clinicUuid, {
         items: items.map((item) => ({
@@ -360,12 +310,12 @@ export default function ClinicInvoices() {
         clinicUuid,
         petUuid: linkPetUuid,
         visitUuid: linkVisitUuid,
-        petName: resolvedPetName,
+        petName: petName.trim(),
         petBreed: petBreed.trim() || undefined,
         petSpecies: petSpecies.trim() || undefined,
         petWeight: petWeight.trim() || undefined,
         ownerName: ownerName.trim() || undefined,
-        ownerPhone: ownerPhone.trim() ? digitsOnlyPhone(ownerPhone) : undefined,
+        ownerPhone: ownerPhone.trim() || undefined,
         ownerEmail: ownerEmail.trim() || undefined,
         reason: reason.trim() || undefined,
         diagnosis: diagnosis.trim() || undefined,
@@ -376,8 +326,15 @@ export default function ClinicInvoices() {
         generatePdf: withWhatsApp,
         sendWhatsApp: withWhatsApp,
       });
-      if (withWhatsApp) {
-        toastInvoiceSend(result);
+      const created = result.invoice;
+      if (withWhatsApp && result.whatsappSent) {
+        toast.success(`Invoice ${created.invoiceNumber || ''} sent on WhatsApp`);
+      } else if (withWhatsApp) {
+        toast.warning(
+          `Invoice ${created.invoiceNumber || ''} saved. ${
+            result.whatsappError || 'WhatsApp is not configured — use the WhatsApp button on the invoice row when ready.'
+          }`
+        );
       } else {
         toast.success('Draft invoice created');
       }
@@ -398,7 +355,6 @@ export default function ClinicInvoices() {
     } finally {
       submittingRef.current = false;
       setLoading(false);
-      setSendingWhatsApp(false);
     }
   };
 
@@ -436,7 +392,7 @@ export default function ClinicInvoices() {
     setBusyUuid(uuid);
     try {
       const sent = await sendClinicInvoiceWhatsApp(clinicUuid, uuid);
-      toastInvoiceSend(sent);
+      toast.success(`Invoice ${sent.invoiceNumber || ''} sent on WhatsApp`);
       await load();
     } catch (err: unknown) {
       const ax = err as {
@@ -447,8 +403,7 @@ export default function ClinicInvoices() {
         ax.response?.data?.message ||
           ax.response?.data?.detailedMessage ||
           ax.message ||
-          'Failed to send invoice',
-        { duration: 3000 }
+          'Failed to send on WhatsApp'
       );
     } finally {
       setBusyUuid(null);
@@ -456,10 +411,6 @@ export default function ClinicInvoices() {
   };
 
   const onCollectPayment = async (inv: ConsultationInvoice) => {
-    if (!clinicActivated) {
-      toast.error(CLINIC_NOT_ACTIVATED_MESSAGE);
-      return;
-    }
     setBusyUuid(inv.uuid);
     try {
       await collectInvoicePayment(inv);
@@ -489,13 +440,16 @@ export default function ClinicInvoices() {
     }
   };
 
+  const whatsappChecking = clinicLoading;
+  const whatsappBlocked = clinic?.whatsappConfigured !== true;
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Clinic invoices</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {clinic?.name ? `${clinic.name} · ` : ''}
-          Create invoices for clinic visits and send on the clinic WhatsApp number.
+          Create invoices for clinic visits. WhatsApp sends the PDF now. The invoice email goes out when it is paid.
         </p>
       </div>
 
@@ -503,7 +457,7 @@ export default function ClinicInvoices() {
         <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
           {hydrating
             ? 'Loading patient details from the visit…'
-            : 'Patient details prefilled from the visit. Add line items, then Save and Send on WhatsApp.'}
+            : 'Patient details prefilled from the visit. Add line items, then Save and send WhatsApp. The invoice email goes out when it is paid.'}
         </div>
       )}
 
@@ -521,49 +475,27 @@ export default function ClinicInvoices() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Pet name *</Label>
-                <Input ref={petNameRef} name="petName" autoComplete="off" value={petName} onChange={(e) => setPetName(e.target.value)} onInput={(e) => setPetName((e.target as HTMLInputElement).value)} placeholder="Pet name" />
+                <Input value={petName} onChange={(e) => setPetName(e.target.value)} placeholder="Bruno" />
               </div>
               <div className="space-y-2">
                 <Label>Breed</Label>
-                <Input value={petBreed} onChange={(e) => setPetBreed(e.target.value)} placeholder="Breed" />
+                <Input value={petBreed} onChange={(e) => setPetBreed(e.target.value)} placeholder="Golden Retriever" />
               </div>
               <div className="space-y-2">
                 <Label>Species</Label>
-                <Input value={petSpecies} onChange={(e) => setPetSpecies(e.target.value)} placeholder="Species" />
+                <Input value={petSpecies} onChange={(e) => setPetSpecies(e.target.value)} placeholder="Dog" />
               </div>
               <div className="space-y-2">
                 <Label>Weight (kg)</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={petWeight}
-                  onChange={(e) => setPetWeight(sanitizePetWeightInput(e.target.value))}
-                  placeholder="e.g. 12"
-                />
+                <Input value={petWeight} onChange={(e) => setPetWeight(e.target.value)} placeholder="12" />
               </div>
               <div className="space-y-2">
                 <Label>Owner name</Label>
-                <Input
-                  autoComplete="name"
-                  value={ownerName}
-                  onChange={(e) => setOwnerName(sanitizePersonNameInput(e.target.value))}
-                  placeholder="Owner full name"
-                />
+                <Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Owner phone</Label>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="tel"
-                  maxLength={10}
-                  value={ownerPhone}
-                  onChange={(e) => setOwnerPhone(digitsOnlyPhone(e.target.value))}
-                  onInput={(e) => setOwnerPhone(digitsOnlyPhone((e.target as HTMLInputElement).value))}
-                  placeholder="10-digit mobile"
-                />
+                <Input value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Owner email</Label>
@@ -575,11 +507,11 @@ export default function ClinicInvoices() {
               </div>
               <div className="space-y-2">
                 <Label>Reason</Label>
-                <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for visit" />
+                <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Vomiting" />
               </div>
               <div className="space-y-2">
                 <Label>Diagnosis</Label>
-                <Input value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} placeholder="Diagnosis" />
+                <Input value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} placeholder="Acute Gastritis" />
               </div>
             </div>
 
@@ -617,65 +549,12 @@ export default function ClinicInvoices() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="sm:col-span-4 space-y-1">
-                    {(item.itemType === 'MEDICINE' || item.itemType === 'CONSUMABLE') &&
-                    inventoryCatalog.length > 0 ? (
-                      <Select
-                        value={item.inventoryItemUuid || '__manual__'}
-                        onValueChange={(v) => {
-                          if (v === '__manual__') {
-                            updateItem(index, { inventoryItemUuid: undefined, lotUuid: undefined });
-                            return;
-                          }
-                          const inv = inventoryCatalog.find((c) => c.uuid === v);
-                          if (!inv) return;
-                          const fefoLot = [...(inv.lots || [])]
-                            .filter((l) => Number(l.quantity) > 0)
-                            .sort((a, b) => {
-                              if (!a.expiresOn) return 1;
-                              if (!b.expiresOn) return -1;
-                              return a.expiresOn.localeCompare(b.expiresOn);
-                            })[0];
-                          updateItem(index, {
-                            inventoryItemUuid: inv.uuid,
-                            description: inv.name,
-                            unitPrice: Number(inv.price) || item.unitPrice,
-                            unit: inv.unit,
-                            lotUuid: fefoLot?.uuid,
-                          });
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Link inventory" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__manual__">Free-text (no stock)</SelectItem>
-                          {inventoryCatalog.map((inv) => (
-                            <SelectItem key={inv.uuid} value={inv.uuid}>
-                              {inv.name} · on hand {Number(inv.stock)}
-                              {inv.earliestExpiry ? ` · FEFO ${inv.earliestExpiry}` : ''}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : null}
+                  <div className="sm:col-span-4">
                     <Input
                       placeholder="Description"
                       value={item.description}
-                      onChange={(e) =>
-                        updateItem(index, {
-                          description: e.target.value,
-                          inventoryItemUuid: undefined,
-                          lotUuid: undefined,
-                        })
-                      }
+                      onChange={(e) => updateItem(index, { description: e.target.value })}
                     />
-                    {item.inventoryItemUuid ? (
-                      <p className="text-[10px] text-muted-foreground">
-                        Linked to inventory
-                        {item.lotUuid ? ' · FEFO lot selected' : ''}
-                      </p>
-                    ) : null}
                   </div>
                   <div className="sm:col-span-2">
                     <Input
@@ -776,16 +655,18 @@ export default function ClinicInvoices() {
 
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={loading || hydrating} variant="outline">
-                {loading && !sendingWhatsApp ? 'Saving…' : 'Save draft'}
+                {loading ? 'Saving…' : 'Save draft'}
               </Button>
-              <Button
-                type="button"
-                disabled={loading || hydrating}
-                onClick={(e) => void createDraft(e, true)}
-              >
-                <Send className="h-4 w-4 mr-1.5" />
-                {loading && sendingWhatsApp ? 'Sending…' : 'Save and Send'}
-              </Button>
+              <WhatsAppSendGate blocked={whatsappBlocked} checking={whatsappChecking} configureTo={canConfigureWhatsApp ? '/clinic/whatsapp' : undefined}>
+                <Button
+                  type="button"
+                  disabled={loading || hydrating || whatsappBlocked}
+                  onClick={(e) => void createDraft(e, true)}
+                >
+                  <Send className="h-4 w-4 mr-1.5" />
+                  {loading ? 'Sending…' : 'Save and send WhatsApp'}
+                </Button>
+              </WhatsAppSendGate>
             </div>
           </form>
         </CardContent>
@@ -819,12 +700,11 @@ export default function ClinicInvoices() {
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatInr(Number(inv.amount))} ·{' '}
-                    {inv.paymentStatus ||
-                      (isInvoiceUnpaid(inv) ? 'UNPAID' : inv.status === 'DRAFT' ? 'DRAFT' : inv.status)}
+                    {inv.paymentStatus || (inv.status === 'ISSUED' ? 'UNPAID' : inv.status)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {inv.status === 'DRAFT' ? <Badge variant="secondary">DRAFT</Badge> : null}
+                  {inv.status !== 'ISSUED' ? <Badge variant="secondary">{inv.status}</Badge> : null}
                   {isInvoiceUnpaid(inv) && (
                     <>
                       <Button
@@ -854,15 +734,17 @@ export default function ClinicInvoices() {
                       >
                         <ExternalLink className="h-3.5 w-3.5 mr-1" /> PDF
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        aria-label="Send invoice"
-                        disabled={busyUuid === inv.uuid}
-                        onClick={() => void onSendWhatsApp(inv.uuid)}
-                      >
-                        <Send className="h-3.5 w-3.5" />
-                      </Button>
+                      <WhatsAppSendGate blocked={whatsappBlocked} checking={whatsappChecking} configureTo={canConfigureWhatsApp ? '/clinic/whatsapp' : undefined}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          aria-label="Send invoice on WhatsApp"
+                          disabled={busyUuid === inv.uuid || whatsappBlocked}
+                          onClick={() => void onSendWhatsApp(inv.uuid)}
+                        >
+                          <Send className="h-3.5 w-3.5 mr-1" /> WhatsApp
+                        </Button>
+                      </WhatsAppSendGate>
                     </>
                   ) : (
                     <Button

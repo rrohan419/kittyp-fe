@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
@@ -34,14 +34,14 @@ import {
   fetchClinicPets,
   lookupOwnerByEmail,
   searchPlatformUsers,
+  sendClientAttachOtp,
   sendPetConsentOtp,
+  verifyClientAttachOtp,
   verifyPetConsentOtp,
   VisitUrgency,
-  doctorLabel,
 } from '@/services/clinicService';
 import { fetchParentDoctorSlots } from '@/services/discoverService';
 import { isPracticeReady } from '@/services/doctorVerificationService';
-import { doctorSlotBusyHint, slotMinuteKey, slotStartParts } from '@/utils/clinicSlots';
 import { digitsOnlyPhone, validateEmail, validatePhone } from '@/utils/validation';
 import { toast } from 'sonner';
 import { notifyPortalRefresh } from '@/components/portal/PortalNotifications';
@@ -89,10 +89,6 @@ type SearchHit =
   | { kind: 'owner'; owner: ClinicOwnerModel; pet: ClinicPetListModel }
   | { kind: 'user'; user: PlatformUserSearchModel };
 
-type PetHit = Extract<SearchHit, { kind: 'pet' }>;
-type OwnerHit = Extract<SearchHit, { kind: 'owner' }>;
-type UserHit = Extract<SearchHit, { kind: 'user' }>;
-
 /** Snap: :00 stays; 1–30 → :30; >30 → next hour :00. */
 export function snapToHalfHour(date: Date): Date {
   const minutes = date.getMinutes();
@@ -104,6 +100,11 @@ export function snapToHalfHour(date: Date): Date {
     return setMinutes(rounded, 30);
   }
   return setMinutes(addHours(rounded, 1), 0);
+}
+
+function slotMinuteKey(raw: string): string {
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
+  return match ? match[1] : raw;
 }
 
 /** Default schedule start: ~3 hours from now, snapped to half hour. */
@@ -136,13 +137,16 @@ export function AddAppointmentDialog({
   const [saving, setSaving] = useState(false);
   const [searching, setSearching] = useState(false);
   const [busyHint, setBusyHint] = useState<string | null>(null);
-  const snapForRef = useRef('');
   const [emailLookup, setEmailLookup] = useState<OwnerEmailLookupModel | null>(null);
   const [matchedOwner, setMatchedOwner] = useState<ClinicOwnerModel | null>(null);
   const [consentCode, setConsentCode] = useState('');
   const [consentVerified, setConsentVerified] = useState(false);
   const [consentSending, setConsentSending] = useState(false);
   const [consentVerifying, setConsentVerifying] = useState(false);
+  const [attachUser, setAttachUser] = useState<PlatformUserSearchModel | null>(null);
+  const [attachCode, setAttachCode] = useState('');
+  const [attachSending, setAttachSending] = useState(false);
+  const [attachVerifying, setAttachVerifying] = useState(false);
 
   const activeDoctors = useMemo(
     () =>
@@ -185,8 +189,8 @@ export function AddAppointmentDialog({
         if (cancelled) return;
         const pets = petsPage.models ?? [];
         const owners = ownersPage.models ?? [];
-        const petHits: PetHit[] = pets.slice(0, 30).map((pet) => ({ kind: 'pet', pet }));
-        const ownerPetHits: OwnerHit[] = [];
+        const petHits = pets.slice(0, 30).map((pet) => ({ kind: 'pet' as const, pet }));
+        const ownerPetHits: Extract<SearchHit, { kind: 'owner' }>[] = [];
         for (const owner of owners.slice(0, 20)) {
           const petsOfOwner = owner.pets ?? [];
           if (petsOfOwner.length === 0) continue;
@@ -216,7 +220,7 @@ export function AddAppointmentDialog({
             });
           }
         }
-        const userHits: UserHit[] = users.slice(0, 20).map((user) => ({ kind: 'user', user }));
+        const userHits = users.slice(0, 20).map((user) => ({ kind: 'user' as const, user }));
         const seenPet = new Set<string>();
         const seenOwner = new Set<string>();
         const seenUser = new Set<string>();
@@ -297,7 +301,6 @@ export function AddAppointmentDialog({
       setTiming('now');
       setFieldErrors({});
       setBusyHint(null);
-      snapForRef.current = '';
       setEmailLookup(null);
       setMatchedOwner(null);
       setConsentCode('');
@@ -340,30 +343,20 @@ export function AddAppointmentDialog({
           if (Number.isNaN(raw.getTime())) return;
           const snapped = snapToHalfHour(raw);
           const startKey = slotMinuteKey(format(snapped, "yyyy-MM-dd'T'HH:mm:ss"));
-          const day = await fetchParentDoctorSlots(clinicUuid, resolvedDoctorUuid, form.slotDate);
+          const free = await fetchParentDoctorSlots(clinicUuid, resolvedDoctorUuid, form.slotDate);
           if (cancelled) return;
-          const snapKey = `${resolvedDoctorUuid}|${form.slotDate}`;
-          if (day.slots.length > 0 && snapForRef.current !== snapKey) {
-            snapForRef.current = snapKey;
-            const inList = day.slots.some((s) => slotMinuteKey(s) === startKey);
-            if (!inList) {
-              const next = slotStartParts(day.slots[0]);
-              if (next && (next.date !== form.slotDate || next.time !== form.slotTime)) {
-                setForm((s) => ({ ...s, slotDate: next.date, slotTime: next.time }));
-                setBusyHint(null);
-                return;
-              }
-            }
+          if (free.length === 0) {
+            setBusyHint('Doctor has no availability on this day');
+            return;
           }
-          setBusyHint(
-            doctorSlotBusyHint({
-              closed: day.closed,
-              slots: day.slots,
-              selectedKey: startKey,
-              selectedLabel: format(snapped, 'h:mm a'),
-              hoursLabel: day.hoursLabel,
-            })
-          );
+          const openSlot = free.some((s) => slotMinuteKey(s) === startKey);
+          if (!openSlot) {
+            setBusyHint(
+              `Doctor not available at ${format(snapped, 'h:mm a')} — outside working hours or already booked`
+            );
+            return;
+          }
+          setBusyHint(null);
         } catch {
           if (!cancelled) {
             setBusyHint('Could not confirm doctor availability for this time');
@@ -423,49 +416,15 @@ export function AddAppointmentDialog({
   const selectPlatformUser = async (user: PlatformUserSearchModel) => {
     try {
       setSearching(true);
-      const owner = await ensureClinicOwnerFromUser(clinicUuid, user.userUuid);
-      const petsOfOwner = owner.pets ?? [];
-      if (petsOfOwner.length > 0) {
-        const op = petsOfOwner[0];
-        await selectPet({
-          petUuid: op.petUuid,
-          globalPetId: op.globalPetId,
-          name: op.name,
-          species: op.species,
-          breed: op.breed,
-          gender: op.gender,
-          dateOfBirth: op.dateOfBirth,
-          weight: op.weight,
-          microchipNumber: op.microchipNumber,
-          photoUrl: op.photoUrl,
-          patientNumber: op.patientNumber,
-          ownerUuid: owner.ownerUuid,
-          ownerName: owner.name,
-          ownerPhone: owner.phone,
-          ownerEmail: owner.email,
-          linked: owner.linked,
-          lastVisit: op.lastVisit,
-        });
+      if (user.alreadyClient) {
+        const owner = await ensureClinicOwnerFromUser(clinicUuid, user.userUuid);
+        await afterOwnerAttached(owner, user);
         return;
       }
-      const [first = '', ...rest] = (user.name || '').trim().split(/\s+/);
-      setMode('new');
-      setMatchedOwner(owner);
-      setEmailLookup({
-        found: true,
-        source: 'PLATFORM',
-        owner,
-        platformUser: user,
-      });
-      setForm((s) => ({
-        ...s,
-        ownerFirstName: first || user.email?.split('@')[0] || '',
-        ownerLastName: rest.join(' '),
-        ownerEmail: user.email || '',
-        ownerPhone: digitsOnlyPhone(user.phone || ''),
-      }));
-      setHits([]);
-      toast.message('Account selected — add the pet for this appointment');
+      setAttachUser(user);
+      setAttachCode('');
+      await sendClientAttachOtp(clinicUuid, user.userUuid);
+      toast.success('Confirmation code sent to their email — enter it to attach this account');
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -474,6 +433,56 @@ export function AddAppointmentDialog({
     } finally {
       setSearching(false);
     }
+  };
+
+  const afterOwnerAttached = async (owner: ClinicOwnerModel, user?: PlatformUserSearchModel) => {
+    const petsOfOwner = owner.pets ?? [];
+    const pending = petsOfOwner.filter((pet) => pet.clinicPatient === false);
+    if (pending.length > 1) {
+      toast.message('This client has more than one pet. Search and select the pet for this visit.');
+      return;
+    }
+    if (petsOfOwner.length === 1) {
+      const op = petsOfOwner[0];
+      await selectPet({
+        petUuid: op.petUuid,
+        globalPetId: op.globalPetId,
+        name: op.name,
+        species: op.species,
+        breed: op.breed,
+        gender: op.gender,
+        dateOfBirth: op.dateOfBirth,
+        weight: op.weight,
+        microchipNumber: op.microchipNumber,
+        photoUrl: op.photoUrl,
+        patientNumber: op.patientNumber,
+        ownerUuid: owner.ownerUuid,
+        ownerName: owner.name,
+        ownerPhone: owner.phone,
+        ownerEmail: owner.email,
+        linked: owner.linked,
+        lastVisit: op.lastVisit,
+      });
+      return;
+    }
+    const [first = '', ...rest] = (user?.name || owner.name || '').trim().split(/\s+/);
+    setMode('new');
+    setMatchedOwner(owner);
+    setEmailLookup({
+      found: true,
+      source: 'PLATFORM',
+      owner,
+      platformUser: user ?? null,
+    });
+    setForm((s) => ({
+      ...s,
+      ownerFirstName: first || user?.email?.split('@')[0] || owner.firstName || '',
+      ownerLastName: rest.join(' ') || owner.lastName || '',
+      ownerEmail: user?.email || owner.email || '',
+      ownerPhone: digitsOnlyPhone(user?.phone || owner.phone || ''),
+    }));
+    setHits([]);
+    toast.message('Account attached — add the pet for this appointment');
   };
 
   const clearSelectedPet = () => {
@@ -491,8 +500,15 @@ export function AddAppointmentDialog({
     try {
       setSearching(true);
       let owner = hit.owner ?? null;
-      if (!owner && hit.platformUser) {
+      if (!owner && hit.platformUser?.alreadyClient) {
         owner = await ensureClinicOwnerFromUser(clinicUuid, hit.platformUser.userUuid);
+      }
+      if (!owner && hit.platformUser) {
+        setAttachUser(hit.platformUser);
+        setAttachCode('');
+        await sendClientAttachOtp(clinicUuid, hit.platformUser.userUuid);
+        toast.success('Confirmation code sent to their email — enter it to attach this account');
+        return;
       }
       if (!owner) {
         toast.error('Could not load existing profile');
@@ -544,7 +560,7 @@ export function AddAppointmentDialog({
   const ensureConsentOwner = async (): Promise<ClinicOwnerModel | null> => {
     if (matchedOwner) return matchedOwner;
     if (emailLookup?.owner) return emailLookup.owner;
-    if (emailLookup?.platformUser) {
+    if (emailLookup?.platformUser?.alreadyClient) {
       const owner = await ensureClinicOwnerFromUser(clinicUuid, emailLookup.platformUser.userUuid);
       setMatchedOwner(owner);
       return owner;
@@ -603,6 +619,45 @@ export function AddAppointmentDialog({
     }
   };
 
+  const handleSendAttachOtp = async () => {
+    if (!attachUser) return;
+    try {
+      setAttachSending(true);
+      await sendClientAttachOtp(clinicUuid, attachUser.userUuid);
+      toast.success('Confirmation code sent to their email');
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Could not send confirmation code';
+      toast.error(message);
+    } finally {
+      setAttachSending(false);
+    }
+  };
+
+  const handleVerifyAttachOtp = async () => {
+    if (!attachUser || !attachCode.trim()) {
+      toast.error('Enter the confirmation code');
+      return;
+    }
+    try {
+      setAttachVerifying(true);
+      await verifyClientAttachOtp(clinicUuid, attachUser.userUuid, attachCode.trim());
+      const owner = await ensureClinicOwnerFromUser(clinicUuid, attachUser.userUuid);
+      const user = attachUser;
+      setAttachUser(null);
+      setAttachCode('');
+      await afterOwnerAttached(owner, user);
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Could not attach account';
+      toast.error(message);
+    } finally {
+      setAttachVerifying(false);
+    }
+  };
+
   const validateNewPatient = (): boolean => {
     const errors: Record<string, string> = {};
     if (!form.ownerFirstName.trim()) errors.ownerFirstName = 'First name is required';
@@ -622,7 +677,7 @@ export function AddAppointmentDialog({
     if (!form.slotTime) errors.slotTime = 'Time is required';
     if (form.slotDate && form.slotTime) {
       const start = snapToHalfHour(new Date(`${form.slotDate}T${form.slotTime}`));
-      if (!(start instanceof Date) || Number.isNaN(start.getTime())) {
+      if (Number.isNaN(start.getTime())) {
         errors.slotTime = 'Invalid date/time';
       } else if (start.getTime() < Date.now() - 60_000) {
         errors.slotTime = 'Pick a future time';
@@ -635,11 +690,13 @@ export function AddAppointmentDialog({
     return Object.keys(errors).length === 0;
   };
 
+  const ownerPetCount = emailLookup?.owner?.petCount ?? matchedOwner?.petCount ?? 0;
+  const linkedOwner = Boolean(emailLookup?.owner?.linked || matchedOwner?.linked);
   const needsOwnerConsent =
     mode === 'new' &&
     timing === 'schedule' &&
-    Boolean(emailLookup?.found || matchedOwner) &&
-    !selectedPet;
+    !selectedPet &&
+    (ownerPetCount > 0 || linkedOwner);
 
   const patientPayload = () => {
     if (mode === 'existing' && selectedPet) {
@@ -1075,6 +1132,42 @@ export function AddAppointmentDialog({
               </>
             ) : null}
 
+            {attachUser ? (
+              <div className="rounded-md border px-3 py-2.5 space-y-2">
+                <p className="text-sm font-medium">Attach KittyP account (email OTP)</p>
+                <p className="text-xs text-muted-foreground">
+                  A code was sent to {attachUser.email}. Enter it to add them to this clinic.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={attachSending}
+                    onClick={() => void handleSendAttachOtp()}
+                  >
+                    {attachSending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                    Resend
+                  </Button>
+                  <Input
+                    className="max-w-[140px] h-8"
+                    placeholder="6-digit code"
+                    value={attachCode}
+                    onChange={(e) => setAttachCode(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={attachVerifying || !attachCode.trim()}
+                    onClick={() => void handleVerifyAttachOtp()}
+                  >
+                    {attachVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                    Attach
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
             {needsOwnerConsent ? (
               <div className="rounded-md border px-3 py-2.5 space-y-2">
                 <p className="text-sm font-medium">Owner consent (email OTP)</p>
@@ -1196,7 +1289,7 @@ export function AddAppointmentDialog({
                       <SelectItem value="none">Unassigned</SelectItem>
                       {activeDoctors.map((d) => (
                         <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
-                          {doctorLabel(d) || d.doctorUuid}
+                          {d.name || d.email || d.doctorUuid}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1220,7 +1313,7 @@ export function AddAppointmentDialog({
                       <SelectItem value="none">Unassigned</SelectItem>
                       {activeDoctors.map((d) => (
                         <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
-                          {doctorLabel(d) || d.doctorUuid}
+                          {d.name || d.email || d.doctorUuid}
                         </SelectItem>
                       ))}
                     </SelectContent>

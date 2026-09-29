@@ -85,7 +85,7 @@ export const DailyDetails = ({
                   <div className="flex flex-col sm:flex-row sm:gap-3 text-xs sm:text-sm text-muted-foreground mt-1">
                     <span>Portion: {meal.portionSize}</span>
                     <span className="hidden sm:inline">•</span>
-                    <span>{meal.calories} kcal</span>
+                    {meal.calories != null && <span>{meal.calories} kcal</span>}
                   </div>
                 </div>
               </div>

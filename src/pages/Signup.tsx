@@ -309,6 +309,9 @@ const Signup = () => {
                             {showPassword ? <EyeOffIcon className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                          Must be 8–72 characters with uppercase, lowercase, a number, and a special character.
+                        </p>
                       </div>
 
                       <div className="space-y-2">

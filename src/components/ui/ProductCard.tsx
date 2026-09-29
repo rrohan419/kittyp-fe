@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Heart, Loader2, AlertCircle, Star } from 'lucide-react';
+import { ShoppingCart, Heart, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Product } from '@/services/productService';
 import { useDispatch, useSelector } from 'react-redux';
@@ -59,8 +59,6 @@ export function ProductCard({ product, index = 0, className, onToggleFavorite, i
     e.stopPropagation();
     onToggleFavorite();
   }, [onToggleFavorite]);
-
-  const rating = useMemo(() => (Math.random() * 2 + 3).toFixed(1), []);
 
   return (
     <div
@@ -141,10 +139,6 @@ export function ProductCard({ product, index = 0, className, onToggleFavorite, i
           <div className="flex flex-col gap-3">
             <div className="flex items-start justify-between gap-2">
               <h3 className="font-medium text-lg leading-tight line-clamp-2">{product.name}</h3>
-              <div className="flex items-center gap-1 text-yellow-500 shrink-0">
-                <Star size={14} fill="currentColor" />
-                <span className="text-sm font-medium">{rating}</span>
-              </div>
             </div>
 
             <div className="flex items-center justify-between">

@@ -34,25 +34,25 @@ export const NutritionDashboard = ({ profile, stats }: NutritionDashboardProps) 
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Breed</p>
-            <p className="font-medium break-words">{profile.breed}</p>
+            <p className="font-medium break-words">{profile.breed || 'Not available'}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Age</p>
-            <p className="font-medium">{profile.age} years</p>
+            <p className="font-medium">{profile.age || 'Not available'}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Weight</p>
-            <p className="font-medium">{profile.weight} kg</p>
+            <p className="font-medium">{profile.weight || 'Not available'}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Activity Level</p>
             <Badge variant="secondary" className="capitalize">
-              {profile.activityLevel}
+              {profile.activityLevel || 'Not available'}
             </Badge>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Current Food</p>
-            <p className="font-medium text-sm break-words">{profile.currentFoodBrand}</p>
+            <p className="font-medium text-sm break-words">{profile.currentFoodBrand || 'Not available'}</p>
           </div>
         </div>
       </Card>
@@ -65,7 +65,7 @@ export const NutritionDashboard = ({ profile, stats }: NutritionDashboardProps) 
               <h4 className="font-semibold">Daily Calories</h4>
             </div>
           </div>
-          <p className="text-3xl font-bold">{stats.caloriesPerDay}</p>
+          <p className="text-3xl font-bold">{stats.caloriesPerDay ?? 'N/A'}</p>
           <p className="text-sm text-muted-foreground mt-1">kcal per day</p>
         </Card>
 
@@ -77,7 +77,7 @@ export const NutritionDashboard = ({ profile, stats }: NutritionDashboardProps) 
             </div>
           </div>
           <p className={`text-3xl font-bold ${getHydrationColor()}`}>
-            {stats.hydrationScore}%
+            {stats.hydrationScore == null ? 'N/A' : `${stats.hydrationScore}%`}
           </p>
           <p className="text-sm text-muted-foreground mt-1">Last 7 days average</p>
         </Card>
@@ -106,7 +106,7 @@ export const NutritionDashboard = ({ profile, stats }: NutritionDashboardProps) 
               />
             </div>
           </div>
-          <span className="text-2xl font-bold">{stats.mealCompletionRate}%</span>
+          <span className="text-2xl font-bold">{stats.mealCompletionRate == null ? 'N/A' : `${stats.mealCompletionRate}%`}</span>
         </div>
         <p className="text-sm text-muted-foreground mt-2">Last 7 days</p>
       </Card>

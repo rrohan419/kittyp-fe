@@ -497,11 +497,6 @@ export const sendAIChatMessage = async (
   context?: any
 ): Promise<AIChatMessage> => {
   try {
-    // Check rate limit
-    if (!rateLimiter.checkLimit(userId, 'VET_CHAT', AI_CONFIG.RATE_LIMIT.VET_CHAT)) {
-      throw new Error('Daily chat limit reached. Please upgrade to premium for unlimited chats.');
-    }
-
     // Track analytics
     aiAnalytics.track('ai_chat_message_sent', userId, petId, {
       sessionId,
@@ -592,12 +587,6 @@ export const getAIChatHistory = async (userId: string): Promise<AIChatSession[]>
 };
 
 // Utility functions
-export const getRemainingQuota = (userId: string) => ({
-  nutrition: rateLimiter.getRemaining(userId, 'NUTRITION_GENERATION'),
-  vetChat: rateLimiter.getRemaining(userId, 'VET_CHAT'),
-  vetTriage: rateLimiter.getRemaining(userId, 'VET_TRIAGE')
-});
-
 export const clearAICache = (): void => {
   aiCache.clear();
 };

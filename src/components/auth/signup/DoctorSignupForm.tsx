@@ -40,26 +40,14 @@ import {
   Phone,
   FileCheck,
   ShieldCheck,
-  Eye,
-  EyeOffIcon,
 } from 'lucide-react';
 import { signupDoctor } from '@/services/authService';
 import { sendSignupOtp, verifySignupOtp, DOCTOR_STATUS_STEPS, statusLabel } from '@/services/doctorVerificationService';
-import { otpSendButtonLabel, useOtpResendCooldown } from '@/hooks/useOtpResendCooldown';
+import { openMsg91OtpWidget } from '@/services/msg91Widget';
 import { uploadSignupDocuments } from '@/services/fileUploadService';
 import ErrorDialog from '@/components/ui/error-dialog';
-import {
-  digitsOnlyPhone,
-  EMAIL_ALREADY_REGISTERED,
-  isEmailAlreadyRegistered,
-  isOtpFailed,
-  OTP_FAILED_MESSAGE,
-  toE164Phone,
-  validateEmail,
-  validatePassword,
-  validatePersonName,
-  validatePhone,
-} from '@/utils/validation';
+import { CooldownTimer } from '@/components/ui/cooldown-timer';
+import { digitsOnlyPhone, toE164Phone, validateEmail, validatePassword, validatePhone } from '@/utils/validation';
 
 /** Value must match backend DoctorSpecialization enum names. */
 const specializations = [
@@ -80,9 +68,12 @@ const specializations = [
 
 const STEPS = [
   { id: 1, label: 'Account' },
-  { id: 2, label: 'Verify' },
-  { id: 3, label: 'Documents' },
+  { id: 2, label: 'Email OTP' },
+  { id: 3, label: 'Phone OTP' },
+  { id: 4, label: 'Documents' },
 ] as const;
+
+const OTP_RESEND_COOLDOWN_SECONDS = 30;
 
 const DoctorSignupForm = () => {
   const navigate = useNavigate();
@@ -97,23 +88,11 @@ const DoctorSignupForm = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [emailOtp, setEmailOtp] = useState('');
   const [phoneOtp, setPhoneOtp] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [otpError, setOtpError] = useState('');
+  const [phoneOtpMethod, setPhoneOtpMethod] = useState<'WHATSAPP' | 'PHONE'>('WHATSAPP');
   const [emailVerified, setEmailVerified] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
-  /** Email/phone that passed OTP — changing the field clears verification. */
-  const [verifiedEmailValue, setVerifiedEmailValue] = useState('');
-  const [verifiedPhoneValue, setVerifiedPhoneValue] = useState('');
-  const [emailOtpSending, setEmailOtpSending] = useState(false);
-  const [phoneOtpSending, setPhoneOtpSending] = useState(false);
-  const [emailVerifying, setEmailVerifying] = useState(false);
-  const [phoneVerifying, setPhoneVerifying] = useState(false);
-  const [emailOtpError, setEmailOtpError] = useState('');
-  const [phoneOtpError, setPhoneOtpError] = useState('');
 
   const [specialization, setSpecialization] = useState('');
   const [registrationNumber, setRegistrationNumber] = useState('');
@@ -153,104 +132,34 @@ const DoctorSignupForm = () => {
   const [governmentIdFile, setGovernmentIdFile] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(false);
-  const emailResend = useOtpResendCooldown();
-  const phoneResend = useOtpResendCooldown();
+  const [otpSending, setOtpSending] = useState(false);
+  const [emailCooldown, setEmailCooldown] = useState(0);
+  const [phoneCooldown, setPhoneCooldown] = useState(0);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const emailStillVerified =
-    emailVerified && verifiedEmailValue !== '' && verifiedEmailValue === email.trim().toLowerCase();
-  const phoneStillVerified =
-    phoneVerified && verifiedPhoneValue !== '' && verifiedPhoneValue === phone.replace(/\D/g, '');
+  useEffect(() => {
+    if (emailCooldown === 0 && phoneCooldown === 0) return;
 
-  const sendEmailOtp = async (opts?: { silent?: boolean }) => {
-    if (emailStillVerified) return;
-    setEmailOtpSending(true);
-    setEmailOtpError('');
-    try {
-      await sendSignupOtp({ channel: 'EMAIL', email: email.trim(), role: 'DOCTOR' });
-      emailResend.start();
-      if (!opts?.silent) toast.success('OTP sent to your email');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to send email OTP';
-      if (isEmailAlreadyRegistered(message)) {
-        setEmailError(EMAIL_ALREADY_REGISTERED);
-      } else {
-        toast.error(message);
-      }
-    } finally {
-      setEmailOtpSending(false);
-    }
-  };
+    const timer = window.setInterval(() => {
+      setEmailCooldown((seconds) => Math.max(0, seconds - 1));
+      setPhoneCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
 
-  const sendPhoneOtp = async (opts?: { silent?: boolean }) => {
-    if (phoneStillVerified) return;
-    setPhoneOtpSending(true);
-    setPhoneOtpError('');
-    try {
-      const fullPhone = toE164Phone(phone);
-      const res = (await sendSignupOtp({
-        channel: 'PHONE',
-        phone: fullPhone,
-        email: email.trim(),
-      })) as { data?: { message?: string }; message?: string };
-      phoneResend.start();
-      if (!opts?.silent) {
-        const serverMsg = res?.data?.message || res?.message || '';
-        if (/sms unavailable|sent to email/i.test(serverMsg)) {
-          toast.success('SMS unavailable — phone OTP emailed (look for Phone OTP, not the email OTP)');
-        } else {
-          toast.success('Phone OTP sent (SMS). If SMS fails, check email for a Phone OTP message.');
-        }
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to send phone OTP';
-      setPhoneOtpError(message);
-      toast.error(message);
-    } finally {
-      setPhoneOtpSending(false);
-    }
-  };
-
-  /** Enter verify step: auto-send email + phone OTPs once (skip channels already verified). */
-  const goToVerifyStep = () => {
-    setStep(2);
-    setOtpError('');
-    void (async () => {
-      const tasks: Promise<void>[] = [];
-      if (!(emailVerified && verifiedEmailValue === email.trim().toLowerCase())) {
-        tasks.push(sendEmailOtp({ silent: false }));
-      }
-      if (!(phoneVerified && verifiedPhoneValue === phone.replace(/\D/g, ''))) {
-        tasks.push(sendPhoneOtp({ silent: false }));
-      }
-      await Promise.all(tasks);
-    })();
-  };
+    return () => window.clearInterval(timer);
+  }, [emailCooldown, phoneCooldown]);
 
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
-    const firstErr = validatePersonName(firstName, 'First name');
-    if (firstErr) {
-      toast.error(firstErr);
-      return;
-    }
-    const lastErr = validatePersonName(lastName, 'Last name', false);
-    if (lastErr) {
-      toast.error(lastErr);
-      return;
-    }
     if (password !== confirmPassword) {
       toast.error("Passwords don't match");
       return;
     }
     const emailErr = validateEmail(email);
     if (emailErr) {
-      setEmailError(emailErr);
       toast.error(emailErr);
       return;
     }
-    setEmailError('');
     const passErr = validatePassword(password);
     if (passErr) {
       toast.warning(passErr);
@@ -261,75 +170,100 @@ const DoctorSignupForm = () => {
       toast.error(phoneErr);
       return;
     }
-    // Changing account contact after verify invalidates that channel only.
-    if (verifiedEmailValue && verifiedEmailValue !== email.trim().toLowerCase()) {
-      setEmailVerified(false);
-      setVerifiedEmailValue('');
-      setEmailOtp('');
-    }
-    if (verifiedPhoneValue && verifiedPhoneValue !== phone.replace(/\D/g, '')) {
-      setPhoneVerified(false);
-      setVerifiedPhoneValue('');
-      setPhoneOtp('');
-    }
-    goToVerifyStep();
+    setStep(2);
   };
 
-  const verifyEmail = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (emailStillVerified || emailVerifying) return;
-    setEmailVerifying(true);
-    setEmailOtpError('');
+  const sendEmailOtp = async () => {
+    if (emailCooldown > 0) return;
+    setOtpSending(true);
     try {
-      await verifySignupOtp({
-        channel: 'EMAIL',
-        email: email.trim(),
-        phone: toE164Phone(phone),
-        code: emailOtp.trim(),
-      });
-      setEmailVerified(true);
-      setVerifiedEmailValue(email.trim().toLowerCase());
-      const usedEmailCode = emailOtp.trim();
-      setEmailOtp('');
-      // Same digits in the phone box are almost certainly the email OTP — clear them.
-      if (phoneOtp.trim() && phoneOtp.trim() === usedEmailCode) {
-        setPhoneOtp('');
-      }
-      toast.success('Email verified');
+      await sendSignupOtp({ channel: 'EMAIL', email: email.trim() });
+      setEmailCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+      toast.success('OTP sent to your email');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Invalid email OTP';
-      setEmailOtpError(isOtpFailed(message) ? OTP_FAILED_MESSAGE : message);
+      toast.error(err instanceof Error ? err.message : 'Failed to send email OTP');
     } finally {
-      setEmailVerifying(false);
+      setOtpSending(false);
     }
   };
 
-  const verifyPhone = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (phoneStillVerified || phoneVerifying) return;
-    setPhoneVerifying(true);
-    setPhoneOtpError('');
+  const verifyEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await verifySignupOtp({ channel: 'EMAIL', email: email.trim(), code: emailOtp.trim() });
+      setEmailVerified(true);
+      toast.success('Email verified');
+      setStep(3);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Invalid email OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendWhatsAppOtp = async () => {
+    if (phoneCooldown > 0) return;
+    setOtpSending(true);
+    try {
+      const fullPhone = toE164Phone(phone);
+      await sendSignupOtp({
+        channel: 'WHATSAPP',
+        phone: fullPhone,
+        email: email.trim(),
+      });
+      setPhoneCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+      setPhoneOtpMethod('WHATSAPP');
+      toast.success('OTP sent to your WhatsApp number');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send phone OTP');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const usePhoneOtpFallback = async () => {
+    if (phoneCooldown > 0) return;
+    setOtpSending(true);
+    try {
+      const fullPhone = toE164Phone(phone);
+      const accessToken = await openMsg91OtpWidget(fullPhone);
+      await verifySignupOtp({
+        channel: 'PHONE',
+        phone: fullPhone,
+        email: email.trim(),
+        accessToken,
+      });
+      setPhoneCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+      setPhoneOtpMethod('PHONE');
+      setPhoneVerified(true);
+      toast.success('Phone verified');
+      setStep(4);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to verify phone with MSG91');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const verifyPhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
     try {
       const fullPhone = toE164Phone(phone);
       await verifySignupOtp({
-        channel: 'PHONE',
+        channel: 'WHATSAPP',
         phone: fullPhone,
         email: email.trim(),
         code: phoneOtp.trim(),
       });
       setPhoneVerified(true);
-      setVerifiedPhoneValue(phone.replace(/\D/g, ''));
-      const usedPhoneCode = phoneOtp.trim();
-      setPhoneOtp('');
-      if (emailOtp.trim() && emailOtp.trim() === usedPhoneCode) {
-        setEmailOtp('');
-      }
       toast.success('Phone verified');
+      setStep(4);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Invalid phone OTP';
-      setPhoneOtpError(isOtpFailed(message) ? OTP_FAILED_MESSAGE : message);
+      toast.error(err instanceof Error ? err.message : 'Invalid phone OTP');
     } finally {
-      setPhoneVerifying(false);
+      setLoading(false);
     }
   };
 
@@ -486,15 +420,11 @@ const DoctorSignupForm = () => {
                               placeholder="doctor@example.com"
                               className="pl-10"
                               value={email}
-                              onChange={(e) => {
-                                setEmail(e.target.value);
-                                setEmailError('');
-                              }}
+                              onChange={(e) => setEmail(e.target.value)}
                               required
                               readOnly={!!inviteToken}
                             />
                           </div>
-                          {emailError ? <p className="text-sm text-destructive">{emailError}</p> : null}
                           {inviteToken && (
                             <p className="text-xs text-muted-foreground">Email is locked to the invitation.</p>
                           )}
@@ -528,23 +458,18 @@ const DoctorSignupForm = () => {
                             <Input
                               id="password"
                               name="password"
-                              type={showPassword ? 'text' : 'password'}
+                              type="password"
                               autoComplete="new-password"
                               placeholder="••••••••"
-                              className="pl-10 pr-10"
+                              className="pl-10"
                               value={password}
                               onChange={(e) => setPassword(e.target.value)}
                               required
                               minLength={8}
                             />
-                            <button
-                              type="button"
-                              onClick={() => setShowPassword((prev) => !prev)}
-                              className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
-                              aria-label={showPassword ? 'Hide password' : 'Show password'}
-                            >
-                              {showPassword ? <EyeOffIcon className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                            </button>
+                            <p className="text-xs text-muted-foreground">
+                          Must be 8–72 characters with uppercase, lowercase, a number, and a special character.
+                        </p>
                           </div>
                         </div>
                         <div className="space-y-2">
@@ -554,29 +479,21 @@ const DoctorSignupForm = () => {
                             <Input
                               id="confirmPassword"
                               name="confirmPassword"
-                              type={showConfirmPassword ? 'text' : 'password'}
+                              type="password"
                               autoComplete="new-password"
                               placeholder="••••••••"
-                              className="pl-10 pr-10"
+                              className="pl-10"
                               value={confirmPassword}
                               onChange={(e) => setConfirmPassword(e.target.value)}
                               required
                               minLength={8}
                             />
-                            <button
-                              type="button"
-                              onClick={() => setShowConfirmPassword((prev) => !prev)}
-                              className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
-                              aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                            >
-                              {showConfirmPassword ? <EyeOffIcon className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                            </button>
                           </div>
                         </div>
                       </div>
 
                       <Button type="submit" className="w-full">
-                        Continue to verification
+                        Continue to Email OTP
                       </Button>
                     </form>
                   </CardContent>
@@ -586,164 +503,114 @@ const DoctorSignupForm = () => {
               {step === 2 && (
                 <>
                   <CardHeader>
-                    <CardTitle className="text-xl">Verify email &amp; phone</CardTitle>
-                    <CardDescription>
-                      Codes are sent automatically. Email OTP and phone OTP are different — use each in its own box. Verified channels stay locked if you go back.
-                    </CardDescription>
+                    <CardTitle className="text-xl">Verify Email</CardTitle>
+                    <CardDescription>We&apos;ll send a one-time code to {email}</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Email OTP */}
-                      <div className="space-y-3 rounded-lg border p-4">
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <p className="font-medium flex items-center gap-2">
-                              <Mail className="h-4 w-4" /> Email
-                            </p>
-                            <p className="text-xs text-muted-foreground break-all">{email}</p>
-                          </div>
-                          {emailStillVerified ? (
-                            <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded">
-                              Verified
-                            </span>
-                          ) : null}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className={`w-full ${
-                            emailStillVerified || emailResend.coolingDown
-                              ? 'bg-muted text-muted-foreground'
-                              : ''
-                          }`}
-                          onClick={() => void sendEmailOtp()}
-                          disabled={
-                            emailStillVerified || emailOtpSending || emailResend.coolingDown
-                          }
-                        >
-                          {emailStillVerified
-                            ? 'Verified'
-                            : otpSendButtonLabel(emailOtpSending, emailResend.remaining, 'Send Email OTP')}
-                        </Button>
-                        {!emailStillVerified ? (
-                          <div className="space-y-2">
-                            <Label htmlFor="emailOtp">Email OTP</Label>
-                            <Input
-                              id="emailOtp"
-                              name="kittyp-signup-email-otp"
-                              autoComplete="off"
-                              inputMode="numeric"
-                              placeholder="6-digit code from email"
-                              value={emailOtp}
-                              onChange={(e) => {
-                                setEmailOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
-                                setEmailOtpError('');
-                              }}
-                              maxLength={6}
-                            />
-                            <Button
-                              type="button"
-                              className="w-full"
-                              disabled={emailVerifying || phoneVerifying || emailOtp.length !== 6}
-                              onClick={() => void verifyEmail()}
-                            >
-                              {emailVerifying ? 'Verifying email…' : 'Verify email'}
-                            </Button>
-                            {emailOtpError ? (
-                              <p className="text-sm text-destructive">{emailOtpError}</p>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </div>
-
-                      {/* Phone OTP */}
-                      <div className="space-y-3 rounded-lg border p-4">
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <p className="font-medium flex items-center gap-2">
-                              <Phone className="h-4 w-4" /> Phone
-                            </p>
-                            <p className="text-xs text-muted-foreground">{phone}</p>
-                          </div>
-                          {phoneStillVerified ? (
-                            <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded">
-                              Verified
-                            </span>
-                          ) : null}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className={`w-full ${
-                            phoneStillVerified || phoneResend.coolingDown
-                              ? 'bg-muted text-muted-foreground'
-                              : ''
-                          }`}
-                          onClick={() => void sendPhoneOtp()}
-                          disabled={
-                            phoneStillVerified || phoneOtpSending || phoneResend.coolingDown
-                          }
-                        >
-                          {phoneStillVerified
-                            ? 'Verified'
-                            : otpSendButtonLabel(phoneOtpSending, phoneResend.remaining, 'Send Phone OTP')}
-                        </Button>
-                        {!phoneStillVerified ? (
-                          <div className="space-y-2">
-                            <Label htmlFor="phoneOtp">Phone OTP</Label>
-                            <p className="text-xs text-muted-foreground">
-                              Use the SMS code, or the email titled for phone — not your email OTP.
-                            </p>
-                            <Input
-                              id="phoneOtp"
-                              name="kittyp-signup-phone-otp"
-                              autoComplete="one-time-code"
-                              inputMode="numeric"
-                              placeholder="6-digit phone code"
-                              value={phoneOtp}
-                              onChange={(e) => {
-                                setPhoneOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
-                                setPhoneOtpError('');
-                              }}
-                              maxLength={6}
-                            />
-                            <Button
-                              type="button"
-                              className="w-full"
-                              disabled={phoneVerifying || emailVerifying || phoneOtp.length !== 6}
-                              onClick={() => void verifyPhone()}
-                            >
-                              {phoneVerifying ? 'Verifying phone…' : 'Verify phone'}
-                            </Button>
-                            {phoneOtpError ? (
-                              <p className="text-sm text-destructive">{phoneOtpError}</p>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    {otpError ? <p className="text-sm text-destructive">{otpError}</p> : null}
-                    {emailError ? <p className="text-sm text-destructive">{emailError}</p> : null}
-
-                    <div className="flex gap-3">
-                      <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(1)}>
-                        Back
-                      </Button>
+                  <CardContent>
+                    <form onSubmit={verifyEmail} className="space-y-4">
                       <Button
                         type="button"
-                        className="flex-1"
-                        disabled={!emailStillVerified || !phoneStillVerified}
-                        onClick={() => setStep(3)}
+                        variant="outline"
+                        className="w-full"
+                        onClick={sendEmailOtp}
+                        disabled={otpSending || emailCooldown > 0}
                       >
-                        Continue to Documents
+                        <Mail className="h-4 w-4 mr-2" />
+                        {otpSending ? 'Sending…' : emailCooldown > 0 ? (
+                          <span className="inline-flex items-center gap-2">
+                            <CooldownTimer seconds={emailCooldown} />
+                          </span>
+                        ) : 'Send Email OTP'}
                       </Button>
-                    </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="emailOtp">Email OTP</Label>
+                        <Input
+                          id="emailOtp"
+                          inputMode="numeric"
+                          placeholder="6-digit code"
+                          value={emailOtp}
+                          onChange={(e) => setEmailOtp(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="flex gap-3">
+                        <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(1)}>
+                          Back
+                        </Button>
+                        <Button type="submit" className="flex-1" disabled={loading}>
+                          {loading ? 'Verifying…' : 'Verify & Continue'}
+                        </Button>
+                      </div>
+                    </form>
                   </CardContent>
                 </>
               )}
 
               {step === 3 && (
+                <>
+                  <CardHeader>
+                    <CardTitle className="text-xl">Verify Phone</CardTitle>
+                    <CardDescription>
+                      WhatsApp is the primary verification method. Phone OTP is available as a fallback.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={verifyPhone} className="space-y-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={sendWhatsAppOtp}
+                        disabled={otpSending || phoneCooldown > 0}
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        {otpSending ? 'Sending…' : phoneCooldown > 0 ? (
+                          <span className="inline-flex items-center gap-2">
+                            <CooldownTimer seconds={phoneCooldown} />
+                          </span>
+                        ) : 'Send WhatsApp OTP'}
+                      </Button>
+                      {phoneOtpMethod === 'WHATSAPP' && (
+                        <div className="space-y-2">
+                          <Label htmlFor="phoneOtp">WhatsApp OTP</Label>
+                          <Input
+                            id="phoneOtp"
+                            inputMode="numeric"
+                            placeholder="6-digit code"
+                            value={phoneOtp}
+                            onChange={(e) => setPhoneOtp(e.target.value)}
+                            required
+                          />
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="w-full"
+                        onClick={usePhoneOtpFallback}
+                        disabled={otpSending || phoneCooldown > 0}
+                      >
+                        {phoneCooldown > 0 ? `Use phone OTP instead (${phoneCooldown}s)` : 'Use phone OTP instead'}
+                      </Button>
+                      {phoneOtpMethod === 'WHATSAPP' && <div className="flex gap-3">
+                        <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(2)}>
+                          Back
+                        </Button>
+                        <Button type="submit" className="flex-1" disabled={loading}>
+                          {loading ? 'Verifying…' : 'Verify & Continue'}
+                        </Button>
+                      </div>}
+                      {phoneOtpMethod === 'PHONE' && (
+                        <Button type="button" variant="outline" className="w-full" onClick={() => setStep(4)}>
+                          Continue
+                        </Button>
+                      )}
+                    </form>
+                  </CardContent>
+                </>
+              )}
+
+              {step === 4 && (
                 <>
                   <CardHeader>
                     <CardTitle className="text-xl">Professional Documents</CardTitle>
@@ -808,8 +675,8 @@ const DoctorSignupForm = () => {
                             type="number"
                             min="0"
                             max="60"
-                            placeholder="e.g. 5"
-                            className="pl-10 placeholder:text-muted-foreground/50"
+                            placeholder="5"
+                            className="pl-10"
                             value={yearsOfExperience}
                             onChange={(e) => setYearsOfExperience(e.target.value)}
                           />
@@ -839,6 +706,7 @@ const DoctorSignupForm = () => {
                             id="degree"
                             type="file"
                             accept="image/*,.pdf"
+                            className="cursor-pointer file:cursor-pointer"
                             onChange={(e) => setDegreeFile(e.target.files?.[0] ?? null)}
                             required
                           />
@@ -849,6 +717,7 @@ const DoctorSignupForm = () => {
                             id="regCert"
                             type="file"
                             accept="image/*,.pdf"
+                            className="cursor-pointer file:cursor-pointer"
                             onChange={(e) => setRegistrationCertFile(e.target.files?.[0] ?? null)}
                             required
                           />
@@ -859,6 +728,7 @@ const DoctorSignupForm = () => {
                             id="govId"
                             type="file"
                             accept="image/*,.pdf"
+                            className="cursor-pointer file:cursor-pointer"
                             onChange={(e) => setGovernmentIdFile(e.target.files?.[0] ?? null)}
                           />
                         </div>
@@ -868,7 +738,7 @@ const DoctorSignupForm = () => {
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => setStep(2)}
+                          onClick={() => setStep(3)}
                           className="flex-1"
                           disabled={loading}
                         >
@@ -903,7 +773,7 @@ const DoctorSignupForm = () => {
             <DialogTitle className="text-center">Documents Submitted</DialogTitle>
             <DialogDescription className="text-center">
               Your personal doctor account is created. Admin will review your documents before the
-              Published badge. Clinic practices are registered and published separately.
+              Verified badge. Clinic practices are registered and verified separately.
             </DialogDescription>
           </DialogHeader>
           <ol className="space-y-2 my-2">
