@@ -42,6 +42,7 @@ import AdminParents from '@/pages/admin/AdminParents';
 import { VetConsultation } from './pages/VetConsultation';
 import { VetDashboardPage } from './pages/VetDashboardPage';
 import ParentAppointmentsPage from './pages/parent/ParentAppointmentsPage';
+import ParentAppointmentManagePage from './pages/parent/ParentAppointmentManagePage';
 import ScheduleVisitPage from './pages/parent/ScheduleVisitPage';
 import JitsiConsultPage from './pages/JitsiConsultPage';
 import { PetManagementPage } from './pages/PetManagementPage';
@@ -269,6 +270,14 @@ export const router = createBrowserRouter(
             {
               path: "appointments",
               element: <PageTransition><ParentAppointmentsPage /></PageTransition>,
+            },
+            {
+              path: "appointments/:bookingUuid/reschedule",
+              element: <PageTransition><ParentAppointmentManagePage action="reschedule" /></PageTransition>,
+            },
+            {
+              path: "appointments/:bookingUuid/cancel",
+              element: <PageTransition><ParentAppointmentManagePage action="cancel" /></PageTransition>,
             },
             {
               path: "consult/:bookingUuid",

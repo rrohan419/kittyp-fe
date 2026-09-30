@@ -131,9 +131,22 @@ export async function rateParentVisit(
   return res.data.data;
 }
 
-export async function fetchMyParentBookings(): Promise<ClinicBookingModel[]> {
-  const res = await axiosInstance.get<ApiSuccessResponse<ClinicBookingModel[]>>('/user/bookings/mine');
-  return res.data.data ?? [];
+export async function fetchMyParentBookings(
+  page = 0,
+  size = 20
+): Promise<PaginationModel<ClinicBookingModel>> {
+  const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<ClinicBookingModel>>>(
+    '/user/bookings/mine',
+    { params: { page, size } }
+  );
+  return res.data.data ?? emptyPage<ClinicBookingModel>(size);
+}
+
+export async function fetchMyParentBooking(bookingUuid: string): Promise<ClinicBookingModel> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ClinicBookingModel>>(
+    `/user/bookings/${bookingUuid}`
+  );
+  return res.data.data;
 }
 
 export async function patchParentBooking(

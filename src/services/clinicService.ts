@@ -263,6 +263,8 @@ export interface ClinicBookingModel {
   videoJoinUrl?: string | null;
   videoLive?: boolean;
   videoJoinOpen?: boolean;
+  clinicPhone?: string | null;
+  parentChangeAllowed?: boolean;
 }
 
 export interface RetentionAlertModel {
@@ -373,6 +375,8 @@ export interface ClinicCreateRequest {
   latitude?: number | null;
   longitude?: number | null;
   profileImageUrl?: string;
+  notifyLocationChange?: boolean;
+  moveDate?: string;
 }
 
 export async function updateClinic(clinicUuid: string, body: ClinicCreateRequest): Promise<ClinicModel> {

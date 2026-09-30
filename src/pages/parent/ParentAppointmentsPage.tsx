@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ratingAdjective } from '@/components/schedule/weekCalendarUtils';
 import { ClinicBookingModel, ClinicVisitModel, VisitStatus } from '@/services/clinicService';
+import { emptyPage } from '@/services/adminService';
 import { fetchMyParentBookings, fetchMyParentVisits, patchParentBooking, rateParentVisit } from '@/services/visitService';
 import { toast } from 'sonner';
 import { petNameWithType } from '@/utils/petType';
@@ -65,6 +66,8 @@ function ProviderLines({
 export default function ParentAppointmentsPage() {
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
   const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
+  const [bookingPage, setBookingPage] = useState(0);
+  const [bookingPages, setBookingPages] = useState(1);
   const [loading, setLoading] = useState(true);
 
   const [tab, setTab] = useState('current');
@@ -74,10 +77,11 @@ export default function ParentAppointmentsPage() {
     try {
       const [v, b] = await Promise.all([
         fetchMyParentVisits(),
-        fetchMyParentBookings().catch(() => [] as ClinicBookingModel[]),
+        fetchMyParentBookings(bookingPage, 20).catch(() => emptyPage<ClinicBookingModel>(20)),
       ]);
       setVisits(v);
-      setBookings(b);
+      setBookings(b.models ?? []);
+      setBookingPages(b.totalPages ?? 1);
     } catch {
       if (!quiet) {
         setVisits([]);
@@ -87,7 +91,7 @@ export default function ParentAppointmentsPage() {
     } finally {
       if (!quiet) setLoading(false);
     }
-  }, []);
+  }, [bookingPage]);
 
   useEffect(() => {
     void load(false);
@@ -206,12 +210,21 @@ export default function ParentAppointmentsPage() {
                     </div>
                     <div className="flex justify-end flex-wrap gap-1">
                       <ParentVideoJoinButton booking={b} />
-                      <Button size="sm" variant="outline" asChild>
-                        <Link to={`/app/book?reschedule=${encodeURIComponent(b.uuid)}`}>Reschedule</Link>
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => void cancelBooking(b.uuid)}>
-                        Cancel
-                      </Button>
+                      {b.parentChangeAllowed === false ? (
+                        <p className="text-xs text-muted-foreground max-w-[12rem]">
+                          Contact {b.clinicName || 'the clinic'}
+                          {b.clinicPhone ? ` at ${b.clinicPhone}` : ''} to change this visit.
+                        </p>
+                      ) : (
+                        <>
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to={`/app/appointments/${encodeURIComponent(b.uuid)}/reschedule`}>Reschedule</Link>
+                          </Button>
+                          <Button size="sm" variant="ghost" asChild>
+                            <Link to={`/app/appointments/${encodeURIComponent(b.uuid)}/cancel`}>Cancel</Link>
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -227,6 +240,31 @@ export default function ParentAppointmentsPage() {
           <TabsTrigger value="upcoming">Upcoming ({upcomingBookings.length})</TabsTrigger>
           <TabsTrigger value="history">History ({history.length + pastBookings.length})</TabsTrigger>
         </TabsList>
+        {bookingPages > 1 && (
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={bookingPage <= 0}
+              onClick={() => setBookingPage((page) => Math.max(0, page - 1))}
+            >
+              Previous
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Page {bookingPage + 1} of {bookingPages}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={bookingPage + 1 >= bookingPages}
+              onClick={() => setBookingPage((page) => page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        )}
 
         <TabsContent value="current" className="mt-4 space-y-3">
           {current.length === 0 ? (
@@ -463,13 +501,19 @@ function BookingCard({
         {b.notes && <p className="text-xs">{b.notes}</p>}
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <ParentVideoJoinButton booking={b} />
-          {canManage && (
+          {canManage && b.parentChangeAllowed === false && (
+            <p className="text-xs">
+              Contact {b.clinicName || 'the clinic'}
+              {b.clinicPhone ? ` at ${b.clinicPhone}` : ''} to change this visit.
+            </p>
+          )}
+          {canManage && b.parentChangeAllowed !== false && (
             <>
               <Button size="sm" variant="outline" asChild>
-                <Link to={`/app/book?reschedule=${encodeURIComponent(b.uuid)}`}>Reschedule</Link>
+                <Link to={`/app/appointments/${encodeURIComponent(b.uuid)}/reschedule`}>Reschedule</Link>
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => onCancel?.(b.uuid)}>
-                Cancel
+              <Button size="sm" variant="ghost" asChild>
+                <Link to={`/app/appointments/${encodeURIComponent(b.uuid)}/cancel`}>Cancel</Link>
               </Button>
             </>
           )}

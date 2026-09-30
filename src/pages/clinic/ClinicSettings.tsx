@@ -29,7 +29,30 @@ import { Link } from 'react-router-dom';
 import { RootState } from '@/module/store/store';
 import { ROLES, hasAnyRole, hasRole } from '@/utils/roles';
 import { CopyableId } from '@/components/ui/CopyableId';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { digitsOnlyPhone, validateEmail, validatePhone } from '@/utils/validation';
+
+function todayIso(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+function sameCoord(left?: number | null, right?: number | null): boolean {
+  if (left == null && right == null) return true;
+  if (left == null || right == null) return false;
+  return Math.abs(left - right) < 0.000001;
+}
 
 function clinicToParsedAddress(clinic: {
   address?: string | null;
@@ -65,6 +88,8 @@ export default function ClinicSettings() {
   const [clinicAddress, setClinicAddress] = useState<ParsedClinicAddress>(EMPTY_CLINIC_ADDRESS);
   const [hours, setHours] = useState<ClinicHourDay[]>([]);
   const [legacyHours, setLegacyHours] = useState<string | null>(null);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [moveDate, setMoveDate] = useState(todayIso);
 
   useEffect(() => {
     if (!clinic || editingProfile) return;
@@ -121,7 +146,22 @@ export default function ClinicSettings() {
     }
   };
 
-  const saveProfile = async () => {
+  const addressChanged = () => {
+    if (!clinic) return false;
+    const geo = toClinicGeoPayload(clinicAddress);
+    const nextAddress = (geo.address || clinic.address || '').trim();
+    const nextCity = (geo.city || clinic.city || '').trim();
+    const nextLat = geo.latitude ?? clinic.latitude ?? null;
+    const nextLng = geo.longitude ?? clinic.longitude ?? null;
+    return (
+      nextAddress !== (clinic.address ?? '').trim() ||
+      nextCity !== (clinic.city ?? '').trim() ||
+      !sameCoord(nextLat, clinic.latitude) ||
+      !sameCoord(nextLng, clinic.longitude)
+    );
+  };
+
+  const saveProfile = async (notify: { send: boolean; moveDate: string } | null = null) => {
     if (!clinicUuid || !clinic) return;
     if (!name.trim()) {
       toast.error('Practice name is required');
@@ -135,6 +175,11 @@ export default function ClinicSettings() {
     const emailErr = validateEmail(email, false);
     if (emailErr) {
       toast.error(emailErr);
+      return;
+    }
+    if (notify == null && addressChanged()) {
+      setMoveDate(todayIso());
+      setLocationOpen(true);
       return;
     }
     setSavingProfile(true);
@@ -152,11 +197,14 @@ export default function ClinicSettings() {
         latitude: geo.latitude ?? clinic.latitude ?? null,
         longitude: geo.longitude ?? clinic.longitude ?? null,
         profileImageUrl: clinic.profileImageUrl || undefined,
+        notifyLocationChange: notify?.send === true,
+        moveDate: notify?.send ? notify.moveDate : undefined,
       });
       await refresh();
       setEditingProfile(false);
       setLegacyHours(null);
-      toast.success('Practice profile saved');
+      setLocationOpen(false);
+      toast.success(notify?.send ? 'Practice profile saved and location email queued' : 'Practice profile saved');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to save practice profile');
     } finally {
@@ -380,6 +428,40 @@ export default function ClinicSettings() {
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={locationOpen} onOpenChange={setLocationOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Email everyone about this move?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The practice address changed. This can email the clinic admin, doctors, staff, and pet parents.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="clinic-move-date">Move date</Label>
+            <Input
+              id="clinic-move-date"
+              type="date"
+              value={moveDate}
+              onChange={(e) => setMoveDate(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={savingProfile}
+              onClick={() => void saveProfile({ send: false, moveDate })}
+            >
+              Save without email
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingProfile || !moveDate}
+              onClick={() => void saveProfile({ send: true, moveDate })}
+            >
+              Email everyone
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

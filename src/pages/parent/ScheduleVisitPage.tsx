@@ -30,7 +30,8 @@ import {
   discoverPersonalDoctors,
   fetchParentDoctorSlots,
 } from '@/services/discoverService';
-import { patchParentBooking } from '@/services/visitService';
+import { patchParentBooking, fetchMyParentBooking } from '@/services/visitService';
+import type { ClinicBookingModel } from '@/services/clinicService';
 import { isAxiosError } from 'axios';
 import { PetNameType } from '@/components/ui/PetNameType';
 import { specializationLabel } from '@/utils/specialization';
@@ -119,10 +120,16 @@ export default function ScheduleVisitPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rescheduleUuid = searchParams.get('reschedule');
+  const [changeBlocked, setChangeBlocked] = useState<ClinicBookingModel | null>(null);
+  const [rescheduleHold, setRescheduleHold] = useState<ClinicBookingModel | null>(null);
+  const [rescheduleLoading, setRescheduleLoading] = useState(Boolean(rescheduleUuid));
+  const [rescheduleIncomplete, setRescheduleIncomplete] = useState(false);
+  const [rescheduleMissing, setRescheduleMissing] = useState(false);
+
   const { user } = useSelector((s: RootState) => s.authReducer);
   const pets = user?.ownerPets ?? [];
 
-  const [step, setStep] = useState<Step>('search');
+  const [step, setStep] = useState<Step>(rescheduleUuid ? 'book' : 'search');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -142,6 +149,55 @@ export default function ScheduleVisitPage() {
   const [booking, setBooking] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [listFilter, setListFilter] = useState<ListFilter>('all');
+
+  useEffect(() => {
+    if (!rescheduleUuid) return;
+    let cancelled = false;
+    setRescheduleLoading(true);
+    fetchMyParentBooking(rescheduleUuid)
+      .then((match) => {
+        if (cancelled || !match) {
+          if (!cancelled) setRescheduleMissing(true);
+          return;
+        }
+        if (match.parentChangeAllowed === false) {
+          setChangeBlocked(match);
+          return;
+        }
+        if (!match.clinicUuid || !match.doctorUuid) {
+          setRescheduleIncomplete(true);
+          return;
+        }
+        const slotDate = match.slotStart ? parseISO(match.slotStart) : null;
+        setClinic({
+          clinicUuid: match.clinicUuid,
+          name: match.clinicName || 'Clinic',
+          phone: match.clinicPhone,
+          personal: (match.mode || '').toUpperCase() === 'VIDEO',
+        });
+        setDoctor({
+          doctorUuid: match.doctorUuid,
+          clinicUuid: match.clinicUuid,
+          clinicName: match.clinicName,
+          name: match.doctorName || 'your veterinarian',
+          specialization: match.doctorSpecialization,
+          photoUrl: match.doctorPhotoUrl,
+        });
+        if (match.petUuid) setPetUuid(match.petUuid);
+        if (slotDate && isValid(slotDate)) setDate(format(slotDate, 'yyyy-MM-dd'));
+        setStep('book');
+        setRescheduleHold(match);
+      })
+      .catch(() => {
+        if (!cancelled) setRescheduleMissing(true);
+      })
+      .finally(() => {
+        if (!cancelled) setRescheduleLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [rescheduleUuid]);
 
   const watchIdRef = useRef<number | null>(null);
   const lastCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -389,6 +445,7 @@ export default function ScheduleVisitPage() {
   };
 
   const goBack = (e: React.MouseEvent) => {
+    if (rescheduleUuid) return;
     if (step === 'book') {
       e.preventDefault();
       setStep('search');
@@ -398,18 +455,90 @@ export default function ScheduleVisitPage() {
     }
   };
 
+  if (rescheduleLoading) {
+    return (
+      <div className="p-8 flex justify-center text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading appointment…
+      </div>
+    );
+  }
+
+  if (rescheduleMissing) {
+    return (
+      <div className="p-6 max-w-lg mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle>Appointment not found</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline">
+              <Link to="/app/appointments">Back to appointments</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (rescheduleIncomplete) {
+    return (
+      <div className="p-6 max-w-lg mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle>Rescheduling unavailable</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>This appointment has no clinic or doctor on file. Please contact the clinic directly.</p>
+            <Button asChild variant="outline">
+              <Link to="/app/appointments">Back to appointments</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (changeBlocked) {
+    return (
+      <div className="p-6 max-w-lg mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle>Rescheduling unavailable</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>
+              Online rescheduling is no longer available because the 6-hour change window has passed. Please contact
+              the clinic directly for assistance.
+            </p>
+            <p className="text-foreground">
+              {changeBlocked.clinicName || 'Clinic'}
+              {changeBlocked.clinicPhone ? ` · ${changeBlocked.clinicPhone}` : ''}
+            </p>
+            <Button asChild variant="outline">
+              <Link to="/app/appointments">Back to appointments</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
       <div className="flex items-start gap-3">
         <Button variant="ghost" size="icon" asChild className="mt-0.5">
-          <Link to={step === 'search' ? '/app/appointments' : '#'} onClick={goBack}>
+          <Link to={rescheduleUuid || step === 'search' ? '/app/appointments' : '#'} onClick={goBack}>
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Book appointment</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            {rescheduleHold ? 'Reschedule appointment' : 'Book appointment'}
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Clinics are in-person hospitals. Doctors are personal online consults.
+            {rescheduleHold
+              ? [doctor?.name, clinic?.name].filter(Boolean).join(' · ')
+              : 'Clinics are in-person hospitals. Doctors are personal online consults.'}
           </p>
         </div>
       </div>
@@ -659,7 +788,8 @@ export default function ScheduleVisitPage() {
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4" /> Book with {doctor.name}
+              <Calendar className="h-4 w-4" />
+              {rescheduleHold ? `New time with ${doctor.name}` : `Book with ${doctor.name}`}
             </CardTitle>
             {formatExperienceYears(doctor.experienceYears) ? (
               <p className="text-[11px] font-normal tracking-wide text-muted-foreground pt-1">
@@ -679,7 +809,9 @@ export default function ScheduleVisitPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Pet</Label>
-              {pets.length === 0 ? (
+              {rescheduleHold ? (
+                <p className="text-sm text-foreground">{rescheduleHold.petName || 'Your pet'}</p>
+              ) : pets.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Add a pet in your profile first.</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
@@ -747,7 +879,7 @@ export default function ScheduleVisitPage() {
             </div>
             <Button className="w-full" disabled={booking || !slotStart || !petUuid} onClick={() => void confirm()}>
               {booking ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Confirm booking
+              {rescheduleHold ? 'Confirm reschedule' : 'Confirm booking'}
             </Button>
           </CardContent>
         </Card>
