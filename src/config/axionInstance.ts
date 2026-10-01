@@ -37,7 +37,7 @@ const clearAuthData = () => {
 };
 
 const axiosInstance: AxiosInstance = axios.create({
-  baseURL: `${API_BASE_URL}`, // Your API base URL here
+  baseURL: API_BASE_URL || '/api/v1',
   timeout: 45000, // Timeout after 45 seconds
 });
 

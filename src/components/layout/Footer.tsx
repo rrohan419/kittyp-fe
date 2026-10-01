@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Instagram, TwitterIcon, FacebookIcon, LinkedinIcon } from 'lucide-react';
+import { ArrowRight, Instagram, FacebookIcon, LinkedinIcon } from 'lucide-react';
 import { KittypLogo } from '@/components/brand/KittypLogo';
 import { isEcommerceEnabled } from '@/config/features';
 import { PUBLIC_SIGNUP_PATHS } from '@/utils/roles';
@@ -19,7 +19,7 @@ export function Footer() {
             </p>
             <div className="flex space-x-4">
               <a 
-                href="https://instagram.com/rrohan419" 
+                href="https://www.instagram.com/kittypindia/" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 aria-label="Instagram"
@@ -28,16 +28,7 @@ export function Footer() {
                 <Instagram size={20} />
               </a>
               <a 
-                href="https://twitter.com/rrohan419" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                aria-label="Twitter"
-                className="text-muted-foreground hover:text-primary transition-colors"
-              >
-                <TwitterIcon size={20} />
-              </a>
-              <a 
-                href="https://facebook.com/rrohan419" 
+                href="https://www.facebook.com/profile.php?id=61594089520463" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 aria-label="Facebook"
@@ -46,7 +37,7 @@ export function Footer() {
                 <FacebookIcon size={20} />
               </a>
               <a 
-                href="https://linkedin.com/in/rrohan419" 
+                href="https://www.linkedin.com/company/kittyp/"
                 target="_blank" 
                 rel="noopener noreferrer"
                 aria-label="LinkedIn"
