@@ -30,6 +30,12 @@ import {
 import { specializationLabel } from '@/utils/specialization';
 import { matchesQuery } from '@/utils/search';
 
+function formatExperience(years?: number | null): string {
+  if (years == null || Number.isNaN(years)) return '—';
+  const whole = Number.isInteger(years) ? String(years) : String(years);
+  return `${whole} ${years === 1 ? 'year' : 'years'}`;
+}
+
 const CHECKLIST: { key: ChecklistKey; label: string }[] = [
   { key: 'checkMobileOtp', label: 'Mobile OTP' },
   { key: 'checkEmailOtp', label: 'Email OTP' },
@@ -202,7 +208,7 @@ export default function AdminDoctors() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <div className="lg:col-span-2 space-y-3">
+          <div className="lg:col-span-2 space-y-3 max-h-[calc(100vh-14rem)] overflow-y-auto pr-1">
             {visible.map((d) => {
               const initials = `${d.firstName?.[0] ?? ''}${d.lastName?.[0] ?? ''}`.toUpperCase() || 'DR';
               return (
@@ -251,7 +257,7 @@ export default function AdminDoctors() {
           </div>
 
           {selected && (
-            <Card className="lg:col-span-3 border-0 shadow-sm">
+            <Card className="lg:col-span-3 border-0 shadow-sm lg:sticky lg:top-4 self-start max-h-[calc(100vh-14rem)] overflow-y-auto">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Stethoscope className="h-5 w-5 text-primary" />
@@ -283,6 +289,10 @@ export default function AdminDoctors() {
                   <p>
                     <span className="text-muted-foreground">Registration:</span>{' '}
                     {selected.registrationNumber || '—'}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Experience:</span>{' '}
+                    {formatExperience(selected.experienceYears)}
                   </p>
                   <p>
                     <span className="text-muted-foreground">Affiliation:</span>{' '}

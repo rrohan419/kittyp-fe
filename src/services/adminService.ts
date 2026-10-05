@@ -47,6 +47,7 @@ export interface AdminDashboardData {
   articleCount: number;
   pendingDoctorsCount: number;
   clinicsCount: number;
+  doctorsCount: number;
 }
 
 export const fetchAllUsers = async (

@@ -22,7 +22,7 @@ export default function AdminHome() {
     totalOrderCount,
     totalUserCount,
     totalArticleCount,
-    pendingDoctorsCount,
+    doctorsCount,
     clinicsCount,
   } = useAppSelector((s) => s.adminReducer);
 
@@ -32,7 +32,7 @@ export default function AdminHome() {
 
   const stats = [
     { label: 'Total Users', value: formatCount(totalUserCount), icon: Users, color: 'text-blue-600 bg-blue-500/10', route: '/admin/users' },
-    { label: 'Pending Doctors', value: formatCount(pendingDoctorsCount), icon: Stethoscope, color: 'text-amber-600 bg-amber-500/10', route: '/admin/doctors' },
+    { label: 'Doctors', value: formatCount(doctorsCount), icon: Stethoscope, color: 'text-amber-600 bg-amber-500/10', route: '/admin/doctors' },
     { label: 'Clinics', value: formatCount(clinicsCount), icon: Building2, color: 'text-violet-600 bg-violet-500/10', route: '/admin/clinics' },
     { label: 'Orders', value: formatCount(totalOrderCount), icon: ShoppingCart, color: 'text-green-600 bg-green-500/10', route: '/admin/orders', ecommerce: true },
     { label: 'Products', value: formatCount(productCount), icon: Package, color: 'text-pink-600 bg-pink-500/10', route: '/admin/products', ecommerce: true },
@@ -41,10 +41,10 @@ export default function AdminHome() {
 
   const visibleStats = stats.filter((s) => !s.ecommerce || isEcommerceEnabled());
 
-  const doctorsAwaitingCopy =
-    pendingDoctorsCount === 1
-      ? '1 doctor awaiting verification.'
-      : `${formatCount(pendingDoctorsCount)} doctors awaiting verification.`;
+  const doctorsCopy =
+    doctorsCount === 1
+      ? '1 doctor on the platform.'
+      : `${formatCount(doctorsCount)} doctors on the platform.`;
 
   const clinicsCopy =
     clinicsCount === 1
@@ -87,12 +87,12 @@ export default function AdminHome() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="border-0 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base font-semibold">Doctor Approvals</CardTitle>
+            <CardTitle className="text-base font-semibold">Doctors</CardTitle>
             <Button variant="ghost" size="sm" onClick={() => navigate('/admin/doctors')} className="text-primary">View <ArrowRight className="h-3.5 w-3.5 ml-1" /></Button>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              {isDashboardLoading ? 'Loading…' : doctorsAwaitingCopy}
+              {isDashboardLoading ? 'Loading…' : doctorsCopy}
             </p>
           </CardContent>
         </Card>

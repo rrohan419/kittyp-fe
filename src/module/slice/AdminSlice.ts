@@ -9,6 +9,7 @@ interface AdminState {
     totalArticleCount: number;
     pendingDoctorsCount: number;
     clinicsCount: number;
+    doctorsCount: number;
 }
 
 const initialState: AdminState = {
@@ -19,6 +20,7 @@ const initialState: AdminState = {
     totalArticleCount: 0,
     pendingDoctorsCount: 0,
     clinicsCount: 0,
+    doctorsCount: 0,
 };
 
 export const initializeAdminDashboard = createAsyncThunk(
@@ -49,6 +51,7 @@ export const adminSlice = createSlice({
                 state.totalArticleCount = action.payload.articleCount;
                 state.pendingDoctorsCount = action.payload.pendingDoctorsCount ?? 0;
                 state.clinicsCount = action.payload.clinicsCount ?? 0;
+                state.doctorsCount = action.payload.doctorsCount ?? 0;
                 state.isDashboardLoading = false;
             })
             .addCase(initializeAdminDashboard.rejected, (state) => {

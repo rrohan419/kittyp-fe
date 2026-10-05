@@ -44,6 +44,23 @@ export interface DoctorVerificationModel {
   submittedAt?: string;
   reviewedAt?: string;
   reviewNotes?: string;
+  experienceYears?: number | null;
+}
+
+function messageFromSignupErrorBody(raw: string, fallback: string): string {
+  const text = (raw || '').trim();
+  if (!text) return fallback;
+  try {
+    const parsed = JSON.parse(text) as {
+      message?: string;
+      detailedMessage?: string;
+      detailMessage?: string;
+      error?: string;
+    };
+    return parsed.message || parsed.detailedMessage || parsed.detailMessage || parsed.error || text;
+  } catch {
+    return text;
+  }
 }
 
 export type ChecklistKey =
@@ -67,7 +84,9 @@ export async function sendSignupOtp(body: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    throw new Error(messageFromSignupErrorBody(await res.text(), 'Failed to send OTP'));
+  }
   return res.json();
 }
 
@@ -83,7 +102,9 @@ export async function verifySignupOtp(body: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    throw new Error(messageFromSignupErrorBody(await res.text(), 'Failed to verify OTP'));
+  }
   return res.json();
 }
 
@@ -130,6 +151,18 @@ export const DOCTOR_STATUS_STEPS: DoctorStatus[] = [
 
 export function statusLabel(status: DoctorStatus | string | null | undefined): string {
   if (!status) return 'Unknown';
+  const key = String(status).toUpperCase();
+  const labels: Record<string, string> = {
+    REGISTERED: 'Registered',
+    DRAFT: 'Draft',
+    DOCUMENTS_SUBMITTED: 'Gov ID / docs pending review',
+    UNDER_REVIEW: 'Under review',
+    VERIFIED: 'Verified',
+    PUBLISHED: 'Published',
+    REJECTED: 'Rejected',
+    NEEDS_MORE_INFO: 'Needs more info',
+  };
+  if (labels[key]) return labels[key];
   return String(status)
     .toLowerCase()
     .split('_')
