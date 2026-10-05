@@ -13,16 +13,7 @@ import {
 import { Mail, Phone, MapPin, MessageSquare } from 'lucide-react';
 import { toast } from "sonner";
 import { sendContactMessage } from '@/services/contactService';
-
-function contactErrorMessage(error: unknown): string {
-    if (typeof error === 'object' && error !== null && 'response' in error) {
-        const data = (error as { response?: { data?: { message?: unknown } } }).response?.data;
-        if (typeof data?.message === 'string' && data.message) {
-            return data.message;
-        }
-    }
-    return 'Please try again, or email admin@kittyp.in.';
-}
+import { parseApiErrorMessage } from '@/utils/validation';
 
 const Contact = () => {
     const [submitting, setSubmitting] = useState(false);
@@ -57,7 +48,7 @@ const Contact = () => {
             });
         } catch (error) {
             toast.error("Message not sent", {
-                description: contactErrorMessage(error)
+                description: parseApiErrorMessage(error, 'Please try again, or email admin@kittyp.in.')
             });
         } finally {
             setSubmitting(false);
