@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useDebounce } from '@/hooks/useDebounce';
 import { matchesQuery } from '@/utils/search';
+import { digitsOnlyPhone, validateEmail } from '@/utils/validation';
 
 interface PaginationState {
   models: UserProfile[];
@@ -27,6 +28,10 @@ export type AdminUserListMode = 'all' | 'parents';
 
 function roleLabel(role: string): string {
   return role.replace(/^ROLE_/, '').replace(/_/g, ' ');
+}
+
+function nameWithoutNumbers(value: string): string {
+  return value.replace(/\d/g, '');
 }
 
 type AdminUsersProps = {
@@ -54,7 +59,6 @@ const AdminUsers = ({ mode = 'all' }: AdminUsersProps) => {
     firstName: '',
     lastName: '',
     email: '',
-    phoneCountryCode: '',
     phoneNumber: '',
   });
   const currentUser = useAppSelector((state) => state.authReducer.user);
@@ -86,11 +90,10 @@ const AdminUsers = ({ mode = 'all' }: AdminUsersProps) => {
   useEffect(() => {
     if (editUser) {
       setEditForm({
-        firstName: editUser.firstName,
-        lastName: editUser.lastName,
+        firstName: nameWithoutNumbers(editUser.firstName || ''),
+        lastName: nameWithoutNumbers(editUser.lastName || ''),
         email: editUser.email,
-        phoneCountryCode: editUser.phoneCountryCode || '',
-        phoneNumber: editUser.phoneNumber || '',
+        phoneNumber: digitsOnlyPhone(editUser.phoneNumber || ''),
       });
     }
   }, [editUser]);
@@ -119,13 +122,35 @@ const AdminUsers = ({ mode = 'all' }: AdminUsersProps) => {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editUser) return;
+
+    const firstName = editForm.firstName.trim();
+    const lastName = editForm.lastName.trim();
+    const email = editForm.email.trim();
+    const phoneNumber = digitsOnlyPhone(editForm.phoneNumber);
+
+    if (!firstName || !lastName) {
+      toast.error('First and last name are required');
+      return;
+    }
+    const emailError = validateEmail(email);
+    if (emailError) {
+      toast.error(emailError);
+      return;
+    }
+    if (phoneNumber.length !== 10) {
+      toast.error('Phone number must be 10 digits');
+      return;
+    }
+
+    const nextForm = { firstName, lastName, email, phoneCountryCode: '+91', phoneNumber };
+
     try {
       setIsUpdating(editUser.uuid);
       await updateUserStatus(editUser.uuid, editUser.enabled);
       setPaginationState((prev) => ({
         ...prev,
         models: prev.models.map((user) =>
-          user.uuid === editUser.uuid ? { ...user, ...editForm } : user
+          user.uuid === editUser.uuid ? { ...user, ...nextForm } : user
         ),
       }));
       toast.success('User updated successfully');
@@ -400,7 +425,9 @@ const AdminUsers = ({ mode = 'all' }: AdminUsersProps) => {
               <label className="block font-medium mb-1">First Name</label>
               <Input
                 value={editForm.firstName}
-                onChange={(e) => setEditForm((f) => ({ ...f, firstName: e.target.value }))}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, firstName: nameWithoutNumbers(e.target.value) }))
+                }
                 required
               />
             </div>
@@ -408,7 +435,9 @@ const AdminUsers = ({ mode = 'all' }: AdminUsersProps) => {
               <label className="block font-medium mb-1">Last Name</label>
               <Input
                 value={editForm.lastName}
-                onChange={(e) => setEditForm((f) => ({ ...f, lastName: e.target.value }))}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, lastName: nameWithoutNumbers(e.target.value) }))
+                }
                 required
               />
             </div>
@@ -422,18 +451,29 @@ const AdminUsers = ({ mode = 'all' }: AdminUsersProps) => {
               />
             </div>
             <div className="flex gap-2">
-              <div className="flex-1">
-                <label className="block font-medium mb-1">Country Code</label>
+              <div className="w-20 shrink-0">
+                <label className="block font-medium mb-1" htmlFor="edit-country-code">Code</label>
                 <Input
-                  value={editForm.phoneCountryCode}
-                  onChange={(e) => setEditForm((f) => ({ ...f, phoneCountryCode: e.target.value }))}
+                  id="edit-country-code"
+                  value="+91"
+                  readOnly
+                  tabIndex={-1}
+                  className="px-2 text-center"
                 />
               </div>
               <div className="flex-1">
-                <label className="block font-medium mb-1">Phone Number</label>
+                <label className="block font-medium mb-1" htmlFor="edit-phone">Phone Number</label>
                 <Input
+                  id="edit-phone"
                   value={editForm.phoneNumber}
-                  onChange={(e) => setEditForm((f) => ({ ...f, phoneNumber: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, phoneNumber: digitsOnlyPhone(e.target.value) }))
+                  }
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  maxLength={10}
+                  placeholder="10-digit mobile"
+                  required
                 />
               </div>
             </div>
