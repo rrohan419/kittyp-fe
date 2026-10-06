@@ -73,7 +73,7 @@ const ClinicSignupForm = () => {
       await sendSignupOtp({ channel: 'EMAIL', email: form.adminEmail.trim() });
       setEmailCooldown(OTP_RESEND_COOLDOWN_SECONDS);
       toast.success('OTP sent to your email');
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast.error(err instanceof Error ? err.message : 'Failed to send email OTP');
     } finally {
       setOtpSending(false);
