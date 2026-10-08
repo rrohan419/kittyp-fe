@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { UserPlus, Mail, Lock, User, CheckCircleIcon } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, CheckCircleIcon, PawPrint, Eye, EyeOff } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { signup, socialSso } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
@@ -29,7 +29,7 @@ import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/module/store/store';
 import { validateAndSetUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
-import { validateEmail, validatePassword } from '@/utils/validation';
+import { digitsOnlyPhone, validateEmail, validatePassword, validatePhone } from '@/utils/validation';
 import { isSignupRole, type SignupRole } from '@/utils/roles';
 import SignupRoleToggle from '@/components/auth/signup/SignupRoleToggle';
 import DoctorSignupForm from '@/components/auth/signup/DoctorSignupForm';
@@ -58,7 +58,11 @@ const Signup = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -72,6 +76,11 @@ const Signup = () => {
 
     if (!firstName.trim()) {
       toast.error('First name is required');
+      return;
+    }
+    const phoneErr = validatePhone(phone, true);
+    if (phoneErr) {
+      toast.error(phoneErr);
       return;
     }
     const emailErr = validateEmail(email);
@@ -92,7 +101,14 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      await signup({ firstName, lastName, email, password, role: 'USER' });
+      await signup({
+        firstName,
+        lastName,
+        email,
+        password,
+        role: 'USER',
+        phoneNumber: digitsOnlyPhone(phone),
+      });
 
       setShowSuccessDialog(true);
 
@@ -100,6 +116,7 @@ const Signup = () => {
         setFirstName('');
         setLastName('');
         setEmail('');
+        setPhone('');
         setPassword('');
         setConfirmPassword('');
 
@@ -162,13 +179,18 @@ const Signup = () => {
 
             {role === 'USER' && (
               <>
-                <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-center text-foreground">
-                  Pet parent account
-                </h1>
-                <p className="text-muted-foreground mb-8 sm:mb-12 text-center text-sm sm:text-base">
-                  Create a pet parent account to book clinics and doctors, and keep your pet&apos;s
-                  records in one place.
-                </p>
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                    <PawPrint className="h-8 w-8 text-primary" />
+                  </div>
+                  <h1 className="text-3xl sm:text-4xl font-bold text-foreground">
+                    Pet parent account
+                  </h1>
+                  <p className="text-muted-foreground mt-2 max-w-md mx-auto">
+                    Create a pet parent account to book clinics and doctors, and keep your pet&apos;s
+                    records in one place.
+                  </p>
+                </div>
 
                 <Card>
                   <CardHeader className="flex flex-col items-center justify-center text-center">
@@ -191,7 +213,7 @@ const Signup = () => {
                             placeholder="John"
                             className="pl-10"
                             value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
+                            onChange={(e) => setFirstName(e.target.value.replace(/\d/g, ''))}
                             required
                             disabled={loading}
                           />
@@ -210,7 +232,44 @@ const Signup = () => {
                             placeholder="Doe"
                             className="pl-10"
                             value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
+                            onChange={(e) => setLastName(e.target.value.replace(/\d/g, ''))}
+                            disabled={loading}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Phone Number</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="country-code"
+                            name="countryCode"
+                            aria-label="Country code"
+                            autoComplete="tel-country-code"
+                            inputMode="tel"
+                            value={countryCode}
+                            onChange={(e) => {
+                              const digits = e.target.value.replace(/\D/g, '').slice(0, 4);
+                              setCountryCode(digits ? `+${digits}` : '+');
+                            }}
+                            onBlur={() => {
+                              if (!/^\+\d{1,4}$/.test(countryCode)) setCountryCode('+91');
+                            }}
+                            className="w-16 shrink-0 px-2 text-center"
+                            disabled={loading}
+                          />
+                          <Input
+                            id="phone"
+                            name="phone"
+                            type="tel"
+                            autoComplete="tel-national"
+                            inputMode="numeric"
+                            maxLength={10}
+                            placeholder="9876543210"
+                            value={phone}
+                            onChange={(e) => setPhone(digitsOnlyPhone(e.target.value))}
+                            required
                             disabled={loading}
                           />
                         </div>
@@ -234,6 +293,7 @@ const Signup = () => {
                           />
                         </div>
                       </div>
+                      </div>
 
                       <div className="space-y-2">
                         <Label htmlFor="password">Password</Label>
@@ -242,15 +302,24 @@ const Signup = () => {
                           <Input
                             id="password"
                             name="password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             autoComplete="new-password"
                             placeholder="••••••••"
-                            className="pl-10"
+                            className="pl-10 pr-10"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             disabled={loading}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            disabled={loading}
+                          >
+                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </button>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Must be 8–72 characters with uppercase, lowercase, a number, and a special character.
@@ -264,15 +333,24 @@ const Signup = () => {
                           <Input
                             id="confirmPassword"
                             name="confirmPassword"
-                            type="password"
+                            type={showConfirmPassword ? 'text' : 'password'}
                             autoComplete="new-password"
                             placeholder="••••••••"
-                            className="pl-10"
+                            className="pl-10 pr-10"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             required
                             disabled={loading}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((prev) => !prev)}
+                            className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                            aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                            disabled={loading}
+                          >
+                            {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </button>
                         </div>
                       </div>
 

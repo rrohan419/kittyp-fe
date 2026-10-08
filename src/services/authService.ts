@@ -14,6 +14,8 @@ interface SignupData {
   email: string;
   password: string;
   role: SignupRole;
+  /** 10-digit local number. Country code is not included. */
+  phoneNumber?: string;
 }
 
 interface AuthData {
