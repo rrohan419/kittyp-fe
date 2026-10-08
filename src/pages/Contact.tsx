@@ -48,7 +48,7 @@ const Contact = () => {
             });
         } catch (error) {
             toast.error("Message not sent", {
-                description: parseApiErrorMessage(error, 'Please try again, or email support@kittyp.in.')
+                description: parseApiErrorMessage(error, 'Please try again, or email admin@kittyp.in.')
             });
         } finally {
             setSubmitting(false);
@@ -83,7 +83,7 @@ const Contact = () => {
                                                 href="mailto:support@kittyp.in"
                                                 className="text-primary hover:text-primary/90 transition-colors"
                                             >
-                                                support@kittyp.in
+                                                suport@kittyp.in
                                             </a>
                                         </div>
                                     </CardContent>
