@@ -83,7 +83,7 @@ const Contact = () => {
                                                 href="mailto:admin@kittyp.in"
                                                 className="text-primary hover:text-primary/90 transition-colors"
                                             >
-                                                admin@kittyp.in
+                                                suport@kittyp.in
                                             </a>
                                         </div>
                                     </CardContent>
