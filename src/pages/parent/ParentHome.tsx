@@ -8,12 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PawPrint, Calendar, Heart, Apple, ArrowRight, Bell, Lightbulb, Loader2, Plus } from 'lucide-react';
 import { PetImage } from '@/components/ui/PetImage';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, isPast } from 'date-fns';
 import { toast } from 'sonner';
 import { RootState } from '@/module/store/store';
 import { formatPetDobWithAge } from '@/utils/petAge';
-import { ClinicVisitModel } from '@/services/clinicService';
-import { fetchMyParentVisits } from '@/services/visitService';
+import { ClinicBookingModel, ClinicVisitModel } from '@/services/clinicService';
+import { fetchMyParentBookings, fetchMyParentVisits } from '@/services/visitService';
 import {
   PetReminderModel,
   PetReminderType,
@@ -23,6 +23,15 @@ import {
 } from '@/services/reminderService';
 
 const ACTIVE = new Set(['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS', 'CHECKING_OUT']);
+const CLOSED_BOOKING = new Set(['CANCELLED', 'NO_SHOW', 'COMPLETED']);
+
+function isUpcomingBooking(booking: ClinicBookingModel): boolean {
+  const status = (booking.status || '').toUpperCase();
+  if (CLOSED_BOOKING.has(status)) return false;
+  if (!booking.slotStart) return false;
+  const start = parseISO(booking.slotStart);
+  return isValid(start) && !isPast(start);
+}
 
 export default function ParentHome() {
   const { user } = useSelector((s: RootState) => s.authReducer);
@@ -32,6 +41,7 @@ export default function ParentHome() {
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const firstName = user?.firstName || 'there';
   const [visits, setVisits] = useState<ClinicVisitModel[]>([]);
+  const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
   const [loadingVisits, setLoadingVisits] = useState(true);
   const [reminders, setReminders] = useState<PetReminderModel[]>([]);
   const [showAddReminder, setShowAddReminder] = useState(searchParams.get('reminders') === '1');
@@ -54,9 +64,12 @@ export default function ParentHome() {
 
   const loadVisits = useCallback(async () => {
     try {
-      setVisits(await fetchMyParentVisits());
-    } catch {
-      setVisits([]);
+      const [visitRows, bookingRows] = await Promise.all([
+        fetchMyParentVisits().catch(() => [] as ClinicVisitModel[]),
+        fetchMyParentBookings().catch(() => [] as ClinicBookingModel[]),
+      ]);
+      setVisits(visitRows);
+      setBookings(bookingRows);
     } finally {
       setLoadingVisits(false);
     }
@@ -129,11 +142,55 @@ export default function ParentHome() {
     () => visits.find((v) => ACTIVE.has(v.status)),
     [visits]
   );
+  const nextBooking = useMemo(() => {
+    const upcoming = bookings.filter(isUpcomingBooking);
+    upcoming.sort((a, b) => (a.slotStart || '').localeCompare(b.slotStart || ''));
+    return upcoming[0];
+  }, [bookings]);
   const recentCompleted = useMemo(
-    () => visits.find((v) => v.status === 'COMPLETED' || v.status === 'CHECKING_OUT'),
+    () => visits.find((v) => v.status === 'COMPLETED'),
     [visits]
   );
-  const highlight = currentVisit || recentCompleted;
+  const spotlight = useMemo(() => {
+    if (currentVisit) {
+      const extra = currentVisit.chart?.assessment || currentVisit.reasonForVisit;
+      return {
+        title: 'Current visit',
+        line: extra ? `${currentVisit.petName} · ${extra}` : currentVisit.petName,
+        sub: `${currentVisit.clinicName || 'Clinic'}${
+          currentVisit.doctorName ? ` · Dr. ${currentVisit.doctorName.replace(/^Dr\.?\s*/i, '')}` : ''
+        }`,
+        badge: currentVisit.status.replace(/_/g, ' '),
+        href: currentVisit.petUuid ? `/app/pets/${currentVisit.petUuid}` : '/app/appointments',
+      };
+    }
+    if (nextBooking) {
+      const start = nextBooking.slotStart ? parseISO(nextBooking.slotStart) : null;
+      const when = start && isValid(start) ? format(start, 'EEE d MMM · h:mm a') : '';
+      return {
+        title: 'Upcoming appointment',
+        line: nextBooking.petName || 'Pet',
+        sub: `${nextBooking.clinicName || 'Clinic'}${
+          nextBooking.doctorName ? ` · Dr. ${nextBooking.doctorName.replace(/^Dr\.?\s*/i, '')}` : ''
+        }${when ? ` · ${when}` : ''}`,
+        badge: (nextBooking.status || 'CONFIRMED').replace(/_/g, ' '),
+        href: '/app/appointments',
+      };
+    }
+    if (recentCompleted) {
+      const extra = recentCompleted.chart?.assessment || recentCompleted.reasonForVisit;
+      return {
+        title: 'Latest appointment',
+        line: extra ? `${recentCompleted.petName} · ${extra}` : recentCompleted.petName,
+        sub: `${recentCompleted.clinicName || 'Clinic'}${
+          recentCompleted.doctorName ? ` · Dr. ${recentCompleted.doctorName.replace(/^Dr\.?\s*/i, '')}` : ''
+        }`,
+        badge: recentCompleted.status.replace(/_/g, ' '),
+        href: recentCompleted.petUuid ? `/app/pets/${recentCompleted.petUuid}` : '/app/appointments',
+      };
+    }
+    return null;
+  }, [currentVisit, nextBooking, recentCompleted]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -266,7 +323,7 @@ export default function ParentHome() {
         <Card className="lg:col-span-2 border-0 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base font-semibold">
-              {currentVisit ? 'Current visit' : 'Latest appointment'}
+              {spotlight?.title || 'Latest appointment'}
             </CardTitle>
             <Button variant="ghost" size="sm" asChild>
               <Link to="/app/appointments" className="text-primary">
@@ -279,44 +336,24 @@ export default function ParentHome() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading visits…
               </div>
-            ) : highlight ? (
+            ) : spotlight ? (
               <div className="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                     <Calendar className="h-6 w-6 text-primary" />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-sm truncate">
-                      {highlight.petName}
-                      {highlight.chart?.assessment
-                        ? ` · ${highlight.chart.assessment}`
-                        : highlight.reasonForVisit
-                          ? ` · ${highlight.reasonForVisit}`
-                          : ''}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {highlight.clinicName || 'Clinic'}
-                      {highlight.doctorName
-                        ? ` · Dr. ${highlight.doctorName.replace(/^Dr\.?\s*/i, '')}`
-                        : ''}
-                    </p>
+                    <p className="font-medium text-sm truncate">{spotlight.line}</p>
+                    <p className="text-xs text-muted-foreground truncate">{spotlight.sub}</p>
                     <div className="mt-1">
                       <Badge variant="secondary" className="text-[10px]">
-                        {highlight.status.replace(/_/g, ' ')}
+                        {spotlight.badge}
                       </Badge>
                     </div>
                   </div>
                 </div>
                 <Button size="sm" asChild>
-                  <Link
-                    to={
-                      highlight.petUuid
-                        ? `/app/pets/${highlight.petUuid}`
-                        : '/app/appointments'
-                    }
-                  >
-                    Details
-                  </Link>
+                  <Link to={spotlight.href}>Details</Link>
                 </Button>
               </div>
             ) : (

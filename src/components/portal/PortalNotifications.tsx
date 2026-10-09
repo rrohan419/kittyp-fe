@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { differenceInHours, format, parseISO, startOfDay } from 'date-fns';
+import { differenceInHours, format, isPast, isValid, parseISO, startOfDay } from 'date-fns';
 import {
   Bell,
   CalendarClock,
@@ -26,7 +26,8 @@ import {
   fetchMyPendingInvites,
   remindDoctorInvite,
 } from '@/services/clinicService';
-import { fetchMyDoctorVisits } from '@/services/visitService';
+import { fetchMyDoctorVisits, fetchMyParentBookings, fetchMyParentVisits } from '@/services/visitService';
+import { consultPath, isVideoConsult } from '@/utils/consult';
 import { ROLES, canInviteDoctors, hasAnyRole } from '@/utils/roles';
 import { filterUrgentAttentionQueue } from '@/utils/visitStatus';
 import { hasAuthToken } from '@/utils/authStorage';
@@ -46,6 +47,8 @@ type NotifItem = {
 };
 
 const ADDRESSED_INVITE_STATUSES = new Set(['ACCEPTED', 'REJECTED', 'REVOKED', 'EXPIRED']);
+const PARENT_ACTIVE_VISIT = new Set(['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS', 'CHECKING_OUT']);
+const CLOSED_BOOKING = new Set(['CANCELLED', 'NO_SHOW', 'COMPLETED']);
 
 type PortalKind = 'clinic' | 'doctor' | 'other';
 type ClinicFilter = 'all' | 'invites';
@@ -246,6 +249,47 @@ export function PortalNotifications({ basePath }: { basePath: string }) {
             canRemind,
             inviteStatus: inv.status,
           });
+        }
+      }
+
+      if (basePath === '/app') {
+        try {
+          const parentVisits = await fetchMyParentVisits();
+          const activeVisit = parentVisits.find((x) => PARENT_ACTIVE_VISIT.has(x.status));
+          if (activeVisit) {
+            next.push({
+              id: `parent-visit-${activeVisit.uuid}`,
+              kind: 'visit',
+              title: `${activeVisit.petName || 'Pet'} visit`,
+              body: `${activeVisit.clinicName || 'Clinic'}${activeVisit.doctorName ? ` · Dr. ${activeVisit.doctorName}` : ''}`,
+              href: '/app/appointments',
+              time: activeVisit.createdAt,
+            });
+          } else {
+            const parentBookings = await fetchMyParentBookings();
+            const upcoming = parentBookings
+              .filter((b) => {
+                const status = (b.status || '').toUpperCase();
+                if (CLOSED_BOOKING.has(status) || !b.slotStart) return false;
+                const start = parseISO(b.slotStart);
+                return isValid(start) && !isPast(start);
+              })
+              .sort((a, b) => (a.slotStart || '').localeCompare(b.slotStart || ''));
+            const nextBooking = upcoming[0];
+            if (nextBooking?.slotStart) {
+              const start = parseISO(nextBooking.slotStart);
+              next.push({
+                id: `parent-booking-${nextBooking.uuid}`,
+                kind: 'booking',
+                title: `${nextBooking.petName || 'Pet'} appointment`,
+                body: `${nextBooking.clinicName || 'Clinic'}${nextBooking.doctorName ? ` · Dr. ${nextBooking.doctorName}` : ''} · ${format(start, 'EEE d MMM · h:mm a')}`,
+                href: isVideoConsult(nextBooking.mode) ? consultPath(nextBooking.uuid, 'parent') : '/app/appointments',
+                time: nextBooking.slotStart,
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load parent appointment notification', err);
         }
       }
 
