@@ -4,14 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Building2, AlertTriangle, Plus, Power, MapPin, Pencil } from 'lucide-react';
+import { Building2, AlertTriangle, Plus, Power, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { shutdownClinic, reopenClinic, updateClinic } from '@/services/clinicService';
-import {
-  fetchClinicWhatsAppSettings,
-} from '@/services/invoiceService';
-import { whatsappSettingsSummary } from '@/components/whatsapp/whatsappStatusCopy';
 import { ClinicHoursDisplay, ClinicHoursEditor } from '@/components/clinic/ClinicHoursEditor';
 import {
   type ClinicHourDay,
@@ -21,24 +17,18 @@ import {
 } from '@/utils/clinicHours';
 import { Link } from 'react-router-dom';
 import { RootState } from '@/module/store/store';
-import { ROLES, hasAnyRole, hasRole } from '@/utils/roles';
+import { ROLES, hasRole } from '@/utils/roles';
 import { CopyableId } from '@/components/ui/CopyableId';
 
 export default function ClinicSettings() {
   const { user } = useSelector((state: RootState) => state.authReducer);
-  const canManageWhatsApp = hasRole(user?.roles, ROLES.CLINIC_ADMIN);
-  const canManageLocation = hasAnyRole(user?.roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF, ROLES.DOCTOR]);
   const { clinic, clinicUuid, refresh } = useActiveClinic();
+  const canManagePracticeProfile =
+    hasRole(user?.roles, ROLES.CLINIC_ADMIN) ||
+    (hasRole(user?.roles, ROLES.DOCTOR) && !!clinic?.personal);
   const [acting, setActing] = useState(false);
-  const [waConfigured, setWaConfigured] = useState(false);
-  const [waTemplatesReady, setWaTemplatesReady] = useState(false);
-  const [waTemplatesStatus, setWaTemplatesStatus] = useState<string | undefined>();
   const isShutdown = clinic?.status === 'SHUTDOWN';
 
-  const [city, setCity] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
-  const [savingLocation, setSavingLocation] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [name, setName] = useState('');
@@ -46,6 +36,7 @@ export default function ClinicSettings() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [timezone, setTimezone] = useState('');
   const [hours, setHours] = useState<ClinicHourDay[]>([]);
   const [legacyHours, setLegacyHours] = useState<string | null>(null);
 
@@ -56,36 +47,11 @@ export default function ClinicSettings() {
     setEmail(clinic.email ?? '');
     setPhone(clinic.phone ?? '');
     setAddress(clinic.address ?? '');
+    setTimezone(clinic.timezone ?? '');
     const parsed = parseOperatingHours(clinic.operatingHours);
     setHours(parsed.days);
     setLegacyHours(parsed.legacyText);
   }, [clinic, editingProfile]);
-
-  useEffect(() => {
-    setCity(clinic?.city ?? '');
-    setLatitude(clinic?.latitude != null ? String(clinic.latitude) : '');
-    setLongitude(clinic?.longitude != null ? String(clinic.longitude) : '');
-  }, [clinic?.city, clinic?.latitude, clinic?.longitude, clinic?.uuid]);
-
-  useEffect(() => {
-    if (!clinicUuid || !canManageWhatsApp) {
-      setWaConfigured(false);
-      setWaTemplatesReady(false);
-      setWaTemplatesStatus(undefined);
-      return;
-    }
-    void fetchClinicWhatsAppSettings(clinicUuid)
-      .then((wa) => {
-        setWaConfigured(!!wa.whatsappConfigured);
-        setWaTemplatesReady(!!wa.templatesReady || wa.invoiceTemplateStatus === 'APPROVED');
-        setWaTemplatesStatus(wa.invoiceTemplateStatus || wa.templatesStatus);
-      })
-      .catch(() => {
-        setWaConfigured(!!clinic?.whatsappConfigured);
-        setWaTemplatesReady(false);
-        setWaTemplatesStatus(undefined);
-      });
-  }, [clinicUuid, clinic?.whatsappConfigured, canManageWhatsApp]);
 
   const handleShutdown = async () => {
     if (!clinicUuid) return;
@@ -116,64 +82,20 @@ export default function ClinicSettings() {
     }
   };
 
-  const fillFromBrowser = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not available');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLatitude(pos.coords.latitude.toFixed(6));
-        setLongitude(pos.coords.longitude.toFixed(6));
-        toast.success('Coordinates filled from your device');
-      },
-      () => toast.error('Could not read device location')
-    );
-  };
-
-  const saveLocation = async () => {
-    if (!clinicUuid || !clinic) return;
-    const lat = latitude.trim() === '' ? null : Number(latitude);
-    const lng = longitude.trim() === '' ? null : Number(longitude);
-    if ((lat != null && !Number.isFinite(lat)) || (lng != null && !Number.isFinite(lng))) {
-      toast.error('Latitude and longitude must be numbers');
-      return;
-    }
-    setSavingLocation(true);
-    try {
-      await updateClinic(clinicUuid, {
-        name: clinic.name,
-        licenseNumber: clinic.licenseNumber,
-        address: clinic.address,
-        phone: clinic.phone,
-        email: clinic.email,
-        timezone: clinic.timezone,
-        operatingHours: clinic.operatingHours,
-        city: city.trim() || undefined,
-        latitude: lat,
-        longitude: lng,
-        profileImageUrl: clinic.profileImageUrl || undefined,
-      });
-      await refresh();
-      toast.success('Clinic location saved');
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save location');
-    } finally {
-      setSavingLocation(false);
-    }
-  };
-
   const saveProfile = async () => {
     if (!clinicUuid || !clinic) return;
     if (!name.trim()) {
       toast.error('Practice name is required');
       return;
     }
-    const lat = latitude.trim() === '' ? clinic.latitude ?? null : Number(latitude);
-    const lng = longitude.trim() === '' ? clinic.longitude ?? null : Number(longitude);
-    if ((lat != null && !Number.isFinite(lat)) || (lng != null && !Number.isFinite(lng))) {
-      toast.error('Latitude and longitude must be numbers');
-      return;
+    const nextTimezone = timezone.trim();
+    if (nextTimezone) {
+      try {
+        new Intl.DateTimeFormat(undefined, { timeZone: nextTimezone });
+      } catch {
+        toast.error('Enter a valid IANA time zone, such as Asia/Kolkata');
+        return;
+      }
     }
     setSavingProfile(true);
     try {
@@ -183,11 +105,8 @@ export default function ClinicSettings() {
         address: address.trim() || undefined,
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
-        timezone: clinic.timezone,
+        timezone: nextTimezone || undefined,
         operatingHours: serializeOperatingHours(hours),
-        city: city.trim() || undefined,
-        latitude: lat,
-        longitude: lng,
         profileImageUrl: clinic.profileImageUrl || undefined,
       });
       await refresh();
@@ -227,7 +146,7 @@ export default function ClinicSettings() {
       <Card className="border-0 shadow-sm">
         <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
           <CardTitle className="text-base">Practice Profile</CardTitle>
-          {canManageLocation && !isShutdown && !editingProfile && (
+          {canManagePracticeProfile && !isShutdown && !editingProfile && (
             <Button
               type="button"
               variant="outline"
@@ -266,18 +185,6 @@ export default function ClinicSettings() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Practice type</Label>
-              <Input value={clinic?.practiceType ?? '—'} readOnly />
-            </div>
-            <div className="space-y-2">
-              <Label>kittyp Practice ID</Label>
-              <Input value={clinic?.kittypPracticeId ?? '—'} readOnly />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Organization UUID</Label>
-              <Input value={clinic?.organizationUuid ?? '—'} readOnly />
-            </div>
-            <div className="space-y-2">
               <Label>Email</Label>
               <Input
                 type="email"
@@ -294,6 +201,20 @@ export default function ClinicSettings() {
                 readOnly={!editingProfile}
                 onChange={(e) => setPhone(e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="clinic-timezone">Time zone</Label>
+              <Input
+                id="clinic-timezone"
+                value={timezone}
+                readOnly={!editingProfile}
+                onChange={(e) => setTimezone(e.target.value)}
+                placeholder="Asia/Kolkata"
+                autoComplete="off"
+              />
+              {editingProfile && (
+                <p className="text-xs text-muted-foreground">Use an IANA time zone name.</p>
+              )}
             </div>
           </div>
           <div className="space-y-2">
@@ -332,81 +253,6 @@ export default function ClinicSettings() {
           </p>
         </CardContent>
       </Card>
-
-      {canManageLocation && (
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <MapPin className="h-4 w-4" /> Location for nearby search
-            </CardTitle>
-            <CardDescription>
-              City helps area search; latitude/longitude enable distance ranking for pet parents.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>City / area</Label>
-              <Input
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="e.g. Pune"
-                disabled={isShutdown}
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Latitude</Label>
-                <Input
-                  value={latitude}
-                  onChange={(e) => setLatitude(e.target.value)}
-                  placeholder="18.5204"
-                  disabled={isShutdown}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Longitude</Label>
-                <Input
-                  value={longitude}
-                  onChange={(e) => setLongitude(e.target.value)}
-                  placeholder="73.8567"
-                  disabled={isShutdown}
-                />
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" onClick={fillFromBrowser} disabled={isShutdown}>
-                Use my device location
-              </Button>
-              <Button type="button" onClick={() => void saveLocation()} disabled={isShutdown || savingLocation}>
-                {savingLocation ? 'Saving…' : 'Save location'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {canManageWhatsApp && (
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base">WhatsApp Business</CardTitle>
-            <CardDescription>
-              Connect your practice WhatsApp number with Meta — invoices send from one shared number.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              {whatsappSettingsSummary({
-                configured: waConfigured,
-                ready: waTemplatesReady,
-                templateStatus: waTemplatesStatus,
-              })}
-            </p>
-            <Button variant="outline" asChild>
-              <Link to="/clinic/whatsapp">Manage WhatsApp Business</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
       <Card className="border-0 shadow-sm">
         <CardHeader>
