@@ -77,7 +77,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
             "group-[.toast]:transition-all"
           ].join(" "),
         },
-        duration: 800,
+        duration: 2500,
         unstyled: true,
       }}
       {...props}

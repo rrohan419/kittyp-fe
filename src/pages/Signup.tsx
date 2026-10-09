@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
@@ -23,14 +23,15 @@ import {
 import { toast } from 'sonner';
 import { UserPlus, Mail, Lock, User, CheckCircleIcon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
-import { signup, socialSso } from '@/services/authService';
+import { signup, socialSso, activateRole, confirmActivatedSession } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/module/store/store';
-import { validateAndSetUser } from '@/module/slice/AuthSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/module/store/store';
+import { setActiveRole, validateAndSetUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
 import { validateEmail, validatePassword } from '@/utils/validation';
-import { isSignupRole, type SignupRole } from '@/utils/roles';
+import { isSignupRole, ROLES, type SignupRole } from '@/utils/roles';
+import { duplicateRoleMessage, isAccountExistsMessage, signInToAddRole } from '@/utils/roleActivation';
 import SignupRoleToggle from '@/components/auth/signup/SignupRoleToggle';
 import DoctorSignupForm from '@/components/auth/signup/DoctorSignupForm';
 import ClinicSignupForm from '@/components/auth/signup/ClinicSignupForm';
@@ -66,11 +67,51 @@ const Signup = () => {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const handleGoogleSignup = () => googleLogin();
   const dispatch = useDispatch<AppDispatch>();
+  const sessionUser = useSelector((state: RootState) => state.authReducer.user);
+  const isAuthenticated = useSelector((state: RootState) => state.authReducer.isAuthenticated);
+  const addingRole = Boolean(isAuthenticated && sessionUser?.email);
+
+  useEffect(() => {
+    if (!addingRole || !sessionUser?.email) return;
+    setEmail(sessionUser.email);
+    if (sessionUser.firstName) setFirstName(sessionUser.firstName);
+    if (sessionUser.lastName) setLastName(sessionUser.lastName);
+  }, [addingRole, sessionUser?.email, sessionUser?.firstName, sessionUser?.lastName]);
+
+  const openParentPortal = async () => {
+    const ready = await confirmActivatedSession('USER');
+    if (!ready) {
+      toast.error('Pet parent role was not confirmed. Stay on this page and try again.');
+      return false;
+    }
+    dispatch(setActiveRole(ROLES.USER));
+    navigate('/app', { replace: true });
+    return true;
+  };
+
+  const resumeExistingParent = async () => {
+    const status = await signInToAddRole(email.trim(), password, 'USER');
+    if (status === 'duplicate') {
+      toast.error(duplicateRoleMessage('USER'), { duration: 2500 });
+      await dispatch(validateAndSetUser()).unwrap();
+      dispatch(setActiveRole(ROLES.USER));
+      navigate('/app', { replace: true });
+      return;
+    }
+    if (status === 'available') {
+      await dispatch(validateAndSetUser()).unwrap();
+      await activateRole({ role: 'USER', email: email.trim(), rolePassword: password || undefined });
+      await openParentPortal();
+      return;
+    }
+    toast.info('This email already has an account. Sign in with its password to add the pet parent role.', { duration: 2500 });
+    navigate('/login', { state: { addRole: 'USER' } });
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!firstName.trim()) {
+    if (!addingRole && !firstName.trim()) {
       toast.error('First name is required');
       return;
     }
@@ -79,19 +120,27 @@ const Signup = () => {
       toast.error(emailErr);
       return;
     }
-    const passwordErr = validatePassword(password);
-    if (passwordErr) {
-      toast.error(passwordErr);
-      return;
-    }
-    if (password !== confirmPassword) {
-      toast.error("Passwords don't match");
-      return;
+    if (!addingRole) {
+      const passwordErr = validatePassword(password);
+      if (passwordErr) {
+        toast.error(passwordErr);
+        return;
+      }
+      if (password !== confirmPassword) {
+        toast.error("Passwords don't match");
+        return;
+      }
     }
 
     setLoading(true);
 
     try {
+      if (addingRole) {
+        await activateRole({ role: 'USER', email: sessionUser?.email, rolePassword: password || undefined });
+        await openParentPortal();
+        return;
+      }
+
       await signup({ firstName, lastName, email, password, role: 'USER' });
 
       setShowSuccessDialog(true);
@@ -112,7 +161,12 @@ const Signup = () => {
       }, 2000);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Signup failed';
-      setErrorMessage(message);
+      const apiMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      if (isAccountExistsMessage(message) || isAccountExistsMessage(apiMessage)) {
+        await resumeExistingParent();
+        return;
+      }
+      setErrorMessage(apiMessage || message);
       setShowErrorDialog(true);
     } finally {
       setLoading(false);
@@ -230,11 +284,17 @@ const Signup = () => {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
+                            readOnly={addingRole}
                             disabled={loading}
                           />
                         </div>
+                        {addingRole && (
+                          <p className="text-xs text-muted-foreground">Email is locked to your signed-in account.</p>
+                        )}
                       </div>
 
+                      {!addingRole && (
+                      <>
                       <div className="space-y-2">
                         <Label htmlFor="password">Password</Label>
                         <div className="relative">
@@ -275,6 +335,8 @@ const Signup = () => {
                           />
                         </div>
                       </div>
+                      </>
+                      )}
 
                       <Button
                         type="submit"
@@ -286,10 +348,12 @@ const Signup = () => {
                         ) : (
                           <UserPlus className="h-4 w-4" />
                         )}
-                        {loading ? 'Creating Account...' : 'Create Account'}
+                        {loading ? 'Saving...' : addingRole ? 'Add pet parent role' : 'Create Account'}
                       </Button>
                     </form>
 
+                    {!addingRole && (
+                    <>
                     <div className="relative my-6">
                       <div className="absolute inset-0 flex items-center">
                         <div className="w-full border-t border-border"></div>
@@ -315,6 +379,8 @@ const Signup = () => {
                       </svg>
                       Sign up with Google
                     </Button>
+                    </>
+                    )}
                   </CardContent>
                   <CardFooter className="flex flex-col justify-center gap-3">
                     <p className="text-sm text-gray-600 dark:text-gray-400">

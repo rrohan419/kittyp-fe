@@ -1,5 +1,6 @@
 import axiosInstance from '@/config/axionInstance';
 import { API_BASE_URL } from '@/config/env';
+import { parseApiErrorMessage } from '@/utils/validation';
 import { ApiSuccessResponse } from './cartService';
 
 export type DoctorStatus =
@@ -67,7 +68,7 @@ export async function sendSignupOtp(body: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new Error(parseApiErrorMessage(await res.text(), 'Failed to send OTP'));
   return res.json();
 }
 
@@ -83,7 +84,7 @@ export async function verifySignupOtp(body: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new Error(parseApiErrorMessage(await res.text(), 'Failed to verify OTP'));
   return res.json();
 }
 

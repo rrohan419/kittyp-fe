@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,15 +21,20 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { setActiveRole, validateAndSetUser, clearUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
-import { AppRole, getPortalPath, ROLES } from '@/utils/roles';
+import { AppRole, canSwitchWorkspace, getPortalPath, isSignupRole, ROLES, type SignupRole } from '@/utils/roles';
 import { isEcommerceEnabled } from '@/config/features';
 import { validateLoginIdentifier, normalizeLoginIdentifier } from '@/utils/validation';
+import { peekLoginRole, roleFromLogin } from '@/utils/roleFromLogin';
 import { resolvePreferredRole } from '@/utils/workspacePreference';
+import { postLoginPath } from '@/utils/roleActivation';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const dispatch = useDispatch<AppDispatch>();
+  const addRoleState = (location.state as { addRole?: string } | null)?.addRole;
+  const addRole: SignupRole | null = isSignupRole(addRoleState) ? addRoleState : null;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -61,27 +66,42 @@ const Login = () => {
       return;
     }
 
-    const preferred =
-      resolvePreferredRole(appRoles) ||
-      (appRoles.includes(ROLES.DOCTOR) ? ROLES.DOCTOR : appRoles[0]);
-    dispatch(setActiveRole(preferred));
+    const landed = roleFromLogin(appRoles, peekLoginRole());
+    if (landed) {
+      dispatch(setActiveRole(landed));
+      navigate(getPortalPath(landed), { replace: true });
+      return;
+    }
+
+    const preferred = resolvePreferredRole(appRoles);
+    if (canSwitchWorkspace(appRoles) && !preferred) {
+      navigate('/select-role', { replace: true });
+      return;
+    }
+    const role = preferred || (appRoles.includes(ROLES.DOCTOR) ? ROLES.DOCTOR : appRoles[0]);
+    dispatch(setActiveRole(role));
     if (
       redirect &&
-      ((preferred === ROLES.DOCTOR && redirect.startsWith('/doctor')) ||
-        (preferred !== ROLES.DOCTOR && redirect.startsWith('/clinic')) ||
+      ((role === ROLES.DOCTOR && redirect.startsWith('/doctor')) ||
+        (role !== ROLES.DOCTOR && redirect.startsWith('/clinic')) ||
         (!redirect.startsWith('/doctor') && !redirect.startsWith('/clinic')))
     ) {
       navigate(redirect, { replace: true });
       return;
     }
-    navigate(getPortalPath(preferred), { replace: true });
+    navigate(getPortalPath(role), { replace: true });
   };
 
   useEffect(() => {
     if (authLoading || !isAuthenticated || !currentUser) return;
+    const signupPath = postLoginPath(addRole);
+    if (signupPath) {
+      navigate(signupPath, { replace: true });
+      return;
+    }
     finishAuth(currentUser.roles);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, isAuthenticated, currentUser?.uuid]);
+  }, [authLoading, isAuthenticated, currentUser?.uuid, addRole]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +133,12 @@ const Login = () => {
         }
       }
 
-      finishAuth(user?.roles);
+      const signupPath = postLoginPath(addRole);
+      if (signupPath) {
+        navigate(signupPath, { replace: true });
+      } else {
+        finishAuth(user?.roles);
+      }
     } catch (error: any) {
       console.error("Signin Error:", error);
       setErrorMessage(error.message || 'Login failed');

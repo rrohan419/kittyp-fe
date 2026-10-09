@@ -27,7 +27,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { selectCartItems } from '@/module/slice/CartSlice';
 import { NavItem, PortalConfig } from '@/config/portal';
 import { AppDispatch, RootState } from '@/module/store/store';
-import { clearUser, setActiveRole } from '@/module/slice/AuthSlice';
+import { clearUser } from '@/module/slice/AuthSlice';
 import { AppRole, ROLES, canSwitchWorkspace, hasAnyRole } from '@/utils/roles';
 import { ClinicSwitcher } from '@/components/clinic/ClinicSwitcher';
 import { PortalNotifications } from '@/components/portal/PortalNotifications';
@@ -142,8 +142,7 @@ export function PortalShell({ config }: PortalShellProps) {
   };
 
   const handleSwitchRole = () => {
-    dispatch(setActiveRole(null));
-    navigate('/select-role', {
+    navigate('/select-role?choose=1', {
       state: { roles: (user?.roles || []) as AppRole[] },
     });
   };

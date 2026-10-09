@@ -6,6 +6,7 @@ import { RootState, AppDispatch } from '@/module/store/store';
 import { setActiveRole } from '@/module/slice/AuthSlice';
 import { AppRole, canSwitchWorkspace, hasAnyRole, getPortalHome, ROLES } from '@/utils/roles';
 import { resolvePreferredRole } from '@/utils/workspacePreference';
+import { useWorkspaceLive } from '@/components/layout/WorkspaceKeepAlive';
 
 interface RoleGuardProps {
   allowed: AppRole | AppRole[];
@@ -27,8 +28,12 @@ function SyncActiveRole({ role, children }: { role: AppRole; children: React.Rea
 }
 
 export function RoleGuard({ allowed, children }: RoleGuardProps) {
-  const { user, isAuthenticated, loading, activeRole } = useSelector((s: RootState) => s.authReducer);
+  const workspaceLive = useWorkspaceLive();
   const location = useLocation();
+  const { user, isAuthenticated, loading, activeRole } = useSelector((s: RootState) => s.authReducer);
+  if (!workspaceLive) {
+    return <>{children}</>;
+  }
   const allowedRoles = Array.isArray(allowed) ? allowed : [allowed];
 
   if (loading) {

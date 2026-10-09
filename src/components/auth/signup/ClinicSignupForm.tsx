@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Building2, Mail, Phone, MapPin, Award, User, Lock } from 'lucide-react';
-import { signupClinic } from '@/services/authService';
+import { signupClinic, activateRole, confirmActivatedSession } from '@/services/authService';
 import { sendSignupOtp, verifySignupOtp } from '@/services/doctorVerificationService';
 import { CooldownTimer } from '@/components/ui/cooldown-timer';
 import { openMsg91OtpWidget } from '@/services/msg91Widget';
@@ -19,11 +19,20 @@ import {
   validatePassword,
   validatePhone,
 } from '@/utils/validation';
+import { apiMessage, duplicateRoleMessage, isAccountExistsMessage, signInToAddRole } from '@/utils/roleActivation';
+import { ROLES } from '@/utils/roles';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/module/store/store';
+import { setActiveRole, validateAndSetUser } from '@/module/slice/AuthSlice';
 
 const OTP_RESEND_COOLDOWN_SECONDS = 30;
 
 const ClinicSignupForm = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
+  const sessionUser = useSelector((state: RootState) => state.authReducer.user);
+  const isAuthenticated = useSelector((state: RootState) => state.authReducer.isAuthenticated);
+  const addingRole = Boolean(isAuthenticated && sessionUser?.email);
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
@@ -59,7 +68,37 @@ const ClinicSignupForm = () => {
     return () => window.clearInterval(timer);
   }, [emailCooldown, phoneCooldown]);
 
+  useEffect(() => {
+    if (!addingRole || !sessionUser?.email) return;
+    setForm((current) => ({
+      ...current,
+      adminEmail: sessionUser.email,
+      adminFirstName: current.adminFirstName || sessionUser.firstName || '',
+      adminLastName: current.adminLastName || sessionUser.lastName || '',
+    }));
+    setEmailVerified(true);
+  }, [addingRole, sessionUser?.email, sessionUser?.firstName, sessionUser?.lastName]);
+
   const set = (k: keyof typeof form, v: string) => setForm((s) => ({ ...s, [k]: v }));
+
+  const resumeExistingClinic = async () => {
+    const status = await signInToAddRole(form.adminEmail.trim(), form.password, 'CLINIC');
+    if (status === 'duplicate') {
+      toast.error(duplicateRoleMessage('CLINIC'), { duration: 2500 });
+      await dispatch(validateAndSetUser()).unwrap();
+      dispatch(setActiveRole(ROLES.CLINIC_ADMIN));
+      navigate('/clinic', { replace: true });
+      return;
+    }
+    if (status === 'available') {
+      await dispatch(validateAndSetUser()).unwrap();
+      setEmailVerified(true);
+      toast.success('Signed in. Finish this form to add the clinic role.', { duration: 2500 });
+      return;
+    }
+    toast.info('This email already has an account. Sign in with its password to add the clinic role.', { duration: 2500 });
+    navigate('/login', { state: { addRole: 'CLINIC' } });
+  };
 
   const sendEmailOtp = async () => {
     if (emailCooldown > 0) return;
@@ -74,7 +113,7 @@ const ClinicSignupForm = () => {
       setEmailCooldown(OTP_RESEND_COOLDOWN_SECONDS);
       toast.success('OTP sent to your email');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send email OTP');
+      toast.error(apiMessage(err, 'Failed to send email OTP'));
     } finally {
       setOtpSending(false);
     }
@@ -171,18 +210,24 @@ const ClinicSignupForm = () => {
       toast.error(emailErr);
       return;
     }
-    if (!emailVerified || !phoneVerified) {
+    if (!addingRole && (!emailVerified || !phoneVerified)) {
       toast.error('Verify your email and phone with OTP before submitting');
       return;
     }
-    const passErr = validatePassword(form.password);
-    if (passErr) {
-      toast.error(passErr);
+    if (addingRole && !phoneVerified) {
+      toast.error('Verify your phone with OTP before submitting');
       return;
     }
-    if (form.password !== form.confirmPassword) {
-      toast.error("Passwords don't match");
-      return;
+    if (!addingRole) {
+      const passErr = validatePassword(form.password);
+      if (passErr) {
+        toast.error(passErr);
+        return;
+      }
+      if (form.password !== form.confirmPassword) {
+        toast.error("Passwords don't match");
+        return;
+      }
     }
     const phoneErr = validatePhone(form.adminPhone, true);
     if (phoneErr) {
@@ -192,6 +237,27 @@ const ClinicSignupForm = () => {
     setLoading(true);
     try {
       const address = [form.address, form.city].filter(Boolean).join(', ');
+      if (addingRole) {
+        await activateRole({
+          role: 'CLINIC',
+          email: form.adminEmail.trim(),
+          clinicName: form.clinicName,
+          licenseNumber: form.license || undefined,
+          address: address || undefined,
+          phone: form.adminPhone ? digitsOnlyPhone(form.adminPhone) : undefined,
+          rolePassword: form.password || undefined,
+        });
+        const ready = await confirmActivatedSession('CLINIC');
+        if (!ready) {
+          toast.error('Clinic role was not confirmed. Stay on this page and try again.');
+          return;
+        }
+        dispatch(setActiveRole(ROLES.CLINIC_ADMIN));
+        toast.success('Clinic admin role added. Verification is pending.');
+        navigate('/clinic', { replace: true });
+        return;
+      }
+
       await signupClinic({
         firstName: form.adminFirstName,
         lastName: form.adminLastName,
@@ -205,7 +271,11 @@ const ClinicSignupForm = () => {
       setShowSuccess(true);
       toast.success('Clinic registration submitted');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Clinic signup failed';
+      const message = apiMessage(err, 'Clinic signup failed');
+      if (isAccountExistsMessage(message)) {
+        await resumeExistingClinic();
+        return;
+      }
       toast.error(message);
     } finally {
       setLoading(false);
@@ -361,9 +431,12 @@ const ClinicSignupForm = () => {
                               set('adminEmail', e.target.value);
                             }}
                             required
-                            disabled={emailVerified}
+                            disabled={emailVerified || addingRole}
                           />
                         </div>
+                        {addingRole && (
+                          <p className="text-xs text-muted-foreground">Email is locked to your signed-in account.</p>
+                        )}
                         <div className="flex flex-wrap gap-2 mt-2">
                           <Button type="button" variant="outline" size="sm" onClick={sendEmailOtp} disabled={otpSending || emailVerified || emailCooldown > 0}>
                             {otpSending ? 'Sending…' : emailVerified ? 'Verified' : emailCooldown > 0 ? <CooldownTimer seconds={emailCooldown} /> : 'Send OTP'}
@@ -385,6 +458,8 @@ const ClinicSignupForm = () => {
                           )}
                         </div>
                       </div>
+                      {!addingRole && (
+                      <>
                       <div className="space-y-2 sm:col-span-2">
                         <Label htmlFor="password">Password *</Label>
                         <div className="relative">
@@ -424,6 +499,8 @@ const ClinicSignupForm = () => {
                           />
                         </div>
                       </div>
+                      </>
+                      )}
                     </div>
                   </div>
 
@@ -432,9 +509,9 @@ const ClinicSignupForm = () => {
                     <Textarea rows={4} placeholder="Tell us about your services and team…" value={form.about} onChange={(e) => set('about', e.target.value)} className="resize-none" />
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={loading || !emailVerified || !phoneVerified}>
+                  <Button type="submit" className="w-full" disabled={loading || (!addingRole && !emailVerified) || !phoneVerified}>
                     <Building2 className="h-4 w-4 mr-2" />
-                    {loading ? 'Submitting…' : 'Submit Application'}
+                    {loading ? 'Submitting…' : addingRole ? 'Add clinic admin role' : 'Submit Application'}
                   </Button>
                 </form>
               </CardContent>

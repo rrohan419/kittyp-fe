@@ -6,6 +6,8 @@ import { setUser } from '@/module/slice/AuthSlice';
 import { fetchUserDetail } from "./UserService";
 import { TokenResponse } from "@react-oauth/google";
 import { SignupRole } from "@/utils/roles";
+import { rememberLoginRole } from "@/utils/roleFromLogin";
+import { sessionHasActivatedRole } from "@/utils/roleActivation";
 import { clearAuthStorage, getAuthItem, setAuthItem } from "@/utils/authStorage";
 
 interface SignupData {
@@ -29,6 +31,7 @@ interface JwtResponseModel {
   username: string;
   email: string;
   roles: string[];
+  loginRole?: string | null;
 }
 
 export interface WrappedJwtResponse {
@@ -149,6 +152,7 @@ export const socialSso = async (tokenResponse: TokenResponse) => {
     if (data.success && data.data) {
       const { token, roles } = data.data;
 
+      rememberLoginRole(null);
       setAuthItem("access_token", token);
       setAuthItem("roles", JSON.stringify(roles));
     } else {
@@ -162,18 +166,19 @@ export const socialSso = async (tokenResponse: TokenResponse) => {
 
 }
 
-export const login = async (data: AuthData): Promise<{ token: string; roles: string[] }> => {
+export const login = async (data: AuthData): Promise<{ token: string; roles: string[]; loginRole: string | null }> => {
 
   try {
     // Step 1: Login to get token
     const loginResponse = await axiosInstance.post<WrappedJwtResponse>('/auth/signin', data);
 
-    const { token, roles } = loginResponse.data.data; // <-- This is JwtResponseModel
+    const { token, roles, loginRole } = loginResponse.data.data; // <-- This is JwtResponseModel
 
+    rememberLoginRole(loginRole);
     setAuthItem('access_token', token);
     setAuthItem('roles', JSON.stringify(roles));
 
-    return { token, roles };
+    return { token, roles, loginRole: loginRole ?? null };
   } catch (error: any) {
     throw new Error(error?.response?.data?.message || 'Login or user fetch failed.');
   }
@@ -248,6 +253,48 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
     console.error('Error getting current user:', error);
     return null;
   }
+};
+
+export interface ActivateRolePayload {
+  role: SignupRole;
+  email?: string;
+  phoneNumber?: string;
+  licenseNumber?: string;
+  registrationNumber?: string;
+  specialization?: string;
+  experience?: number;
+  professionalSummary?: string;
+  degreeCertificateUrl?: string;
+  registrationCertificateUrl?: string;
+  governmentIdUrl?: string;
+  photoUrl?: string;
+  inviteToken?: string;
+  /** Stored as a role hash only when this role is created. Never replaces the account password. */
+  rolePassword?: string;
+  clinicName?: string;
+  address?: string;
+  phone?: string;
+  timezone?: string;
+}
+
+export const activateRole = async (data: ActivateRolePayload): Promise<void> => {
+  await axiosInstance.post('/user/roles', data);
+};
+
+/** Reloads /user/me into Redux, the user blob, and the roles key. */
+export const refreshSessionAfterRoleChange = async (): Promise<UserProfile> => {
+  const userProfile = await fetchUserDetail();
+  setAuthItem('roles', JSON.stringify(userProfile.roles ?? []));
+  store.dispatch(setUser(userProfile));
+  return userProfile;
+};
+
+/** True only after Redux and both persisted role copies include the new role. */
+export const confirmActivatedSession = async (signupRole: SignupRole): Promise<boolean> => {
+  const userProfile = await refreshSessionAfterRoleChange();
+  const persisted = JSON.parse(getAuthItem('user') || 'null') as { roles?: string[] } | null;
+  const storedRoles = JSON.parse(getAuthItem('roles') || 'null') as string[] | null;
+  return sessionHasActivatedRole(userProfile.roles, persisted?.roles, storedRoles, signupRole);
 };
 
 export const getSiteMap = async () => {

@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { setActiveRole } from '@/module/slice/AuthSlice';
-import { AppRole, canSwitchWorkspace, getContinueAsLabel, getPortalPath, getRoleLabel, PORTAL_HOME } from '@/utils/roles';
+import { AppRole, canSwitchWorkspace, getContinueAsLabel, getPortalPath, getRoleLabel, PORTAL_HOME, ROLES } from '@/utils/roles';
 import {
   clearDefaultWorkspace,
   getDefaultWorkspace,
   resolvePreferredRole,
   setDefaultWorkspace,
 } from '@/utils/workspacePreference';
+import { pathForWorkspaceRole } from '@/utils/workspaceMemory';
 import { getAuthItem } from '@/utils/authStorage';
 
 interface LocationState {
@@ -22,6 +23,8 @@ interface LocationState {
 const SelectRole = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const choosing = searchParams.get('choose') === '1';
   const dispatch = useDispatch<AppDispatch>();
   const authState = useSelector((state: RootState) => state.authReducer);
   const rolesFromState = (location.state as LocationState)?.roles;
@@ -33,13 +36,17 @@ const SelectRole = () => {
   const [saveAsDefault, setSaveAsDefault] = useState(() => !!getDefaultWorkspace());
 
   const workspaceRoles = useMemo(() => {
-    const seen = new Set<string>();
-    return effectiveRoles.filter((role) => {
+    const byHome = new Map<string, AppRole>();
+    for (const role of effectiveRoles) {
       const home = PORTAL_HOME[role];
-      if (!home || seen.has(home)) return false;
-      seen.add(home);
-      return true;
-    });
+      if (!home) continue;
+      const key = home.startsWith('/clinic') ? '/clinic' : home;
+      const current = byHome.get(key);
+      if (!current || (key === '/clinic' && role === ROLES.CLINIC_ADMIN)) {
+        byHome.set(key, role);
+      }
+    }
+    return [...byHome.values()];
   }, [effectiveRoles]);
 
   useEffect(() => {
@@ -61,8 +68,8 @@ const SelectRole = () => {
       return;
     }
 
-    // When switching roles intentionally, location.state.roles is set — do not auto-apply default.
-    if (rolesFromState?.length) {
+    // Switch role opens this page on purpose. Do not jump to the saved workspace.
+    if (choosing || rolesFromState?.length) {
       return;
     }
 
@@ -71,7 +78,7 @@ const SelectRole = () => {
       dispatch(setActiveRole(preferred));
       navigate(getPortalPath(preferred), { replace: true });
     }
-  }, [effectiveRoles, workspaceRoles, navigate, dispatch, rolesFromState]);
+  }, [effectiveRoles, workspaceRoles, navigate, dispatch, rolesFromState, choosing]);
 
   const handleRoleSelect = (role: AppRole) => {
     dispatch(setActiveRole(role));
@@ -81,7 +88,7 @@ const SelectRole = () => {
       clearDefaultWorkspace();
     }
     toast.success(getContinueAsLabel(role));
-    navigate(getPortalPath(role), { replace: true });
+    navigate(pathForWorkspaceRole(role) ?? getPortalPath(role), { replace: true });
   };
 
   if (!authState.isAuthenticated || !authState.user) {

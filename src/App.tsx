@@ -1,7 +1,8 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Outlet, useNavigation, useNavigate, useLocation } from "react-router-dom";
+import { useNavigation, useNavigate, useLocation } from "react-router-dom";
+import { WorkspaceKeepAlive } from "./components/layout/WorkspaceKeepAlive";
 import { useEffect, type ReactNode } from "react";
 import { GlobalBreadcrumbs } from "./components/layout/GlobalBreadcrumbs";
 
@@ -132,7 +133,7 @@ function App() {
                 <main className={cn(!inPortal && 'pt-16')}>
                   {!inPortal && location.pathname !== '/' && <GlobalBreadcrumbs />}
                   <div className="relative">
-                    <Outlet />
+                    <WorkspaceKeepAlive />
                   </div>
                 </main>
                 <Toaster />

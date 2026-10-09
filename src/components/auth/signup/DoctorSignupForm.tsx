@@ -41,13 +41,18 @@ import {
   FileCheck,
   ShieldCheck,
 } from 'lucide-react';
-import { signupDoctor } from '@/services/authService';
+import { signupDoctor, activateRole, confirmActivatedSession } from '@/services/authService';
 import { sendSignupOtp, verifySignupOtp, DOCTOR_STATUS_STEPS, statusLabel } from '@/services/doctorVerificationService';
 import { openMsg91OtpWidget } from '@/services/msg91Widget';
 import { uploadSignupDocuments } from '@/services/fileUploadService';
 import ErrorDialog from '@/components/ui/error-dialog';
 import { CooldownTimer } from '@/components/ui/cooldown-timer';
 import { digitsOnlyPhone, toE164Phone, validateEmail, validatePassword, validatePhone } from '@/utils/validation';
+import { apiMessage, duplicateRoleMessage, isAccountExistsMessage, signInToAddRole } from '@/utils/roleActivation';
+import { ROLES } from '@/utils/roles';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/module/store/store';
+import { setActiveRole, validateAndSetUser } from '@/module/slice/AuthSlice';
 
 /** Value must match backend DoctorSpecialization enum names. */
 const specializations = [
@@ -77,6 +82,10 @@ const OTP_RESEND_COOLDOWN_SECONDS = 30;
 
 const DoctorSignupForm = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
+  const sessionUser = useSelector((state: RootState) => state.authReducer.user);
+  const isAuthenticated = useSelector((state: RootState) => state.authReducer.isAuthenticated);
+  const addingRole = Boolean(isAuthenticated && sessionUser?.email);
   const [searchParams] = useSearchParams();
   const inviteToken = searchParams.get('inviteToken') || '';
   const [step, setStep] = useState(1);
@@ -127,6 +136,14 @@ const DoctorSignupForm = () => {
     };
   }, [inviteToken]);
 
+  useEffect(() => {
+    if (!addingRole || !sessionUser?.email) return;
+    setEmail(sessionUser.email);
+    if (sessionUser.firstName) setFirstName(sessionUser.firstName);
+    if (sessionUser.lastName) setLastName(sessionUser.lastName);
+    setEmailVerified(true);
+  }, [addingRole, sessionUser?.email, sessionUser?.firstName, sessionUser?.lastName]);
+
   const [degreeFile, setDegreeFile] = useState<File | null>(null);
   const [registrationCertFile, setRegistrationCertFile] = useState<File | null>(null);
   const [governmentIdFile, setGovernmentIdFile] = useState<File | null>(null);
@@ -151,18 +168,20 @@ const DoctorSignupForm = () => {
 
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      toast.error("Passwords don't match");
-      return;
+    if (!addingRole) {
+      if (password !== confirmPassword) {
+        toast.error("Passwords don't match");
+        return;
+      }
+      const passErr = validatePassword(password);
+      if (passErr) {
+        toast.warning(passErr);
+        return;
+      }
     }
     const emailErr = validateEmail(email);
     if (emailErr) {
       toast.error(emailErr);
-      return;
-    }
-    const passErr = validatePassword(password);
-    if (passErr) {
-      toast.warning(passErr);
       return;
     }
     const phoneErr = validatePhone(phone, true);
@@ -170,7 +189,27 @@ const DoctorSignupForm = () => {
       toast.error(phoneErr);
       return;
     }
-    setStep(2);
+    setStep(addingRole ? 3 : 2);
+  };
+
+  const resumeExistingDoctor = async () => {
+    const status = await signInToAddRole(email.trim(), password, 'DOCTOR');
+    if (status === 'duplicate') {
+      toast.error(duplicateRoleMessage('DOCTOR'), { duration: 2500 });
+      await dispatch(validateAndSetUser()).unwrap();
+      dispatch(setActiveRole(ROLES.DOCTOR));
+      navigate('/doctor', { replace: true });
+      return;
+    }
+    if (status === 'available') {
+      await dispatch(validateAndSetUser()).unwrap();
+      setEmailVerified(true);
+      setStep(3);
+      toast.success('Signed in. Finish this form to add the doctor role.', { duration: 2500 });
+      return;
+    }
+    toast.info('This email already has an account. Sign in with its password to add the doctor role.', { duration: 2500 });
+    navigate('/login', { state: { addRole: 'DOCTOR' } });
   };
 
   const sendEmailOtp = async () => {
@@ -181,7 +220,7 @@ const DoctorSignupForm = () => {
       setEmailCooldown(OTP_RESEND_COOLDOWN_SECONDS);
       toast.success('OTP sent to your email');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send email OTP');
+      toast.error(apiMessage(err, 'Failed to send email OTP'));
     } finally {
       setOtpSending(false);
     }
@@ -298,6 +337,33 @@ const DoctorSignupForm = () => {
         [governmentIdUrl] = await uploadSignupDocuments([governmentIdFile], email.trim());
       }
 
+      if (addingRole) {
+        await activateRole({
+          role: 'DOCTOR',
+          email: email.trim(),
+          phoneNumber: digitsOnlyPhone(phone),
+          registrationNumber: registrationNumber.trim(),
+          licenseNumber: registrationNumber.trim(),
+          specialization,
+          experience: yearsOfExperience ? Number(yearsOfExperience) : undefined,
+          professionalSummary: bio.trim() || undefined,
+          degreeCertificateUrl,
+          registrationCertificateUrl,
+          governmentIdUrl,
+          inviteToken: inviteToken || undefined,
+          rolePassword: password || undefined,
+        });
+        const ready = await confirmActivatedSession('DOCTOR');
+        if (!ready) {
+          toast.error('Doctor role was not confirmed. Stay on this page and try again.');
+          return;
+        }
+        dispatch(setActiveRole(ROLES.DOCTOR));
+        toast.success('Doctor role added. Verification is pending.');
+        navigate('/doctor', { replace: true });
+        return;
+      }
+
       await signupDoctor({
         firstName,
         lastName,
@@ -318,7 +384,11 @@ const DoctorSignupForm = () => {
       setShowSuccessDialog(true);
       toast.success('Documents submitted for review');
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Signup failed';
+      const message = apiMessage(error, 'Signup failed');
+      if (isAccountExistsMessage(message)) {
+        await resumeExistingDoctor();
+        return;
+      }
       toast.error(message);
       setErrorMessage(message);
       setShowErrorDialog(true);
@@ -422,11 +492,15 @@ const DoctorSignupForm = () => {
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
                               required
-                              readOnly={!!inviteToken}
+                              readOnly={!!inviteToken || addingRole}
                             />
                           </div>
-                          {inviteToken && (
-                            <p className="text-xs text-muted-foreground">Email is locked to the invitation.</p>
+                          {(inviteToken || addingRole) && (
+                            <p className="text-xs text-muted-foreground">
+                              {addingRole
+                                ? 'Email is locked to your signed-in account.'
+                                : 'Email is locked to the invitation.'}
+                            </p>
                           )}
                         </div>
                         <div className="space-y-2">
@@ -450,6 +524,7 @@ const DoctorSignupForm = () => {
                         </div>
                       </div>
 
+                      {!addingRole && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="password">Password</Label>
@@ -491,9 +566,10 @@ const DoctorSignupForm = () => {
                           </div>
                         </div>
                       </div>
+                      )}
 
                       <Button type="submit" className="w-full">
-                        Continue to Email OTP
+                        {addingRole ? 'Continue to phone verification' : 'Continue to Email OTP'}
                       </Button>
                     </form>
                   </CardContent>
