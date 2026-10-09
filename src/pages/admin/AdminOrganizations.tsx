@@ -3,6 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -22,6 +29,7 @@ import { parseOperatingHours } from '@/utils/clinicHours';
 import { parseApiErrorMessage } from '@/utils/validation';
 import { matchesQuery } from '@/utils/search';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 function clinicStatus(status?: string | null): string {
   return (status ?? 'PENDING').toUpperCase();
@@ -45,6 +53,8 @@ export default function AdminOrganizations() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -101,11 +111,11 @@ export default function AdminOrganizations() {
     }
   }, [visible, selected]);
 
-  const setStatus = async (status: 'VERIFIED' | 'REJECTED') => {
+  const setStatus = async (status: 'VERIFIED' | 'REJECTED', reason?: string) => {
     if (!selected) return;
     setSaving(true);
     try {
-      const updated = await updateAdminClinicStatus(selected.uuid, status);
+      const updated = await updateAdminClinicStatus(selected.uuid, status, reason);
       setClinics((prev) => prev.map((c) => (c.uuid === updated.uuid ? updated : c)));
       setSelected(updated);
       if (status === 'VERIFIED') {
@@ -115,6 +125,8 @@ export default function AdminOrganizations() {
         setFilter(hasPendingClinics ? 'PENDING' : 'ALL');
       } else {
         setFilter(status);
+        setRejectDialogOpen(false);
+        setRejectionReason('');
       }
       toast.success(status === 'VERIFIED' ? 'Clinic verified' : 'Clinic rejected');
     } catch (e: unknown) {
@@ -122,6 +134,15 @@ export default function AdminOrganizations() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const rejectSelectedClinic = () => {
+    const reason = rejectionReason.trim();
+    if (!reason) {
+      toast.error('Enter a reason for rejecting this clinic');
+      return;
+    }
+    void setStatus('REJECTED', reason);
   };
 
   const hours = selected ? parseOperatingHours(selected.operatingHours) : null;
@@ -247,6 +268,12 @@ export default function AdminOrganizations() {
                     <span className="text-muted-foreground">Status:</span> {selectedStatus || '—'}
                   </p>
                 </div>
+                {selected.rejectionReason && (
+                  <div className="rounded-md border border-red-200 bg-red-50 p-3 text-red-800">
+                    <p className="font-medium">Rejection reason</p>
+                    <p className="mt-1 whitespace-pre-wrap">{selected.rejectionReason}</p>
+                  </div>
+                )}
                 {hours && (
                   <div>
                     <p className="text-muted-foreground mb-2">Hours</p>
@@ -266,7 +293,10 @@ export default function AdminOrganizations() {
                       size="sm"
                       variant="destructive"
                       disabled={saving || selectedStatus === 'REJECTED'}
-                      onClick={() => void setStatus('REJECTED')}
+                      onClick={() => {
+                        setRejectionReason('');
+                        setRejectDialogOpen(true);
+                      }}
                     >
                       Reject
                     </Button>
@@ -277,6 +307,37 @@ export default function AdminOrganizations() {
           )}
         </div>
       )}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject {selected?.name ?? 'clinic'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="clinic-rejection-reason" className="text-sm font-medium">
+              Reason for rejection
+            </label>
+            <Textarea
+              id="clinic-rejection-reason"
+              value={rejectionReason}
+              onChange={(event) => setRejectionReason(event.target.value)}
+              maxLength={2000}
+              placeholder="Explain what needs to be corrected before verification."
+              rows={5}
+            />
+            <p className="text-xs text-muted-foreground">
+              This reason will be shown to the clinic and emailed to its owner.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={rejectSelectedClinic} disabled={saving}>
+              {saving ? 'Rejecting…' : 'Reject clinic'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
