@@ -14,7 +14,7 @@ interface SignupData {
   email: string;
   password: string;
   role: SignupRole;
-  /** 10-digit local number. Country code is not included. */
+  /** Parent signup does not collect this. Profile edit can add it later. */
   phoneNumber?: string;
 }
 

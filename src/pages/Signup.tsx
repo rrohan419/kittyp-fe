@@ -29,7 +29,7 @@ import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/module/store/store';
 import { validateAndSetUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
-import { digitsOnlyPhone, validateEmail, validatePassword, validatePhone } from '@/utils/validation';
+import { validateEmail, validatePassword } from '@/utils/validation';
 import { isSignupRole, type SignupRole } from '@/utils/roles';
 import SignupRoleToggle from '@/components/auth/signup/SignupRoleToggle';
 import DoctorSignupForm from '@/components/auth/signup/DoctorSignupForm';
@@ -58,8 +58,6 @@ const Signup = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [countryCode, setCountryCode] = useState('+91');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -76,11 +74,6 @@ const Signup = () => {
 
     if (!firstName.trim()) {
       toast.error('First name is required');
-      return;
-    }
-    const phoneErr = validatePhone(phone, true);
-    if (phoneErr) {
-      toast.error(phoneErr);
       return;
     }
     const emailErr = validateEmail(email);
@@ -107,7 +100,6 @@ const Signup = () => {
         email,
         password,
         role: 'USER',
-        phoneNumber: digitsOnlyPhone(phone),
       });
 
       setShowSuccessDialog(true);
@@ -116,7 +108,6 @@ const Signup = () => {
         setFirstName('');
         setLastName('');
         setEmail('');
-        setPhone('');
         setPassword('');
         setConfirmPassword('');
 
@@ -238,43 +229,6 @@ const Signup = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number</Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            id="country-code"
-                            name="countryCode"
-                            aria-label="Country code"
-                            autoComplete="tel-country-code"
-                            inputMode="tel"
-                            value={countryCode}
-                            onChange={(e) => {
-                              const digits = e.target.value.replace(/\D/g, '').slice(0, 4);
-                              setCountryCode(digits ? `+${digits}` : '+');
-                            }}
-                            onBlur={() => {
-                              if (!/^\+\d{1,4}$/.test(countryCode)) setCountryCode('+91');
-                            }}
-                            className="w-16 shrink-0 px-2 text-center"
-                            disabled={loading}
-                          />
-                          <Input
-                            id="phone"
-                            name="phone"
-                            type="tel"
-                            autoComplete="tel-national"
-                            inputMode="numeric"
-                            maxLength={10}
-                            placeholder="9876543210"
-                            value={phone}
-                            onChange={(e) => setPhone(digitsOnlyPhone(e.target.value))}
-                            required
-                            disabled={loading}
-                          />
-                        </div>
-                      </div>
-
                       <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
                         <div className="relative">
@@ -292,7 +246,6 @@ const Signup = () => {
                             disabled={loading}
                           />
                         </div>
-                      </div>
                       </div>
 
                       <div className="space-y-2">
