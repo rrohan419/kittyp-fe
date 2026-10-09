@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { Building2, Mail, Phone, Award, User, Lock, Eye, EyeOff } from 'lucide-react';
 import { ClinicAddressSearch } from '@/components/clinic/ClinicAddressSearch';
 import { signupClinic } from '@/services/authService';
-import { EMPTY_CLINIC_ADDRESS, stitchClinicAddress, type ParsedClinicAddress } from '@/utils/googlePlaces';
+import { EMPTY_CLINIC_ADDRESS, toClinicGeoPayload, type ParsedClinicAddress } from '@/utils/googlePlaces';
 import { sendSignupOtp, verifySignupOtp } from '@/services/doctorVerificationService';
 import { CooldownTimer } from '@/components/ui/cooldown-timer';
 import { WhatsAppMark } from '@/components/auth/signup/WhatsAppMark';
@@ -196,7 +196,7 @@ const ClinicSignupForm = () => {
     }
     setLoading(true);
     try {
-      const address = stitchClinicAddress(clinicAddress);
+      const geoPayload = toClinicGeoPayload(clinicAddress);
       await signupClinic({
         firstName: form.adminFirstName,
         lastName: form.adminLastName,
@@ -204,7 +204,7 @@ const ClinicSignupForm = () => {
         password: form.password,
         clinicName: form.clinicName,
         licenseNumber: form.license || undefined,
-        address: address || undefined,
+        ...geoPayload,
         phone: form.adminPhone ? digitsOnlyPhone(form.adminPhone) : undefined,
       });
       setShowSuccess(true);
@@ -261,7 +261,6 @@ const ClinicSignupForm = () => {
                     value={clinicAddress}
                     onChange={setClinicAddress}
                     disabled={loading}
-                    publicApi
                   />
 
                   <div className="pt-2 border-t border-border">

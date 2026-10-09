@@ -14,7 +14,6 @@ type Props = {
   onChange: (next: ParsedClinicAddress) => void;
   disabled?: boolean;
   idPrefix?: string;
-  publicApi?: boolean;
   /** When true, only Google Places selection is allowed — parsed fields are read-only. */
   fieldsReadOnly?: boolean;
 };
@@ -36,7 +35,6 @@ export function ClinicAddressSearch({
   onChange,
   disabled,
   idPrefix = 'clinic-address',
-  publicApi = false,
   fieldsReadOnly = false,
 }: Props) {
   const onChangeRef = useRef(onChange);
@@ -61,7 +59,7 @@ export function ClinicAddressSearch({
       return;
     }
     const handle = window.setTimeout(() => {
-      void fetchPlacePredictions(input, sessionTokenRef.current, publicApi)
+      void fetchPlacePredictions(input, sessionTokenRef.current)
         .then((predictions) => {
           setLoadError('');
           setSuggestions(predictions);
@@ -78,10 +76,10 @@ export function ClinicAddressSearch({
         });
     }, 250);
     return () => window.clearTimeout(handle);
-  }, [query, disabled, publicApi, fieldsReadOnly]);
+  }, [query, disabled, fieldsReadOnly]);
 
   const applyPlace = (placeId: string, description: string) => {
-    void fetchPlaceDetails(placeId, sessionTokenRef.current, publicApi)
+    void fetchPlaceDetails(placeId, sessionTokenRef.current)
       .then((parsed) => {
         onChangeRef.current(parsed);
         skipPredictRef.current = true;
@@ -100,7 +98,14 @@ export function ClinicAddressSearch({
   };
 
   const patch = (field: keyof ParsedClinicAddress, nextVal: string) => {
-    const next = { ...value, [field]: nextVal, formattedAddress: '' };
+    const next = {
+      ...value,
+      [field]: nextVal,
+      formattedAddress: '',
+      placeId: null,
+      latitude: null,
+      longitude: null,
+    };
     onChange({ ...next, formattedAddress: stitchClinicAddress(next) });
   };
 

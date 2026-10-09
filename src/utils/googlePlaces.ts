@@ -20,6 +20,7 @@ export type PlaceLike = {
 };
 
 export type ParsedClinicAddress = {
+  placeId: string | null;
   formattedAddress: string;
   street: string;
   city: string;
@@ -32,6 +33,7 @@ export type ParsedClinicAddress = {
 };
 
 export const EMPTY_CLINIC_ADDRESS: ParsedClinicAddress = {
+  placeId: null,
   formattedAddress: '',
   street: '',
   city: '',
@@ -52,44 +54,41 @@ type PlaceDetailsApi = {
   longitude: number | null;
 };
 
-function placesBase(publicApi: boolean): string {
-  return publicApi ? '/public/places' : '/places';
-}
-
 export async function fetchPlacePredictions(
   query: string,
-  sessionToken: string,
-  publicApi: boolean
+  sessionToken: string
 ): Promise<PlacePrediction[]> {
   const res = await axiosInstance.post<
     ApiSuccessResponse<{ predictions: PlacePrediction[] }>
-  >(`${placesBase(publicApi)}/autocomplete`, { query, sessionToken });
+  >('/public/places/autocomplete', { query, sessionToken });
   return res.data.data?.predictions ?? [];
 }
 
 export async function fetchPlaceDetails(
   placeId: string,
-  sessionToken: string,
-  publicApi: boolean
+  sessionToken: string
 ): Promise<ParsedClinicAddress> {
   const res = await axiosInstance.post<ApiSuccessResponse<PlaceDetailsApi>>(
-    `${placesBase(publicApi)}/details`,
+    '/public/places/details',
     { placeId, sessionToken }
   );
   const d = res.data.data;
-  return parsePlaceAddress({
-    name: d.name,
-    formatted_address: d.formattedAddress,
-    address_components: (d.addressComponents ?? []).map((c) => ({
-      long_name: c.longName,
-      short_name: c.shortName,
-      types: c.types,
-    })),
-    geometry:
-      d.latitude != null && d.longitude != null
-        ? { location: { lat: () => d.latitude as number, lng: () => d.longitude as number } }
-        : null,
-  });
+  return {
+    ...parsePlaceAddress({
+      name: d.name,
+      formatted_address: d.formattedAddress,
+      address_components: (d.addressComponents ?? []).map((c) => ({
+        long_name: c.longName,
+        short_name: c.shortName,
+        types: c.types,
+      })),
+      geometry:
+        d.latitude != null && d.longitude != null
+          ? { location: { lat: () => d.latitude as number, lng: () => d.longitude as number } }
+          : null,
+    }),
+    placeId,
+  };
 }
 
 function componentOf(components: PlaceAddressComponent[], type: string): string {
@@ -142,6 +141,7 @@ export function parsePlaceAddress(place: PlaceLike): ParsedClinicAddress {
   const lat = loc ? loc.lat() : NaN;
   const lng = loc ? loc.lng() : NaN;
   return {
+    placeId: null,
     formattedAddress: place.formatted_address?.trim() ?? '',
     street,
     city,
@@ -164,6 +164,7 @@ export function stitchClinicAddress(parsed: ParsedClinicAddress): string {
 }
 
 export function toClinicGeoPayload(parsed: ParsedClinicAddress): {
+  googlePlaceId?: string;
   address?: string;
   city?: string;
   latitude?: number;
@@ -171,6 +172,7 @@ export function toClinicGeoPayload(parsed: ParsedClinicAddress): {
 } {
   const address = stitchClinicAddress(parsed);
   return {
+    googlePlaceId: parsed.placeId || undefined,
     address: address || undefined,
     city: parsed.city.trim() || undefined,
     latitude: parsed.latitude ?? undefined,

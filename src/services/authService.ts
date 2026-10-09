@@ -105,6 +105,9 @@ export interface SignupClinicData extends Omit<SignupData, 'role'> {
   clinicName: string;
   licenseNumber?: string;
   address?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
   phone?: string;
   timezone?: string;
 }
