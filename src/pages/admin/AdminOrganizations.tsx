@@ -108,7 +108,14 @@ export default function AdminOrganizations() {
       const updated = await updateAdminClinicStatus(selected.uuid, status);
       setClinics((prev) => prev.map((c) => (c.uuid === updated.uuid ? updated : c)));
       setSelected(updated);
-      setFilter(status);
+      if (status === 'VERIFIED') {
+        const hasPendingClinics = clinics.some(
+          (clinic) => clinic.uuid !== updated.uuid && clinicStatus(clinic.status) === 'PENDING'
+        );
+        setFilter(hasPendingClinics ? 'PENDING' : 'ALL');
+      } else {
+        setFilter(status);
+      }
       toast.success(status === 'VERIFIED' ? 'Clinic verified' : 'Clinic rejected');
     } catch (e: unknown) {
       toast.error(parseApiErrorMessage(e, 'Failed to update clinic status'));

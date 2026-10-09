@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { shutdownClinic, reopenClinic, updateClinic } from '@/services/clinicService';
 import { ClinicHoursDisplay, ClinicHoursEditor } from '@/components/clinic/ClinicHoursEditor';
+import { TimeZoneSelect } from '@/components/clinic/TimeZoneSelect';
 import {
   type ClinicHourDay,
   defaultClinicHours,
@@ -204,16 +205,14 @@ export default function ClinicSettings() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="clinic-timezone">Time zone</Label>
-              <Input
-                id="clinic-timezone"
+              <TimeZoneSelect
                 value={timezone}
+                onChange={setTimezone}
+                disabled={!editingProfile || savingProfile}
                 readOnly={!editingProfile}
-                onChange={(e) => setTimezone(e.target.value)}
-                placeholder="Asia/Kolkata"
-                autoComplete="off"
               />
               {editingProfile && (
-                <p className="text-xs text-muted-foreground">Use an IANA time zone name.</p>
+                <p className="text-xs text-muted-foreground">Search and select an IANA time zone.</p>
               )}
             </div>
           </div>
