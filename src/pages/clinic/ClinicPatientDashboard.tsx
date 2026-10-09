@@ -169,7 +169,7 @@ export default function ClinicPatientDashboard() {
 
   if (clinicLoading || loading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
         <Skeleton className="h-8 w-28" />
         <Card className="border-0 shadow-sm overflow-hidden">
           <div className="flex flex-col md:flex-row">
@@ -209,7 +209,7 @@ export default function ClinicPatientDashboard() {
     .sort((a, b) => WRITABLE_VISIT.indexOf(a.status) - WRITABLE_VISIT.indexOf(b.status))[0];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex items-center gap-3 flex-wrap">
         <Button variant="ghost" size="sm" asChild>
           <Link to={patientsPath}>

@@ -183,7 +183,7 @@ export default function ClinicHome() {
   ];
 
   return (
-    <div className="relative px-4 pt-0 pb-4 sm:px-5 sm:pt-0 sm:pb-5 lg:px-6 lg:pt-1 lg:pb-6 max-w-7xl mx-auto space-y-3 lg:space-y-4 overflow-x-hidden">
+    <div className="relative px-4 pt-0 pb-4 sm:px-5 sm:pt-0 sm:pb-5 lg:px-6 lg:pt-1 lg:pb-6 space-y-3 lg:space-y-4 overflow-x-hidden">
       <div className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-primary/15 blur-3xl" />
       <div className="pointer-events-none absolute top-40 -left-16 w-56 h-56 rounded-full bg-accent blur-3xl" />
 

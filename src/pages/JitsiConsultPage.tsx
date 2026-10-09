@@ -43,7 +43,7 @@ export default function JitsiConsultPage() {
     : '';
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-4">
+    <div className="p-4 md:p-6 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-start gap-3">
           <Button variant="ghost" size="icon" asChild>

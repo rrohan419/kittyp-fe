@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search, Mail, Phone, Calendar, Loader2, ChevronLeft, ChevronRight, Edit } from 'lucide-react';
@@ -187,7 +187,6 @@ const AdminUsers = ({ mode = 'all' }: AdminUsersProps) => {
   const subtitle = isParents
     ? 'Pet owners on the platform (ROLE_USER only).'
     : 'Every account on the platform — parents, doctors, clinics, and staff.';
-  const cardTitle = isParents ? 'Pet parents' : 'All users';
   const searchPlaceholder = isParents
     ? 'Search parents by name, email, phone…'
     : 'Search users by name, email, phone, role…';
@@ -195,7 +194,7 @@ const AdminUsers = ({ mode = 'all' }: AdminUsersProps) => {
 
   if (isLoading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto flex items-center justify-center min-h-[50vh]">
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[50vh]">
         <div className="flex flex-col items-center gap-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-muted-foreground">Loading {noun}…</p>
@@ -205,7 +204,7 @@ const AdminUsers = ({ mode = 'all' }: AdminUsersProps) => {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <div>
         <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">{title}</h1>
         <p className="text-muted-foreground text-sm mt-1">{subtitle}</p>
@@ -213,7 +212,6 @@ const AdminUsers = ({ mode = 'all' }: AdminUsersProps) => {
 
       <Card>
         <CardHeader>
-          <CardTitle>{cardTitle}</CardTitle>
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />

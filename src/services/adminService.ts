@@ -48,6 +48,12 @@ export interface AdminDashboardData {
   pendingDoctorsCount: number;
   clinicsCount: number;
   doctorsCount: number;
+  usersJoinedThisMonth?: number;
+  verifiedDoctorsCount?: number;
+  verifiedClinicsCount?: number;
+  pendingClinicsCount?: number;
+  userSignupsByDay?: number[];
+  ordersByDay?: number[];
 }
 
 export const fetchAllUsers = async (

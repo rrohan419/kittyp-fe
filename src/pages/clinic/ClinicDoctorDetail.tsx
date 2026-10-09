@@ -219,7 +219,7 @@ export default function ClinicDoctorDetail() {
 
   if (!detail) {
     return (
-      <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-4">
+      <div className="p-6 lg:p-8 space-y-4">
         <Button variant="ghost" size="sm" asChild>
           <Link to={doctorsBase}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back to profile
@@ -239,7 +239,7 @@ export default function ClinicDoctorDetail() {
   );
 
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
       {roster.length > 1 ? (
         <div className="flex items-center justify-between gap-3">
           <Button

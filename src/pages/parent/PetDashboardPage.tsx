@@ -123,7 +123,7 @@ export default function PetDashboardPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <Button variant="ghost" size="sm" asChild>
         <Link to="/app/pets">
           <ArrowLeft className="h-4 w-4 mr-2" />

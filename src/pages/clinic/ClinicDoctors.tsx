@@ -282,14 +282,14 @@ export default function ClinicDoctors() {
 
   if (loading || (shouldAutoOpenProfile && !autoOpened)) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto flex items-center justify-center py-16 text-muted-foreground gap-2">
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center py-16 text-muted-foreground gap-2">
         <Loader2 className="h-5 w-5 animate-spin" /> Opening profile…
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Profile</h1>

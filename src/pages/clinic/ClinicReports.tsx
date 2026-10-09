@@ -29,7 +29,7 @@ export default function ClinicReports() {
     { label: 'Growth', value: report.growthPercentage == null ? '—' : `${report.growthPercentage > 0 ? '+' : ''}${report.growthPercentage}%`, icon: TrendingUp, color: 'text-amber-600 bg-amber-500/10' },
   ] : [];
   const hasData = Boolean(report && (report.revenueSeries.length || report.doctorPerformance.length || report.serviceBreakdown.length));
-  return <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+  return <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"><div><h1 className="text-2xl lg:text-3xl font-bold text-foreground">Reports</h1><p className="text-muted-foreground mt-1 text-sm">Live performance overview{report?.periodLabel ? ` · ${report.periodLabel}` : ''}</p></div><div className="flex items-center gap-2"><select className="h-9 rounded-md border bg-background px-3 text-sm" value={period} onChange={(event) => setPeriod(Number(event.target.value))} disabled={!clinicUuid || loading}>{PERIODS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><Button variant="outline" size="sm" onClick={() => void load()} disabled={!clinicUuid || loading} aria-label="Refresh reports"><RefreshCw className="h-4 w-4" /></Button></div></div>
       {clinicLoading || loading ? <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">Loading live report data...</div> : null}
       {!clinicLoading && !loading && !clinicUuid ? <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">Select a clinic branch to view reports.</div> : null}

@@ -10,6 +10,12 @@ interface AdminState {
     pendingDoctorsCount: number;
     clinicsCount: number;
     doctorsCount: number;
+    usersJoinedThisMonth: number;
+    verifiedDoctorsCount: number;
+    verifiedClinicsCount: number;
+    pendingClinicsCount: number;
+    userSignupsByDay: number[];
+    ordersByDay: number[];
 }
 
 const initialState: AdminState = {
@@ -21,6 +27,12 @@ const initialState: AdminState = {
     pendingDoctorsCount: 0,
     clinicsCount: 0,
     doctorsCount: 0,
+    usersJoinedThisMonth: 0,
+    verifiedDoctorsCount: 0,
+    verifiedClinicsCount: 0,
+    pendingClinicsCount: 0,
+    userSignupsByDay: [],
+    ordersByDay: [],
 };
 
 export const initializeAdminDashboard = createAsyncThunk(
@@ -52,6 +64,12 @@ export const adminSlice = createSlice({
                 state.pendingDoctorsCount = action.payload.pendingDoctorsCount ?? 0;
                 state.clinicsCount = action.payload.clinicsCount ?? 0;
                 state.doctorsCount = action.payload.doctorsCount ?? 0;
+                state.usersJoinedThisMonth = action.payload.usersJoinedThisMonth ?? 0;
+                state.verifiedDoctorsCount = action.payload.verifiedDoctorsCount ?? 0;
+                state.verifiedClinicsCount = action.payload.verifiedClinicsCount ?? 0;
+                state.pendingClinicsCount = action.payload.pendingClinicsCount ?? 0;
+                state.userSignupsByDay = action.payload.userSignupsByDay ?? [];
+                state.ordersByDay = action.payload.ordersByDay ?? [];
                 state.isDashboardLoading = false;
             })
             .addCase(initializeAdminDashboard.rejected, (state) => {
