@@ -12,6 +12,7 @@ import { format, parseISO, isValid } from 'date-fns';
 import { toast } from 'sonner';
 import { RootState } from '@/module/store/store';
 import { formatPetDobWithAge } from '@/utils/petAge';
+import { tipForToday } from '@/utils/dailyTips';
 import { ClinicVisitModel } from '@/services/clinicService';
 import { fetchMyParentVisits } from '@/services/visitService';
 import {
@@ -41,16 +42,7 @@ export default function ParentHome() {
   const [remNote, setRemNote] = useState('');
   const [savingRem, setSavingRem] = useState(false);
 
-  const tip = useMemo(() => {
-    const tips = [
-      'Fresh water daily keeps kidneys happier — refill bowls morning and night.',
-      'A short play session before meals can reduce begging and support healthy weight.',
-      'Check gums weekly: healthy pink color is a quick at-home wellness signal.',
-      'Keep vaccine and deworming dates in your pet dashboard so boosters never slip.',
-    ];
-    const day = new Date().getDate();
-    return tips[day % tips.length];
-  }, []);
+  const tip = useMemo(() => tipForToday(), []);
 
   const loadVisits = useCallback(async () => {
     try {

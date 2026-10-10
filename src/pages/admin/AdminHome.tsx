@@ -18,6 +18,7 @@ import {
 import { isEcommerceEnabled } from '@/config/features';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { initializeAdminDashboard } from '@/module/slice/AdminSlice';
+import { tipForToday } from '@/utils/dailyTips';
 
 function formatCount(n: number): string {
   return n.toLocaleString();
@@ -98,7 +99,7 @@ function StatCard({
         <span className="min-w-0 text-sm font-medium leading-tight text-white sm:text-xl">{label}</span>
       </div>
       <div className="mt-3 flex items-end justify-between gap-2 sm:mt-4 sm:gap-3">
-        <p className="text-2xl font-semibold leading-none tracking-tight sm:text-4xl">
+        <p className="text-3xl font-semibold leading-none tracking-tight sm:text-5xl">
           {loading ? <Loader2 className="h-6 w-6 animate-spin text-white/60 sm:h-8 sm:w-8" /> : value}
         </p>
         {flow ? (
@@ -107,7 +108,7 @@ function StatCard({
           </div>
         ) : null}
       </div>
-      <div className="mt-auto pt-3 text-xs leading-tight text-white/70 sm:pt-4 sm:text-sm">{footer}</div>
+      <div className="mt-auto flex pt-3 text-xs leading-tight text-white/70 sm:pt-4 sm:text-sm">{footer}</div>
     </button>
   );
 }
@@ -126,8 +127,6 @@ export default function AdminHome() {
     clinicsCount,
     pendingDoctorsCount,
     usersJoinedThisMonth,
-    verifiedDoctorsCount,
-    verifiedClinicsCount,
     pendingClinicsCount,
     userSignupsByDay,
     ordersByDay,
@@ -169,10 +168,9 @@ export default function AdminHome() {
       route: '/admin/doctors',
       iconWrap: 'bg-amber-500/25 text-amber-300',
       footer: (
-        <span>
-          <span className="text-emerald-400">{formatCount(verifiedDoctorsCount)} Verified</span>
-          <span className="mx-1 text-white/40">|</span>
-          <span className="text-amber-300">{formatCount(pendingDoctorsCount)} Pending</span>
+        <span className="ml-auto font-bold text-amber-300">
+          <span className="text-xl sm:text-2xl">{formatCount(pendingDoctorsCount)}</span>
+          <span className="ml-1 text-xs font-semibold sm:ml-2 sm:text-sm  ">Pending</span>
         </span>
       ),
     },
@@ -183,10 +181,9 @@ export default function AdminHome() {
       route: '/admin/clinics',
       iconWrap: 'bg-violet-500/25 text-violet-300',
       footer: (
-        <span>
-          <span className="text-emerald-400">{formatCount(verifiedClinicsCount)} Verified</span>
-          <span className="mx-1 text-white/40">|</span>
-          <span className="text-amber-300">{formatCount(pendingClinicsCount)} Pending</span>
+        <span className="ml-auto font-bold text-amber-300">
+          <span className="text-xl sm:text-2xl">{formatCount(pendingClinicsCount)}</span>
+          <span className="ml-1 text-xs font-semibold sm:ml-2 sm:text-sm  ">Pending</span>
         </span>
       ),
     },
@@ -227,13 +224,13 @@ export default function AdminHome() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <section className="relative h-[240px] overflow-hidden rounded-2xl sm:h-[280px]">
+      <section className="relative h-[240px] overflow-hidden rounded-2xl bg-black sm:h-[280px]">
         <img
           src="/admin-dashboard-hero.jpg"
           alt=""
-          className="absolute inset-0 h-full w-full object-cover object-center"
+          className="absolute left-[30%] top-1/2 h-full w-auto origin-center -translate-x-1/2 -translate-y-1/2 scale-[1.45] object-contain [mask-image:linear-gradient(to_right,black_78%,transparent)]"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-black/25" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/15 to-black/80" />
         <div className="absolute inset-0 flex flex-col justify-center gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-8">
           <div className="max-w-xl">
             <p className="text-sm font-medium text-pink-400 sm:text-base">{greetingFor(firstName)}</p>
@@ -250,7 +247,7 @@ export default function AdminHome() {
               <PawPrint className="h-4 w-4" />
             </span>
             <p className="text-sm leading-relaxed text-white/90">
-              &ldquo;Every registration here brings us closer to better pet care.&rdquo;
+              &ldquo;{tipForToday()}&rdquo;
             </p>
           </div>
         </div>
