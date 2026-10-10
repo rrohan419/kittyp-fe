@@ -33,6 +33,7 @@ import {
   fetchClinicVisits,
   isClinicActivated,
   CLINIC_NOT_ACTIVATED_MESSAGE,
+  reapplyClinicForVerification,
 } from '@/services/clinicService';
 import { WeekCalendar } from '@/components/schedule/WeekCalendar';
 import { WeekCalEvent, buildWeekEvents, isFutureBookableSlot, visitEventTime } from '@/components/schedule/weekCalendarUtils';
@@ -44,7 +45,8 @@ import { toast } from 'sonner';
 import { filterClinicUrgentToday, isCalendarExcludedStatus } from '@/utils/visitStatus';
 
 export default function ClinicHome() {
-  const { clinic, clinicUuid, loading: clinicLoading } = useActiveClinic();
+  const { clinic, clinicUuid, loading: clinicLoading, refresh: refreshClinics } = useActiveClinic();
+  const { user } = useSelector((s: RootState) => s.authReducer);
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
   const [patientCount, setPatientCount] = useState(0);
   const [bookings, setBookings] = useState<ClinicBookingModel[]>([]);
@@ -55,8 +57,24 @@ export default function ClinicHome() {
   const [selected, setSelected] = useState<WeekCalEvent | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addSlot, setAddSlot] = useState<Date | null>(null);
+  const [reapplying, setReapplying] = useState(false);
   const loadSeq = useRef(0);
   const clinicActivated = isClinicActivated(clinic?.status);
+  const canReapply = hasRole(user?.roles, ROLES.CLINIC_ADMIN);
+
+  const reapply = async () => {
+    if (!clinicUuid) return;
+    setReapplying(true);
+    try {
+      await reapplyClinicForVerification(clinicUuid);
+      await refreshClinics();
+      toast.success('Clinic resubmitted for verification');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to resubmit clinic');
+    } finally {
+      setReapplying(false);
+    }
+  };
 
   const weekStart = useMemo(
     () => startOfWeek(weekAnchor, { weekStartsOn: 1 }),
@@ -211,9 +229,32 @@ export default function ClinicHome() {
         </div>
       )}
 
-      {clinic && clinic.status !== 'SHUTDOWN' && clinic.status !== 'VERIFIED' && (
+      {clinic?.status === 'REJECTED' && (
+        <div className="rounded-xl border border-red-300/60 bg-red-50/70 px-4 py-3 text-sm text-red-900">
+          <p className="font-semibold">This clinic was rejected.</p>
+          <p className="mt-1">
+            {clinic.rejectionReason || 'No rejection reason was provided. Contact support for details.'}
+          </p>
+          <p className="mt-2">
+            Correct the issues in Practice Settings, then resubmit the clinic for verification.
+          </p>
+          {canReapply && (
+            <div className="mt-3 flex justify-center">
+              <Button
+                size="sm"
+                onClick={() => void reapply()}
+                disabled={reapplying}
+              >
+                {reapplying ? 'Resubmitting…' : 'Reapply for verification'}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {clinic && clinic.status !== 'SHUTDOWN' && clinic.status !== 'VERIFIED' && clinic.status !== 'REJECTED' && (
         <div className="rounded-xl border border-amber-300/60 bg-amber-50/50 px-4 py-3 text-sm text-amber-800">
-          This clinic is {clinic.status === 'REJECTED' ? 'rejected' : 'pending admin verification'}.
+          This clinic is pending admin verification.
           Appointments, bookings, and doctor invites stay locked until an admin verifies it.
         </div>
       )}
@@ -334,8 +375,8 @@ export default function ClinicHome() {
               clinic?.personal
                 ? undefined
                 : doctors
-                    .filter((d) => d.isActive !== false && d.doctorUuid)
-                    .map((d) => ({ doctorUuid: d.doctorUuid, name: d.name || d.email || 'Doctor' }))
+                  .filter((d) => d.isActive !== false && d.doctorUuid)
+                  .map((d) => ({ doctorUuid: d.doctorUuid, name: d.name || d.email || 'Doctor' }))
             }
           />
         </CardContent>

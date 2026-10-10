@@ -44,11 +44,10 @@ export interface DoctorVerificationModel {
   submittedAt?: string;
   reviewedAt?: string;
   reviewNotes?: string;
+  rejectionReason?: string;
 }
 
 export type ChecklistKey =
-  | 'checkMobileOtp'
-  | 'checkEmailOtp'
   | 'checkGovernmentId'
   | 'checkDegree'
   | 'checkRegistrationCertificate'
@@ -56,6 +55,22 @@ export type ChecklistKey =
   | 'checkRegistrationNumber'
   | 'checkGoogleMapsMatch'
   | 'checkClinicPhotos';
+
+function messageFromSignupErrorBody(raw: string, fallback: string): string {
+  const text = (raw || '').trim();
+  if (!text) return fallback;
+  try {
+    const parsed = JSON.parse(text) as {
+      message?: string;
+      detailedMessage?: string;
+      detailMessage?: string;
+      error?: string;
+    };
+    return parsed.message || parsed.detailedMessage || parsed.detailMessage || parsed.error || text;
+  } catch {
+    return text;
+  }
+}
 
 export async function sendSignupOtp(body: {
   channel: 'EMAIL' | 'PHONE' | 'WHATSAPP';
@@ -67,7 +82,9 @@ export async function sendSignupOtp(body: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    throw new Error(messageFromSignupErrorBody(await res.text(), 'Failed to send OTP'));
+  }
   return res.json();
 }
 
@@ -83,7 +100,9 @@ export async function verifySignupOtp(body: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    throw new Error(messageFromSignupErrorBody(await res.text(), 'Failed to verify OTP'));
+  }
   return res.json();
 }
 
@@ -112,10 +131,28 @@ export async function updateDoctorChecklist(uuid: string, checklist: Partial<Rec
   return res.data.data;
 }
 
-export async function updateDoctorStatus(uuid: string, status: DoctorStatus, reviewNotes?: string) {
+export async function updateDoctorStatus(
+  uuid: string,
+  status: DoctorStatus,
+  reviewNotes?: string,
+  rejectionReason?: string
+) {
   const res = await axiosInstance.patch<ApiSuccessResponse<DoctorVerificationModel>>(
     `/admin/doctors/${uuid}/status`,
-    { status, reviewNotes }
+    { status, reviewNotes, rejectionReason }
+  );
+  return res.data.data;
+}
+
+export async function reapplyDoctorProfile(body: {
+  registrationNumber?: string;
+  degreeCertificateUrl?: string;
+  registrationCertificateUrl?: string;
+  governmentIdUrl?: string;
+}) {
+  const res = await axiosInstance.post<ApiSuccessResponse<DoctorVerificationModel>>(
+    '/doctor/reapply',
+    body
   );
   return res.data.data;
 }
@@ -156,8 +193,6 @@ export function isChecklistItemApplicable(doctor: DoctorVerificationModel, key: 
 
 export function allApplicableChecksPassed(doctor: DoctorVerificationModel): boolean {
   const keys: ChecklistKey[] = [
-    'checkMobileOtp',
-    'checkEmailOtp',
     'checkGovernmentId',
     'checkDegree',
     'checkRegistrationCertificate',

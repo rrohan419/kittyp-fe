@@ -7,10 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Building2, Mail, Phone, MapPin, Award, User, Lock } from 'lucide-react';
+import { Building2, Mail, Phone, Award, User, Lock, Eye, EyeOff } from 'lucide-react';
+import { ClinicAddressSearch } from '@/components/clinic/ClinicAddressSearch';
 import { signupClinic } from '@/services/authService';
+import { EMPTY_CLINIC_ADDRESS, toClinicGeoPayload, type ParsedClinicAddress } from '@/utils/googlePlaces';
 import { sendSignupOtp, verifySignupOtp } from '@/services/doctorVerificationService';
 import { CooldownTimer } from '@/components/ui/cooldown-timer';
+import { WhatsAppMark } from '@/components/auth/signup/WhatsAppMark';
 import { openMsg91OtpWidget } from '@/services/msg91Widget';
 import {
   digitsOnlyPhone,
@@ -34,11 +37,13 @@ const ClinicSignupForm = () => {
   const [emailOtp, setEmailOtp] = useState('');
   const [phoneOtp, setPhoneOtp] = useState('');
   const [phoneOtpMethod, setPhoneOtpMethod] = useState<'WHATSAPP' | 'PHONE'>('WHATSAPP');
+  const [countryCode, setCountryCode] = useState('+91');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [clinicAddress, setClinicAddress] = useState<ParsedClinicAddress>(EMPTY_CLINIC_ADDRESS);
   const [form, setForm] = useState({
     clinicName: '',
     license: '',
-    address: '',
-    city: '',
     adminFirstName: '',
     adminLastName: '',
     adminEmail: '',
@@ -103,7 +108,7 @@ const ClinicSignupForm = () => {
     try {
       await sendSignupOtp({
         channel: 'WHATSAPP',
-        phone: toE164Phone(form.adminPhone),
+        phone: toE164Phone(form.adminPhone, /^\+\d{1,4}$/.test(countryCode) ? countryCode : '+91'),
         email: form.adminEmail.trim(),
       });
       setPhoneCooldown(OTP_RESEND_COOLDOWN_SECONDS);
@@ -120,10 +125,10 @@ const ClinicSignupForm = () => {
     if (phoneCooldown > 0) return;
     setOtpSending(true);
     try {
-      const accessToken = await openMsg91OtpWidget(toE164Phone(form.adminPhone));
+      const accessToken = await openMsg91OtpWidget(toE164Phone(form.adminPhone, /^\+\d{1,4}$/.test(countryCode) ? countryCode : '+91'));
       await verifySignupOtp({
         channel: 'PHONE',
-        phone: toE164Phone(form.adminPhone),
+        phone: toE164Phone(form.adminPhone, /^\+\d{1,4}$/.test(countryCode) ? countryCode : '+91'),
         email: form.adminEmail.trim(),
         accessToken,
       });
@@ -147,7 +152,7 @@ const ClinicSignupForm = () => {
     try {
       await verifySignupOtp({
         channel: 'WHATSAPP',
-        phone: toE164Phone(form.adminPhone),
+        phone: toE164Phone(form.adminPhone, /^\+\d{1,4}$/.test(countryCode) ? countryCode : '+91'),
         email: form.adminEmail.trim(),
         code: phoneOtp.trim(),
       });
@@ -191,7 +196,7 @@ const ClinicSignupForm = () => {
     }
     setLoading(true);
     try {
-      const address = [form.address, form.city].filter(Boolean).join(', ');
+      const geoPayload = toClinicGeoPayload(clinicAddress);
       await signupClinic({
         firstName: form.adminFirstName,
         lastName: form.adminLastName,
@@ -199,7 +204,7 @@ const ClinicSignupForm = () => {
         password: form.password,
         clinicName: form.clinicName,
         licenseNumber: form.license || undefined,
-        address: address || undefined,
+        ...geoPayload,
         phone: form.adminPhone ? digitsOnlyPhone(form.adminPhone) : undefined,
       });
       setShowSuccess(true);
@@ -251,19 +256,12 @@ const ClinicSignupForm = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="address">Street Address</Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input id="address" name="address" autoComplete="street-address" className="pl-10" placeholder="123 Pet Street" value={form.address} onChange={(e) => set('address', e.target.value)} />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="city">City</Label>
-                      <Input id="city" name="city" autoComplete="address-level2" placeholder="City" value={form.city} onChange={(e) => set('city', e.target.value)} />
-                    </div>
-                  </div>
+                  <ClinicAddressSearch
+                    idPrefix="signup-clinic"
+                    value={clinicAddress}
+                    onChange={setClinicAddress}
+                    disabled={loading}
+                  />
 
                   <div className="pt-2 border-t border-border">
                     <p className="text-sm font-medium mb-3 mt-3">Admin Account</p>
@@ -272,78 +270,100 @@ const ClinicSignupForm = () => {
                         <Label htmlFor="adminFirstName">First Name *</Label>
                         <div className="relative">
                           <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input id="adminFirstName" name="adminFirstName" autoComplete="given-name" className="pl-10" placeholder="Jane" value={form.adminFirstName} onChange={(e) => set('adminFirstName', e.target.value)} required />
+                          <Input id="adminFirstName" name="adminFirstName" autoComplete="given-name" className="pl-10" placeholder="Jane" value={form.adminFirstName} onChange={(e) => set('adminFirstName', e.target.value.replace(/\d/g, ''))} required />
                         </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="adminLastName">Last Name</Label>
-                        <Input id="adminLastName" name="adminLastName" autoComplete="family-name" placeholder="Doe" value={form.adminLastName} onChange={(e) => set('adminLastName', e.target.value)} />
+                        <Input id="adminLastName" name="adminLastName" autoComplete="family-name" placeholder="Doe" value={form.adminLastName} onChange={(e) => set('adminLastName', e.target.value.replace(/\d/g, ''))} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="adminPhone">Phone (10 digits)</Label>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="clinic-country-code"
+                            name="countryCode"
+                            aria-label="Country code"
+                            autoComplete="tel-country-code"
+                            inputMode="tel"
+                            value={countryCode}
+                            onChange={(e) => {
+                              const digits = e.target.value.replace(/\D/g, '').slice(0, 4);
+                              setCountryCode(digits ? `+${digits}` : '+');
+                              setPhoneVerified(false);
+                              setPhoneOtp('');
+                              setPhoneOtpMethod('WHATSAPP');
+                            }}
+                            onBlur={() => {
+                              if (!/^\+\d{1,4}$/.test(countryCode)) setCountryCode('+91');
+                            }}
+                            className="w-16 shrink-0 px-2 text-center"
+                          />
                           <Input
                             id="adminPhone"
                             name="adminPhone"
                             type="tel"
-                            autoComplete="tel"
+                            autoComplete="tel-national"
                             inputMode="numeric"
                             maxLength={10}
-                            className="pl-10"
                             placeholder="9876543210"
                             value={form.adminPhone}
-                              onChange={(e) => {
-                                setPhoneVerified(false);
-                                setPhoneOtp('');
-                                setPhoneOtpMethod('WHATSAPP');
-                                set('adminPhone', digitsOnlyPhone(e.target.value));
-                              }}
-                              required
+                            onChange={(e) => {
+                              setPhoneVerified(false);
+                              setPhoneOtp('');
+                              setPhoneOtpMethod('WHATSAPP');
+                              set('adminPhone', digitsOnlyPhone(e.target.value));
+                            }}
+                            required
                           />
                         </div>
-                          <div className="flex flex-wrap gap-2 mt-2">
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            {!phoneVerified && phoneOtpMethod === 'WHATSAPP' && (
+                              <Input
+                                id="phoneOtp"
+                                name="phoneOtp"
+                                inputMode="numeric"
+                                className="h-9 min-w-0 flex-1"
+                                placeholder="OTP code"
+                                maxLength={6}
+                                value={phoneOtp}
+                                onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                              />
+                            )}
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
+                              className="shrink-0"
                               onClick={sendWhatsAppOtp}
                               disabled={otpSending || phoneVerified || phoneCooldown > 0}
                             >
-                              <Phone className="h-4 w-4 mr-2" />
-                              {otpSending ? 'Sending…' : phoneVerified ? 'Verified' : phoneCooldown > 0 ? <CooldownTimer seconds={phoneCooldown} /> : 'Send WhatsApp OTP'}
+                              <WhatsAppMark className="h-4 w-4 mr-2 shrink-0" />
+                              {otpSending ? 'Sending…' : phoneVerified ? 'Verified' : phoneCooldown > 0 ? <CooldownTimer seconds={phoneCooldown} /> : 'Send OTP'}
                             </Button>
-                            {!phoneVerified && phoneOtpMethod === 'WHATSAPP' && (
-                              <>
-                                <Input
-                                  id="phoneOtp"
-                                  name="phoneOtp"
-                                  inputMode="numeric"
-                                  className="max-w-[140px] h-9"
-                                  placeholder="OTP code"
-                                  value={phoneOtp}
-                                  onChange={(e) => setPhoneOtp(e.target.value)}
-                                />
-                                <Button type="button" size="sm" onClick={verifyPhone} disabled={loading || !phoneOtp.trim()}>
-                                  Verify
-                                </Button>
-                              </>
-                            )}
                           </div>
-                          {!phoneVerified && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="px-0"
-                              onClick={usePhoneOtpFallback}
-                              disabled={otpSending || phoneCooldown > 0}
-                            >
-                              {phoneCooldown > 0 ? `Use phone OTP instead (${phoneCooldown}s)` : 'Use phone OTP instead'}
+                          {!phoneVerified && phoneOtpMethod === 'WHATSAPP' && (
+                            <Button type="button" size="sm" className="w-full" onClick={verifyPhone} disabled={loading || !phoneOtp.trim()}>
+                              Verify
                             </Button>
                           )}
+                        </div>
+                        {!phoneVerified && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="px-0"
+                            onClick={usePhoneOtpFallback}
+                            disabled={otpSending || phoneCooldown > 0}
+                          >
+                            <Phone className="h-4 w-4 mr-2" />
+                            {phoneCooldown > 0 ? `Use phone OTP instead (${phoneCooldown}s)` : 'Use phone OTP instead'}
+                          </Button>
+                        )}
                       </div>
-                      <div className="space-y-2 sm:col-span-2">
+                      <div className="space-y-2">
                         <Label htmlFor="adminEmail">Email *</Label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -364,24 +384,28 @@ const ClinicSignupForm = () => {
                             disabled={emailVerified}
                           />
                         </div>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          <Button type="button" variant="outline" size="sm" onClick={sendEmailOtp} disabled={otpSending || emailVerified || emailCooldown > 0}>
-                            {otpSending ? 'Sending…' : emailVerified ? 'Verified' : emailCooldown > 0 ? <CooldownTimer seconds={emailCooldown} /> : 'Send OTP'}
-                          </Button>
-                          {!emailVerified && (
-                            <>
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            {!emailVerified && (
                               <Input
                                 id="emailOtp"
                                 name="emailOtp"
-                                className="max-w-[140px] h-9"
+                                inputMode="numeric"
+                                className="h-9 min-w-0 flex-1"
                                 placeholder="OTP code"
+                                maxLength={6}
                                 value={emailOtp}
-                                onChange={(e) => setEmailOtp(e.target.value)}
+                                onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                               />
-                              <Button type="button" size="sm" onClick={verifyEmail} disabled={loading || !emailOtp.trim()}>
-                                Verify
-                              </Button>
-                            </>
+                            )}
+                            <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={sendEmailOtp} disabled={otpSending || emailVerified || emailCooldown > 0}>
+                              {otpSending ? 'Sending…' : emailVerified ? 'Verified' : emailCooldown > 0 ? <CooldownTimer seconds={emailCooldown} /> : 'Send OTP'}
+                            </Button>
+                          </div>
+                          {!emailVerified && (
+                            <Button type="button" size="sm" className="w-full" onClick={verifyEmail} disabled={loading || !emailOtp.trim()}>
+                              Verify
+                            </Button>
                           )}
                         </div>
                       </div>
@@ -392,15 +416,23 @@ const ClinicSignupForm = () => {
                           <Input
                             id="password"
                             name="password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             autoComplete="new-password"
-                            className="pl-10"
+                            className="pl-10 pr-10"
                             placeholder="8+ chars, upper, lower, number, special"
                             value={form.password}
                             onChange={(e) => set('password', e.target.value)}
                             required
                             minLength={8}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </button>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Must be 8–72 characters with uppercase, lowercase, a number, and a special character.
@@ -413,15 +445,23 @@ const ClinicSignupForm = () => {
                           <Input
                             id="confirmPassword"
                             name="confirmPassword"
-                            type="password"
+                            type={showConfirmPassword ? 'text' : 'password'}
                             autoComplete="new-password"
-                            className="pl-10"
+                            className="pl-10 pr-10"
                             placeholder="Re-enter password"
                             value={form.confirmPassword}
                             onChange={(e) => set('confirmPassword', e.target.value)}
                             required
                             minLength={8}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((prev) => !prev)}
+                            className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                            aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </button>
                         </div>
                       </div>
                     </div>

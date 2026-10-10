@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { format, parseISO, isValid } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import {
   Loader2,
   Mail,
@@ -21,6 +22,7 @@ import { specializationLabel } from '@/utils/specialization';
 import {
   DoctorVerificationModel,
   fetchMyDoctorProfile,
+  reapplyDoctorProfile,
   statusLabel,
 } from '@/services/doctorVerificationService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
@@ -28,7 +30,9 @@ import { CopyableId } from '@/components/ui/CopyableId';
 import { fetchDoctorWhatsAppSettings } from '@/services/invoiceService';
 import { whatsappSettingsSummary } from '@/components/whatsapp/whatsappStatusCopy';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { AttendedPatientModel, fetchMyAttendedPatients } from '@/services/visitService';
+import { uploadFiles } from '@/services/fileUploadService';
 
 function DocLink({ href, label }: { href?: string | null; label: string }) {
   if (!href) {
@@ -84,6 +88,11 @@ export default function DoctorSettings() {
   const user = useAppSelector((s) => s.authReducer.user);
   const { isPersonalPractice } = useActiveClinic();
   const [profile, setProfile] = useState<DoctorVerificationModel | null>(null);
+  const [registrationNumber, setRegistrationNumber] = useState('');
+  const [degreeFile, setDegreeFile] = useState<File | null>(null);
+  const [registrationFile, setRegistrationFile] = useState<File | null>(null);
+  const [governmentIdFile, setGovernmentIdFile] = useState<File | null>(null);
+  const [resubmitting, setResubmitting] = useState(false);
   const [attended, setAttended] = useState<AttendedPatientModel[]>([]);
   const [attendedTotal, setAttendedTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -101,6 +110,7 @@ export default function DoctorSettings() {
     ])
       .then(([p, a]) => {
         setProfile(p);
+        setRegistrationNumber(p?.registrationNumber ?? '');
         setAttended(a.models ?? []);
         setAttendedTotal(a.totalElements ?? 0);
       })
@@ -129,6 +139,51 @@ export default function DoctorSettings() {
 
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Doctor';
   const isVerified = profile?.status === 'VERIFIED' || profile?.status === 'PUBLISHED';
+
+  const reapplyForVerification = async () => {
+    if (!profile) return;
+    setResubmitting(true);
+    try {
+      const payload: {
+        registrationNumber?: string;
+        degreeCertificateUrl?: string;
+        registrationCertificateUrl?: string;
+        governmentIdUrl?: string;
+      } = { registrationNumber: registrationNumber.trim() };
+      if (degreeFile) {
+        [payload.degreeCertificateUrl] = await uploadFiles([degreeFile], {
+          maxFileSize: 10 * 1024 * 1024,
+          maxFiles: 1,
+          allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+        });
+      }
+      if (registrationFile) {
+        [payload.registrationCertificateUrl] = await uploadFiles([registrationFile], {
+          maxFileSize: 10 * 1024 * 1024,
+          maxFiles: 1,
+          allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+        });
+      }
+      if (governmentIdFile) {
+        [payload.governmentIdUrl] = await uploadFiles([governmentIdFile], {
+          maxFileSize: 10 * 1024 * 1024,
+          maxFiles: 1,
+          allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+        });
+      }
+      const updated = await reapplyDoctorProfile(payload);
+      setProfile(updated);
+      setDegreeFile(null);
+      setRegistrationFile(null);
+      setGovernmentIdFile(null);
+      toast.success('Profile resubmitted for verification');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to resubmit profile');
+    } finally {
+      setResubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 lg:p-8 flex items-center justify-center text-muted-foreground">
@@ -281,6 +336,63 @@ export default function DoctorSettings() {
           )}
         </CardContent>
       </Card>
+
+      {profile?.status === 'REJECTED' && (
+        <Card className="border border-red-200 bg-red-50/60 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg text-red-900">Verification rejected</CardTitle>
+            <CardDescription className="text-red-800">
+              Correct the issue below, replace any documents that need changes, then reapply.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-red-900 whitespace-pre-wrap">
+              {profile.rejectionReason || 'No rejection reason was provided. Contact support for details.'}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="reapply-registration-number">Veterinary registration number</Label>
+                <Input
+                  id="reapply-registration-number"
+                  value={registrationNumber}
+                  onChange={(event) => setRegistrationNumber(event.target.value)}
+                  maxLength={100}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reapply-degree">Replace degree certificate (optional)</Label>
+                <Input
+                  id="reapply-degree"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  onChange={(event) => setDegreeFile(event.target.files?.[0] ?? null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reapply-registration">Replace registration certificate (optional)</Label>
+                <Input
+                  id="reapply-registration"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  onChange={(event) => setRegistrationFile(event.target.files?.[0] ?? null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reapply-government-id">Replace government ID (optional)</Label>
+                <Input
+                  id="reapply-government-id"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  onChange={(event) => setGovernmentIdFile(event.target.files?.[0] ?? null)}
+                />
+              </div>
+            </div>
+            <Button onClick={() => void reapplyForVerification()} disabled={resubmitting}>
+              {resubmitting ? 'Resubmitting…' : 'Reapply for verification'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-0 shadow-sm">
         <CardHeader>
