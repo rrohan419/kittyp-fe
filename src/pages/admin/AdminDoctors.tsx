@@ -7,6 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -31,8 +38,6 @@ import { specializationLabel } from '@/utils/specialization';
 import { matchesQuery } from '@/utils/search';
 
 const CHECKLIST: { key: ChecklistKey; label: string }[] = [
-  { key: 'checkMobileOtp', label: 'Mobile OTP' },
-  { key: 'checkEmailOtp', label: 'Email OTP' },
   { key: 'checkGovernmentId', label: 'Government ID' },
   { key: 'checkDegree', label: 'Degree' },
   { key: 'checkRegistrationCertificate', label: 'Registration Certificate' },
@@ -59,6 +64,8 @@ export default function AdminDoctors() {
   const [doctors, setDoctors] = useState<DoctorVerificationModel[]>([]);
   const [selected, setSelected] = useState<DoctorVerificationModel | null>(null);
   const [notes, setNotes] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -132,7 +139,7 @@ export default function AdminDoctors() {
     }
   };
 
-  const setStatus = async (status: DoctorStatus) => {
+  const setStatus = async (status: DoctorStatus, reason?: string) => {
     if (!selected) return;
     if ((status === 'VERIFIED' || status === 'PUBLISHED') && !allApplicableChecksPassed(selected)) {
       toast.error('Complete all applicable checklist items before Verified / Published');
@@ -140,8 +147,12 @@ export default function AdminDoctors() {
     }
     setSaving(true);
     try {
-      const updated = await updateDoctorStatus(selected.uuid, status, notes || undefined);
+      const updated = await updateDoctorStatus(selected.uuid, status, notes || undefined, reason);
       setSelected(updated);
+      if (status === 'REJECTED') {
+        setRejectDialogOpen(false);
+        setRejectionReason('');
+      }
       toast.success(`Status → ${statusLabel(status)}`);
       await load();
     } catch (e: unknown) {
@@ -149,6 +160,15 @@ export default function AdminDoctors() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const rejectSelectedDoctor = () => {
+    const reason = rejectionReason.trim();
+    if (!reason) {
+      toast.error('Enter a reason for rejecting this doctor');
+      return;
+    }
+    void setStatus('REJECTED', reason);
   };
 
   const applicableChecks = selected
@@ -295,13 +315,29 @@ export default function AdminDoctors() {
                   />
                   <DocLink href={selected.governmentIdUrl} label="Government ID" />
                 </div>
+                {selected.rejectionReason && (
+                  <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                    <p className="font-medium">Rejection reason</p>
+                    <p className="mt-1 whitespace-pre-wrap">{selected.rejectionReason}</p>
+                  </div>
+                )}
 
                 <div className="space-y-3">
                   <p className="text-sm font-medium">Admin Verification Checklist</p>
                   <p className="text-xs text-muted-foreground">
-                    Verify the doctor&apos;s credentials only. Clinic address, maps, and photos are
-                    reviewed on the clinic account.
+                    Email and mobile are verified by the doctor. Verify the doctor&apos;s
+                    credentials here; clinic address, maps, and photos are reviewed on the clinic
+                    account.
                   </p>
+                  {[
+                    { label: 'Mobile OTP (doctor verified)', verified: selected.phoneOtpVerified },
+                    { label: 'Email OTP (doctor verified)', verified: selected.emailOtpVerified },
+                  ].map(({ label, verified }) => (
+                    <div key={label} className="flex items-center gap-3">
+                      <Checkbox checked={verified} disabled aria-label={label} />
+                      <Label className="text-sm font-normal">{label}</Label>
+                    </div>
+                  ))}
                   {applicableChecks.map((c) => (
                     <div key={c.key} className="flex items-center gap-3">
                       <Checkbox
@@ -359,7 +395,10 @@ export default function AdminDoctors() {
                     size="sm"
                     variant="destructive"
                     disabled={saving}
-                    onClick={() => void setStatus('REJECTED')}
+                    onClick={() => {
+                      setRejectionReason('');
+                      setRejectDialogOpen(true);
+                    }}
                   >
                     Reject
                   </Button>
@@ -369,6 +408,35 @@ export default function AdminDoctors() {
           )}
         </div>
       )}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Dr. {selected?.firstName} {selected?.lastName}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="doctor-rejection-reason">Reason for rejection</Label>
+            <Textarea
+              id="doctor-rejection-reason"
+              value={rejectionReason}
+              onChange={(event) => setRejectionReason(event.target.value)}
+              maxLength={2000}
+              placeholder="Explain what the doctor needs to correct before verification."
+              rows={5}
+            />
+            <p className="text-xs text-muted-foreground">
+              This reason will be shown to the doctor and emailed to them.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={rejectSelectedDoctor} disabled={saving}>
+              {saving ? 'Rejecting…' : 'Reject doctor'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { UserPlus, Mail, Lock, User, CheckCircleIcon } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, CheckCircleIcon, PawPrint, Eye, EyeOff } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { signup, socialSso, activateRole, confirmActivatedSession } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
@@ -60,6 +60,8 @@ const Signup = () => {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -141,7 +143,13 @@ const Signup = () => {
         return;
       }
 
-      await signup({ firstName, lastName, email, password, role: 'USER' });
+      await signup({
+        firstName,
+        lastName,
+        email,
+        password,
+        role: 'USER',
+      });
 
       setShowSuccessDialog(true);
 
@@ -216,13 +224,18 @@ const Signup = () => {
 
             {role === 'USER' && (
               <>
-                <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-center text-foreground">
-                  Pet parent account
-                </h1>
-                <p className="text-muted-foreground mb-8 sm:mb-12 text-center text-sm sm:text-base">
-                  Create a pet parent account to book clinics and doctors, and keep your pet&apos;s
-                  records in one place.
-                </p>
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                    <PawPrint className="h-8 w-8 text-primary" />
+                  </div>
+                  <h1 className="text-3xl sm:text-4xl font-bold text-foreground">
+                    Pet parent account
+                  </h1>
+                  <p className="text-muted-foreground mt-2 max-w-md mx-auto">
+                    Create a pet parent account to book clinics and doctors, and keep your pet&apos;s
+                    records in one place.
+                  </p>
+                </div>
 
                 <Card>
                   <CardHeader className="flex flex-col items-center justify-center text-center">
@@ -245,7 +258,7 @@ const Signup = () => {
                             placeholder="John"
                             className="pl-10"
                             value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
+                            onChange={(e) => setFirstName(e.target.value.replace(/\d/g, ''))}
                             required
                             disabled={loading}
                           />
@@ -264,7 +277,7 @@ const Signup = () => {
                             placeholder="Doe"
                             className="pl-10"
                             value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
+                            onChange={(e) => setLastName(e.target.value.replace(/\d/g, ''))}
                             disabled={loading}
                           />
                         </div>
@@ -302,15 +315,24 @@ const Signup = () => {
                           <Input
                             id="password"
                             name="password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             autoComplete="new-password"
                             placeholder="••••••••"
-                            className="pl-10"
+                            className="pl-10 pr-10"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             disabled={loading}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            disabled={loading}
+                          >
+                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </button>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Must be 8–72 characters with uppercase, lowercase, a number, and a special character.
@@ -324,15 +346,24 @@ const Signup = () => {
                           <Input
                             id="confirmPassword"
                             name="confirmPassword"
-                            type="password"
+                            type={showConfirmPassword ? 'text' : 'password'}
                             autoComplete="new-password"
                             placeholder="••••••••"
-                            className="pl-10"
+                            className="pl-10 pr-10"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             required
                             disabled={loading}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((prev) => !prev)}
+                            className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                            aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                            disabled={loading}
+                          >
+                            {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </button>
                         </div>
                       </div>
                       </>

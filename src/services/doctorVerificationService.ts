@@ -45,11 +45,10 @@ export interface DoctorVerificationModel {
   submittedAt?: string;
   reviewedAt?: string;
   reviewNotes?: string;
+  rejectionReason?: string;
 }
 
 export type ChecklistKey =
-  | 'checkMobileOtp'
-  | 'checkEmailOtp'
   | 'checkGovernmentId'
   | 'checkDegree'
   | 'checkRegistrationCertificate'
@@ -113,10 +112,28 @@ export async function updateDoctorChecklist(uuid: string, checklist: Partial<Rec
   return res.data.data;
 }
 
-export async function updateDoctorStatus(uuid: string, status: DoctorStatus, reviewNotes?: string) {
+export async function updateDoctorStatus(
+  uuid: string,
+  status: DoctorStatus,
+  reviewNotes?: string,
+  rejectionReason?: string
+) {
   const res = await axiosInstance.patch<ApiSuccessResponse<DoctorVerificationModel>>(
     `/admin/doctors/${uuid}/status`,
-    { status, reviewNotes }
+    { status, reviewNotes, rejectionReason }
+  );
+  return res.data.data;
+}
+
+export async function reapplyDoctorProfile(body: {
+  registrationNumber?: string;
+  degreeCertificateUrl?: string;
+  registrationCertificateUrl?: string;
+  governmentIdUrl?: string;
+}) {
+  const res = await axiosInstance.post<ApiSuccessResponse<DoctorVerificationModel>>(
+    '/doctor/reapply',
+    body
   );
   return res.data.data;
 }
@@ -157,8 +174,6 @@ export function isChecklistItemApplicable(doctor: DoctorVerificationModel, key: 
 
 export function allApplicableChecksPassed(doctor: DoctorVerificationModel): boolean {
   const keys: ChecklistKey[] = [
-    'checkMobileOtp',
-    'checkEmailOtp',
     'checkGovernmentId',
     'checkDegree',
     'checkRegistrationCertificate',

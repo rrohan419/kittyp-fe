@@ -702,6 +702,22 @@ export default function DoctorHome() {
         </div>
       </div>
 
+      {profile?.status === 'REJECTED' && (
+        <Card className="border-red-200 bg-red-50/60">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="space-y-1">
+              <p className="font-semibold text-red-900">Your verification was rejected</p>
+              <p className="text-sm text-red-800 whitespace-pre-wrap">
+                {profile.rejectionReason || 'No rejection reason was provided. Contact support for details.'}
+              </p>
+            </div>
+            <Button asChild size="sm">
+              <Link to="/doctor/settings">Correct details and reapply</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {!invitesLoading && invites.length > 0 && (
         <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
           <CardHeader className="pb-2">
