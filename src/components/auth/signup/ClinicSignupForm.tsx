@@ -249,6 +249,10 @@ const ClinicSignupForm = () => {
           clinicName: form.clinicName,
           licenseNumber: form.license || undefined,
           address: geoPayload.address,
+          city: geoPayload.city,
+          latitude: geoPayload.latitude,
+          longitude: geoPayload.longitude,
+          googlePlaceId: geoPayload.googlePlaceId,
           phone: form.adminPhone ? digitsOnlyPhone(form.adminPhone) : undefined,
           rolePassword: form.password || undefined,
         });

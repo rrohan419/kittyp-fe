@@ -279,6 +279,10 @@ export interface ActivateRolePayload {
   rolePassword?: string;
   clinicName?: string;
   address?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+  googlePlaceId?: string;
   phone?: string;
   timezone?: string;
 }
