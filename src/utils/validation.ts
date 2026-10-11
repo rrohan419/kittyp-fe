@@ -90,7 +90,7 @@ const HTML_ALLOWLIST = {
   ALLOW_DATA_ATTR: false,
   FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'style'],
   FORBID_ATTR: ['style'],
-} as const;
+};
 
 export function sanitizeHtml(html: string): string {
   if (!html) return '';

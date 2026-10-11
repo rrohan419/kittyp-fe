@@ -352,10 +352,10 @@ export default function ClinicPatients() {
     }
   };
 
-  const runContactLookup = async (raw: string) => {
+  const runEmailLookup = async (raw: string) => {
     if (!clinicUuid || !raw.trim()) return;
     const value = raw.trim();
-    const emailErr = value.includes('@') ? validateEmail(value) : null;
+    const emailErr = validateEmail(value);
     if (emailErr) {
       setFieldErrors((s) => ({ ...s, ownerEmail: emailErr }));
       return;
@@ -477,7 +477,7 @@ export default function ClinicPatients() {
       return;
     }
     const emailErr = validateEmail(form.ownerEmail);
-    const phoneErr = validatePhone(form.ownerPhone, true);
+    const phoneErr = validatePhone(form.ownerPhone);
     if (!form.ownerFirstName.trim()) {
       toast.error('Owner first name is required');
       return;
@@ -498,34 +498,21 @@ export default function ClinicPatients() {
     }
     setSaving(true);
     try {
-      const hitEmail = await lookupOwnerByEmail(clinicUuid, form.ownerEmail.trim());
-      if (hitEmail?.found) {
-        applyLookupHit(hitEmail);
+      const hit = await lookupOwnerByEmail(clinicUuid, form.ownerEmail.trim());
+      if (hit?.found) {
+        applyLookupHit(hit);
         toast.error(
-          hitEmail.platformUser
+          hit.platformUser
             ? 'This email is already registered on KittyP. Send a confirmation email to attach them.'
             : 'This email is already a client of this clinic.'
         );
         return;
       }
-      const phone = digitsOnlyPhone(form.ownerPhone);
-      if (phone.length === 10) {
-        const hitPhone = await lookupOwnerByEmail(clinicUuid, phone);
-        if (hitPhone?.found) {
-          applyLookupHit(hitPhone);
-          toast.error(
-            hitPhone.platformUser
-              ? 'This phone is already registered on KittyP. Send a confirmation email to attach them.'
-              : 'This phone is already a client of this clinic.'
-          );
-          return;
-        }
-      }
       const detail = await addClinicPatient(clinicUuid, {
         ownerFirstName: form.ownerFirstName.trim(),
         ownerLastName: form.ownerLastName.trim() || undefined,
         ownerEmail: form.ownerEmail.trim(),
-        ownerPhone: digitsOnlyPhone(form.ownerPhone),
+        ownerPhone: digitsOnlyPhone(form.ownerPhone) || undefined,
         ownerAddress: form.ownerAddress.trim() || undefined,
         petName: form.petName.trim(),
         petType: form.petType.trim() || undefined,
@@ -545,8 +532,7 @@ export default function ClinicPatients() {
       const message = parseApiErrorMessage(err, 'Failed to add client');
       toast.error(message);
       if (/KittyP account/i.test(message) || /already registered/i.test(message)) {
-        void runContactLookup(form.ownerEmail);
-        void runContactLookup(digitsOnlyPhone(form.ownerPhone));
+        void runEmailLookup(form.ownerEmail);
       }
     } finally {
       setSaving(false);
@@ -703,7 +689,7 @@ export default function ClinicPatients() {
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-sm text-muted-foreground mt-0.5 truncate">{u.email || '-”'}</p>
+                            <p className="text-sm text-muted-foreground mt-0.5 truncate">{u.email || '-'}</p>
                             <p className="text-[11px] font-mono text-muted-foreground mt-1 break-all">
                               Owner ID: {u.userUuid}
                             </p>
@@ -884,15 +870,15 @@ export default function ClinicPatients() {
                     <div className="rounded-xl bg-muted/50 border border-border p-3 space-y-2 text-sm">
                       <div className="flex justify-between gap-2">
                         <span className="text-muted-foreground text-xs">Species</span>
-                        <span className="font-medium text-right">{p.species || '-”'}</span>
+                        <span className="font-medium text-right">{p.species || '-'}</span>
                       </div>
                       <div className="flex justify-between gap-2">
                         <span className="text-muted-foreground text-xs">Breed</span>
-                        <span className="font-medium text-right">{p.breed || '-”'}</span>
+                        <span className="font-medium text-right">{p.breed || '-'}</span>
                       </div>
                       <div className="flex justify-between gap-2">
                         <span className="text-muted-foreground text-xs">Gender</span>
-                        <span className="font-medium text-right">{p.gender || '-”'}</span>
+                        <span className="font-medium text-right">{p.gender || '-'}</span>
                       </div>
                       <div className="flex justify-between gap-2 items-start">
                         <span className="text-muted-foreground text-xs shrink-0">Pet ID</span>
@@ -1137,14 +1123,14 @@ export default function ClinicPatients() {
                       setAttachUser(null);
                       setFieldErrors((s) => ({ ...s, ownerEmail: '' }));
                     }}
-                    onBlur={() => void runContactLookup(form.ownerEmail)}
+                    onBlur={() => void runEmailLookup(form.ownerEmail)}
                   />
                   {fieldErrors.ownerEmail ? (
                     <p className="text-xs text-destructive">{fieldErrors.ownerEmail}</p>
                   ) : null}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="ownerPhone">Phone (10 digits) *</Label>
+                  <Label htmlFor="ownerPhone">Phone (optional)</Label>
                   <Input
                     id="ownerPhone"
                     inputMode="numeric"
@@ -1156,9 +1142,8 @@ export default function ClinicPatients() {
                       setFieldErrors((s) => ({ ...s, ownerPhone: '' }));
                     }}
                     onBlur={() => {
-                      const err = validatePhone(form.ownerPhone, true);
+                      const err = validatePhone(form.ownerPhone);
                       if (err) setFieldErrors((s) => ({ ...s, ownerPhone: err }));
-                      else void runContactLookup(digitsOnlyPhone(form.ownerPhone));
                     }}
                   />
                   {fieldErrors.ownerPhone ? (

@@ -707,7 +707,7 @@ export interface AddPatientRequest {
   ownerFirstName: string;
   ownerLastName?: string;
   ownerEmail: string;
-  ownerPhone: string;
+  ownerPhone?: string;
   ownerAddress?: string;
   petName: string;
   petType?: string;
