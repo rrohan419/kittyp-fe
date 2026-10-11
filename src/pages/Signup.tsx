@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,10 @@ import { isSignupRole, type SignupRole } from '@/utils/roles';
 import SignupRoleToggle from '@/components/auth/signup/SignupRoleToggle';
 import DoctorSignupForm from '@/components/auth/signup/DoctorSignupForm';
 import ClinicSignupForm from '@/components/auth/signup/ClinicSignupForm';
+import { sendSignupOtp, verifySignupOtp } from '@/services/doctorVerificationService';
+import { CooldownTimer } from '@/components/ui/cooldown-timer';
+
+const OTP_RESEND_COOLDOWN_SECONDS = 30;
 
 export const SignupAlias = ({ role }: { role: SignupRole }) => {
   const [params] = useSearchParams();
@@ -66,8 +70,60 @@ const Signup = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [emailOtp, setEmailOtp] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [emailCooldown, setEmailCooldown] = useState(0);
   const handleGoogleSignup = () => googleLogin();
   const dispatch = useDispatch<AppDispatch>();
+
+  useEffect(() => {
+    if (emailCooldown === 0) return;
+
+    const timer = window.setInterval(() => {
+      setEmailCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [emailCooldown]);
+
+  const sendEmailOtp = async () => {
+    if (emailCooldown > 0 || otpSending) return;
+    const emailErr = validateEmail(email);
+    if (emailErr) {
+      toast.error(emailErr);
+      return;
+    }
+
+    setOtpSending(true);
+    try {
+      await sendSignupOtp({ channel: 'EMAIL', email: email.trim() });
+      setEmailCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+      toast.success('OTP sent to your email');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to send email OTP');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const verifyEmail = async () => {
+    if (!emailOtp.trim()) {
+      toast.error('Enter the email OTP');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await verifySignupOtp({ channel: 'EMAIL', email: email.trim(), code: emailOtp.trim() });
+      setEmailVerified(true);
+      toast.success('Email verified');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Invalid email OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +135,10 @@ const Signup = () => {
     const emailErr = validateEmail(email);
     if (emailErr) {
       toast.error(emailErr);
+      return;
+    }
+    if (!emailVerified) {
+      toast.error('Verify your email before creating your account');
       return;
     }
     const passwordErr = validatePassword(password);
@@ -241,10 +301,56 @@ const Signup = () => {
                             placeholder="name@example.com"
                             className="pl-10"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(e) => {
+                              setEmail(e.target.value);
+                              setEmailVerified(false);
+                              setEmailOtp('');
+                              setEmailCooldown(0);
+                            }}
                             required
-                            disabled={loading}
+                            disabled={loading || otpSending || emailVerified}
                           />
+                        </div>
+                        <div className="space-y-2">
+                          {!emailVerified ? (
+                            <>
+                              <div className="flex gap-2">
+                                <Input
+                                  id="emailOtp"
+                                  name="emailOtp"
+                                  inputMode="numeric"
+                                  autoComplete="one-time-code"
+                                  placeholder="Email OTP"
+                                  maxLength={6}
+                                  className="min-w-0 flex-1"
+                                  value={emailOtp}
+                                  onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                  disabled={loading}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="shrink-0"
+                                  onClick={() => void sendEmailOtp()}
+                                  disabled={loading || otpSending || emailCooldown > 0}
+                                >
+                                  {otpSending ? 'Sending…' : emailCooldown > 0 ? (
+                                    <CooldownTimer seconds={emailCooldown} />
+                                  ) : 'Send OTP'}
+                                </Button>
+                              </div>
+                              <Button
+                                type="button"
+                                className="w-full"
+                                onClick={() => void verifyEmail()}
+                                disabled={loading || !emailOtp.trim()}
+                              >
+                                {loading ? 'Verifying…' : 'Verify email'}
+                              </Button>
+                            </>
+                          ) : (
+                            <p className="text-sm text-green-600">Email verified</p>
+                          )}
                         </div>
                       </div>
 
@@ -310,7 +416,7 @@ const Signup = () => {
                       <Button
                         type="submit"
                         className="w-full flex items-center justify-center gap-2"
-                        disabled={loading}
+                        disabled={loading || otpSending || !emailVerified}
                       >
                         {loading ? (
                           <div className="h-4 w-4 animate-spin border-2 border-primary-foreground border-t-transparent rounded-full" />

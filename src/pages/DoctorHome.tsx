@@ -1062,12 +1062,14 @@ export default function DoctorHome() {
                 <span className="text-xs">Visit queue</span>
               </Link>
             </Button>
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" asChild>
-              <Link to="/doctor/availability">
-                <Clock className="h-5 w-5 text-primary" />
-                <span className="text-xs">Availability</span>
-              </Link>
-            </Button>
+            {isPersonalPractice && (
+              <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" asChild>
+                <Link to="/doctor/availability">
+                  <Clock className="h-5 w-5 text-primary" />
+                  <span className="text-xs">Availability</span>
+                </Link>
+              </Button>
+            )}
             <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" asChild>
               <Link to="/doctor/patients">
                 <Users className="h-5 w-5 text-primary" />
