@@ -177,8 +177,6 @@ export default function ClinicDoctorDetail() {
     return [
       { key: 'phoneOtpVerified', label: 'Phone OTP (doctor completed)', submitted: true },
       { key: 'emailOtpVerified', label: 'Email OTP (doctor completed)', submitted: true },
-      { key: 'checkMobileOtp', label: 'Mobile OTP (admin check)' },
-      { key: 'checkEmailOtp', label: 'Email OTP (admin check)' },
       {
         key: 'checkDegree',
         label: 'Degree certificate',

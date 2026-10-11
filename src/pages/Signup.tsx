@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { UserPlus, Mail, Lock, User, CheckCircleIcon } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, CheckCircleIcon, PawPrint, Eye, EyeOff } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { signup, socialSso } from '@/services/authService';
 import ErrorDialog from '@/components/ui/error-dialog';
@@ -34,6 +34,10 @@ import { isSignupRole, type SignupRole } from '@/utils/roles';
 import SignupRoleToggle from '@/components/auth/signup/SignupRoleToggle';
 import DoctorSignupForm from '@/components/auth/signup/DoctorSignupForm';
 import ClinicSignupForm from '@/components/auth/signup/ClinicSignupForm';
+import { sendSignupOtp, verifySignupOtp } from '@/services/doctorVerificationService';
+import { CooldownTimer } from '@/components/ui/cooldown-timer';
+
+const OTP_RESEND_COOLDOWN_SECONDS = 30;
 
 export const SignupAlias = ({ role }: { role: SignupRole }) => {
   const [params] = useSearchParams();
@@ -59,13 +63,67 @@ const Signup = () => {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [emailOtp, setEmailOtp] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [emailCooldown, setEmailCooldown] = useState(0);
   const handleGoogleSignup = () => googleLogin();
   const dispatch = useDispatch<AppDispatch>();
+
+  useEffect(() => {
+    if (emailCooldown === 0) return;
+
+    const timer = window.setInterval(() => {
+      setEmailCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [emailCooldown]);
+
+  const sendEmailOtp = async () => {
+    if (emailCooldown > 0 || otpSending) return;
+    const emailErr = validateEmail(email);
+    if (emailErr) {
+      toast.error(emailErr);
+      return;
+    }
+
+    setOtpSending(true);
+    try {
+      await sendSignupOtp({ channel: 'EMAIL', email: email.trim() });
+      setEmailCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+      toast.success('OTP sent to your email');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to send email OTP');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const verifyEmail = async () => {
+    if (!emailOtp.trim()) {
+      toast.error('Enter the email OTP');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await verifySignupOtp({ channel: 'EMAIL', email: email.trim(), code: emailOtp.trim() });
+      setEmailVerified(true);
+      toast.success('Email verified');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Invalid email OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +135,10 @@ const Signup = () => {
     const emailErr = validateEmail(email);
     if (emailErr) {
       toast.error(emailErr);
+      return;
+    }
+    if (!emailVerified) {
+      toast.error('Verify your email before creating your account');
       return;
     }
     const passwordErr = validatePassword(password);
@@ -92,7 +154,13 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      await signup({ firstName, lastName, email, password, role: 'USER' });
+      await signup({
+        firstName,
+        lastName,
+        email,
+        password,
+        role: 'USER',
+      });
 
       setShowSuccessDialog(true);
 
@@ -162,13 +230,18 @@ const Signup = () => {
 
             {role === 'USER' && (
               <>
-                <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-center text-foreground">
-                  Pet parent account
-                </h1>
-                <p className="text-muted-foreground mb-8 sm:mb-12 text-center text-sm sm:text-base">
-                  Create a pet parent account to book clinics and doctors, and keep your pet&apos;s
-                  records in one place.
-                </p>
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                    <PawPrint className="h-8 w-8 text-primary" />
+                  </div>
+                  <h1 className="text-3xl sm:text-4xl font-bold text-foreground">
+                    Pet parent account
+                  </h1>
+                  <p className="text-muted-foreground mt-2 max-w-md mx-auto">
+                    Create a pet parent account to book clinics and doctors, and keep your pet&apos;s
+                    records in one place.
+                  </p>
+                </div>
 
                 <Card>
                   <CardHeader className="flex flex-col items-center justify-center text-center">
@@ -191,7 +264,7 @@ const Signup = () => {
                             placeholder="John"
                             className="pl-10"
                             value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
+                            onChange={(e) => setFirstName(e.target.value.replace(/\d/g, ''))}
                             required
                             disabled={loading}
                           />
@@ -210,7 +283,7 @@ const Signup = () => {
                             placeholder="Doe"
                             className="pl-10"
                             value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
+                            onChange={(e) => setLastName(e.target.value.replace(/\d/g, ''))}
                             disabled={loading}
                           />
                         </div>
@@ -228,10 +301,56 @@ const Signup = () => {
                             placeholder="name@example.com"
                             className="pl-10"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(e) => {
+                              setEmail(e.target.value);
+                              setEmailVerified(false);
+                              setEmailOtp('');
+                              setEmailCooldown(0);
+                            }}
                             required
-                            disabled={loading}
+                            disabled={loading || otpSending || emailVerified}
                           />
+                        </div>
+                        <div className="space-y-2">
+                          {!emailVerified ? (
+                            <>
+                              <div className="flex gap-2">
+                                <Input
+                                  id="emailOtp"
+                                  name="emailOtp"
+                                  inputMode="numeric"
+                                  autoComplete="one-time-code"
+                                  placeholder="Email OTP"
+                                  maxLength={6}
+                                  className="min-w-0 flex-1"
+                                  value={emailOtp}
+                                  onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                  disabled={loading}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="shrink-0"
+                                  onClick={() => void sendEmailOtp()}
+                                  disabled={loading || otpSending || emailCooldown > 0}
+                                >
+                                  {otpSending ? 'Sending…' : emailCooldown > 0 ? (
+                                    <CooldownTimer seconds={emailCooldown} />
+                                  ) : 'Send OTP'}
+                                </Button>
+                              </div>
+                              <Button
+                                type="button"
+                                className="w-full"
+                                onClick={() => void verifyEmail()}
+                                disabled={loading || !emailOtp.trim()}
+                              >
+                                {loading ? 'Verifying…' : 'Verify email'}
+                              </Button>
+                            </>
+                          ) : (
+                            <p className="text-sm text-green-600">Email verified</p>
+                          )}
                         </div>
                       </div>
 
@@ -242,15 +361,24 @@ const Signup = () => {
                           <Input
                             id="password"
                             name="password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             autoComplete="new-password"
                             placeholder="••••••••"
-                            className="pl-10"
+                            className="pl-10 pr-10"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             disabled={loading}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            disabled={loading}
+                          >
+                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </button>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Must be 8–72 characters with uppercase, lowercase, a number, and a special character.
@@ -264,22 +392,31 @@ const Signup = () => {
                           <Input
                             id="confirmPassword"
                             name="confirmPassword"
-                            type="password"
+                            type={showConfirmPassword ? 'text' : 'password'}
                             autoComplete="new-password"
                             placeholder="••••••••"
-                            className="pl-10"
+                            className="pl-10 pr-10"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             required
                             disabled={loading}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((prev) => !prev)}
+                            className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                            aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                            disabled={loading}
+                          >
+                            {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                          </button>
                         </div>
                       </div>
 
                       <Button
                         type="submit"
                         className="w-full flex items-center justify-center gap-2"
-                        disabled={loading}
+                        disabled={loading || otpSending || !emailVerified}
                       >
                         {loading ? (
                           <div className="h-4 w-4 animate-spin border-2 border-primary-foreground border-t-transparent rounded-full" />

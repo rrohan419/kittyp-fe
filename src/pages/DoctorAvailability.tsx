@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { SchedulingProvider } from '@/context/SchedulingContext';
 import { VetAvailabilityManager } from '@/components/vet/availability/VetAvailabilityManager';
 import { Loader2 } from 'lucide-react';
@@ -11,9 +12,11 @@ import { VetAvailability, VetProfile } from '@/types/scheduling';
 import { useAppSelector } from '@/module/store/hooks';
 import { specializationLabel } from '@/utils/specialization';
 import { toast } from 'sonner';
+import { useActiveClinic } from '@/hooks/useActiveClinic';
 
 export default function DoctorAvailability() {
   const user = useAppSelector((s) => s.authReducer.user);
+  const { isPersonalPractice, loading: clinicLoading } = useActiveClinic();
   const [loading, setLoading] = useState(true);
   const [doctorUuid, setDoctorUuid] = useState('');
   const [schedule, setSchedule] = useState<VetAvailability[]>([]);
@@ -23,6 +26,7 @@ export default function DoctorAvailability() {
   const [vetProfile, setVetProfile] = useState<VetProfile | null>(null);
 
   useEffect(() => {
+    if (clinicLoading || !isPersonalPractice) return;
     void (async () => {
       setLoading(true);
       try {
@@ -56,9 +60,13 @@ export default function DoctorAvailability() {
         setLoading(false);
       }
     })();
-  }, [user?.firstName, user?.lastName]);
+  }, [clinicLoading, isPersonalPractice, user?.firstName, user?.lastName]);
 
-  if (loading) {
+  if (!clinicLoading && !isPersonalPractice) {
+    return <Navigate to="/doctor" replace />;
+  }
+
+  if (clinicLoading || loading) {
     return (
       <div className="p-6 lg:p-8 flex items-center justify-center text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading availability…

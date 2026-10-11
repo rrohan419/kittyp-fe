@@ -14,6 +14,8 @@ interface SignupData {
   email: string;
   password: string;
   role: SignupRole;
+  /** Parent signup does not collect this. Profile edit can add it later. */
+  phoneNumber?: string;
 }
 
 interface AuthData {
@@ -103,6 +105,9 @@ export interface SignupClinicData extends Omit<SignupData, 'role'> {
   clinicName: string;
   licenseNumber?: string;
   address?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
   phone?: string;
   timezone?: string;
 }
