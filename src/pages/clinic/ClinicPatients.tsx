@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
@@ -87,7 +87,7 @@ export default function ClinicPatients() {
   const { pathname } = useLocation();
   const crm = clinicCrmPaths(pathname);
   const canAddClients = Boolean(clinicUuid) && !isPersonalPractice;
-  const branchClinics = clinics.filter((c) => c.personal !== true);
+  const branchClinics = useMemo(() => clinics.filter((c) => c.personal !== true), [clinics]);
   const [tab, setTab] = useState(searchParams.get('tab') === 'pets' ? 'pets' : 'clients');
   const [search, setSearch] = useState(searchParams.get('q') || '');
   const [searchAllBranches, setSearchAllBranches] = useState(false);
@@ -278,7 +278,7 @@ export default function ClinicPatients() {
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [clinicUuid, search, searchAllBranches, clinics, clinic?.name, ownerPage, petPage]);
+  }, [clinicUuid, search, searchAllBranches, branchClinics, clinic?.name, ownerPage, petPage]);
 
   // When a header/list search uniquely identifies a pet or owner, open that entity directly.
   useEffect(() => {
@@ -600,8 +600,8 @@ export default function ClinicPatients() {
             className="pl-9 h-11 bg-muted/40 border-0 shadow-inner"
             placeholder={
               tab === 'clients'
-                ? 'Search KittyP users or clients by name, email, phone, or owner IDâ€¦'
-                : 'Search by pet name, breed, microchip, or global IDâ€¦'
+                ? 'Search KittyP users or clients by name, email, phone, or owner ID¦'
+                : 'Search by pet name, breed, microchip, or global ID¦'
             }
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -676,7 +676,7 @@ export default function ClinicPatients() {
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {search.trim().length < 3
                     ? 'Type at least 3 characters to search pet-parent accounts.'
-                    : 'Active pet-parent users â€” select to open or add as a clinic client.'}
+                    : 'Active pet-parent users ” select to open or add as a clinic client.'}
                 </p>
               </div>
               {search.trim().length < 3 ? null : loading ? null : platformUsers.length ? (
@@ -703,7 +703,7 @@ export default function ClinicPatients() {
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-sm text-muted-foreground mt-0.5 truncate">{u.email || 'â€”'}</p>
+                            <p className="text-sm text-muted-foreground mt-0.5 truncate">{u.email || '-”'}</p>
                             <p className="text-[11px] font-mono text-muted-foreground mt-1 break-all">
                               Owner ID: {u.userUuid}
                             </p>
@@ -726,7 +726,7 @@ export default function ClinicPatients() {
               ) : (
                 <div className="rounded-xl border border-dashed border-border py-8 text-center bg-muted/20">
                   <p className="text-sm text-muted-foreground">
-                    No KittyP accounts match â€œ{search.trim()}â€.
+                    No KittyP accounts match: {search.trim()}
                   </p>
                 </div>
               )}
@@ -738,7 +738,7 @@ export default function ClinicPatients() {
           </div>
           {loading ? (
             <div className="flex items-center gap-2 py-16 text-muted-foreground justify-center">
-              <Loader2 className="h-5 w-5 animate-spin" /> Loading clientsâ€¦
+              <Loader2 className="h-5 w-5 animate-spin" /> Loading clients¦
             </div>
           ) : (
             <div className="space-y-2">
@@ -778,11 +778,11 @@ export default function ClinicPatients() {
                           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                             <span className="inline-flex items-center gap-1.5">
                               <Phone className="h-3.5 w-3.5 text-primary" />
-                              {o.phone || 'â€”'}
+                              {o.phone || '-'}
                             </span>
                             <span className="inline-flex items-center gap-1.5 truncate max-w-[220px]">
                               <Mail className="h-3.5 w-3.5 text-primary shrink-0" />
-                              <span className="truncate">{o.email || 'â€”'}</span>
+                              <span className="truncate">{o.email || '-'}</span>
                             </span>
                             {o.address && (
                               <span className="inline-flex items-center gap-1.5 truncate max-w-[200px]">
@@ -845,7 +845,7 @@ export default function ClinicPatients() {
           </div>
           {loading ? (
             <div className="flex items-center gap-2 py-16 text-muted-foreground justify-center">
-              <Loader2 className="h-5 w-5 animate-spin" /> Loading petsâ€¦
+              <Loader2 className="h-5 w-5 animate-spin" /> Loading pets
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -884,15 +884,15 @@ export default function ClinicPatients() {
                     <div className="rounded-xl bg-muted/50 border border-border p-3 space-y-2 text-sm">
                       <div className="flex justify-between gap-2">
                         <span className="text-muted-foreground text-xs">Species</span>
-                        <span className="font-medium text-right">{p.species || 'â€”'}</span>
+                        <span className="font-medium text-right">{p.species || '-”'}</span>
                       </div>
                       <div className="flex justify-between gap-2">
                         <span className="text-muted-foreground text-xs">Breed</span>
-                        <span className="font-medium text-right">{p.breed || 'â€”'}</span>
+                        <span className="font-medium text-right">{p.breed || '-”'}</span>
                       </div>
                       <div className="flex justify-between gap-2">
                         <span className="text-muted-foreground text-xs">Gender</span>
-                        <span className="font-medium text-right">{p.gender || 'â€”'}</span>
+                        <span className="font-medium text-right">{p.gender || '-”'}</span>
                       </div>
                       <div className="flex justify-between gap-2 items-start">
                         <span className="text-muted-foreground text-xs shrink-0">Pet ID</span>
@@ -978,7 +978,7 @@ export default function ClinicPatients() {
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   className="pl-8"
-                  placeholder="Email, phone, name, or IDâ€¦"
+                  placeholder="Email, phone, name, or ID¦"
                   value={pickerQ}
                   onChange={(e) => setPickerQ(e.target.value)}
                 />
@@ -991,7 +991,7 @@ export default function ClinicPatients() {
                 <div className="border rounded-md max-h-44 overflow-y-auto divide-y mt-2">
                   {pickerHits.length === 0 ? (
                     <p className="p-3 text-sm text-muted-foreground">
-                      No KittyP or clinic match â€” fill the form below for a new client.
+                      No KittyP or clinic match, fill the form below for a new client.
                     </p>
                   ) : (
                     pickerHits.map((hit) =>
@@ -1047,7 +1047,7 @@ export default function ClinicPatients() {
 
             {matchedOwner ? (
               <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm space-y-2">
-                <p className="font-medium text-foreground">Already a client of this clinic â€” {matchedOwner.name}</p>
+                <p className="font-medium text-foreground">Already a client of this clinic” {matchedOwner.name}</p>
                 <p className="text-xs text-muted-foreground">{matchedOwner.email}</p>
                 <Button
                   type="button"
