@@ -436,6 +436,26 @@ export async function updateClinic(clinicUuid: string, body: ClinicCreateRequest
   return res.data.data;
 }
 
+export async function sendClinicContactOtp(
+  clinicUuid: string,
+  body: { channel: 'EMAIL' | 'WHATSAPP'; email?: string; phone?: string }
+): Promise<void> {
+  await axiosInstance.post(`/clinic/${clinicUuid}/contact/otp/send`, body);
+}
+
+export async function verifyClinicContactOtp(
+  clinicUuid: string,
+  body: {
+    channel: 'EMAIL' | 'WHATSAPP' | 'PHONE';
+    email?: string;
+    phone?: string;
+    code?: string;
+    accessToken?: string;
+  }
+): Promise<void> {
+  await axiosInstance.post(`/clinic/${clinicUuid}/contact/otp/verify`, body);
+}
+
 export async function fetchMyClinics(): Promise<ClinicModel[]> {
   const res = await axiosInstance.get<ApiSuccessResponse<ClinicModel[]>>('/clinic/mine');
   return res.data.data ?? [];
