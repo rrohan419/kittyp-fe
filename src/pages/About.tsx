@@ -1,13 +1,84 @@
-import React from 'react';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
-import { Heart, Leaf, Shield, Users, Award, MapPin } from 'lucide-react';
+import { CalendarClock, FileText, Heart, MapPin, PawPrint, Receipt, Stethoscope } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { Helmet } from 'react-helmet';
+import { PUBLIC_SIGNUP_PATHS } from '@/utils/roles';
+
+const petParentSignup = PUBLIC_SIGNUP_PATHS[0];
+const veterinarianSignup = PUBLIC_SIGNUP_PATHS[1];
+const clinicSignup = PUBLIC_SIGNUP_PATHS[2];
+
+const missionItems = [
+  {
+    icon: CalendarClock,
+    title: 'A Smoother Front Desk',
+    content:
+      'Book the slot, take a walk-in, and check the pet in from one list, so reception can move the day without a separate thread for every visit.',
+  },
+  {
+    icon: Receipt,
+    title: 'From Consultation to Payment',
+    content:
+      'Finish the consult and a draft invoice is ready. Reception collects payment and can share a PDF, including a GST-ready line.',
+  },
+  {
+    icon: Heart,
+    title: 'Records That Stay With the Pet',
+    content:
+      'Vaccines, notes, and invoices stay on the pet, so the next visit starts from that record — including when the pet is seen at another clinic.',
+  },
+] as const;
+
+const values = [
+  {
+    icon: PawPrint,
+    title: 'Pet at the Centre',
+    content: 'The visit, the bill, and the history are organised around the pet, not a loose row in a spreadsheet.',
+  },
+  {
+    icon: Stethoscope,
+    title: 'One Connected Visit',
+    content: 'The consultation, the draft invoice, and the payment belong to the same visit. Reception and the doctor share it.',
+  },
+  {
+    icon: FileText,
+    title: 'Records That Travel With the Pet',
+    content: 'Notes, vaccines, and invoices stay associated with the pet, so care can continue across visits and clinics.',
+  },
+  {
+    icon: Receipt,
+    title: 'Honest Clinic Operations',
+    content: 'Clinics keep a clear operational record of the visit, including a GST-ready invoice line they can hand over.',
+  },
+] as const;
 
 const About = () => {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>About Kittyp | Veterinary Clinic Management Platform</title>
+        <meta
+          name="description"
+          content="Kittyp is a veterinary clinic management platform for India. It connects appointments, consultations, invoicing, payments, and pet records, with the pet at the centre."
+        />
+        <link rel="canonical" href="https://kittyp.in/about" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="About Kittyp | Veterinary Clinic Management Platform" />
+        <meta
+          property="og:description"
+          content="Appointments, consults, invoices, and pet records in one clinic workflow for veterinary practices in India."
+        />
+        <meta property="og:url" content="https://kittyp.in/about" />
+        <meta property="og:image" content="https://kittyp.in/og-image.jpg" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="About Kittyp | Veterinary Clinic Management Platform" />
+        <meta
+          name="twitter:description"
+          content="Veterinary clinic CRM for India. Book, consult, invoice, and keep the record with the pet."
+        />
+        <meta name="twitter:image" content="https://kittyp.in/og-image.jpg" />
+      </Helmet>
 
       <main className="pt-24 pb-16">
         {/* Hero Section */}
@@ -53,50 +124,30 @@ const About = () => {
           </div>
         </section>
 
-        {/* Our Mission Section */}
-        <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold text-foreground mb-6">Our Mission</h2>
-            <p className="text-xl text-muted-foreground">
-              We're on a mission to revolutionize pet care by creating products that are healthier for pets, 
-              more convenient for owners, and kinder to our planet.
+        <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
+          <div className="max-w-2xl mb-10">
+            <h2 className="text-3xl font-bold text-foreground mb-4">Our Mission</h2>
+            <p className="text-lg text-muted-foreground">
+              Help clinics, veterinarians, and pet parents share one visit — from the front desk to the record that stays with the pet.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: <Heart className="h-10 w-10 text-primary" />,
-                title: "Healthier for Cats",
-                content: "Our dust-free, chemical-free formulas are gentle on sensitive paws and respiratory systems."
-              },
-              {
-                icon: <Leaf className="h-10 w-10 text-primary" />,
-                title: "Better for the Planet",
-                content: "Made from sustainable plant materials that biodegrade naturally, reducing landfill waste."
-              },
-              {
-                icon: <Shield className="h-10 w-10 text-primary" />,
-                title: "Safer for Homes",
-                content: "Non-toxic ingredients mean a healthier environment for your entire family."
-              }
-            ].map((item, index) => (
-              <div 
-                key={item.title}
-                className={cn(
-                  "flex flex-col items-center text-center p-8 rounded-xl",
-                  "bg-card border border-border",
-                  "animate-fade-up"
-                )}
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="p-3 bg-accent rounded-full mb-6">
-                  {item.icon}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {missionItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={item.title}
+                  className="flex h-full flex-col rounded-xl border border-border bg-card p-6"
+                >
+                  <div className="mb-5 w-fit rounded-full bg-accent p-3">
+                    <Icon className="h-6 w-6 text-primary" aria-hidden="true" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-foreground mb-3">{item.title}</h3>
+                  <p className="text-muted-foreground leading-relaxed">{item.content}</p>
                 </div>
-                <h3 className="text-xl font-semibold text-foreground mb-4">{item.title}</h3>
-                <p className="text-muted-foreground">{item.content}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -163,123 +214,83 @@ const About = () => {
           </div>
         </section>
 
-        {/* Values Section */}
-        <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold text-foreground mb-6">Our Values</h2>
-            <p className="text-xl text-muted-foreground">
-              The principles that guide everything we do at Kittyp.
+        <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
+          <div className="max-w-2xl mb-10">
+            <h2 className="text-3xl font-bold text-foreground mb-4">Our Values</h2>
+            <p className="text-lg text-muted-foreground">
+              How Kittyp is built: one visit, one pet, and a record the clinic can stand behind.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {[
-              {
-                icon: <Leaf className="h-8 w-8 text-primary" />,
-                title: "Sustainability First",
-                content: "We prioritize eco-friendly materials and processes in every product decision."
-              },
-              {
-                icon: <Award className="h-8 w-8 text-primary" />,
-                title: "Quality Without Compromise",
-                content: "We never sacrifice performance for sustainability – our products must excel at both."
-              },
-              {
-                icon: <Users className="h-8 w-8 text-primary" />,
-                title: "Community Focused",
-                content: "We build lasting relationships with customers, partners, and environmental organizations."
-              },
-              {
-                icon: <Shield className="h-8 w-8 text-primary" />,
-                title: "Transparency",
-                content: "We're honest about our ingredients, manufacturing processes, and environmental impact."
-              }
-            ].map((value, index) => (
-              <div 
-                key={value.title}
-                className={cn(
-                  "flex items-start p-6 rounded-xl",
-                  "bg-card border border-border",
-                  "animate-fade-up"
-                )}
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="p-2 bg-accent rounded-lg mr-4">
-                  {value.icon}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {values.map((value) => {
+              const Icon = value.icon;
+              return (
+                <div
+                  key={value.title}
+                  className="flex items-start gap-4 rounded-xl border border-border bg-card p-6"
+                >
+                  <div className="shrink-0 rounded-lg bg-accent p-2">
+                    <Icon className="h-6 w-6 text-primary" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">{value.title}</h3>
+                    <p className="text-muted-foreground leading-relaxed">{value.content}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">{value.title}</h3>
-                  <p className="text-muted-foreground">{value.content}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
-        {/* Location Section */}
-        <section className="bg-gray-50 dark:bg-gray-900 py-16 md:py-24">
+        <section className="bg-muted py-16 md:py-20">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
               <div>
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Visit Us</h2>
-                <div className="flex items-start space-x-3 mb-6">
-                  <MapPin className="h-6 w-6 text-kitty-600 flex-shrink-0 mt-1" />
+                <h2 className="text-3xl font-bold text-foreground mb-6">Visit Us</h2>
+                <div className="flex items-start gap-3 mb-6">
+                  <MapPin className="h-6 w-6 text-primary shrink-0 mt-0.5" aria-hidden="true" />
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                      Headquarters
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400">
-                      123 Eco Way, Portland, OR 97205<br />
-                      United States
-                    </p>
+                    <h3 className="text-lg font-semibold text-foreground mb-1">Headquarters</h3>
+                    <p className="text-foreground">Pune, Maharashtra, India</p>
                   </div>
                 </div>
-                <p className="text-gray-600 dark:text-gray-400 mb-8">
-                  Our production facility is powered by 100% renewable energy and features
-                  state-of-the-art water conservation systems.
-                </p>
-                <Link to="/contact">
-                  <Button>
-                    Contact Us
-                  </Button>
-                </Link>
+                <Button asChild>
+                  <Link to="/contact">Contact Us</Link>
+                </Button>
               </div>
-              <div className="md:pl-8">
-                <div className="aspect-video bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden shadow-lg">
-                  <iframe 
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d44973.31093277012!2d-122.70146092009178!3d45.51126952467321!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x54950a0cc25f5703%3A0x60bdc4ca9be8b4a4!2sPortland%2C%20OR%2097205!5e0!3m2!1sen!2sus!4v1714488371026!5m2!1sen!2sus" 
-                    width="100%" 
-                    height="100%" 
-                    style={{ border: 0 }}
-                    allowFullScreen
-                    loading="lazy" 
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title="Kittyp Headquarters Location"
-                  ></iframe>
-                </div>
+              <div className="aspect-video overflow-hidden rounded-lg bg-card shadow-lg">
+                <iframe
+                  src="https://maps.google.com/maps?q=Pune,%20Maharashtra,%20India&z=12&output=embed"
+                  width="100%"
+                  height="100%"
+                  className="border-0"
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Kittyp Headquarters Location"
+                ></iframe>
               </div>
             </div>
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="bg-kitty-600 text-white py-16">
+        <section className="bg-primary text-primary-foreground py-16">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl font-bold mb-6">Ready to make the switch?</h2>
-            <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-              Join thousands of cat owners who've chosen a healthier, more sustainable option for their furry friends.
+            <h2 className="text-3xl font-bold mb-4">Bring your clinic workflow together with Kittyp.</h2>
+            <p className="text-lg text-primary-foreground/90 mb-8 max-w-2xl mx-auto">
+              Kittyp connects the appointment, the consultation, the invoice, and the record that stays with the pet.
             </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link to="/products">
-                <Button size="lg" variant="secondary" className="w-full sm:w-auto">
-                  Shop Products
-                </Button>
-              </Link>
-              <Link to="/why-eco-litter">
-                <Button size="lg" variant="outline" className="bg-transparent border-white text-white hover:bg-white/10 w-full sm:w-auto">
-                  Why Choose Eco-Friendly Litter
-                </Button>
-              </Link>
+            <div className="flex flex-col sm:flex-row justify-center gap-3">
+              <Button asChild size="lg" variant="secondary" className="w-full sm:w-auto">
+                <Link to={petParentSignup.to}>{petParentSignup.label}</Link>
+              </Button>
+              <Button asChild size="lg" variant="secondary" className="w-full sm:w-auto">
+                <Link to={veterinarianSignup.to}>{veterinarianSignup.label}</Link>
+              </Button>
+              <Button asChild size="lg" className="w-full sm:w-auto bg-background text-foreground hover:bg-background/90">
+                <Link to={clinicSignup.to}>{clinicSignup.label}</Link>
+              </Button>
             </div>
           </div>
         </section>
