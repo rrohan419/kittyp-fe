@@ -1,13 +1,93 @@
-import React from 'react';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
-import { Heart, Leaf, Shield, Users, Award, MapPin } from 'lucide-react';
+import { CalendarClock, FileText, Heart, PawPrint, Receipt, Stethoscope } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { Helmet } from 'react-helmet';
+import { PUBLIC_SIGNUP_PATHS } from '@/utils/roles';
+
+const petParentSignup = PUBLIC_SIGNUP_PATHS[0];
+const veterinarianSignup = PUBLIC_SIGNUP_PATHS[1];
+const clinicSignup = PUBLIC_SIGNUP_PATHS[2];
+
+const buildingItems = [
+  {
+    icon: CalendarClock,
+    title: 'A Smoother Clinic Workflow',
+    content: 'Bring appointments, walk-ins, check-ins, and daily clinic operations into one organised workflow.',
+  },
+  {
+    icon: Receipt,
+    title: 'Connected Consultations and Billing',
+    content:
+      'Connect consultations, treatment details, invoices, and payments so clinic teams can manage a visit with less duplicate work.',
+  },
+  {
+    icon: Heart,
+    title: 'Healthcare Records Built Around the Pet',
+    content:
+      'Keep medical notes, vaccination history, and visit records organised around the pet, helping care teams build on previous visits.',
+  },
+  {
+    icon: FileText,
+    title: 'Better Visibility for Pet Parents',
+    content:
+      "Help pet parents stay informed about appointments, healthcare records, and the next steps in their pets' care.",
+  },
+] as const;
+
+const values = [
+  {
+    icon: PawPrint,
+    title: 'Pet First',
+    content:
+      'The pet is at the centre of the healthcare journey. Records and care should be organised around the patient, not scattered across disconnected processes.',
+  },
+  {
+    icon: Stethoscope,
+    title: 'Simplicity in Everyday Work',
+    content:
+      'Technology should reduce administrative friction. We aim to make essential workflows practical for veterinarians and clinic teams.',
+  },
+  {
+    icon: FileText,
+    title: 'Connected Care',
+    content:
+      'Appointments, consultations, billing, and medical history are parts of one healthcare journey. We build to bring those parts closer together.',
+  },
+  {
+    icon: Receipt,
+    title: 'Transparency and Trust',
+    content:
+      'Clear records and accessible information can help clinics and pet parents understand what happened during a visit and what comes next.',
+  },
+] as const;
 
 const About = () => {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>About Kittyp | Built for Vets. Designed Around Pets.</title>
+        <meta
+          name="description"
+          content="Kittyp is building a more connected way to manage veterinary healthcare, bringing clinics, veterinarians, and pet parents together around what matters most: the pet."
+        />
+        <link rel="canonical" href="https://kittyp.in/about" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="About Kittyp | Built for Vets. Designed Around Pets." />
+        <meta
+          property="og:description"
+          content="A more connected way to manage veterinary healthcare, bringing clinics, veterinarians, and pet parents together around the pet."
+        />
+        <meta property="og:url" content="https://kittyp.in/about" />
+        <meta property="og:image" content="https://kittyp.in/og-image.jpg" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="About Kittyp | Built for Vets. Designed Around Pets." />
+        <meta
+          name="twitter:description"
+          content="A more connected way to manage veterinary healthcare, bringing clinics, veterinarians, and pet parents together around the pet."
+        />
+        <meta name="twitter:image" content="https://kittyp.in/og-image.jpg" />
+      </Helmet>
 
       <main className="pt-24 pb-16">
         {/* Hero Section */}
@@ -17,269 +97,202 @@ const About = () => {
               About <span className="text-primary">Kittyp</span>
             </h1>
             <p className="text-xl text-muted-foreground animate-fade-up animate-delay-100">
-              Creating eco-friendly cat litter solutions that are better for your pet, 
-              your home, and our planet.
+              Built for Vets. Designed Around Pets.
+            </p>
+            <p className="mt-4 text-lg leading-relaxed text-muted-foreground animate-fade-up animate-delay-100">
+              We're building a more connected way to manage veterinary healthcare — bringing clinics,
+              veterinarians, and pet parents together around what matters most: the pet.
             </p>
           </div>
         </section>
 
         {/* Our Story Section */}
-        <section className="bg-muted pb-16 md:pb-24">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
-              <div className="order-2 md:order-1 animate-fade-up">
-                <h2 className="text-3xl font-bold text-foreground mb-6">Our Story</h2>
-                <p className="text-muted-foreground mb-4">
-                  Kittyp was founded in 2020 by a team of pet lovers and environmental scientists who believed 
-                  cat litter could be better – for cats, for homes, and for our planet.
-                </p>
-                <p className="text-muted-foreground mb-4">
-                  After two years of research and development, we created a revolutionary plant-based cat litter 
-                  that outperforms traditional clay litters while reducing environmental impact.
-                </p>
-                <p className="text-muted-foreground">
-                  Today, we're proud to offer products that thousands of cat owners trust, helping to divert 
-                  tons of clay litter from landfills every year.
-                </p>
-              </div>
-              <div className="order-1 md:order-2 animate-fade-up animate-delay-100">
-                <img 
-                  src="https://images.unsplash.com/photo-1570824105192-a7bb72b73141?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3" 
-                  alt="Cat with Kittyp products" 
-                  className="rounded-lg shadow-xl w-full h-auto object-cover"
-                />
+        <section className="bg-muted">
+          <div className="grid grid-cols-1 lg:grid-cols-2">
+            <div className="flex items-center justify-center px-4 py-8 sm:px-8 lg:px-10">
+              <img
+                src="https://kittyp-site-images.s3.ap-south-1.amazonaws.com/pokey.png"
+                alt="Pokey, featured alongside the Kittyp story"
+                className="h-auto w-full max-w-md rounded-2xl object-contain shadow-sm"
+              />
+            </div>
+            <div className="flex items-center px-4 py-12 sm:px-8 sm:py-16 lg:px-14 lg:py-20">
+              <div className="mx-auto w-full max-w-xl">
+                <h2 className="text-3xl font-bold tracking-tight text-foreground">Our Story</h2>
+                <h3 className="mt-4 text-xl font-semibold text-foreground">
+                  Better Care Begins with a Better Way.
+                </h3>
+                <div className="mt-6 space-y-4 text-base leading-relaxed text-muted-foreground">
+                  <p>
+                    Every pet has a healthcare journey. Every veterinarian has a responsibility to provide
+                    the best possible care. And every clinic has a daily operation to manage alongside it.
+                  </p>
+                  <p>
+                    But appointments, consultations, medical records, invoices, and follow-ups can become
+                    disconnected across different processes and tools.
+                  </p>
+                  <p>
+                    We started Kittyp with a simple belief:{' '}
+                    <strong className="font-semibold text-foreground">
+                      technology should make veterinary care easier to manage, not more complicated.
+                    </strong>
+                  </p>
+                  <p>
+                    Kittyp brings essential clinic workflows together, helping veterinary professionals
+                    manage their day-to-day operations while giving pet parents better visibility into
+                    their pets' healthcare.
+                  </p>
+                  <p>
+                    We're building around the pet — so healthcare information can remain organised across
+                    visits, and every new consultation can build on the history that came before it.
+                  </p>
+                  <p className="font-semibold text-foreground">
+                    Because better-managed care creates more room for what matters most: caring for pets.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Our Mission Section */}
-        <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold text-foreground mb-6">Our Mission</h2>
-            <p className="text-xl text-muted-foreground">
-              We're on a mission to revolutionize pet care by creating products that are healthier for pets, 
-              more convenient for owners, and kinder to our planet.
+        <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
+          <div className="max-w-3xl">
+            <h2 className="text-3xl font-bold text-foreground mb-4">Our Mission</h2>
+            <p className="text-xl font-semibold leading-relaxed text-foreground">
+              To make veterinary healthcare more connected, organised, and transparent for everyone involved.
             </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: <Heart className="h-10 w-10 text-primary" />,
-                title: "Healthier for Cats",
-                content: "Our dust-free, chemical-free formulas are gentle on sensitive paws and respiratory systems."
-              },
-              {
-                icon: <Leaf className="h-10 w-10 text-primary" />,
-                title: "Better for the Planet",
-                content: "Made from sustainable plant materials that biodegrade naturally, reducing landfill waste."
-              },
-              {
-                icon: <Shield className="h-10 w-10 text-primary" />,
-                title: "Safer for Homes",
-                content: "Non-toxic ingredients mean a healthier environment for your entire family."
-              }
-            ].map((item, index) => (
-              <div 
-                key={item.title}
-                className={cn(
-                  "flex flex-col items-center text-center p-8 rounded-xl",
-                  "bg-card border border-border",
-                  "animate-fade-up"
-                )}
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="p-3 bg-accent rounded-full mb-6">
-                  {item.icon}
-                </div>
-                <h3 className="text-xl font-semibold text-foreground mb-4">{item.title}</h3>
-                <p className="text-muted-foreground">{item.content}</p>
-              </div>
-            ))}
+            <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
+              We want to help veterinary professionals spend less time managing disconnected workflows and
+              give pet parents a clearer view of their pets' healthcare journey.
+            </p>
           </div>
         </section>
 
-        {/* Team Section */}
-        <section className="bg-kitty-50 dark:bg-kitty-900/20 py-16 md:py-24">
+        <section className="bg-muted py-16 md:py-20">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-3xl mx-auto mb-16">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Our Team</h2>
-              <p className="text-xl text-gray-600 dark:text-gray-400">
-                Meet the passionate experts behind Kittyp's innovative products.
+            <div className="mb-10 max-w-2xl">
+              <h2 className="mb-4 text-3xl font-bold text-foreground">What We're Building</h2>
+            </div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {buildingItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.title}
+                    className="flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm"
+                  >
+                    <div className="mb-5 w-fit rounded-full bg-accent p-3">
+                      <Icon className="h-6 w-6 text-primary" aria-hidden="true" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-foreground mb-3">{item.title}</h3>
+                    <p className="text-muted-foreground leading-relaxed">{item.content}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
+          <div className="max-w-2xl mb-10">
+            <h2 className="text-3xl font-bold text-foreground mb-4">What Guides Us</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {values.map((value) => {
+              const Icon = value.icon;
+              return (
+                <div
+                  key={value.title}
+                  className="flex items-start gap-4 rounded-2xl border border-border/60 bg-card p-6 shadow-sm"
+                >
+                  <div className="shrink-0 rounded-lg bg-accent p-2">
+                    <Icon className="h-6 w-6 text-primary" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">{value.title}</h3>
+                    <p className="text-muted-foreground leading-relaxed">{value.content}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="bg-muted py-16 md:py-20">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto mb-10 max-w-3xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight text-foreground">Our Team</h2>
+              <p className="mt-3 text-lg leading-relaxed text-muted-foreground">
+                Kittyp is being built by a team that believes technology can improve the way veterinary
+                care is managed and experienced.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="mx-auto grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
               {[
-                {
-                  name: "Rohan Srivastava",
-                  role: "Founder & CEO",
-                  image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-                  bio: "Environmental scientist with a passion for sustainable pet products."
-                },
-                {
-                  name: "Monis Hassan",
-                  role: "Head of Product",
-                  image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-                  bio: "Pet industry veteran focused on creating innovative, eco-friendly solutions."
-                },
-                {
-                  name: "Prerna Lal",
-                  role: "Lead Researcher",
-                  image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-                  bio: "Biologist specializing in plant-based materials and biodegradability."
-                },
-                {
-                  name: "James Park",
-                  role: "Head of Sustainability",
-                  image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-                  bio: "Environmental advocate ensuring our products meet the highest eco standards."
-                }
-              ].map((member, index) => (
-                <div 
-                  key={index} 
-                  className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-md border border-gray-100 dark:border-gray-700 transition-transform hover:scale-105"
+                { name: 'Rohan Shrivastava', role: 'Founder', initials: 'RS' },
+                { name: 'Swapnil Wankhede', role: 'Co-Founder', initials: 'SW' },
+              ].map((member) => (
+                <div
+                  key={member.name}
+                  className="flex items-center gap-5 rounded-2xl border border-border/60 bg-card p-6 shadow-sm"
                 >
-                  <img 
-                    src={member.image} 
-                    alt={member.name} 
-                    className="w-full h-64 object-cover object-center"
-                  />
-                  <div className="p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">
-                      {member.name}
-                    </h3>
-                    <p className="text-kitty-600 dark:text-kitty-400 mb-3">
-                      {member.role}
-                    </p>
-                    <p className="text-gray-600 dark:text-gray-400">
-                      {member.bio}
-                    </p>
+                  <div
+                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary text-base font-semibold text-primary-foreground"
+                    aria-hidden="true"
+                  >
+                    {member.initials}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">{member.role}</p>
+                    <h3 className="mt-1 text-lg font-semibold text-foreground">{member.name}</h3>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-
-        {/* Values Section */}
-        <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold text-foreground mb-6">Our Values</h2>
-            <p className="text-xl text-muted-foreground">
-              The principles that guide everything we do at Kittyp.
+            <p className="mx-auto mt-8 max-w-3xl text-center leading-relaxed text-muted-foreground">
+              We're working to turn that belief into practical tools for veterinary professionals and
+              better-connected experiences for pet parents.
             </p>
           </div>
+        </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {[
-              {
-                icon: <Leaf className="h-8 w-8 text-primary" />,
-                title: "Sustainability First",
-                content: "We prioritize eco-friendly materials and processes in every product decision."
-              },
-              {
-                icon: <Award className="h-8 w-8 text-primary" />,
-                title: "Quality Without Compromise",
-                content: "We never sacrifice performance for sustainability – our products must excel at both."
-              },
-              {
-                icon: <Users className="h-8 w-8 text-primary" />,
-                title: "Community Focused",
-                content: "We build lasting relationships with customers, partners, and environmental organizations."
-              },
-              {
-                icon: <Shield className="h-8 w-8 text-primary" />,
-                title: "Transparency",
-                content: "We're honest about our ingredients, manufacturing processes, and environmental impact."
-              }
-            ].map((value, index) => (
-              <div 
-                key={value.title}
-                className={cn(
-                  "flex items-start p-6 rounded-xl",
-                  "bg-card border border-border",
-                  "animate-fade-up"
-                )}
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="p-2 bg-accent rounded-lg mr-4">
-                  {value.icon}
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">{value.title}</h3>
-                  <p className="text-muted-foreground">{value.content}</p>
-                </div>
-              </div>
-            ))}
+        <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="mb-4 text-3xl font-bold text-foreground">Our Vision</h2>
+            <p className="text-lg leading-relaxed text-muted-foreground">
+              We envision a future where every pet's healthcare journey is easier to understand, every
+              veterinarian has better tools to deliver care, and every clinic can manage its work with
+              greater clarity.
+            </p>
+            <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
+              We're starting with the everyday workflows of veterinary practices and working toward a
+              more connected pet healthcare ecosystem.
+            </p>
           </div>
         </section>
 
-        {/* Location Section */}
-        <section className="bg-gray-50 dark:bg-gray-900 py-16 md:py-24">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Visit Us</h2>
-                <div className="flex items-start space-x-3 mb-6">
-                  <MapPin className="h-6 w-6 text-kitty-600 flex-shrink-0 mt-1" />
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                      Headquarters
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400">
-                      123 Eco Way, Portland, OR 97205<br />
-                      United States
-                    </p>
-                  </div>
-                </div>
-                <p className="text-gray-600 dark:text-gray-400 mb-8">
-                  Our production facility is powered by 100% renewable energy and features
-                  state-of-the-art water conservation systems.
-                </p>
-                <Link to="/contact">
-                  <Button>
-                    Contact Us
-                  </Button>
-                </Link>
-              </div>
-              <div className="md:pl-8">
-                <div className="aspect-video bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden shadow-lg">
-                  <iframe 
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d44973.31093277012!2d-122.70146092009178!3d45.51126952467321!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x54950a0cc25f5703%3A0x60bdc4ca9be8b4a4!2sPortland%2C%20OR%2097205!5e0!3m2!1sen!2sus!4v1714488371026!5m2!1sen!2sus" 
-                    width="100%" 
-                    height="100%" 
-                    style={{ border: 0 }}
-                    allowFullScreen
-                    loading="lazy" 
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title="Kittyp Headquarters Location"
-                  ></iframe>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="bg-kitty-600 text-white py-16">
+        <section className="bg-primary text-primary-foreground py-16">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl font-bold mb-6">Ready to make the switch?</h2>
-            <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-              Join thousands of cat owners who've chosen a healthier, more sustainable option for their furry friends.
+            <h2 className="text-3xl font-bold mb-4">Let's Build Better Care Together</h2>
+            <p className="text-lg text-primary-foreground/90 mb-4 max-w-3xl mx-auto">
+              We're working with veterinary professionals to understand their challenges and build Kittyp
+              around real clinic workflows.
             </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link to="/products">
-                <Button size="lg" variant="secondary" className="w-full sm:w-auto">
-                  Shop Products
-                </Button>
-              </Link>
-              <Link to="/why-eco-litter">
-                <Button size="lg" variant="outline" className="bg-transparent border-white text-white hover:bg-white/10 w-full sm:w-auto">
-                  Why Choose Eco-Friendly Litter
-                </Button>
-              </Link>
+            <p className="text-lg text-primary-foreground/90 mb-8 max-w-2xl mx-auto">
+              Whether you're a veterinarian, clinic owner, or pet parent, we'd love to connect.
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center gap-3">
+              <Button asChild size="lg" variant="secondary" className="w-full sm:w-auto">
+                <Link to={petParentSignup.to}>{petParentSignup.label}</Link>
+              </Button>
+              <Button asChild size="lg" variant="secondary" className="w-full sm:w-auto">
+                <Link to={veterinarianSignup.to}>{veterinarianSignup.label}</Link>
+              </Button>
+              <Button asChild size="lg" className="w-full sm:w-auto bg-background text-foreground hover:bg-background/90">
+                <Link to={clinicSignup.to}>{clinicSignup.label}</Link>
+              </Button>
             </div>
           </div>
         </section>
