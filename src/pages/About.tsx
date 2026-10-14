@@ -95,30 +95,40 @@ const About = () => {
         </section>
 
         {/* Our Story Section */}
-        <section className="bg-muted pb-16 md:pb-24">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
-              <div className="order-2 md:order-1 animate-fade-up">
-                <h2 className="text-3xl font-bold text-foreground mb-6">Our Story</h2>
-                <p className="text-muted-foreground mb-4">
-                  Kittyp was founded in 2020 by a team of pet lovers and environmental scientists who believed 
-                  cat litter could be better – for cats, for homes, and for our planet.
-                </p>
-                <p className="text-muted-foreground mb-4">
-                  After two years of research and development, we created a revolutionary plant-based cat litter 
-                  that outperforms traditional clay litters while reducing environmental impact.
-                </p>
-                <p className="text-muted-foreground">
-                  Today, we're proud to offer products that thousands of cat owners trust, helping to divert 
-                  tons of clay litter from landfills every year.
-                </p>
-              </div>
-              <div className="order-1 md:order-2 animate-fade-up animate-delay-100">
-                <img 
-                  src="https://images.unsplash.com/photo-1570824105192-a7bb72b73141?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3" 
-                  alt="Cat with Kittyp products" 
-                  className="rounded-lg shadow-xl w-full h-auto object-cover"
-                />
+        <section className="bg-muted">
+          <div className="grid grid-cols-1 lg:grid-cols-2">
+            <div className="flex items-center justify-center px-4 py-8 sm:px-8 lg:px-10">
+              <img
+                src="/home/hero-consult.png"
+                alt="Veterinarian examining a dog during a clinic consult"
+                className="h-auto w-full max-w-md rounded-2xl object-contain shadow-sm"
+              />
+            </div>
+            <div className="flex items-center px-4 py-12 sm:px-8 sm:py-16 lg:px-14 lg:py-20">
+              <div className="mx-auto w-full max-w-xl">
+                <h2 className="text-3xl font-bold tracking-tight text-foreground">Our Story</h2>
+                <h3 className="mt-4 text-xl font-semibold text-foreground">
+                  Better Care Begins with a Better Way.
+                </h3>
+                <div className="mt-6 space-y-4 text-base leading-relaxed text-muted-foreground">
+                  <p>
+                    Every pet deserves the best care, and every veterinarian deserves the freedom to focus
+                    on what matters most.
+                  </p>
+                  <p>
+                    Kittyp was born from a simple belief: technology should make pet care easier, not more
+                    complicated. We’re building a smarter, simpler way for veterinary clinics to manage
+                    appointments, medical records, payments, and everyday operations — bringing
+                    veterinarians, clinics, and pet parents closer together.
+                  </p>
+                  <p>
+                    By simplifying the work behind every visit, we help veterinary professionals spend less
+                    time managing tasks and more time caring for the animals who depend on them.
+                  </p>
+                  <p className="font-semibold text-foreground">
+                    Because when caring becomes simpler, better things happen for pets.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -138,7 +148,7 @@ const About = () => {
               return (
                 <div
                   key={item.title}
-                  className="flex h-full flex-col rounded-xl border border-border bg-card p-6"
+                  className="flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm"
                 >
                   <div className="mb-5 w-fit rounded-full bg-accent p-3">
                     <Icon className="h-6 w-6 text-primary" aria-hidden="true" />
@@ -152,61 +162,31 @@ const About = () => {
         </section>
 
         {/* Team Section */}
-        <section className="bg-kitty-50 dark:bg-kitty-900/20 py-16 md:py-24">
+        <section className="py-16 md:py-20">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-3xl mx-auto mb-16">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Our Team</h2>
-              <p className="text-xl text-gray-600 dark:text-gray-400">
-                Meet the passionate experts behind Kittyp's innovative products.
-              </p>
+            <div className="mx-auto mb-10 max-w-2xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight text-foreground">Our Team</h2>
+              <p className="mt-3 text-lg text-muted-foreground">The founders of Kittyp.</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="mx-auto grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
               {[
-                {
-                  name: "Rohan Srivastava",
-                  role: "Founder & CEO",
-                  image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-                  bio: "Environmental scientist with a passion for sustainable pet products."
-                },
-                {
-                  name: "Monis Hassan",
-                  role: "Head of Product",
-                  image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-                  bio: "Pet industry veteran focused on creating innovative, eco-friendly solutions."
-                },
-                {
-                  name: "Prerna Lal",
-                  role: "Lead Researcher",
-                  image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-                  bio: "Biologist specializing in plant-based materials and biodegradability."
-                },
-                {
-                  name: "James Park",
-                  role: "Head of Sustainability",
-                  image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-                  bio: "Environmental advocate ensuring our products meet the highest eco standards."
-                }
-              ].map((member, index) => (
-                <div 
-                  key={index} 
-                  className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-md border border-gray-100 dark:border-gray-700 transition-transform hover:scale-105"
+                { name: 'Rohan Srivastava', role: 'Founder', initials: 'RS' },
+                { name: 'Swapnil Wankhede', role: 'Co-Founder', initials: 'SW' },
+              ].map((member) => (
+                <div
+                  key={member.name}
+                  className="flex items-center gap-5 rounded-2xl border border-border/60 bg-card p-6 shadow-sm"
                 >
-                  <img 
-                    src={member.image} 
-                    alt={member.name} 
-                    className="w-full h-64 object-cover object-center"
-                  />
-                  <div className="p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">
-                      {member.name}
-                    </h3>
-                    <p className="text-kitty-600 dark:text-kitty-400 mb-3">
-                      {member.role}
-                    </p>
-                    <p className="text-gray-600 dark:text-gray-400">
-                      {member.bio}
-                    </p>
+                  <div
+                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary text-base font-semibold text-primary-foreground"
+                    aria-hidden="true"
+                  >
+                    {member.initials}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">{member.role}</p>
+                    <h3 className="mt-1 text-lg font-semibold text-foreground">{member.name}</h3>
                   </div>
                 </div>
               ))}
@@ -228,7 +208,7 @@ const About = () => {
               return (
                 <div
                   key={value.title}
-                  className="flex items-start gap-4 rounded-xl border border-border bg-card p-6"
+                  className="flex items-start gap-4 rounded-2xl border border-border/60 bg-card p-6 shadow-sm"
                 >
                   <div className="shrink-0 rounded-lg bg-accent p-2">
                     <Icon className="h-6 w-6 text-primary" aria-hidden="true" />
@@ -259,7 +239,7 @@ const About = () => {
                   <Link to="/contact">Contact Us</Link>
                 </Button>
               </div>
-              <div className="aspect-video overflow-hidden rounded-lg bg-card shadow-lg">
+              <div className="aspect-video overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
                 <iframe
                   src="https://maps.google.com/maps?q=Pune,%20Maharashtra,%20India&z=12&output=embed"
                   width="100%"
