@@ -43,3 +43,4 @@ Provide a concise Markdown blueprint containing:
 ## 4. Git & Workflow Standards
 - **Branch Naming:** Follow `feat/<description>`, `fix/<issue>`, `chore/<task>`, or `refactor/<module>`.
 - **Commit Convention:** Use Conventional Commits (`feat:`, `fix:`, `refactor:`, `perf:`, `chore:`, `test:`).
+- **Git workflow:** Follow `git-sync-before-push.mdc`. Never commit features on `master`. Before every push, fetch, update local `master` from `origin/master` without reset or discard, merge `origin/master` into the working branch, run tests, then push. Stop and report if conflicts or tests fail. No force-push and no merge into `master` without explicit authorization.
