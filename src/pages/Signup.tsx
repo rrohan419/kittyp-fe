@@ -54,11 +54,12 @@ const Signup = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialInviteToken = searchParams.get('inviteToken') ?? '';
-  const role: SignupRole = initialInviteToken
+  const requestedRole = isSignupRole(searchParams.get('role'))
+    ? searchParams.get('role') as SignupRole
+    : 'USER';
+  const role: SignupRole = initialInviteToken && requestedRole !== 'DOCTOR'
     ? 'USER'
-    : isSignupRole(searchParams.get('role'))
-      ? searchParams.get('role') as SignupRole
-      : 'USER';
+    : requestedRole;
 
   const setRole = (next: SignupRole) => {
     const params = new URLSearchParams(searchParams);
@@ -69,8 +70,8 @@ const Signup = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState(() => searchParams.get('email') ?? '');
-  const [signupInviteToken, setSignupInviteToken] = useState(initialInviteToken);
-  const [inviteValidating, setInviteValidating] = useState(Boolean(initialInviteToken));
+  const [signupInviteToken, setSignupInviteToken] = useState(role === 'USER' ? initialInviteToken : '');
+  const [inviteValidating, setInviteValidating] = useState(role === 'USER' && Boolean(initialInviteToken));
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
