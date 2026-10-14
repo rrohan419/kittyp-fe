@@ -1,0 +1,31 @@
+---
+description: Mandatory git workflow. Feature branches only. Sync with origin/master before every push. Never discard work or force-push.
+alwaysApply: true
+---
+
+# Git workflow (mandatory)
+
+1. **One branch per change.** Create a separate branch for every feature, bug fix, or independent change. Never develop on `master`. Branch from verified `origin/master`: `git fetch origin`, then `git checkout -b <prefix>/<name> origin/master`.
+
+2. **Sync before every push.** Do not push until the working branch contains the latest `origin/master`.
+   - `git fetch origin`
+   - Update local `master` from `origin/master` without destroying work: `git switch master`, then `git merge origin/master`. If switching would disturb uncommitted work, stay on the working branch and merge `origin/master` there. Never `reset --hard`, `checkout --`, `restore`, or `clean` to make the switch succeed.
+   - On the working branch: `git merge origin/master` (rebase only when it does not rewrite shared history).
+   - Resolve conflicts in place. Run the relevant tests.
+   - Push only after sync and tests succeed.
+
+3. **Never trust local `master`.** Confirm it matches `origin/master` after fetch (`git rev-parse master origin/master`).
+
+4. **Never discard user changes** to synchronize. No reset, restore, clean, or overwrite of existing work.
+
+5. **No force-push** of shared branches, and no history rewrite, without explicit authorization.
+
+6. **Review before commit and push.** Read `git status` and the diff. Stage only files that belong to this change.
+
+7. **Do not merge a feature branch into `master`** unless explicitly authorized.
+
+8. **Stop on failure.** If sync conflicts or tests fail, do not push. Report the conflict or failure.
+
+9. **Worktrees** when another branch has in-progress work that must stay untouched.
+
+10. **No regressions.** A feature or fix must leave unrelated behavior working.

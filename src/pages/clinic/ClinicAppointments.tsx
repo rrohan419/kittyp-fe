@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clock, Loader2, Pencil, Plus, User } from 'lucide-react';
+import { displayPhone } from '@/utils/validation';
 import { format, parseISO, isValid, isSameDay, startOfDay, addMinutes } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
@@ -615,7 +616,7 @@ export default function ClinicAppointments() {
                       <div>
                         <div className="font-medium">
                           {petNameWithType(v.petName, v.species)} · {v.ownerName || 'Owner'}
-                          {v.ownerPhone ? ` · ${v.ownerPhone}` : ''}
+                          {displayPhone(v.ownerPhone) ? ` · ${displayPhone(v.ownerPhone)}` : ''}
                         </div>
                         <div className="text-muted-foreground">
                           {v.doctorName ? `Dr. ${v.doctorName.replace(/^Dr\.?\s*/i, '')} · ` : ''}
@@ -970,7 +971,7 @@ function VisitCard({
           <div className="text-xs text-muted-foreground flex items-center gap-1">
             <User className="h-3 w-3" />
             {visit.ownerName || 'Owner'}
-            {visit.ownerPhone ? ` · ${visit.ownerPhone}` : ''}
+            {displayPhone(visit.ownerPhone) ? ` · ${displayPhone(visit.ownerPhone)}` : ''}
           </div>
           {displayDoctorName && (
             <div className="text-[11px] text-muted-foreground mt-0.5">

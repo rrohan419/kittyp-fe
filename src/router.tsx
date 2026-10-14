@@ -3,6 +3,7 @@ import { isEcommerceEnabled } from '@/config/features';
 import Index from "@/pages/Index";
 import Products from "@/pages/Products";
 import HowToUse from "@/pages/HowToUse";
+import Guide from "@/pages/Guide";
 import Articles from "@/pages/Articles";
 import Contact from "@/pages/Contact";
 import Login from "@/pages/Login";
@@ -122,6 +123,10 @@ export const router = createBrowserRouter(
         {
           path: "articles",
           element: <PageTransition><Articles /></PageTransition>,
+        },
+        {
+          path: "guide",
+          element: <PageTransition><Guide /></PageTransition>,
         },
         {
           path: "articles/:slug",

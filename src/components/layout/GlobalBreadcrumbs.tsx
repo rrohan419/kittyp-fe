@@ -28,6 +28,7 @@ const breadcrumbConfig: BreadcrumbConfig = {
   '/about': { label: 'About Us' },
   '/contact': { label: 'Contact' },
   '/articles': { label: 'Articles' },
+  '/guide': { label: 'Guide' },
   '/article': { label: 'Article', dynamic: true },
   '/cart': { label: 'Shopping Cart' },
   '/checkout': { label: 'Checkout' },
