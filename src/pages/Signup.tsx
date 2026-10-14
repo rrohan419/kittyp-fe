@@ -54,11 +54,10 @@ const Signup = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialInviteToken = searchParams.get('inviteToken') ?? '';
-  const role: SignupRole = initialInviteToken
-    ? 'USER'
-    : isSignupRole(searchParams.get('role'))
-      ? searchParams.get('role') as SignupRole
-      : 'USER';
+  const role: SignupRole = isSignupRole(searchParams.get('role'))
+    ? searchParams.get('role') as SignupRole
+    : 'USER';
+  const isPetParentInvite = role === 'USER' && Boolean(initialInviteToken);
 
   const setRole = (next: SignupRole) => {
     const params = new URLSearchParams(searchParams);
@@ -69,8 +68,10 @@ const Signup = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState(() => searchParams.get('email') ?? '');
-  const [signupInviteToken, setSignupInviteToken] = useState(initialInviteToken);
-  const [inviteValidating, setInviteValidating] = useState(Boolean(initialInviteToken));
+  const [signupInviteToken, setSignupInviteToken] = useState(() =>
+    isPetParentInvite ? initialInviteToken : ''
+  );
+  const [inviteValidating, setInviteValidating] = useState(isPetParentInvite);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -258,7 +259,7 @@ const Signup = () => {
       <main className="pt-20 sm:pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl">
-            {!initialInviteToken && (
+            {!isPetParentInvite && (
               <div className="mb-6">
                 <SignupRoleToggle value={role} onChange={setRole} />
               </div>
