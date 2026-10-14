@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { formatPetDobWithAge } from '@/utils/petAge';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import { PetImage } from '@/components/ui/PetImage';
 import {
   PetDashboardModel,
@@ -158,8 +159,8 @@ export default function PetDashboardPage() {
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
               <Badge variant="secondary">Active</Badge>
-              {(dashboard?.latestWeight?.weight ?? pet?.weight) != null && (
-                <Badge variant="outline">{dashboard?.latestWeight?.weight ?? pet?.weight} kg</Badge>
+              {formatPetWeight(dashboard?.latestWeight?.weight ?? pet?.weight) && (
+                <Badge variant="outline">{formatPetWeight(dashboard?.latestWeight?.weight ?? pet?.weight)}</Badge>
               )}
               {pet?.gender && <Badge variant="outline">{pet.gender}</Badge>}
               {pet?.microchipNumber && (

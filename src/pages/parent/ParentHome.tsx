@@ -12,6 +12,7 @@ import { format, parseISO, isValid } from 'date-fns';
 import { toast } from 'sonner';
 import { RootState } from '@/module/store/store';
 import { formatPetDobWithAge } from '@/utils/petAge';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import { ClinicVisitModel } from '@/services/clinicService';
 import { fetchMyParentVisits } from '@/services/visitService';
 import {
@@ -214,7 +215,7 @@ export default function ParentHome() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="rounded-xl bg-muted/50 p-3 text-center">
                     <p className="text-[10px] uppercase text-muted-foreground">Weight</p>
-                    <p className="font-semibold">{p.weight != null ? `${p.weight} kg` : '—'}</p>
+                    <p className="font-semibold">{formatPetWeight(p.weight) || '—'}</p>
                   </div>
                   <div className="rounded-xl bg-muted/50 p-3 text-center">
                     <p className="text-[10px] uppercase text-muted-foreground">Activity</p>

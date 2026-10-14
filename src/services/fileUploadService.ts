@@ -272,7 +272,7 @@ export const uploadPetPhotos = async (
   return await uploadFiles(files, {
     onProgress,
     maxFileSize: 5 * 1024 * 1024, // 5MB for pet photos
-    allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'],
     maxFiles: 5
   });
 };

@@ -182,7 +182,7 @@ export function Navbar() {
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center space-x-1 text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
+                    className="flex items-center space-x-1 text-sm font-bold text-red-950 bg-[#fc7474] rounded-lg px-3 py-2 hover:bg-[#f85c5c] transition-colors whitespace-nowrap"
                     style={{ textShadow: 'none' }}
                     aria-label="Logout"
                   >
@@ -340,7 +340,7 @@ export function Navbar() {
                           handleLogout();
                           closeMenu();
                         }}
-                        className="w-full text-left text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center"
+                        className="w-full text-left text-sm font-bold text-red-950 bg-[#fc7474] rounded-lg px-3 py-2 hover:bg-[#f85c5c] transition-colors flex items-center"
                         style={{ textShadow: 'none' }}
                       >
                         <LogOut size={18} className="mr-2" />

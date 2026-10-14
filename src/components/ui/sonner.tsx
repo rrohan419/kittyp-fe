@@ -1,5 +1,23 @@
 import { useTheme } from "@/components/providers/ThemeProvider"
-import { Toaster as Sonner } from "sonner"
+import { toast, Toaster as Sonner } from "sonner"
+
+const TOAST_ERROR_DURATION_MS = 7000
+const ERROR_TOAST_FLAG = "__kittypErrorToast"
+
+function installErrorToastDuration() {
+  const tagged = toast as typeof toast & { [ERROR_TOAST_FLAG]?: boolean }
+  if (tagged[ERROR_TOAST_FLAG]) return
+  const error = toast.error.bind(toast)
+  toast.error = (message, data) => {
+    const explicit = data && typeof data.duration === "number" && Number.isFinite(data.duration)
+      ? data.duration
+      : TOAST_ERROR_DURATION_MS
+    return error(message, { ...data, duration: explicit })
+  }
+  tagged[ERROR_TOAST_FLAG] = true
+}
+
+installErrorToastDuration()
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 

@@ -57,8 +57,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     // Validate files
     const validation = validateFiles(fileArray, { ...options, maxFiles });
     if (!validation.isValid) {
-      toast.error(validation.errors.join(', '));
-      onUploadError?.(validation.errors.join(', '));
+      const allowed = options.allowedTypes ?? [];
+      const petPhoto = allowed.includes('image/gif') && !allowed.includes('application/pdf');
+      const message = petPhoto
+        ? 'Use a JPEG, PNG, WebP, or GIF under 5MB.'
+        : validation.errors.join(', ');
+      toast.error(message);
+      onUploadError?.(message);
       return;
     }
 
@@ -173,7 +178,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
       <p className="text-sm text-muted-foreground mb-2">{placeholder}</p>
       <p className="text-xs text-muted-foreground">
-        Supported formats: JPEG, PNG, WebP (Max {Math.round((options.maxFileSize || 5 * 1024 * 1024) / 1024 / 1024)}MB)
+        Supported formats: {(options.allowedTypes ?? []).includes('image/gif') ? 'JPEG, PNG, WebP, or GIF' : 'JPEG, PNG, WebP'} (Max {Math.round((options.maxFileSize || 5 * 1024 * 1024) / 1024 / 1024)}MB)
       </p>
       <input
         ref={fileInputRef}
@@ -358,15 +363,15 @@ export const PetPhotoUpload: React.FC<{
       onUploadComplete={onUploadComplete}
       onUploadError={onUploadError}
       options={{
-        maxFileSize: 3 * 1024 * 1024, // 3MB
-        allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
+        maxFileSize: 5 * 1024 * 1024, // 5MB
+        allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'],
         maxFiles: 5
       }}
       className={className}
       disabled={disabled}
       showPreview={true}
       maxFiles={5}
-      accept="image/*"
+      accept="image/jpeg,image/png,image/webp,image/gif"
       placeholder="Click to upload pet photos"
       variant="drag-drop"
     />

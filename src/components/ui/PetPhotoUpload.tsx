@@ -49,13 +49,14 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
     }
 
     const maxBytes = 5 * 1024 * 1024;
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     for (const file of fileArray) {
       if (file.size > maxBytes) {
-        toast.error(`${file.name} is over 5MB — choose a smaller photo`);
+        toast.error(`${file.name} is over 5MB. Use a JPEG, PNG, WebP, or GIF under 5MB.`);
         return;
       }
-      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-        toast.error('Use JPEG, PNG, or WebP only');
+      if (file.type && !allowed.includes(file.type)) {
+        toast.error(`${file.name} is not a supported pet photo. Use a JPEG, PNG, WebP, or GIF under 5MB.`);
         return;
       }
     }
@@ -109,7 +110,6 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
       toast.success('Pet photos uploaded successfully!');
     } catch (error: any) {
       const errorMessage = error.message || 'Upload failed';
-      toast.error(errorMessage);
       onUploadError?.(errorMessage);
     } finally {
       setIsUploading(false);
@@ -240,7 +240,7 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             onChange={handleFileInputChange}
             className="hidden"
             disabled={disabled || isUploading}
@@ -248,7 +248,7 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
 
           {/* Help Text */}
           <p className="text-xs text-muted-foreground mt-4">
-            Supported formats: JPEG, PNG, WebP (Max 5MB per photo, up to {maxPhotos} photos)
+            Supported formats: JPEG, PNG, WebP, or GIF (Max 5MB per photo, up to {maxPhotos} photos)
           </p>
         </CardContent>
       </Card>

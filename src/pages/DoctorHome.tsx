@@ -44,6 +44,7 @@ import {
   statusLabel,
 } from '@/services/doctorVerificationService';
 import { formatPetDobWithAge } from '@/utils/petAge';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import {
   DoctorInviteModel,
   HealthEventModel,
@@ -1263,7 +1264,7 @@ export default function DoctorHome() {
                 ) : null}
                 {eventDetail.pet?.weight ? (
                   <p>
-                    <span className="text-muted-foreground">Weight:</span> {eventDetail.pet.weight} kg
+                    <span className="text-muted-foreground">Weight:</span> {formatPetWeight(eventDetail.pet.weight)}
                   </p>
                 ) : null}
                 {eventDetail.pet?.gender ? (

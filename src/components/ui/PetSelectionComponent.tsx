@@ -16,6 +16,7 @@ import { Textarea } from "./textarea";
 import { useSelector } from "react-redux";
 import { RootState } from "@/module/store/store";
 import { formatPetDobWithAge } from "@/utils/petAge";
+import { formatPetWeight } from "@/utils/formatPetWeight";
 
 interface PetSelectionProps {
   selectedPetId: string | null;
@@ -190,7 +191,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                         : ''}
                     </p>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {savedPets[0].weight && <Badge variant="secondary">{savedPets[0].weight}</Badge>}
+                      {formatPetWeight(savedPets[0].weight) && <Badge variant="secondary">{formatPetWeight(savedPets[0].weight)}</Badge>}
                       {savedPets[0].activityLevel && (
                         <Badge variant="outline">{savedPets[0].activityLevel}</Badge>
                       )}
@@ -232,9 +233,9 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                                     {formatPetDobWithAge(pet.dateOfBirth)}
                                   </Badge>
                                 )}
-                                {pet.weight && (
+                                {formatPetWeight(pet.weight) && (
                                   <Badge variant="outline" className="text-xs border-primary/20 text-primary">
-                                    {pet.weight} kg
+                                    {formatPetWeight(pet.weight)}
                                   </Badge>
                                 )}
                               </div>
@@ -488,7 +489,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                     <p className="text-sm text-primary/80">
                       <strong>{manualPetData.name}</strong> - {manualPetData.breed || 'Mixed breed'} {manualPetData.breed}
                       {manualPetData.dateOfBirth && `, ${formatPetDobWithAge(manualPetData.dateOfBirth)}`}
-                      {manualPetData.weight && `, ${manualPetData.weight}kg`}
+                      {formatPetWeight(manualPetData.weight) && `, ${formatPetWeight(manualPetData.weight)}`}
                     </p>
                     <br />
                     <span className="text-sm text-primary/80">
@@ -555,7 +556,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                       </div>
                       <div className="bg-secondary/50 p-2 rounded-lg">
                         <span className="text-muted-foreground">Weight:</span>
-                        <p className="font-semibold text-primary">{selectedPet.weight || 'Not set'}</p>
+                        <p className="font-semibold text-primary">{formatPetWeight(selectedPet.weight) || 'Not set'}</p>
                       </div>
                       <div className="bg-secondary/50 p-2 rounded-lg">
                         <span className="text-muted-foreground">Gender:</span>

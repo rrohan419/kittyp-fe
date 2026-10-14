@@ -6,6 +6,7 @@ import { RootState } from '@/module/store/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatPetDobWithAge } from '@/utils/petAge';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import { PetImage } from '@/components/ui/PetImage';
 import { OwnerPetEditDialog } from '@/components/ui/OwnerPetEditDialog';
 
@@ -55,8 +56,8 @@ export const PetManagementPage: React.FC = () => {
                     {pet.type} · {pet.breed || 'Mixed'} ·{' '}
                     {pet.dateOfBirth ? formatPetDobWithAge(pet.dateOfBirth) : '—'}
                   </p>
-                  {pet.weight != null && (
-                    <p className="text-xs text-muted-foreground mt-1">{pet.weight} kg</p>
+                  {formatPetWeight(pet.weight) && (
+                    <p className="text-xs text-muted-foreground mt-1">{formatPetWeight(pet.weight)}</p>
                   )}
                 </div>
                 <Button size="sm" asChild>
