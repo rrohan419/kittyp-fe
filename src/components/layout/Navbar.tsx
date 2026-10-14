@@ -103,6 +103,7 @@ export function Navbar() {
     { name: 'Home', path: '/' },
     ...(ecommerceOn ? [{ name: 'Products', path: '/products' }] : []),
     { name: 'Articles', path: '/articles' },
+    { name: 'Guide', path: '/guide' },
     { name: 'Contact', path: '/contact' },
   ];
 

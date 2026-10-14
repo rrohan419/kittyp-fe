@@ -14,6 +14,7 @@ const Sitemap = () => {
         { name: 'Home', path: '/' },
         { name: 'About', path: '/about' },
         { name: 'Articles', path: '/articles' },
+        { name: 'Guide', path: '/guide' },
         { name: 'Contact Us', path: '/contact' },
       ],
     },
