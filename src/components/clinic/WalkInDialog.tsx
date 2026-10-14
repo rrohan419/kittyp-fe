@@ -147,6 +147,13 @@ export function AddAppointmentDialog({
   const [attachCode, setAttachCode] = useState('');
   const [attachSending, setAttachSending] = useState(false);
   const [attachVerifying, setAttachVerifying] = useState(false);
+  const [attachCooldown, setAttachCooldown] = useState(0);
+
+  useEffect(() => {
+    if (attachCooldown <= 0) return;
+    const t = setTimeout(() => setAttachCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [attachCooldown]);
 
   const activeDoctors = useMemo(
     () =>
@@ -424,7 +431,10 @@ export function AddAppointmentDialog({
       setAttachUser(user);
       setAttachCode('');
       await sendClientAttachOtp(clinicUuid, user.userUuid);
-      toast.success('Confirmation code sent to their email — enter it to attach this account');
+      setAttachCooldown(60);
+      toast.success('Confirmation code sent to their email — enter it to attach this account', {
+        duration: 8000,
+      });
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -507,7 +517,10 @@ export function AddAppointmentDialog({
         setAttachUser(hit.platformUser);
         setAttachCode('');
         await sendClientAttachOtp(clinicUuid, hit.platformUser.userUuid);
-        toast.success('Confirmation code sent to their email — enter it to attach this account');
+        setAttachCooldown(60);
+        toast.success('Confirmation code sent to their email — enter it to attach this account', {
+          duration: 8000,
+        });
         return;
       }
       if (!owner) {
@@ -624,7 +637,8 @@ export function AddAppointmentDialog({
     try {
       setAttachSending(true);
       await sendClientAttachOtp(clinicUuid, attachUser.userUuid);
-      toast.success('Confirmation code sent to their email');
+      setAttachCooldown(60);
+      toast.success('Confirmation code sent to their email', { duration: 8000 });
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -776,6 +790,7 @@ export function AddAppointmentDialog({
           durationMinutes: 30,
           notes: form.reason || undefined,
           mode: 'IN_PERSON',
+          urgency: form.urgency,
         });
         toast.success(
           doctorUuid ? 'Appointment scheduled — doctor notified' : 'Appointment scheduled — unassigned'
@@ -806,6 +821,43 @@ export function AddAppointmentDialog({
   const assignedDoctorLabel = assignedDoctor
     ? assignedDoctor.name || assignedDoctor.email || 'Doctor'
     : null;
+
+  const attachPanel = attachUser ? (
+    <div className="rounded-md border px-3 py-2.5 space-y-2">
+      <p className="text-sm font-medium">Attach KittyP account (email OTP)</p>
+      <p className="text-xs text-muted-foreground">
+        A code was sent to {attachUser.email}. Ask them to share it, then enter it here to add them
+        to this practice.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={attachSending || attachCooldown > 0}
+          onClick={() => void handleSendAttachOtp()}
+        >
+          {attachSending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+          {attachCooldown > 0 ? `Resend in ${attachCooldown}s` : 'Resend'}
+        </Button>
+        <Input
+          className="max-w-[140px] h-8"
+          placeholder="6-digit code"
+          value={attachCode}
+          onChange={(e) => setAttachCode(e.target.value)}
+        />
+        <Button
+          type="button"
+          size="sm"
+          disabled={attachVerifying || !attachCode.trim()}
+          onClick={() => void handleVerifyAttachOtp()}
+        >
+          {attachVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+          Attach
+        </Button>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -938,6 +990,7 @@ export function AddAppointmentDialog({
                 )}
               </div>
             )}
+            {attachPanel}
           </div>
         ) : (
           <div className="space-y-3 mt-1">
@@ -1132,41 +1185,7 @@ export function AddAppointmentDialog({
               </>
             ) : null}
 
-            {attachUser ? (
-              <div className="rounded-md border px-3 py-2.5 space-y-2">
-                <p className="text-sm font-medium">Attach KittyP account (email OTP)</p>
-                <p className="text-xs text-muted-foreground">
-                  A code was sent to {attachUser.email}. Enter it to add them to this clinic.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={attachSending}
-                    onClick={() => void handleSendAttachOtp()}
-                  >
-                    {attachSending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
-                    Resend
-                  </Button>
-                  <Input
-                    className="max-w-[140px] h-8"
-                    placeholder="6-digit code"
-                    value={attachCode}
-                    onChange={(e) => setAttachCode(e.target.value)}
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={attachVerifying || !attachCode.trim()}
-                    onClick={() => void handleVerifyAttachOtp()}
-                  >
-                    {attachVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
-                    Attach
-                  </Button>
-                </div>
-              </div>
-            ) : null}
+            {attachPanel}
 
             {needsOwnerConsent ? (
               <div className="rounded-md border px-3 py-2.5 space-y-2">
@@ -1299,6 +1318,21 @@ export function AddAppointmentDialog({
             </div>
           ) : (
             <div className="space-y-3">
+              <div>
+                <Label>Urgency</Label>
+                <Select value={form.urgency} onValueChange={(v) => set('urgency', v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ROUTINE">Routine</SelectItem>
+                    <SelectItem value="URGENT">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Urgent appointments are highlighted on the calendar and counted when scheduled for today.
+                </p>
+              </div>
               {!hideDoctorSelect && (
                 <div>
                   <Label>Assign doctor</Label>

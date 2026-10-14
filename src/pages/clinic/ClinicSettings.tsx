@@ -1,18 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Building2, AlertTriangle, Plus, Power, MapPin, Pencil } from 'lucide-react';
+import { Building2, AlertTriangle, Plus, Power, Pencil, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
-import { shutdownClinic, reopenClinic, updateClinic } from '@/services/clinicService';
 import {
-  fetchClinicWhatsAppSettings,
-} from '@/services/invoiceService';
-import { whatsappSettingsSummary } from '@/components/whatsapp/whatsappStatusCopy';
+  shutdownClinic,
+  reopenClinic,
+  sendClinicContactOtp,
+  updateClinic,
+  verifyClinicContactOtp,
+} from '@/services/clinicService';
 import { ClinicHoursDisplay, ClinicHoursEditor } from '@/components/clinic/ClinicHoursEditor';
+import { TimeZoneSelect } from '@/components/clinic/TimeZoneSelect';
 import {
   type ClinicHourDay,
   defaultClinicHours,
@@ -21,24 +24,21 @@ import {
 } from '@/utils/clinicHours';
 import { Link } from 'react-router-dom';
 import { RootState } from '@/module/store/store';
-import { ROLES, hasAnyRole, hasRole } from '@/utils/roles';
+import { ROLES, hasRole } from '@/utils/roles';
 import { CopyableId } from '@/components/ui/CopyableId';
+import { digitsOnlyPhone, normalizeLocalPhone, validateEmail, validatePhone } from '@/utils/validation';
+import { WhatsAppMark } from '@/components/auth/signup/WhatsAppMark';
+import { openMsg91OtpWidget } from '@/services/msg91Widget';
 
 export default function ClinicSettings() {
   const { user } = useSelector((state: RootState) => state.authReducer);
-  const canManageWhatsApp = hasRole(user?.roles, ROLES.CLINIC_ADMIN);
-  const canManageLocation = hasAnyRole(user?.roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF, ROLES.DOCTOR]);
   const { clinic, clinicUuid, refresh } = useActiveClinic();
+  const canManagePracticeProfile =
+    hasRole(user?.roles, ROLES.CLINIC_ADMIN) ||
+    (hasRole(user?.roles, ROLES.DOCTOR) && !!clinic?.personal);
   const [acting, setActing] = useState(false);
-  const [waConfigured, setWaConfigured] = useState(false);
-  const [waTemplatesReady, setWaTemplatesReady] = useState(false);
-  const [waTemplatesStatus, setWaTemplatesStatus] = useState<string | undefined>();
   const isShutdown = clinic?.status === 'SHUTDOWN';
 
-  const [city, setCity] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
-  const [savingLocation, setSavingLocation] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [name, setName] = useState('');
@@ -46,8 +46,17 @@ export default function ClinicSettings() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [timezone, setTimezone] = useState('');
   const [hours, setHours] = useState<ClinicHourDay[]>([]);
   const [legacyHours, setLegacyHours] = useState<string | null>(null);
+  const [emailOtp, setEmailOtp] = useState('');
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [phoneOtp, setPhoneOtp] = useState('');
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [phoneOtpMethod, setPhoneOtpMethod] = useState<'WHATSAPP' | 'PHONE'>('WHATSAPP');
+  const [otpBusy, setOtpBusy] = useState<'EMAIL' | 'PHONE' | null>(null);
 
   useEffect(() => {
     if (!clinic || editingProfile) return;
@@ -56,36 +65,129 @@ export default function ClinicSettings() {
     setEmail(clinic.email ?? '');
     setPhone(clinic.phone ?? '');
     setAddress(clinic.address ?? '');
+    setTimezone(clinic.timezone ?? '');
     const parsed = parseOperatingHours(clinic.operatingHours);
     setHours(parsed.days);
     setLegacyHours(parsed.legacyText);
   }, [clinic, editingProfile]);
 
-  useEffect(() => {
-    setCity(clinic?.city ?? '');
-    setLatitude(clinic?.latitude != null ? String(clinic.latitude) : '');
-    setLongitude(clinic?.longitude != null ? String(clinic.longitude) : '');
-  }, [clinic?.city, clinic?.latitude, clinic?.longitude, clinic?.uuid]);
+  const emailChanged = useMemo(
+    () => (email || '').trim().toLowerCase() !== (clinic?.email || '').trim().toLowerCase(),
+    [email, clinic?.email]
+  );
+  const phoneChanged = useMemo(
+    () => normalizeLocalPhone(phone) !== normalizeLocalPhone(clinic?.phone || ''),
+    [phone, clinic?.phone]
+  );
 
   useEffect(() => {
-    if (!clinicUuid || !canManageWhatsApp) {
-      setWaConfigured(false);
-      setWaTemplatesReady(false);
-      setWaTemplatesStatus(undefined);
+    setEmailOtp('');
+    setEmailOtpSent(false);
+    setEmailVerified(false);
+  }, [email]);
+
+  useEffect(() => {
+    setPhoneOtp('');
+    setPhoneOtpSent(false);
+    setPhoneVerified(false);
+    setPhoneOtpMethod('WHATSAPP');
+  }, [phone]);
+
+  const requestContactOtp = async (channel: 'EMAIL' | 'PHONE') => {
+    if (!clinicUuid) return;
+    if (channel === 'EMAIL') {
+      const validation = validateEmail(email);
+      if (validation) {
+        toast.error(validation);
+        return;
+      }
+    } else {
+      const validation = validatePhone(phone, true);
+      if (validation) {
+        toast.error(validation);
+        return;
+      }
+    }
+    setOtpBusy(channel);
+    try {
+      await sendClinicContactOtp(
+        clinicUuid,
+        channel === 'EMAIL'
+          ? { channel, email: email.trim() }
+          : { channel: 'WHATSAPP', phone: `+91${digitsOnlyPhone(phone)}` }
+      );
+      if (channel === 'EMAIL') setEmailOtpSent(true);
+      else {
+        setPhoneOtpSent(true);
+        setPhoneOtpMethod('WHATSAPP');
+      }
+      toast.success(channel === 'EMAIL' ? 'OTP sent to the new practice email' : 'WhatsApp OTP sent to the new practice number');
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Failed to send verification code';
+      toast.error(message);
+    } finally {
+      setOtpBusy(null);
+    }
+  };
+
+  const verifyPracticePhoneBySms = async () => {
+    if (!clinicUuid) return;
+    const validation = validatePhone(phone, true);
+    if (validation) {
+      toast.error(validation);
       return;
     }
-    void fetchClinicWhatsAppSettings(clinicUuid)
-      .then((wa) => {
-        setWaConfigured(!!wa.whatsappConfigured);
-        setWaTemplatesReady(!!wa.templatesReady || wa.invoiceTemplateStatus === 'APPROVED');
-        setWaTemplatesStatus(wa.invoiceTemplateStatus || wa.templatesStatus);
-      })
-      .catch(() => {
-        setWaConfigured(!!clinic?.whatsappConfigured);
-        setWaTemplatesReady(false);
-        setWaTemplatesStatus(undefined);
+    setOtpBusy('PHONE');
+    try {
+      const fullPhone = `+91${digitsOnlyPhone(phone)}`;
+      const accessToken = await openMsg91OtpWidget(fullPhone);
+      await verifyClinicContactOtp(clinicUuid, {
+        channel: 'PHONE',
+        phone: fullPhone,
+        accessToken,
       });
-  }, [clinicUuid, clinic?.whatsappConfigured, canManageWhatsApp]);
+      setPhoneVerified(true);
+      setPhoneOtpMethod('PHONE');
+      toast.success('Practice phone verified by SMS');
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error instanceof Error ? error.message : 'Failed to verify practice phone by SMS');
+      toast.error(message);
+    } finally {
+      setOtpBusy(null);
+    }
+  };
+
+  const confirmContactOtp = async (channel: 'EMAIL' | 'PHONE') => {
+    if (!clinicUuid) return;
+    const code = channel === 'EMAIL' ? emailOtp.trim() : phoneOtp.trim();
+    if (!code) {
+      toast.error('Enter the verification code');
+      return;
+    }
+    setOtpBusy(channel);
+    try {
+      await verifyClinicContactOtp(
+        clinicUuid,
+        channel === 'EMAIL'
+          ? { channel, email: email.trim(), code }
+          : { channel: 'WHATSAPP', phone: `+91${digitsOnlyPhone(phone)}`, code }
+      );
+      if (channel === 'EMAIL') setEmailVerified(true);
+      else setPhoneVerified(true);
+      toast.success(`Practice ${channel === 'EMAIL' ? 'email' : 'phone'} verified`);
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Invalid or expired verification code';
+      toast.error(message);
+    } finally {
+      setOtpBusy(null);
+    }
+  };
 
   const handleShutdown = async () => {
     if (!clinicUuid) return;
@@ -116,64 +218,28 @@ export default function ClinicSettings() {
     }
   };
 
-  const fillFromBrowser = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not available');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLatitude(pos.coords.latitude.toFixed(6));
-        setLongitude(pos.coords.longitude.toFixed(6));
-        toast.success('Coordinates filled from your device');
-      },
-      () => toast.error('Could not read device location')
-    );
-  };
-
-  const saveLocation = async () => {
-    if (!clinicUuid || !clinic) return;
-    const lat = latitude.trim() === '' ? null : Number(latitude);
-    const lng = longitude.trim() === '' ? null : Number(longitude);
-    if ((lat != null && !Number.isFinite(lat)) || (lng != null && !Number.isFinite(lng))) {
-      toast.error('Latitude and longitude must be numbers');
-      return;
-    }
-    setSavingLocation(true);
-    try {
-      await updateClinic(clinicUuid, {
-        name: clinic.name,
-        licenseNumber: clinic.licenseNumber,
-        address: clinic.address,
-        phone: clinic.phone,
-        email: clinic.email,
-        timezone: clinic.timezone,
-        operatingHours: clinic.operatingHours,
-        city: city.trim() || undefined,
-        latitude: lat,
-        longitude: lng,
-        profileImageUrl: clinic.profileImageUrl || undefined,
-      });
-      await refresh();
-      toast.success('Clinic location saved');
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save location');
-    } finally {
-      setSavingLocation(false);
-    }
-  };
-
   const saveProfile = async () => {
     if (!clinicUuid || !clinic) return;
     if (!name.trim()) {
       toast.error('Practice name is required');
       return;
     }
-    const lat = latitude.trim() === '' ? clinic.latitude ?? null : Number(latitude);
-    const lng = longitude.trim() === '' ? clinic.longitude ?? null : Number(longitude);
-    if ((lat != null && !Number.isFinite(lat)) || (lng != null && !Number.isFinite(lng))) {
-      toast.error('Latitude and longitude must be numbers');
+    if (emailChanged && email.trim() && !emailVerified) {
+      toast.error('Verify the new practice email before saving');
       return;
+    }
+    if (phoneChanged && phone.trim() && !phoneVerified) {
+      toast.error('Verify the new practice phone before saving');
+      return;
+    }
+    const nextTimezone = timezone.trim();
+    if (nextTimezone) {
+      try {
+        new Intl.DateTimeFormat(undefined, { timeZone: nextTimezone });
+      } catch {
+        toast.error('Enter a valid IANA time zone, such as Asia/Kolkata');
+        return;
+      }
     }
     setSavingProfile(true);
     try {
@@ -181,18 +247,21 @@ export default function ClinicSettings() {
         name: name.trim(),
         licenseNumber: licenseNumber.trim() || undefined,
         address: address.trim() || undefined,
-        phone: phone.trim() || undefined,
-        email: email.trim() || undefined,
-        timezone: clinic.timezone,
+        phone: phone.trim() ? digitsOnlyPhone(phone) : undefined,
+        email: email.trim().toLowerCase() || undefined,
+        timezone: nextTimezone || undefined,
         operatingHours: serializeOperatingHours(hours),
-        city: city.trim() || undefined,
-        latitude: lat,
-        longitude: lng,
         profileImageUrl: clinic.profileImageUrl || undefined,
       });
       await refresh();
       setEditingProfile(false);
       setLegacyHours(null);
+      setEmailOtp('');
+      setEmailOtpSent(false);
+      setEmailVerified(false);
+      setPhoneOtp('');
+      setPhoneOtpSent(false);
+      setPhoneVerified(false);
       toast.success('Practice profile saved');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to save practice profile');
@@ -227,7 +296,7 @@ export default function ClinicSettings() {
       <Card className="border-0 shadow-sm">
         <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
           <CardTitle className="text-base">Practice Profile</CardTitle>
-          {canManageLocation && !isShutdown && !editingProfile && (
+          {canManagePracticeProfile && !isShutdown && !editingProfile && (
             <Button
               type="button"
               variant="outline"
@@ -266,25 +335,54 @@ export default function ClinicSettings() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Practice type</Label>
-              <Input value={clinic?.practiceType ?? '—'} readOnly />
-            </div>
-            <div className="space-y-2">
-              <Label>kittyp Practice ID</Label>
-              <Input value={clinic?.kittypPracticeId ?? '—'} readOnly />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Organization UUID</Label>
-              <Input value={clinic?.organizationUuid ?? '—'} readOnly />
-            </div>
-            <div className="space-y-2">
               <Label>Email</Label>
               <Input
                 type="email"
                 value={editingProfile ? email : clinic?.email ?? ''}
                 readOnly={!editingProfile}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={savingProfile}
               />
+              {editingProfile && emailChanged && email.trim() && (
+                <div className="space-y-2">
+                  {emailVerified ? (
+                    <p className="text-xs text-green-600">New practice email verified</p>
+                  ) : (
+                    <>
+                      {emailOtpSent && (
+                        <div className="flex gap-2">
+                          <Input
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            placeholder="Email OTP"
+                            maxLength={6}
+                            value={emailOtp}
+                            onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            disabled={savingProfile || otpBusy !== null}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => void confirmContactOtp('EMAIL')}
+                            disabled={savingProfile || otpBusy !== null || !emailOtp.trim()}
+                          >
+                            {otpBusy === 'EMAIL' ? 'Verifying…' : 'Verify'}
+                          </Button>
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void requestContactOtp('EMAIL')}
+                        disabled={savingProfile || otpBusy !== null}
+                      >
+                        {otpBusy === 'EMAIL' ? 'Sending…' : emailOtpSent ? 'Resend email OTP' : 'Verify new email'}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>
@@ -292,8 +390,74 @@ export default function ClinicSettings() {
                 type="tel"
                 value={editingProfile ? phone : clinic?.phone ?? ''}
                 readOnly={!editingProfile}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(digitsOnlyPhone(e.target.value))}
+                disabled={savingProfile}
               />
+              {editingProfile && phoneChanged && phone.trim() && (
+                <div className="space-y-2">
+                  {phoneVerified ? (
+                    <p className="text-xs text-green-600">
+                      New practice phone verified via {phoneOtpMethod === 'WHATSAPP' ? 'WhatsApp' : 'SMS'}
+                    </p>
+                  ) : (
+                    <>
+                      {phoneOtpSent && (
+                        <div className="flex gap-2">
+                          <Input
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            placeholder="WhatsApp OTP"
+                            maxLength={6}
+                            value={phoneOtp}
+                            onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            disabled={savingProfile || otpBusy !== null}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => void confirmContactOtp('PHONE')}
+                            disabled={savingProfile || otpBusy !== null || !phoneOtp.trim()}
+                          >
+                            {otpBusy === 'PHONE' ? 'Verifying…' : 'Verify WhatsApp OTP'}
+                          </Button>
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void requestContactOtp('PHONE')}
+                        disabled={savingProfile || otpBusy !== null}
+                      >
+                        <WhatsAppMark className="h-4 w-4 mr-2" />
+                        {otpBusy === 'PHONE' ? 'Sending WhatsApp OTP…' : phoneOtpSent ? 'Resend WhatsApp OTP' : 'Send WhatsApp OTP'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void verifyPracticePhoneBySms()}
+                        disabled={savingProfile || otpBusy !== null}
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        {otpBusy === 'PHONE' ? 'Verifying by SMS…' : 'Verify by SMS instead'}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="clinic-timezone">Time zone</Label>
+              <TimeZoneSelect
+                value={timezone}
+                onChange={setTimezone}
+                disabled={!editingProfile || savingProfile}
+                readOnly={!editingProfile}
+              />
+              {editingProfile && (
+                <p className="text-xs text-muted-foreground">Search and select an IANA time zone.</p>
+              )}
             </div>
           </div>
           <div className="space-y-2">
@@ -320,8 +484,17 @@ export default function ClinicSettings() {
               <Button
                 type="button"
                 variant="outline"
-                disabled={savingProfile}
-                onClick={() => setEditingProfile(false)}
+                disabled={savingProfile || otpBusy !== null}
+                onClick={() => {
+                  setEmailOtp('');
+                  setEmailOtpSent(false);
+                  setEmailVerified(false);
+                  setPhoneOtp('');
+                  setPhoneOtpSent(false);
+                  setPhoneVerified(false);
+                  setPhoneOtpMethod('WHATSAPP');
+                  setEditingProfile(false);
+                }}
               >
                 Cancel
               </Button>
@@ -332,81 +505,6 @@ export default function ClinicSettings() {
           </p>
         </CardContent>
       </Card>
-
-      {canManageLocation && (
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <MapPin className="h-4 w-4" /> Location for nearby search
-            </CardTitle>
-            <CardDescription>
-              City helps area search; latitude/longitude enable distance ranking for pet parents.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>City / area</Label>
-              <Input
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="e.g. Pune"
-                disabled={isShutdown}
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Latitude</Label>
-                <Input
-                  value={latitude}
-                  onChange={(e) => setLatitude(e.target.value)}
-                  placeholder="18.5204"
-                  disabled={isShutdown}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Longitude</Label>
-                <Input
-                  value={longitude}
-                  onChange={(e) => setLongitude(e.target.value)}
-                  placeholder="73.8567"
-                  disabled={isShutdown}
-                />
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" onClick={fillFromBrowser} disabled={isShutdown}>
-                Use my device location
-              </Button>
-              <Button type="button" onClick={() => void saveLocation()} disabled={isShutdown || savingLocation}>
-                {savingLocation ? 'Saving…' : 'Save location'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {canManageWhatsApp && (
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base">WhatsApp Business</CardTitle>
-            <CardDescription>
-              Connect your practice WhatsApp number with Meta — invoices send from one shared number.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              {whatsappSettingsSummary({
-                configured: waConfigured,
-                ready: waTemplatesReady,
-                templateStatus: waTemplatesStatus,
-              })}
-            </p>
-            <Button variant="outline" asChild>
-              <Link to="/clinic/whatsapp">Manage WhatsApp Business</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
       <Card className="border-0 shadow-sm">
         <CardHeader>

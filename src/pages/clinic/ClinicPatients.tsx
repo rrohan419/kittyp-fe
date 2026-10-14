@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
@@ -57,7 +57,7 @@ import {
 import { clinicCrmPaths } from '@/utils/clinicCrmPaths';
 import { toast } from 'sonner';
 import { ListPager } from '@/components/ui/ListPager';
-import { digitsOnlyPhone, parseApiErrorMessage, validateEmail, validatePhone } from '@/utils/validation';
+import { digitsOnlyPhone, displayPhone, parseApiErrorMessage, validateEmail, validatePhone } from '@/utils/validation';
 import { cn } from '@/lib/utils';
 
 type OwnerRow = ClinicOwnerModel & { clinicUuid?: string; clinicName?: string };
@@ -86,8 +86,8 @@ export default function ClinicPatients() {
   const { clinicUuid, clinic, clinics, isPersonalPractice } = useActiveClinic();
   const { pathname } = useLocation();
   const crm = clinicCrmPaths(pathname);
-  const canAddClients = Boolean(clinicUuid) && !isPersonalPractice;
-  const branchClinics = clinics.filter((c) => c.personal !== true);
+  const canAddClients = Boolean(clinicUuid);
+  const branchClinics = useMemo(() => clinics.filter((c) => c.personal !== true), [clinics]);
   const [tab, setTab] = useState(searchParams.get('tab') === 'pets' ? 'pets' : 'clients');
   const [search, setSearch] = useState(searchParams.get('q') || '');
   const [searchAllBranches, setSearchAllBranches] = useState(false);
@@ -278,7 +278,7 @@ export default function ClinicPatients() {
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [clinicUuid, search, searchAllBranches, clinics, clinic?.name, ownerPage, petPage]);
+  }, [clinicUuid, search, searchAllBranches, branchClinics, clinic?.name, ownerPage, petPage]);
 
   // When a header/list search uniquely identifies a pet or owner, open that entity directly.
   useEffect(() => {
@@ -319,7 +319,7 @@ export default function ClinicPatients() {
       return;
     }
     if (!canAddClients) {
-      toast.error('Switch to an affiliated clinic to add this client');
+      toast.error('Select a practice to add this client');
       return;
     }
     setAddOpen(true);
@@ -352,10 +352,10 @@ export default function ClinicPatients() {
     }
   };
 
-  const runContactLookup = async (raw: string) => {
+  const runEmailLookup = async (raw: string) => {
     if (!clinicUuid || !raw.trim()) return;
     const value = raw.trim();
-    const emailErr = value.includes('@') ? validateEmail(value) : null;
+    const emailErr = validateEmail(value);
     if (emailErr) {
       setFieldErrors((s) => ({ ...s, ownerEmail: emailErr }));
       return;
@@ -477,7 +477,7 @@ export default function ClinicPatients() {
       return;
     }
     const emailErr = validateEmail(form.ownerEmail);
-    const phoneErr = validatePhone(form.ownerPhone, true);
+    const phoneErr = validatePhone(form.ownerPhone);
     if (!form.ownerFirstName.trim()) {
       toast.error('Owner first name is required');
       return;
@@ -498,34 +498,21 @@ export default function ClinicPatients() {
     }
     setSaving(true);
     try {
-      const hitEmail = await lookupOwnerByEmail(clinicUuid, form.ownerEmail.trim());
-      if (hitEmail?.found) {
-        applyLookupHit(hitEmail);
+      const hit = await lookupOwnerByEmail(clinicUuid, form.ownerEmail.trim());
+      if (hit?.found) {
+        applyLookupHit(hit);
         toast.error(
-          hitEmail.platformUser
+          hit.platformUser
             ? 'This email is already registered on KittyP. Send a confirmation email to attach them.'
             : 'This email is already a client of this clinic.'
         );
         return;
       }
-      const phone = digitsOnlyPhone(form.ownerPhone);
-      if (phone.length === 10) {
-        const hitPhone = await lookupOwnerByEmail(clinicUuid, phone);
-        if (hitPhone?.found) {
-          applyLookupHit(hitPhone);
-          toast.error(
-            hitPhone.platformUser
-              ? 'This phone is already registered on KittyP. Send a confirmation email to attach them.'
-              : 'This phone is already a client of this clinic.'
-          );
-          return;
-        }
-      }
       const detail = await addClinicPatient(clinicUuid, {
         ownerFirstName: form.ownerFirstName.trim(),
         ownerLastName: form.ownerLastName.trim() || undefined,
         ownerEmail: form.ownerEmail.trim(),
-        ownerPhone: digitsOnlyPhone(form.ownerPhone),
+        ownerPhone: digitsOnlyPhone(form.ownerPhone) || undefined,
         ownerAddress: form.ownerAddress.trim() || undefined,
         petName: form.petName.trim(),
         petType: form.petType.trim() || undefined,
@@ -545,8 +532,7 @@ export default function ClinicPatients() {
       const message = parseApiErrorMessage(err, 'Failed to add client');
       toast.error(message);
       if (/KittyP account/i.test(message) || /already registered/i.test(message)) {
-        void runContactLookup(form.ownerEmail);
-        void runContactLookup(digitsOnlyPhone(form.ownerPhone));
+        void runEmailLookup(form.ownerEmail);
       }
     } finally {
       setSaving(false);
@@ -576,23 +562,6 @@ export default function ClinicPatients() {
         ) : null}
       </div>
 
-      {isPersonalPractice ? (
-        <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
-          <p className="font-medium inline-flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-primary shrink-0" />
-            Clients and pets are added from appointments
-          </p>
-          <p className="text-muted-foreground mt-1">
-            Book or complete an appointment and the client and pet show up here. This page does not have a separate add button on personal practice.
-          </p>
-          <Button variant="link" className="h-auto p-0 mt-2" asChild>
-            <Link to={pathname.startsWith('/doctor') ? '/doctor/appointments' : '/clinic/appointments'}>
-              Go to appointments
-            </Link>
-          </Button>
-        </div>
-      ) : null}
-
       <div className="space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -600,8 +569,8 @@ export default function ClinicPatients() {
             className="pl-9 h-11 bg-muted/40 border-0 shadow-inner"
             placeholder={
               tab === 'clients'
-                ? 'Search KittyP users or clients by name, email, phone, or owner IDâ€¦'
-                : 'Search by pet name, breed, microchip, or global IDâ€¦'
+                ? 'Search KittyP users or clients by name, email, phone, or owner ID¦'
+                : 'Search by pet name, breed, microchip, or global ID¦'
             }
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -676,7 +645,7 @@ export default function ClinicPatients() {
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {search.trim().length < 3
                     ? 'Type at least 3 characters to search pet-parent accounts.'
-                    : 'Active pet-parent users â€” select to open or add as a clinic client.'}
+                    : 'Active pet-parent users ” select to open or add as a clinic client.'}
                 </p>
               </div>
               {search.trim().length < 3 ? null : loading ? null : platformUsers.length ? (
@@ -703,7 +672,7 @@ export default function ClinicPatients() {
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-sm text-muted-foreground mt-0.5 truncate">{u.email || 'â€”'}</p>
+                            <p className="text-sm text-muted-foreground mt-0.5 truncate">{u.email || '-'}</p>
                             <p className="text-[11px] font-mono text-muted-foreground mt-1 break-all">
                               Owner ID: {u.userUuid}
                             </p>
@@ -726,7 +695,7 @@ export default function ClinicPatients() {
               ) : (
                 <div className="rounded-xl border border-dashed border-border py-8 text-center bg-muted/20">
                   <p className="text-sm text-muted-foreground">
-                    No KittyP accounts match â€œ{search.trim()}â€.
+                    No KittyP accounts match: {search.trim()}
                   </p>
                 </div>
               )}
@@ -738,7 +707,7 @@ export default function ClinicPatients() {
           </div>
           {loading ? (
             <div className="flex items-center gap-2 py-16 text-muted-foreground justify-center">
-              <Loader2 className="h-5 w-5 animate-spin" /> Loading clientsâ€¦
+              <Loader2 className="h-5 w-5 animate-spin" /> Loading clients¦
             </div>
           ) : (
             <div className="space-y-2">
@@ -778,11 +747,11 @@ export default function ClinicPatients() {
                           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                             <span className="inline-flex items-center gap-1.5">
                               <Phone className="h-3.5 w-3.5 text-primary" />
-                              {o.phone || 'â€”'}
+                              {displayPhone(o.phone) || '-'}
                             </span>
                             <span className="inline-flex items-center gap-1.5 truncate max-w-[220px]">
                               <Mail className="h-3.5 w-3.5 text-primary shrink-0" />
-                              <span className="truncate">{o.email || 'â€”'}</span>
+                              <span className="truncate">{o.email || '-'}</span>
                             </span>
                             {o.address && (
                               <span className="inline-flex items-center gap-1.5 truncate max-w-[200px]">
@@ -820,7 +789,7 @@ export default function ClinicPatients() {
                   <User className="h-8 w-8 text-primary/40 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">
                     {isPersonalPractice
-                      ? 'No clients yet. They appear here after an appointment.'
+                      ? 'No clients yet. Add one, or they appear here after an appointment.'
                       : `No clients found${searchAllBranches ? ' across branches' : ' at this branch'}.`}
                   </p>
                 </div>
@@ -845,7 +814,7 @@ export default function ClinicPatients() {
           </div>
           {loading ? (
             <div className="flex items-center gap-2 py-16 text-muted-foreground justify-center">
-              <Loader2 className="h-5 w-5 animate-spin" /> Loading petsâ€¦
+              <Loader2 className="h-5 w-5 animate-spin" /> Loading pets
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -884,15 +853,15 @@ export default function ClinicPatients() {
                     <div className="rounded-xl bg-muted/50 border border-border p-3 space-y-2 text-sm">
                       <div className="flex justify-between gap-2">
                         <span className="text-muted-foreground text-xs">Species</span>
-                        <span className="font-medium text-right">{p.species || 'â€”'}</span>
+                        <span className="font-medium text-right">{p.species || '-'}</span>
                       </div>
                       <div className="flex justify-between gap-2">
                         <span className="text-muted-foreground text-xs">Breed</span>
-                        <span className="font-medium text-right">{p.breed || 'â€”'}</span>
+                        <span className="font-medium text-right">{p.breed || '-'}</span>
                       </div>
                       <div className="flex justify-between gap-2">
                         <span className="text-muted-foreground text-xs">Gender</span>
-                        <span className="font-medium text-right">{p.gender || 'â€”'}</span>
+                        <span className="font-medium text-right">{p.gender || '-'}</span>
                       </div>
                       <div className="flex justify-between gap-2 items-start">
                         <span className="text-muted-foreground text-xs shrink-0">Pet ID</span>
@@ -935,7 +904,7 @@ export default function ClinicPatients() {
                   <PawPrint className="h-8 w-8 text-primary/40 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">
                     {isPersonalPractice
-                      ? 'No pets yet. They appear here after an appointment.'
+                      ? 'No pets yet. Add a client with a pet, or they appear here after an appointment.'
                       : `No pets found${searchAllBranches ? ' across branches' : ' for this clinic'}.`}
                   </p>
                 </div>
@@ -978,7 +947,7 @@ export default function ClinicPatients() {
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   className="pl-8"
-                  placeholder="Email, phone, name, or IDâ€¦"
+                  placeholder="Email, phone, name, or ID¦"
                   value={pickerQ}
                   onChange={(e) => setPickerQ(e.target.value)}
                 />
@@ -991,7 +960,7 @@ export default function ClinicPatients() {
                 <div className="border rounded-md max-h-44 overflow-y-auto divide-y mt-2">
                   {pickerHits.length === 0 ? (
                     <p className="p-3 text-sm text-muted-foreground">
-                      No KittyP or clinic match â€” fill the form below for a new client.
+                      No KittyP or clinic match, fill the form below for a new client.
                     </p>
                   ) : (
                     pickerHits.map((hit) =>
@@ -1047,7 +1016,7 @@ export default function ClinicPatients() {
 
             {matchedOwner ? (
               <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm space-y-2">
-                <p className="font-medium text-foreground">Already a client of this clinic â€” {matchedOwner.name}</p>
+                <p className="font-medium text-foreground">Already a client of this clinic” {matchedOwner.name}</p>
                 <p className="text-xs text-muted-foreground">{matchedOwner.email}</p>
                 <Button
                   type="button"
@@ -1137,14 +1106,14 @@ export default function ClinicPatients() {
                       setAttachUser(null);
                       setFieldErrors((s) => ({ ...s, ownerEmail: '' }));
                     }}
-                    onBlur={() => void runContactLookup(form.ownerEmail)}
+                    onBlur={() => void runEmailLookup(form.ownerEmail)}
                   />
                   {fieldErrors.ownerEmail ? (
                     <p className="text-xs text-destructive">{fieldErrors.ownerEmail}</p>
                   ) : null}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="ownerPhone">Phone (10 digits) *</Label>
+                  <Label htmlFor="ownerPhone">Phone (optional)</Label>
                   <Input
                     id="ownerPhone"
                     inputMode="numeric"
@@ -1156,9 +1125,8 @@ export default function ClinicPatients() {
                       setFieldErrors((s) => ({ ...s, ownerPhone: '' }));
                     }}
                     onBlur={() => {
-                      const err = validatePhone(form.ownerPhone, true);
+                      const err = validatePhone(form.ownerPhone);
                       if (err) setFieldErrors((s) => ({ ...s, ownerPhone: err }));
-                      else void runContactLookup(digitsOnlyPhone(form.ownerPhone));
                     }}
                   />
                   {fieldErrors.ownerPhone ? (

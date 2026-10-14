@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { displayPhone } from '@/utils/validation';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { format, parseISO, differenceInMonths, isValid } from 'date-fns';
 import {
@@ -177,8 +178,6 @@ export default function ClinicDoctorDetail() {
     return [
       { key: 'phoneOtpVerified', label: 'Phone OTP (doctor completed)', submitted: true },
       { key: 'emailOtpVerified', label: 'Email OTP (doctor completed)', submitted: true },
-      { key: 'checkMobileOtp', label: 'Mobile OTP (admin check)' },
-      { key: 'checkEmailOtp', label: 'Email OTP (admin check)' },
       {
         key: 'checkDegree',
         label: 'Degree certificate',
@@ -495,7 +494,7 @@ export default function ClinicDoctorDetail() {
                       </div>
                       <div>
                         <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Contact</p>
-                        <p className="font-medium">{row.owner?.phone || row.pet.ownerPhone || '—'}</p>
+                        <p className="font-medium">{displayPhone(row.owner?.phone) || displayPhone(row.pet.ownerPhone) || '—'}</p>
                         <p className="text-xs text-muted-foreground line-clamp-2">
                           {row.owner?.address || 'No address on file'}
                         </p>

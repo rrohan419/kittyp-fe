@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { displayPhone } from '@/utils/validation';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -323,7 +324,7 @@ export default function ClinicOwnerProfile() {
             <p className="text-muted-foreground text-xs mb-1">Phone</p>
             <p className="font-medium flex items-center gap-2">
               <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-              {owner.phone || '—'}
+              {displayPhone(owner.phone) || '—'}
             </p>
           </div>
           {owner.alternatePhone && (
@@ -346,7 +347,7 @@ export default function ClinicOwnerProfile() {
           <div>
             <p className="text-muted-foreground text-xs mb-1">Billing</p>
             <p className="font-medium">
-              {profile.billingStatus.replaceAll('_', ' ')}
+              {profile.billingStatus.replace(/_/g, ' ')}
               {profile.invoiceCount > 0 ? ` · ${profile.invoiceCount} invoice(s)` : ''}
             </p>
           </div>

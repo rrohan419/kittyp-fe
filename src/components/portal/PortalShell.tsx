@@ -27,7 +27,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { selectCartItems } from '@/module/slice/CartSlice';
 import { NavItem, PortalConfig } from '@/config/portal';
 import { AppDispatch, RootState } from '@/module/store/store';
-import { clearUser, setActiveRole } from '@/module/slice/AuthSlice';
+import { clearUser } from '@/module/slice/AuthSlice';
 import { AppRole, ROLES, canSwitchWorkspace, hasAnyRole } from '@/utils/roles';
 import { ClinicSwitcher } from '@/components/clinic/ClinicSwitcher';
 import { PortalNotifications } from '@/components/portal/PortalNotifications';
@@ -92,13 +92,11 @@ export function PortalShell({ config }: PortalShellProps) {
   const [headerSearch, setHeaderSearch] = useState('');
   const canSwitchRole = canSwitchWorkspace(user?.roles);
   const displayUser = useMemo(() => resolvePortalUser(config, user), [config, user]);
-  const showClinicSwitcher = hasAnyRole(user?.roles, [
-    ROLES.DOCTOR,
-    ROLES.CLINIC_ADMIN,
-    ROLES.CLINIC_STAFF,
-  ]);
   const isClinicPortal = config.basePath === '/clinic';
   const isDoctorPortal = config.basePath === '/doctor';
+  const showClinicSwitcher =
+    (isDoctorPortal && hasAnyRole(user?.roles, [ROLES.DOCTOR])) ||
+    (isClinicPortal && hasAnyRole(user?.roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF]));
   const { clinicUuid, isPersonalPractice } = useActiveClinic();
   const appointmentCount = useAppointmentNavCount(activeRole, clinicUuid);
   const appointmentBadge = appointmentCount > 0 ? String(appointmentCount) : undefined;
@@ -106,9 +104,12 @@ export function PortalShell({ config }: PortalShellProps) {
     items.map((item) =>
       item.path.includes('/appointments') ? { ...item, badge: appointmentBadge } : item
     );
-  const visibleNav = config.navItems.filter(
-    (item) => isPersonalPractice || !isDoctorPortal || item.path !== '/doctor/whatsapp'
-  );
+  const visibleNav = config.navItems.filter((item) => {
+    if (!isDoctorPortal) return true;
+    if (!isPersonalPractice && item.path === '/doctor/availability') return false;
+    if (!isPersonalPractice && item.path === '/doctor/whatsapp') return false;
+    return true;
+  });
   const navItems = withAppointmentBadge(visibleNav);
   const bottomTabs = withAppointmentBadge(config.bottomTabs);
 
@@ -142,9 +143,8 @@ export function PortalShell({ config }: PortalShellProps) {
   };
 
   const handleSwitchRole = () => {
-    dispatch(setActiveRole(null));
     navigate('/select-role', {
-      state: { roles: (user?.roles || []) as AppRole[] },
+      state: { roles: (user?.roles || []) as AppRole[], forceSelection: true },
     });
   };
 
