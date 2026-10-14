@@ -1,6 +1,6 @@
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
-import { CalendarClock, FileText, Heart, MapPin, PawPrint, Receipt, Stethoscope } from 'lucide-react';
+import { CalendarClock, FileText, Heart, PawPrint, Receipt, Stethoscope } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { PUBLIC_SIGNUP_PATHS } from '@/utils/roles';
@@ -9,47 +9,56 @@ const petParentSignup = PUBLIC_SIGNUP_PATHS[0];
 const veterinarianSignup = PUBLIC_SIGNUP_PATHS[1];
 const clinicSignup = PUBLIC_SIGNUP_PATHS[2];
 
-const missionItems = [
+const buildingItems = [
   {
     icon: CalendarClock,
-    title: 'A Smoother Front Desk',
-    content:
-      'Book the slot, take a walk-in, and check the pet in from one list, so reception can move the day without a separate thread for every visit.',
+    title: 'A Smoother Clinic Workflow',
+    content: 'Bring appointments, walk-ins, check-ins, and daily clinic operations into one organised workflow.',
   },
   {
     icon: Receipt,
-    title: 'From Consultation to Payment',
+    title: 'Connected Consultations and Billing',
     content:
-      'Finish the consult and a draft invoice is ready. Reception collects payment and can share a PDF, including a GST-ready line.',
+      'Connect consultations, treatment details, invoices, and payments so clinic teams can manage a visit with less duplicate work.',
   },
   {
     icon: Heart,
-    title: 'Records That Stay With the Pet',
+    title: 'Healthcare Records Built Around the Pet',
     content:
-      'Vaccines, notes, and invoices stay on the pet, so the next visit starts from that record — including when the pet is seen at another clinic.',
+      'Keep medical notes, vaccination history, and visit records organised around the pet, helping care teams build on previous visits.',
+  },
+  {
+    icon: FileText,
+    title: 'Better Visibility for Pet Parents',
+    content:
+      "Help pet parents stay informed about appointments, healthcare records, and the next steps in their pets' care.",
   },
 ] as const;
 
 const values = [
   {
     icon: PawPrint,
-    title: 'Pet at the Centre',
-    content: 'The visit, the bill, and the history are organised around the pet, not a loose row in a spreadsheet.',
+    title: 'Pet First',
+    content:
+      'The pet is at the centre of the healthcare journey. Records and care should be organised around the patient, not scattered across disconnected processes.',
   },
   {
     icon: Stethoscope,
-    title: 'One Connected Visit',
-    content: 'The consultation, the draft invoice, and the payment belong to the same visit. Reception and the doctor share it.',
+    title: 'Simplicity in Everyday Work',
+    content:
+      'Technology should reduce administrative friction. We aim to make essential workflows practical for veterinarians and clinic teams.',
   },
   {
     icon: FileText,
-    title: 'Records That Travel With the Pet',
-    content: 'Notes, vaccines, and invoices stay associated with the pet, so care can continue across visits and clinics.',
+    title: 'Connected Care',
+    content:
+      'Appointments, consultations, billing, and medical history are parts of one healthcare journey. We build to bring those parts closer together.',
   },
   {
     icon: Receipt,
-    title: 'Honest Clinic Operations',
-    content: 'Clinics keep a clear operational record of the visit, including a GST-ready invoice line they can hand over.',
+    title: 'Transparency and Trust',
+    content:
+      'Clear records and accessible information can help clinics and pet parents understand what happened during a visit and what comes next.',
   },
 ] as const;
 
@@ -57,25 +66,25 @@ const About = () => {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>About Kittyp | Veterinary Clinic Management Platform</title>
+        <title>About Kittyp | Built for Vets. Designed Around Pets.</title>
         <meta
           name="description"
-          content="Kittyp is a veterinary clinic management platform for India. It connects appointments, consultations, invoicing, payments, and pet records, with the pet at the centre."
+          content="Kittyp is building a more connected way to manage veterinary healthcare, bringing clinics, veterinarians, and pet parents together around what matters most: the pet."
         />
         <link rel="canonical" href="https://kittyp.in/about" />
         <meta property="og:type" content="website" />
-        <meta property="og:title" content="About Kittyp | Veterinary Clinic Management Platform" />
+        <meta property="og:title" content="About Kittyp | Built for Vets. Designed Around Pets." />
         <meta
           property="og:description"
-          content="Appointments, consults, invoices, and pet records in one clinic workflow for veterinary practices in India."
+          content="A more connected way to manage veterinary healthcare, bringing clinics, veterinarians, and pet parents together around the pet."
         />
         <meta property="og:url" content="https://kittyp.in/about" />
         <meta property="og:image" content="https://kittyp.in/og-image.jpg" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="About Kittyp | Veterinary Clinic Management Platform" />
+        <meta name="twitter:title" content="About Kittyp | Built for Vets. Designed Around Pets." />
         <meta
           name="twitter:description"
-          content="Veterinary clinic CRM for India. Book, consult, invoice, and keep the record with the pet."
+          content="A more connected way to manage veterinary healthcare, bringing clinics, veterinarians, and pet parents together around the pet."
         />
         <meta name="twitter:image" content="https://kittyp.in/og-image.jpg" />
       </Helmet>
@@ -88,8 +97,11 @@ const About = () => {
               About <span className="text-primary">Kittyp</span>
             </h1>
             <p className="text-xl text-muted-foreground animate-fade-up animate-delay-100">
-              Creating eco-friendly cat litter solutions that are better for your pet, 
-              your home, and our planet.
+              Built for Vets. Designed Around Pets.
+            </p>
+            <p className="mt-4 text-lg leading-relaxed text-muted-foreground animate-fade-up animate-delay-100">
+              We're building a more connected way to manage veterinary healthcare — bringing clinics,
+              veterinarians, and pet parents together around what matters most: the pet.
             </p>
           </div>
         </section>
@@ -99,8 +111,8 @@ const About = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2">
             <div className="flex items-center justify-center px-4 py-8 sm:px-8 lg:px-10">
               <img
-                src="/home/hero-consult.png"
-                alt="Veterinarian examining a dog during a clinic consult"
+                src="https://kittyp-site-images.s3.ap-south-1.amazonaws.com/pokey.png"
+                alt="Pokey, featured alongside the Kittyp story"
                 className="h-auto w-full max-w-md rounded-2xl object-contain shadow-sm"
               />
             </div>
@@ -112,21 +124,30 @@ const About = () => {
                 </h3>
                 <div className="mt-6 space-y-4 text-base leading-relaxed text-muted-foreground">
                   <p>
-                    Every pet deserves the best care, and every veterinarian deserves the freedom to focus
-                    on what matters most.
+                    Every pet has a healthcare journey. Every veterinarian has a responsibility to provide
+                    the best possible care. And every clinic has a daily operation to manage alongside it.
                   </p>
                   <p>
-                    Kittyp was born from a simple belief: technology should make pet care easier, not more
-                    complicated. We’re building a smarter, simpler way for veterinary clinics to manage
-                    appointments, medical records, payments, and everyday operations — bringing
-                    veterinarians, clinics, and pet parents closer together.
+                    But appointments, consultations, medical records, invoices, and follow-ups can become
+                    disconnected across different processes and tools.
                   </p>
                   <p>
-                    By simplifying the work behind every visit, we help veterinary professionals spend less
-                    time managing tasks and more time caring for the animals who depend on them.
+                    We started Kittyp with a simple belief:{' '}
+                    <strong className="font-semibold text-foreground">
+                      technology should make veterinary care easier to manage, not more complicated.
+                    </strong>
+                  </p>
+                  <p>
+                    Kittyp brings essential clinic workflows together, helping veterinary professionals
+                    manage their day-to-day operations while giving pet parents better visibility into
+                    their pets' healthcare.
+                  </p>
+                  <p>
+                    We're building around the pet — so healthcare information can remain organised across
+                    visits, and every new consultation can build on the history that came before it.
                   </p>
                   <p className="font-semibold text-foreground">
-                    Because when caring becomes simpler, better things happen for pets.
+                    Because better-managed care creates more room for what matters most: caring for pets.
                   </p>
                 </div>
               </div>
@@ -135,71 +156,46 @@ const About = () => {
         </section>
 
         <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
-          <div className="max-w-2xl mb-10">
+          <div className="max-w-3xl">
             <h2 className="text-3xl font-bold text-foreground mb-4">Our Mission</h2>
-            <p className="text-lg text-muted-foreground">
-              Help clinics, veterinarians, and pet parents share one visit — from the front desk to the record that stays with the pet.
+            <p className="text-xl font-semibold leading-relaxed text-foreground">
+              To make veterinary healthcare more connected, organised, and transparent for everyone involved.
             </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {missionItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.title}
-                  className="flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm"
-                >
-                  <div className="mb-5 w-fit rounded-full bg-accent p-3">
-                    <Icon className="h-6 w-6 text-primary" aria-hidden="true" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-3">{item.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">{item.content}</p>
-                </div>
-              );
-            })}
+            <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
+              We want to help veterinary professionals spend less time managing disconnected workflows and
+              give pet parents a clearer view of their pets' healthcare journey.
+            </p>
           </div>
         </section>
 
-        {/* Team Section */}
-        <section className="py-16 md:py-20">
+        <section className="bg-muted py-16 md:py-20">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="mx-auto mb-10 max-w-2xl text-center">
-              <h2 className="text-3xl font-bold tracking-tight text-foreground">Our Team</h2>
-              <p className="mt-3 text-lg text-muted-foreground">The founders of Kittyp.</p>
+            <div className="mb-10 max-w-2xl">
+              <h2 className="mb-4 text-3xl font-bold text-foreground">What We're Building</h2>
             </div>
-
-            <div className="mx-auto grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
-              {[
-                { name: 'Rohan Srivastava', role: 'Founder', initials: 'RS' },
-                { name: 'Swapnil Wankhede', role: 'Co-Founder', initials: 'SW' },
-              ].map((member) => (
-                <div
-                  key={member.name}
-                  className="flex items-center gap-5 rounded-2xl border border-border/60 bg-card p-6 shadow-sm"
-                >
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {buildingItems.map((item) => {
+                const Icon = item.icon;
+                return (
                   <div
-                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary text-base font-semibold text-primary-foreground"
-                    aria-hidden="true"
+                    key={item.title}
+                    className="flex h-full flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm"
                   >
-                    {member.initials}
+                    <div className="mb-5 w-fit rounded-full bg-accent p-3">
+                      <Icon className="h-6 w-6 text-primary" aria-hidden="true" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-foreground mb-3">{item.title}</h3>
+                    <p className="text-muted-foreground leading-relaxed">{item.content}</p>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">{member.role}</p>
-                    <h3 className="mt-1 text-lg font-semibold text-foreground">{member.name}</h3>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
 
         <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
           <div className="max-w-2xl mb-10">
-            <h2 className="text-3xl font-bold text-foreground mb-4">Our Values</h2>
-            <p className="text-lg text-muted-foreground">
-              How Kittyp is built: one visit, one pet, and a record the clinic can stand behind.
-            </p>
+            <h2 className="text-3xl font-bold text-foreground mb-4">What Guides Us</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -225,41 +221,67 @@ const About = () => {
 
         <section className="bg-muted py-16 md:py-20">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
-              <div>
-                <h2 className="text-3xl font-bold text-foreground mb-6">Visit Us</h2>
-                <div className="flex items-start gap-3 mb-6">
-                  <MapPin className="h-6 w-6 text-primary shrink-0 mt-0.5" aria-hidden="true" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground mb-1">Headquarters</h3>
-                    <p className="text-foreground">Pune, Maharashtra, India</p>
+            <div className="mx-auto mb-10 max-w-3xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight text-foreground">Our Team</h2>
+              <p className="mt-3 text-lg leading-relaxed text-muted-foreground">
+                Kittyp is being built by a team that believes technology can improve the way veterinary
+                care is managed and experienced.
+              </p>
+            </div>
+
+            <div className="mx-auto grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
+              {[
+                { name: 'Rohan Shrivastava', role: 'Founder', initials: 'RS' },
+                { name: 'Swapnil Wankhede', role: 'Co-Founder', initials: 'SW' },
+              ].map((member) => (
+                <div
+                  key={member.name}
+                  className="flex items-center gap-5 rounded-2xl border border-border/60 bg-card p-6 shadow-sm"
+                >
+                  <div
+                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary text-base font-semibold text-primary-foreground"
+                    aria-hidden="true"
+                  >
+                    {member.initials}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">{member.role}</p>
+                    <h3 className="mt-1 text-lg font-semibold text-foreground">{member.name}</h3>
                   </div>
                 </div>
-                <Button asChild>
-                  <Link to="/contact">Contact Us</Link>
-                </Button>
-              </div>
-              <div className="aspect-video overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
-                <iframe
-                  src="https://maps.google.com/maps?q=Pune,%20Maharashtra,%20India&z=12&output=embed"
-                  width="100%"
-                  height="100%"
-                  className="border-0"
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  title="Kittyp Headquarters Location"
-                ></iframe>
-              </div>
+              ))}
             </div>
+            <p className="mx-auto mt-8 max-w-3xl text-center leading-relaxed text-muted-foreground">
+              We're working to turn that belief into practical tools for veterinary professionals and
+              better-connected experiences for pet parents.
+            </p>
+          </div>
+        </section>
+
+        <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="mb-4 text-3xl font-bold text-foreground">Our Vision</h2>
+            <p className="text-lg leading-relaxed text-muted-foreground">
+              We envision a future where every pet's healthcare journey is easier to understand, every
+              veterinarian has better tools to deliver care, and every clinic can manage its work with
+              greater clarity.
+            </p>
+            <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
+              We're starting with the everyday workflows of veterinary practices and working toward a
+              more connected pet healthcare ecosystem.
+            </p>
           </div>
         </section>
 
         <section className="bg-primary text-primary-foreground py-16">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl font-bold mb-4">Bring your clinic workflow together with Kittyp.</h2>
+            <h2 className="text-3xl font-bold mb-4">Let's Build Better Care Together</h2>
+            <p className="text-lg text-primary-foreground/90 mb-4 max-w-3xl mx-auto">
+              We're working with veterinary professionals to understand their challenges and build Kittyp
+              around real clinic workflows.
+            </p>
             <p className="text-lg text-primary-foreground/90 mb-8 max-w-2xl mx-auto">
-              Kittyp connects the appointment, the consultation, the invoice, and the record that stays with the pet.
+              Whether you're a veterinarian, clinic owner, or pet parent, we'd love to connect.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-3">
               <Button asChild size="lg" variant="secondary" className="w-full sm:w-auto">
