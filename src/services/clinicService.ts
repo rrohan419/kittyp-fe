@@ -16,7 +16,9 @@ export interface ClinicModel {
   personal?: boolean;
   /** Phase 0 tenancy: parent Organization uuid */
   organizationUuid?: string | null;
-  /** Practice type: CLINIC | HOSPITAL | MOBILE_UNIT | HOME_VISIT | SATELLITE | INDEPENDENT */
+  /** Explicit workflow classification, independent of doctor/staff affiliations. */
+  practiceModel?: 'PERSONAL_PRACTICE' | 'ORGANIZATION' | null;
+  /** Facility type: CLINIC | HOSPITAL | MOBILE_UNIT | HOME_VISIT | SATELLITE | INDEPENDENT */
   practiceType?: string | null;
   kittypPracticeId?: string | null;
   /** Clinic Meta WhatsApp credentials are set (token never returned). */
@@ -251,6 +253,7 @@ export interface ClinicBookingModel {
   slotEnd?: string;
   timezone?: string;
   status: string;
+  urgency?: VisitUrgency;
   mode?: string;
   notes?: string;
   clinicUuid?: string;
@@ -436,6 +439,26 @@ export async function updateClinic(clinicUuid: string, body: ClinicCreateRequest
   return res.data.data;
 }
 
+export async function sendClinicContactOtp(
+  clinicUuid: string,
+  body: { channel: 'EMAIL' | 'WHATSAPP'; email?: string; phone?: string }
+): Promise<void> {
+  await axiosInstance.post(`/clinic/${clinicUuid}/contact/otp/send`, body);
+}
+
+export async function verifyClinicContactOtp(
+  clinicUuid: string,
+  body: {
+    channel: 'EMAIL' | 'WHATSAPP' | 'PHONE';
+    email?: string;
+    phone?: string;
+    code?: string;
+    accessToken?: string;
+  }
+): Promise<void> {
+  await axiosInstance.post(`/clinic/${clinicUuid}/contact/otp/verify`, body);
+}
+
 export async function fetchMyClinics(): Promise<ClinicModel[]> {
   const res = await axiosInstance.get<ApiSuccessResponse<ClinicModel[]>>('/clinic/mine');
   return res.data.data ?? [];
@@ -473,6 +496,7 @@ export const CLINIC_NOT_ACTIVATED_MESSAGE =
 
 export function isClinicActivated(status?: string | null, personal?: boolean): boolean {
   if (status === 'SHUTDOWN' || status === 'REJECTED') return false;
+  if (status === 'NOT_REQUIRED') return true;
   if (personal) return true;
   return status === 'VERIFIED';
 }
@@ -707,7 +731,7 @@ export interface AddPatientRequest {
   ownerFirstName: string;
   ownerLastName?: string;
   ownerEmail: string;
-  ownerPhone: string;
+  ownerPhone?: string;
   ownerAddress?: string;
   petName: string;
   petType?: string;
@@ -1076,6 +1100,7 @@ export async function createClinicBooking(
     durationMinutes?: number;
     notes?: string;
     mode?: 'IN_PERSON' | 'VIDEO';
+    urgency?: VisitUrgency;
   }
 ): Promise<ClinicBookingModel> {
   const res = await axiosInstance.post<ApiSuccessResponse<ClinicBookingModel>>(

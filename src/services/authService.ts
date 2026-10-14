@@ -14,6 +14,7 @@ interface SignupData {
   email: string;
   password: string;
   role: SignupRole;
+  inviteToken?: string;
   /** Parent signup does not collect this. Profile edit can add it later. */
   phoneNumber?: string;
 }

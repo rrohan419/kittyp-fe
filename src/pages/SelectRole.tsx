@@ -14,8 +14,6 @@ import {
   PORTAL_HOME,
 } from '@/utils/roles';
 import {
-  clearDefaultWorkspace,
-  getDefaultWorkspace,
   resolvePreferredRole,
   setDefaultWorkspace,
 } from '@/utils/workspacePreference';
@@ -39,7 +37,7 @@ const SelectRole = () => {
     const roles = rolesFromState ?? (Array.isArray(storedRoles) ? storedRoles : authState.user?.roles ?? []);
     return Array.isArray(roles) ? roles.filter((role): role is AppRole => typeof role === 'string') : [];
   }, [rolesFromState, authState.user?.roles]);
-  const [saveAsDefault, setSaveAsDefault] = useState(() => !!getDefaultWorkspace());
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
 
   const workspaceRoles = useMemo(() => {
     const seen = new Set<string>();
@@ -86,9 +84,8 @@ const SelectRole = () => {
     dispatch(setActiveRole(role));
     if (saveAsDefault) {
       setDefaultWorkspace(role);
-    } else {
-      clearDefaultWorkspace();
     }
+    setSaveAsDefault(false);
     toast.success(getContinueAsLabel(role));
     navigate(getPortalPath(role), { replace: true });
   };

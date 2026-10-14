@@ -43,25 +43,15 @@ export function clearDefaultWorkspace(): void {
   removePref();
 }
 
-/**
- * Resolve which workspace to open after login / cold start.
- * Doctors always open the doctor portal first — clinic admin is a secondary
- * workspace via "Switch workspace". Saved clinic defaults are ignored for
- * dual-role doctor accounts so login does not land on /clinic.
- */
+/** Resolve which workspace to open after login / cold start. */
 export function resolvePreferredRole(roles: AppRole[]): AppRole | null {
-  if (hasRole(roles, ROLES.DOCTOR)) {
-    const preferred = getDefaultWorkspace();
-    // Drop stale clinic defaults that trapped doctors on the clinic portal.
-    if (preferred === ROLES.CLINIC_ADMIN || preferred === ROLES.CLINIC_STAFF) {
-      clearDefaultWorkspace();
-    }
-    return ROLES.DOCTOR;
-  }
-
   const preferred = getDefaultWorkspace();
   if (preferred && roles.includes(preferred)) {
     return preferred;
+  }
+
+  if (hasRole(roles, ROLES.DOCTOR)) {
+    return ROLES.DOCTOR;
   }
 
   if (hasAnyRole(roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF])) {

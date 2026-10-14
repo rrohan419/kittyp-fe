@@ -4,6 +4,7 @@ import { addDays, format, isValid, parseISO, startOfDay } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,8 @@ import {
   fetchClinicDoctors,
   isClinicActivated,
   CLINIC_NOT_ACTIVATED_MESSAGE,
+  patchClinicBooking,
+  patchClinicVisit,
 } from '@/services/clinicService';
 import { WalkInDialog } from '@/components/clinic/WalkInDialog';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
@@ -50,7 +53,7 @@ import { cn } from '@/lib/utils';
 import { fetchMyDoctorProfile, isPracticeReady, statusLabel } from '@/services/doctorVerificationService';
 import { resolveLockedDoctorUuid } from '@/utils/roles';
 import { toast } from 'sonner';
-import { parseApiErrorMessage } from '@/utils/validation';
+import { displayPhone, parseApiErrorMessage } from '@/utils/validation';
 import { canEditVisitChart } from '@/utils/visitChartLock';
 import type { InvoiceFromVisitState } from '@/services/invoiceService';
 import { fetchInvoicePdfUrl } from '@/services/invoiceService';
@@ -71,6 +74,9 @@ export default function DoctorAppointments() {
   const [myDoctorUuid, setMyDoctorUuid] = useState<string | null>(null);
   const [practiceReady, setPracticeReady] = useState(true);
   const [doctorStatusLabel, setDoctorStatusLabel] = useState<string | null>(null);
+  const [appointmentDate, setAppointmentDate] = useState(() =>
+    format(startOfDay(new Date()), 'yyyy-MM-dd')
+  );
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [chartVisit, setChartVisit] = useState<ClinicVisitModel | null>(null);
@@ -93,13 +99,12 @@ export default function DoctorAppointments() {
     }
     setLoading(true);
     try {
-      const today = startOfDay(new Date());
-      const from = format(today, 'yyyy-MM-dd');
-      const to = format(addDays(today, 14), 'yyyy-MM-dd');
-      const scope = { clinicUuid: clinicUuid || undefined };
+      const scope = { date: appointmentDate, clinicUuid: clinicUuid || undefined };
       const [v, b, docs] = await Promise.all([
         fetchMyDoctorVisits(scope),
-        fetchMyDoctorBookings({ from, to, ...scope }).catch(() => [] as ClinicBookingModel[]),
+        fetchMyDoctorBookings({
+          ...scope,
+        }).catch(() => [] as ClinicBookingModel[]),
         clinicUuid
           ? fetchClinicDoctors(clinicUuid).catch(() => [] as ClinicDoctorModel[])
           : Promise.resolve([] as ClinicDoctorModel[]),
@@ -114,7 +119,7 @@ export default function DoctorAppointments() {
     } finally {
       setLoading(false);
     }
-  }, [clinicUuid]);
+  }, [appointmentDate, clinicUuid]);
 
   useEffect(() => {
     void fetchMyDoctorProfile()
@@ -143,23 +148,26 @@ export default function DoctorAppointments() {
 
   const appointments = useMemo(() => {
     const cutoff = Date.now() - 60 * 60 * 1000;
+    const today = format(startOfDay(new Date()), 'yyyy-MM-dd');
+    const viewingToday = appointmentDate === today;
     const rows: ApptRow[] = [];
     for (const b of bookings) {
       if (!b.slotStart) continue;
       const status = (b.status || '').toUpperCase();
-      if (['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(status)) continue;
+      const isClosedBooking = ['CANCELLED', 'NO_SHOW'].includes(status);
+      if (viewingToday && status === 'COMPLETED') continue;
       const start = parseISO(b.slotStart);
-      if (!isValid(start) || start.getTime() < cutoff) continue;
+      if (!isValid(start) || (viewingToday && start.getTime() < cutoff && !isClosedBooking)) continue;
       rows.push({ kind: 'booking', booking: b, sortAt: start.getTime() });
     }
     for (const v of visits) {
-      if (!['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS'].includes(v.status)) continue;
+      if (!['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS', 'CANCELLED', 'NO_SHOW'].includes(v.status)) continue;
       const raw = v.startedAt || v.checkedInAt || v.createdAt;
       const t = raw && isValid(parseISO(raw)) ? parseISO(raw).getTime() : Date.now();
       rows.push({ kind: 'visit', visit: v, sortAt: t });
     }
     return rows.sort((a, b) => a.sortAt - b.sortAt);
-  }, [bookings, visits]);
+  }, [appointmentDate, bookings, visits]);
 
   const treated = useMemo(
     () => visits.filter((v) => v.status === 'CHECKING_OUT' || v.status === 'COMPLETED'),
@@ -208,6 +216,40 @@ export default function DoctorAppointments() {
             ? JSON.stringify(ax.response.data)
             : ax.message || '';
       toast.error(parseApiErrorMessage(raw, 'Could not attend booking'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const closePastBooking = async (bookingUuid: string, status: 'CANCELLED' | 'NO_SHOW') => {
+    if (!clinicUuid) return;
+    setBusy(true);
+    try {
+      await patchClinicBooking(clinicUuid, bookingUuid, { status });
+      toast.success(status === 'NO_SHOW' ? 'Appointment marked no-show' : 'Appointment cancelled');
+      await load();
+    } catch (err: unknown) {
+      toast.error(parseApiErrorMessage(
+        JSON.stringify((err as { response?: { data?: unknown } }).response?.data ?? ''),
+        'Could not update appointment'
+      ));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const closePastVisit = async (visitUuid: string, status: 'CANCELLED' | 'NO_SHOW') => {
+    if (!clinicUuid) return;
+    setBusy(true);
+    try {
+      await patchClinicVisit(clinicUuid, visitUuid, { status });
+      toast.success(status === 'NO_SHOW' ? 'Visit marked no-show' : 'Visit cancelled');
+      await load();
+    } catch (err: unknown) {
+      toast.error(parseApiErrorMessage(
+        JSON.stringify((err as { response?: { data?: unknown } }).response?.data ?? ''),
+        'Could not update visit'
+      ));
     } finally {
       setBusy(false);
     }
@@ -318,6 +360,19 @@ export default function DoctorAppointments() {
         </Button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="doctor-appointment-date" className="text-sm text-muted-foreground">
+          Appointment date
+        </label>
+        <Input
+          id="doctor-appointment-date"
+          type="date"
+          className="w-[170px]"
+          value={appointmentDate}
+          onChange={(event) => setAppointmentDate(event.target.value)}
+        />
+      </div>
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin" />
@@ -334,16 +389,41 @@ export default function DoctorAppointments() {
             if (row.kind === 'booking') {
               const b = row.booking;
               const start = parseISO(b.slotStart);
+              const isPastDate =
+                isValid(start) &&
+                startOfDay(start).getTime() < startOfDay(new Date()).getTime();
+              const isOpenBooking = ['PENDING', 'CONFIRMED'].includes((b.status || '').toUpperCase());
               return (
                 <DashboardAppointmentRow
                   key={`booking-${b.uuid}`}
                   time={isValid(start) ? format(start, 'h:mm a') : '—'}
                   title={petNameWithType(b.petName, b.species)}
                   subtitle={[b.ownerName || 'Owner', b.notes, b.clinicName].filter(Boolean).join(' · ')}
+                  urgent={isUrgentVisit(b.urgency)}
                   status="Scheduled"
                   action={
                     <div className="flex flex-wrap items-center gap-2">
-                      {isVideoConsult(b.mode) && (
+                      {isPastDate && isOpenBooking ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void closePastBooking(b.uuid, 'NO_SHOW')}
+                            disabled={busy}
+                          >
+                            No show
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void closePastBooking(b.uuid, 'CANCELLED')}
+                            disabled={busy}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      ) : null}
+                      {!isPastDate && isVideoConsult(b.mode) && (
                         <Button size="sm" variant="outline" asChild>
                           <Link to={consultPath(b.uuid, 'doctor')}>
                             <Video className="h-4 w-4 mr-1" />
@@ -351,13 +431,13 @@ export default function DoctorAppointments() {
                           </Link>
                         </Button>
                       )}
-                      <Button
+                      {!isPastDate && isOpenBooking ? <Button
                         size="sm"
                         onClick={() => void attendFromBooking(b.uuid)}
                         disabled={busy || !practiceReady || !clinicActivated}
                       >
                         Attend
-                      </Button>
+                      </Button> : null}
                     </div>
                   }
                 />
@@ -365,12 +445,16 @@ export default function DoctorAppointments() {
             }
             const v = row.visit;
             const created = v.createdAt ? parseISO(v.createdAt) : null;
+            const isPastVisit =
+              Boolean(created && isValid(created)) &&
+              startOfDay(created as Date).getTime() < startOfDay(new Date()).getTime();
+            const isOpenVisit = ['WAITLIST', 'CHECKED_IN'].includes(v.status);
             return (
               <DashboardAppointmentRow
                 key={`visit-${v.uuid}`}
                 time={created && isValid(created) ? format(created, 'h:mm a') : '—'}
                 title={petNameWithType(v.petName, v.species)}
-                subtitle={[v.ownerName, v.ownerPhone, v.reasonForVisit].filter(Boolean).join(' · ')}
+                subtitle={[v.ownerName, displayPhone(v.ownerPhone), v.reasonForVisit].filter(Boolean).join(' · ')}
                 urgent={isUrgentVisit(v.urgency)}
                 status={v.status}
                 onClick={
@@ -379,13 +463,37 @@ export default function DoctorAppointments() {
                     : undefined
                 }
                 action={
-                  <Button
-                    size="sm"
-                    onClick={() => void openChart(v)}
-                    disabled={busy || ((!practiceReady || !clinicActivated) && v.status !== 'IN_PROGRESS')}
-                  >
-                    {v.status === 'IN_PROGRESS' ? 'Open chart' : 'Attend'}
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {isPastVisit && isOpenVisit ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void closePastVisit(v.uuid, 'NO_SHOW')}
+                          disabled={busy}
+                        >
+                          No show
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void closePastVisit(v.uuid, 'CANCELLED')}
+                          disabled={busy}
+                        >
+                          Cancel
+                        </Button>
+                      </>
+                    ) : null}
+                    {!isPastVisit || v.status === 'IN_PROGRESS' ? (
+                      <Button
+                        size="sm"
+                        onClick={() => void openChart(v)}
+                        disabled={busy || ((!practiceReady || !clinicActivated) && v.status !== 'IN_PROGRESS')}
+                      >
+                        {v.status === 'IN_PROGRESS' ? 'Open chart' : 'Attend'}
+                      </Button>
+                    ) : null}
+                  </div>
                 }
               />
             );
@@ -400,7 +508,7 @@ export default function DoctorAppointments() {
                     {v.ownerName ? ` · ${v.ownerName}` : ''}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {v.ownerPhone ? `${v.ownerPhone} · ` : ''}
+                    {displayPhone(v.ownerPhone) ? `${displayPhone(v.ownerPhone)} · ` : ''}
                     {v.chart?.assessment || v.reasonForVisit || 'Visit'}
                   </p>
                 </div>

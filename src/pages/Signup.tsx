@@ -34,7 +34,11 @@ import { isSignupRole, type SignupRole } from '@/utils/roles';
 import SignupRoleToggle from '@/components/auth/signup/SignupRoleToggle';
 import DoctorSignupForm from '@/components/auth/signup/DoctorSignupForm';
 import ClinicSignupForm from '@/components/auth/signup/ClinicSignupForm';
-import { sendSignupOtp, verifySignupOtp } from '@/services/doctorVerificationService';
+import {
+  sendSignupOtp,
+  validatePetParentSignupInvite,
+  verifySignupOtp,
+} from '@/services/doctorVerificationService';
 import { CooldownTimer } from '@/components/ui/cooldown-timer';
 
 const OTP_RESEND_COOLDOWN_SECONDS = 30;
@@ -49,9 +53,13 @@ export const SignupAlias = ({ role }: { role: SignupRole }) => {
 const Signup = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const role: SignupRole = isSignupRole(searchParams.get('role'))
+  const initialInviteToken = searchParams.get('inviteToken') ?? '';
+  const requestedRole = isSignupRole(searchParams.get('role'))
     ? searchParams.get('role') as SignupRole
     : 'USER';
+  const role: SignupRole = initialInviteToken && requestedRole !== 'DOCTOR'
+    ? 'USER'
+    : requestedRole;
 
   const setRole = (next: SignupRole) => {
     const params = new URLSearchParams(searchParams);
@@ -61,7 +69,9 @@ const Signup = () => {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => searchParams.get('email') ?? '');
+  const [signupInviteToken, setSignupInviteToken] = useState(role === 'USER' ? initialInviteToken : '');
+  const [inviteValidating, setInviteValidating] = useState(role === 'USER' && Boolean(initialInviteToken));
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -86,6 +96,33 @@ const Signup = () => {
 
     return () => window.clearInterval(timer);
   }, [emailCooldown]);
+
+  useEffect(() => {
+    if (!signupInviteToken || !inviteValidating) return;
+    let cancelled = false;
+    validatePetParentSignupInvite(signupInviteToken)
+      .then(({ email: invitedEmail }) => {
+        if (cancelled) return;
+        setEmail(invitedEmail);
+        setEmailVerified(true);
+        setInviteValidating(false);
+        const params = new URLSearchParams(searchParams);
+        params.delete('inviteToken');
+        setSearchParams(params, { replace: true });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setSignupInviteToken('');
+        setInviteValidating(false);
+        toast.error(error instanceof Error ? error.message : 'This clinic invitation is invalid or expired');
+        const params = new URLSearchParams(searchParams);
+        params.delete('inviteToken');
+        setSearchParams(params, { replace: true });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteValidating, searchParams, setSearchParams, signupInviteToken]);
 
   const sendEmailOtp = async () => {
     if (emailCooldown > 0 || otpSending) return;
@@ -160,6 +197,7 @@ const Signup = () => {
         email,
         password,
         role: 'USER',
+        ...(signupInviteToken ? { inviteToken: signupInviteToken } : {}),
       });
 
       setShowSuccessDialog(true);
@@ -221,9 +259,11 @@ const Signup = () => {
       <main className="pt-20 sm:pt-24 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl">
-            <div className="mb-6">
-              <SignupRoleToggle value={role} onChange={setRole} />
-            </div>
+            {!initialInviteToken && (
+              <div className="mb-6">
+                <SignupRoleToggle value={role} onChange={setRole} />
+              </div>
+            )}
 
             {role === 'DOCTOR' && <DoctorSignupForm />}
             {role === 'CLINIC' && <ClinicSignupForm />}
@@ -308,11 +348,13 @@ const Signup = () => {
                               setEmailCooldown(0);
                             }}
                             required
-                            disabled={loading || otpSending || emailVerified}
+                            disabled={loading || otpSending || emailVerified || inviteValidating || !!signupInviteToken}
                           />
                         </div>
                         <div className="space-y-2">
-                          {!emailVerified ? (
+                          {inviteValidating ? (
+                            <p className="text-sm text-muted-foreground">Verifying clinic invitation…</p>
+                          ) : !emailVerified ? (
                             <>
                               <div className="flex gap-2">
                                 <Input
@@ -416,7 +458,7 @@ const Signup = () => {
                       <Button
                         type="submit"
                         className="w-full flex items-center justify-center gap-2"
-                        disabled={loading || otpSending || !emailVerified}
+                        disabled={loading || otpSending || inviteValidating || !emailVerified}
                       >
                         {loading ? (
                           <div className="h-4 w-4 animate-spin border-2 border-primary-foreground border-t-transparent rounded-full" />
