@@ -993,7 +993,7 @@ export default function DoctorHome() {
                     time={format(ev.start, 'h:mm a')}
                     title={ev.title}
                     subtitle={`${format(ev.start, 'EEE MMM d')} · ${ev.subtitle}`}
-                    urgent={isUrgentVisit(ev.visit?.urgency)}
+                    urgent={isUrgentVisit(ev.visit?.urgency || ev.booking?.urgency)}
                     status={ev.status}
                     onClick={() => void openEvent(ev)}
                   />
@@ -1083,7 +1083,7 @@ export default function DoctorHome() {
                 time={format(ev.start, 'h:mm a')}
                 title={ev.title}
                 subtitle={ev.subtitle}
-                urgent={isUrgentVisit(ev.visit?.urgency)}
+                urgent={isUrgentVisit(ev.visit?.urgency || ev.booking?.urgency)}
                 status={ev.status}
                 onClick={() => void openEvent(ev)}
               />

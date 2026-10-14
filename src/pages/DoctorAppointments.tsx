@@ -399,6 +399,7 @@ export default function DoctorAppointments() {
                   time={isValid(start) ? format(start, 'h:mm a') : '—'}
                   title={petNameWithType(b.petName, b.species)}
                   subtitle={[b.ownerName || 'Owner', b.notes, b.clinicName].filter(Boolean).join(' · ')}
+                  urgent={isUrgentVisit(b.urgency)}
                   status="Scheduled"
                   action={
                     <div className="flex flex-wrap items-center gap-2">
