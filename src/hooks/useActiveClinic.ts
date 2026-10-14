@@ -35,6 +35,7 @@ async function loadActiveClinics(): Promise<ClinicModel[]> {
 export function useActiveClinic() {
   const dispatch = useDispatch<AppDispatch>();
   const location = useLocation();
+  const location = useLocation();
   const activeClinicId = useSelector((s: RootState) => s.authReducer.activeClinicId);
   const userUuid = useSelector((s: RootState) => s.authReducer.user?.uuid);
   const doctorPortal = isDoctorPortalPath(location.pathname);
