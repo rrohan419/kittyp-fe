@@ -57,7 +57,7 @@ import {
 import { clinicCrmPaths } from '@/utils/clinicCrmPaths';
 import { toast } from 'sonner';
 import { ListPager } from '@/components/ui/ListPager';
-import { digitsOnlyPhone, parseApiErrorMessage, validateEmail, validatePhone } from '@/utils/validation';
+import { digitsOnlyPhone, displayPhone, parseApiErrorMessage, validateEmail, validatePhone } from '@/utils/validation';
 import { cn } from '@/lib/utils';
 
 type OwnerRow = ClinicOwnerModel & { clinicUuid?: string; clinicName?: string };
@@ -86,7 +86,7 @@ export default function ClinicPatients() {
   const { clinicUuid, clinic, clinics, isPersonalPractice } = useActiveClinic();
   const { pathname } = useLocation();
   const crm = clinicCrmPaths(pathname);
-  const canAddClients = Boolean(clinicUuid) && !isPersonalPractice;
+  const canAddClients = Boolean(clinicUuid);
   const branchClinics = useMemo(() => clinics.filter((c) => c.personal !== true), [clinics]);
   const [tab, setTab] = useState(searchParams.get('tab') === 'pets' ? 'pets' : 'clients');
   const [search, setSearch] = useState(searchParams.get('q') || '');
@@ -319,7 +319,7 @@ export default function ClinicPatients() {
       return;
     }
     if (!canAddClients) {
-      toast.error('Switch to an affiliated clinic to add this client');
+      toast.error('Select a practice to add this client');
       return;
     }
     setAddOpen(true);
@@ -562,23 +562,6 @@ export default function ClinicPatients() {
         ) : null}
       </div>
 
-      {isPersonalPractice ? (
-        <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
-          <p className="font-medium inline-flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-primary shrink-0" />
-            Clients and pets are added from appointments
-          </p>
-          <p className="text-muted-foreground mt-1">
-            Book or complete an appointment and the client and pet show up here. This page does not have a separate add button on personal practice.
-          </p>
-          <Button variant="link" className="h-auto p-0 mt-2" asChild>
-            <Link to={pathname.startsWith('/doctor') ? '/doctor/appointments' : '/clinic/appointments'}>
-              Go to appointments
-            </Link>
-          </Button>
-        </div>
-      ) : null}
-
       <div className="space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -764,7 +747,7 @@ export default function ClinicPatients() {
                           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                             <span className="inline-flex items-center gap-1.5">
                               <Phone className="h-3.5 w-3.5 text-primary" />
-                              {o.phone || '-'}
+                              {displayPhone(o.phone) || '-'}
                             </span>
                             <span className="inline-flex items-center gap-1.5 truncate max-w-[220px]">
                               <Mail className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -806,7 +789,7 @@ export default function ClinicPatients() {
                   <User className="h-8 w-8 text-primary/40 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">
                     {isPersonalPractice
-                      ? 'No clients yet. They appear here after an appointment.'
+                      ? 'No clients yet. Add one, or they appear here after an appointment.'
                       : `No clients found${searchAllBranches ? ' across branches' : ' at this branch'}.`}
                   </p>
                 </div>
@@ -921,7 +904,7 @@ export default function ClinicPatients() {
                   <PawPrint className="h-8 w-8 text-primary/40 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">
                     {isPersonalPractice
-                      ? 'No pets yet. They appear here after an appointment.'
+                      ? 'No pets yet. Add a client with a pet, or they appear here after an appointment.'
                       : `No pets found${searchAllBranches ? ' across branches' : ' for this clinic'}.`}
                   </p>
                 </div>

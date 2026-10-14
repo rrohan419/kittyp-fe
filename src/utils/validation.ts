@@ -73,6 +73,14 @@ export function digitsOnlyPhone(value: string, _maxLen = 10): string {
   return normalizeLocalPhone(value);
 }
 
+const PLACEHOLDER_PHONE = '0000000000';
+
+/** Returns the phone for display, or '' when it is empty or the placeholder default. */
+export function displayPhone(phone?: string | null): string {
+  const p = (phone ?? '').trim();
+  return !p || p === PLACEHOLDER_PHONE ? '' : p;
+}
+
 /** E.164-style full phone for OTP/API (India default). */
 export function toE164Phone(localPhone: string, countryCode = '+91'): string {
   const local = normalizeLocalPhone(localPhone);

@@ -16,7 +16,9 @@ export interface ClinicModel {
   personal?: boolean;
   /** Phase 0 tenancy: parent Organization uuid */
   organizationUuid?: string | null;
-  /** Practice type: CLINIC | HOSPITAL | MOBILE_UNIT | HOME_VISIT | SATELLITE | INDEPENDENT */
+  /** Explicit workflow classification, independent of doctor/staff affiliations. */
+  practiceModel?: 'PERSONAL_PRACTICE' | 'ORGANIZATION' | null;
+  /** Facility type: CLINIC | HOSPITAL | MOBILE_UNIT | HOME_VISIT | SATELLITE | INDEPENDENT */
   practiceType?: string | null;
   kittypPracticeId?: string | null;
   /** Clinic Meta WhatsApp credentials are set (token never returned). */
@@ -251,6 +253,7 @@ export interface ClinicBookingModel {
   slotEnd?: string;
   timezone?: string;
   status: string;
+  urgency?: VisitUrgency;
   mode?: string;
   notes?: string;
   clinicUuid?: string;
@@ -493,6 +496,7 @@ export const CLINIC_NOT_ACTIVATED_MESSAGE =
 
 export function isClinicActivated(status?: string | null, personal?: boolean): boolean {
   if (status === 'SHUTDOWN' || status === 'REJECTED') return false;
+  if (status === 'NOT_REQUIRED') return true;
   if (personal) return true;
   return status === 'VERIFIED';
 }
@@ -1096,6 +1100,7 @@ export async function createClinicBooking(
     durationMinutes?: number;
     notes?: string;
     mode?: 'IN_PERSON' | 'VIDEO';
+    urgency?: VisitUrgency;
   }
 ): Promise<ClinicBookingModel> {
   const res = await axiosInstance.post<ApiSuccessResponse<ClinicBookingModel>>(

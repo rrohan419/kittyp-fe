@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { displayPhone } from '@/utils/validation';
 import { Link } from 'react-router-dom';
 import { format, parseISO, isValid } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
@@ -139,8 +140,8 @@ export default function DoctorPatients() {
                         <span className="truncate">{p.ownerEmail}</span>
                       </div>
                     )}
-                    {p.ownerPhone && (
-                      <p className="text-muted-foreground truncate">{p.ownerPhone}</p>
+                    {displayPhone(p.ownerPhone) && (
+                      <p className="text-muted-foreground truncate">{displayPhone(p.ownerPhone)}</p>
                     )}
                     {p.clinicName && (
                       <p className="text-muted-foreground truncate">{p.clinicName}</p>

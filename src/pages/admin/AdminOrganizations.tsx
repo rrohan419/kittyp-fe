@@ -155,7 +155,7 @@ export default function AdminOrganizations() {
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Clinics</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Organization clinics only. Verify before appointments, bookings, or inviting doctors. Solo doctor practices are reviewed under Doctors.
+            Organization clinics awaiting verification appear here, including clinics owned by doctors. Personal practices do not require clinic verification.
           </p>
         </div>
         <Select value={filter} onValueChange={setFilter}>
