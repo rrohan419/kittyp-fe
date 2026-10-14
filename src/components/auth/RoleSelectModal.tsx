@@ -14,8 +14,6 @@ import { setActiveRole } from '@/module/slice/AuthSlice';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
-  clearDefaultWorkspace,
-  getDefaultWorkspace,
   setDefaultWorkspace,
 } from '@/utils/workspacePreference';
 
@@ -30,15 +28,14 @@ interface RoleSelectModalProps {
 export function RoleSelectModal({ open, roles, onOpenChange, redirectTo }: RoleSelectModalProps) {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const [saveAsDefault, setSaveAsDefault] = useState(() => !!getDefaultWorkspace());
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
 
   const handleSelect = (role: AppRole) => {
     dispatch(setActiveRole(role));
     if (saveAsDefault) {
       setDefaultWorkspace(role);
-    } else {
-      clearDefaultWorkspace();
     }
+    setSaveAsDefault(false);
     toast.success(getContinueAsLabel(role));
     onOpenChange?.(false);
     const target =

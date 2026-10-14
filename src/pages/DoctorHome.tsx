@@ -8,9 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Calendar,
   Clock,
@@ -93,6 +90,8 @@ import { resolveLockedDoctorUuid } from '@/utils/roles';
 import { hasAuthToken } from '@/utils/authStorage';
 import { NowGutterMark, NowIndicator, useTickingNow } from '@/components/schedule/NowIndicator';
 import { WeekCalendarSlotLayer } from '@/components/schedule/weekCalendarSlotLayer';
+import { VisitChartTabs } from '@/components/chart/VisitChartTabs';
+import type { ChartTabId } from '@/components/chart/chartTabs';
 import {
   HOUR_PX,
   eventLayout,
@@ -158,6 +157,7 @@ export default function DoctorHome() {
   const [weekAnchor, setWeekAnchor] = useState(() => startOfDay(new Date()));
   const [viewMode, setViewMode] = useState<'tiles' | 'list'>('tiles');
   const [chartVisit, setChartVisit] = useState<ClinicVisitModel | null>(null);
+  const [chartTab, setChartTab] = useState<ChartTabId>('vitals');
   const [eventDetail, setEventDetail] = useState<EventDetail | null>(null);
   const [busy, setBusy] = useState(false);
   const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
@@ -332,6 +332,15 @@ export default function DoctorHome() {
       }),
     [bookings, today, clinicUuid, isPersonalPractice]
   );
+  const urgentTodayBookings = useMemo(
+    () =>
+      todayBookings.filter(
+        (booking) =>
+          booking.urgency === 'URGENT' &&
+          ['PENDING', 'CONFIRMED'].includes((booking.status || '').toUpperCase())
+      ),
+    [todayBookings]
+  );
   const activeAppointments = attending.length + queue.length;
   const urgentToday = useMemo(
     () =>
@@ -340,6 +349,7 @@ export default function DoctorHome() {
       ),
     [practiceTodayVisits]
   );
+  const urgentTodayCount = urgentToday.length + urgentTodayBookings.length;
 
   const clinicLabelByUuid = useMemo(() => {
     const map = new Map<string, string>();
@@ -371,7 +381,7 @@ export default function DoctorHome() {
     }
     for (const b of bookings) {
       if (!b.slotStart) continue;
-      if (['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes((b.status || '').toUpperCase())) continue;
+      if ((b.status || '').toUpperCase() === 'COMPLETED') continue;
       const start = parseISO(b.slotStart);
       const end = b.slotEnd ? parseISO(b.slotEnd) : addMinutes(start, 30);
       const place =
@@ -621,8 +631,10 @@ export default function DoctorHome() {
   const eventBlock = (ev: CalEvent & { lane: number; laneCount: number }, day: Date) => {
     const layout = eventLayout(ev, day, hourRange);
     if (!layout) return null;
-    const urgent = isUrgentVisit(ev.visit?.urgency);
+    const urgent = isUrgentVisit(ev.visit?.urgency || ev.booking?.urgency);
     const attended = isAttendedCalendarVisit(ev.status);
+    const isCancelled = ev.status?.toUpperCase() === 'CANCELLED';
+    const isNoShow = ev.status?.toUpperCase() === 'NO_SHOW';
     const doctorUuid = resolveEventDoctorUuid(ev, lockedDoctorUuid);
     return (
       <button
@@ -634,7 +646,11 @@ export default function DoctorHome() {
         }}
         className={cn(
           'absolute box-border rounded border px-1 py-0.5 text-[10px] leading-tight shadow-sm overflow-hidden text-left hover:brightness-110',
-          attended
+          isCancelled
+            ? 'border-rose-300 bg-rose-100 text-rose-950 dark:border-rose-800 dark:bg-rose-950/45 dark:text-rose-100'
+            : isNoShow
+              ? 'border-amber-300 bg-amber-100 text-amber-950 dark:border-amber-800 dark:bg-amber-950/45 dark:text-amber-100'
+              : attended
             ? doctorAttendedCalendarBlockClass(doctorUuid, urgent)
             : calendarBlockClass(urgent)
         )}
@@ -764,11 +780,11 @@ export default function DoctorHome() {
         </Card>
       )}
 
-      {urgentToday.length > 0 && (
+      {urgentTodayCount > 0 && (
         <Card className="relative border-rose-200 bg-rose-50/40 dark:bg-rose-950/20 dark:border-rose-800">
           <CardHeader className="pb-2">
             <CardTitle className="text-base text-rose-800 dark:text-rose-200">
-              Needs attention · {urgentToday.length} urgent
+              Needs attention · {urgentTodayCount} urgent
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -802,6 +818,32 @@ export default function DoctorHome() {
                 />
               );
             })}
+            {urgentTodayBookings.map((b) => {
+              const start = parseISO(b.slotStart);
+              return (
+                <DashboardAppointmentRow
+                  key={b.uuid}
+                  time={format(start, 'h:mm a')}
+                  title={petNameWithType(b.petName, b.species)}
+                  subtitle={[b.ownerName || 'Owner', 'Urgent scheduled appointment'].filter(Boolean).join(' · ')}
+                  urgent
+                  status={b.status}
+                  onClick={() =>
+                    void openEvent({
+                      id: `booking-${b.uuid}`,
+                      kind: 'booking',
+                      title: b.petName,
+                      subtitle: b.ownerName || 'Owner',
+                      start,
+                      end: b.slotEnd ? parseISO(b.slotEnd) : addMinutes(start, 30),
+                      status: b.status,
+                      doctorUuid: b.doctorUuid,
+                      booking: b,
+                    })
+                  }
+                />
+              );
+            })}
           </CardContent>
         </Card>
       )}
@@ -812,7 +854,7 @@ export default function DoctorHome() {
             <CardContent className="p-5">
               <p className="text-xs font-medium text-rose-700 dark:text-rose-300 uppercase tracking-wide">Urgent today</p>
               <p className="text-3xl font-bold mt-2 text-rose-700 dark:text-rose-300">
-                {scheduleLoading ? '—' : urgentToday.length}
+                {scheduleLoading ? '—' : urgentTodayCount}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Needs attention first</p>
             </CardContent>
@@ -951,7 +993,7 @@ export default function DoctorHome() {
                     time={format(ev.start, 'h:mm a')}
                     title={ev.title}
                     subtitle={`${format(ev.start, 'EEE MMM d')} · ${ev.subtitle}`}
-                    urgent={isUrgentVisit(ev.visit?.urgency)}
+                    urgent={isUrgentVisit(ev.visit?.urgency || ev.booking?.urgency)}
                     status={ev.status}
                     onClick={() => void openEvent(ev)}
                   />
@@ -1041,7 +1083,7 @@ export default function DoctorHome() {
                 time={format(ev.start, 'h:mm a')}
                 title={ev.title}
                 subtitle={ev.subtitle}
-                urgent={isUrgentVisit(ev.visit?.urgency)}
+                urgent={isUrgentVisit(ev.visit?.urgency || ev.booking?.urgency)}
                 status={ev.status}
                 onClick={() => void openEvent(ev)}
               />
@@ -1095,59 +1137,54 @@ export default function DoctorHome() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label>Weight (kg)</Label>
-                <Input value={form.weightKg} onChange={(e) => setForm((s) => ({ ...s, weightKg: e.target.value }))} />
-              </div>
-              <div>
-                <Label>Temp (°C)</Label>
-                <Input
-                  value={form.temperatureC}
-                  onChange={(e) => setForm((s) => ({ ...s, temperatureC: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Examination / report</Label>
-              <Textarea
-                rows={3}
-                value={form.examinationNotes}
-                onChange={(e) => setForm((s) => ({ ...s, examinationNotes: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>Assessment / diagnosis</Label>
-              <Textarea
-                rows={2}
-                value={form.assessment}
-                onChange={(e) => setForm((s) => ({ ...s, assessment: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>Plan / prescription notes</Label>
-              <Textarea
-                rows={2}
-                value={form.plan}
-                onChange={(e) => setForm((s) => ({ ...s, plan: e.target.value }))}
-                placeholder="Medications, home care, and follow-up — then finish to create the invoice"
-                disabled={!canEditVisitChart(chartVisit)}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                {chartVisit?.status === 'CHECKING_OUT' || chartVisit?.status === 'COMPLETED'
-                  ? 'Treatment finished. Prescription is editable for one hour after checkout.'
-                  : isPersonalPractice
-                    ? 'Last clinical step before billing. Finish treatment opens the invoice for this visit.'
-                    : 'Last clinical step. Finish treatment sends the visit to reception Checkout for billing.'}
-              </p>
-            </div>
-            <div>
-              <Label>Next visit</Label>
-              <Input
-                value={form.nextVisitNotes}
-                onChange={(e) => setForm((s) => ({ ...s, nextVisitNotes: e.target.value }))}
-              />
-            </div>
+            <VisitChartTabs
+              tab={chartTab}
+              onTabChange={setChartTab}
+              editable={canEditVisitChart(chartVisit)}
+              vitals={{ weightKg: form.weightKg, temperatureC: form.temperatureC }}
+              onVitalsChange={(vitals) =>
+                setForm((current) => ({
+                  ...current,
+                  weightKg: vitals.weightKg,
+                  temperatureC: vitals.temperatureC,
+                }))
+              }
+              notes={{
+                examinationNotes: form.examinationNotes,
+                assessment: form.assessment,
+                nextVisitNotes: form.nextVisitNotes,
+                internalNotes: form.internalNotes,
+              }}
+              onNotesChange={(notes) =>
+                setForm((current) => ({
+                  ...current,
+                  examinationNotes: notes.examinationNotes,
+                  assessment: notes.assessment,
+                  nextVisitNotes: notes.nextVisitNotes,
+                  internalNotes: notes.internalNotes,
+                }))
+              }
+              plan={form.plan}
+              onPlanChange={(plan) => setForm((current) => ({ ...current, plan }))}
+              clinicUuid={chartVisit?.clinicUuid}
+              petUuid={chartVisit?.petUuid}
+              excludeVisitUuid={chartVisit?.uuid}
+              pet={{
+                name: chartVisit?.petName || 'Pet',
+                species: chartVisit?.species,
+                ownerName: chartVisit?.ownerName,
+                weight: form.weightKg ? `${form.weightKg} kg` : undefined,
+              }}
+              thisVisit={
+                chartVisit
+                  ? {
+                      uuid: chartVisit.uuid,
+                      doctorName: chartVisit.doctorName,
+                      date: chartVisit.startedAt || chartVisit.createdAt,
+                    }
+                  : null
+              }
+            />
           </div>
           <DialogFooter className="gap-2">
             <Button
@@ -1271,7 +1308,12 @@ export default function DoctorHome() {
             <Button variant="outline" onClick={() => setEventDetail(null)}>
               Close
             </Button>
-            {eventDetail?.kind === 'booking' && isVideoConsult(eventDetail.booking?.mode) && eventDetail.booking?.uuid ? (
+            {eventDetail?.kind === 'booking' &&
+            !['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(
+              (eventDetail.booking?.status || '').toUpperCase()
+            ) &&
+            isVideoConsult(eventDetail.booking?.mode) &&
+            eventDetail.booking?.uuid ? (
               <Button variant="outline" asChild>
                 <Link to={consultPath(eventDetail.booking.uuid, 'doctor')}>
                   <Video className="h-4 w-4 mr-1" />
@@ -1293,7 +1335,11 @@ export default function DoctorHome() {
               >
                 {eventDetail.visit?.status === 'CHECKING_OUT' ? 'Amend notes' : 'Open visit notes'}
               </Button>
-            ) : eventDetail?.kind === 'visit' && eventDetail.visit?.status === 'COMPLETED' ? null : (
+            ) : eventDetail?.kind === 'booking' &&
+              ['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(
+                (eventDetail.booking?.status || '').toUpperCase()
+              ) ? null : eventDetail?.kind === 'visit' &&
+              ['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(eventDetail.visit?.status || '') ? null : (
               <Button onClick={() => void startTreatment()} disabled={busy}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Start treatment

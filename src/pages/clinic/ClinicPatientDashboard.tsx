@@ -31,7 +31,7 @@ import { formatPetDobWithAge } from '@/utils/petAge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { saveDoctorVisitChart } from '@/services/visitService';
-import { parseApiErrorMessage } from '@/utils/validation';
+import { displayPhone, parseApiErrorMessage } from '@/utils/validation';
 import { canEditVisitChart } from '@/utils/visitChartLock';
 import { canManageClinicOps } from '@/utils/roles';
 import { useAppSelector } from '@/module/store/hooks';
@@ -300,7 +300,7 @@ export default function ClinicPatientDashboard() {
                 <p className="text-muted-foreground text-xs mb-1">Contact</p>
                 <p className="font-medium flex items-center gap-2">
                   <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="truncate">{owner?.phone || pet.ownerPhone || '—'}</span>
+                  <span className="truncate">{displayPhone(owner?.phone) || displayPhone(pet.ownerPhone) || '—'}</span>
                 </p>
                 <p className="font-medium flex items-center gap-2 mt-1.5">
                   <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -439,7 +439,8 @@ export default function ClinicPatientDashboard() {
         {tab === 'prescriptions' ? (
           <TabsContent value="prescriptions" className="mt-4">
             <PrescriptionsTab
-              editable={!!openVisitForRx && canEditVisitChart(openVisitForRx)}
+              // editable={!!openVisitForRx && canEditVisitChart(openVisitForRx)}
+              editable={false}
               plan={rxDraft}
               onPlanChange={setRxDraft}
               onSavePrescription={savePrescription}

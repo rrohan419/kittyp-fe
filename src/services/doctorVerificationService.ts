@@ -106,6 +106,20 @@ export async function verifySignupOtp(body: {
   return res.json();
 }
 
+export async function validatePetParentSignupInvite(token: string): Promise<{ email: string }> {
+  const res = await fetch(
+    `${API_BASE_URL}/auth/signup/invite/validate?token=${encodeURIComponent(token)}`
+  );
+  if (!res.ok) {
+    throw new Error(messageFromSignupErrorBody(await res.text(), 'This clinic invitation is invalid or expired'));
+  }
+  const response = await res.json() as { data?: { email?: string } };
+  if (!response.data?.email) {
+    throw new Error('This clinic invitation is invalid or expired');
+  }
+  return { email: response.data.email };
+}
+
 export async function fetchMyDoctorProfile() {
   const res = await axiosInstance.get<ApiSuccessResponse<DoctorVerificationModel>>('/doctor/me');
   return res.data.data;

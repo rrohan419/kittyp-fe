@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { displayPhone } from '@/utils/validation';
 import { Link } from 'react-router-dom';
 import { format, parseISO, isValid } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -310,7 +311,7 @@ export default function DoctorSettings() {
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {[row.species, row.breed].filter(Boolean).join(' · ') || 'Pet'}
-                      {row.ownerPhone ? ` · ${row.ownerPhone}` : ''}
+                      {displayPhone(row.ownerPhone) ? ` · ${displayPhone(row.ownerPhone)}` : ''}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {row.clinicName || 'Practice'}
