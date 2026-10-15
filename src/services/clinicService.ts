@@ -722,6 +722,10 @@ export async function completeStaffInvite(
   return res.data.data;
 }
 
+export async function declineStaffInvite(token: string): Promise<void> {
+  await axiosInstance.post(`/clinic/staff-invite/${token}/decline`);
+}
+
 export async function fetchClinicPatients(clinicUuid: string): Promise<ClinicPatientModel[]> {
   const res = await axiosInstance.get<ApiSuccessResponse<ClinicPatientModel[]>>(`/clinic/${clinicUuid}/patients`);
   return res.data.data ?? [];

@@ -6,8 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { completeStaffInvite, fetchStaffInviteByToken, StaffInvitePreview } from '@/services/clinicService';
+import { Loader2, CheckCircle2, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import {
+  completeStaffInvite,
+  declineStaffInvite,
+  fetchStaffInviteByToken,
+  StaffInvitePreview,
+} from '@/services/clinicService';
 import { login } from '@/services/authService';
 import { toast } from 'sonner';
 import { AppDispatch } from '@/module/store/store';
@@ -27,7 +32,13 @@ export default function StaffInviteAccept() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [declining, setDeclining] = useState(false);
+  const [confirmDecline, setConfirmDecline] = useState(false);
+  const [declined, setDeclined] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +82,10 @@ export default function StaffInviteAccept() {
       toast.error(pwdErr);
       return;
     }
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
     setSubmitting(true);
     try {
       await completeStaffInvite(token, {
@@ -90,6 +105,26 @@ export default function StaffInviteAccept() {
       setSubmitting(false);
     }
   };
+
+  const handleDecline = async () => {
+    if (!token || !preview) return;
+    if (!confirmDecline) {
+      setConfirmDecline(true);
+      return;
+    }
+    setDeclining(true);
+    try {
+      await declineStaffInvite(token);
+      setDeclined(true);
+      toast.success('You declined this invite');
+    } catch (err: unknown) {
+      toast.error(parseApiErrorMessage(err, 'Could not decline invite'));
+    } finally {
+      setDeclining(false);
+    }
+  };
+
+  const inviteDeclined = declined || preview?.status === 'DECLINED';
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -116,6 +151,8 @@ export default function StaffInviteAccept() {
               <p className="text-sm text-muted-foreground inline-flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4" /> This invite was already used.
               </p>
+            ) : inviteDeclined ? (
+              <p className="text-sm text-muted-foreground">You declined this invite.</p>
             ) : preview?.expired || preview?.status !== 'PENDING' ? (
               <p className="text-sm text-muted-foreground">This invite is no longer valid.</p>
             ) : pending ? (
@@ -143,22 +180,76 @@ export default function StaffInviteAccept() {
                 </div>
                 <div>
                   <Label htmlFor="password">Create a password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={8}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      className="pr-10"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={8}
+                      disabled={submitting || declining}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      disabled={submitting || declining}
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
                   <p className="text-[11px] text-muted-foreground mt-1">
                     8–72 characters with upper, lower, number, and special character.
                   </p>
                 </div>
-                <Button type="submit" className="w-full" disabled={submitting}>
+                <div>
+                  <Label htmlFor="confirmPassword">Confirm password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      className="pr-10"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      minLength={8}
+                      disabled={submitting || declining}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      disabled={submitting || declining}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+                <Button type="submit" className="w-full" disabled={submitting || declining}>
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Join clinic
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={submitting || declining}
+                  onClick={() => void handleDecline()}
+                >
+                  {declining ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  {confirmDecline ? 'Confirm decline' : 'Decline invite'}
+                </Button>
+                {confirmDecline ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    The clinic will be emailed that you declined.
+                  </p>
+                ) : null}
               </form>
             ) : null}
             <p className="text-xs text-muted-foreground">
