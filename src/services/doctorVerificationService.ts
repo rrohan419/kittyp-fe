@@ -45,6 +45,8 @@ export interface DoctorVerificationModel {
   reviewedAt?: string;
   reviewNotes?: string;
   rejectionReason?: string;
+  city?: string | null;
+  createdAt?: string | null;
 }
 
 export type ChecklistKey =

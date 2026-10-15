@@ -77,6 +77,7 @@ export interface UserProfile {
   age?: number | null;
   uuid: string;
   createdAt: string;
+  city?: string | null;
   /** Present only briefly after email change — never persist to auth storage. */
   accessToken?: string;
   profilePictureUrl: string;

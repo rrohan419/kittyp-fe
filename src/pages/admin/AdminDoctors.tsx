@@ -44,6 +44,13 @@ const CHECKLIST: { key: ChecklistKey; label: string }[] = [
   { key: 'checkRegistrationNumber', label: 'Registration Number' },
 ];
 
+function formatAdded(value?: string | null): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString();
+}
+
 function DocLink({ href, label }: { href?: string; label: string }) {
   if (!href) return <span className="text-xs text-muted-foreground">{label}: —</span>;
   return (
@@ -69,10 +76,10 @@ export default function AdminDoctors() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
+  const load = async (statusFilter: DoctorStatus | 'ALL' = filter) => {
     setLoading(true);
     try {
-      const list = await fetchAdminDoctors(filter === 'ALL' ? undefined : filter);
+      const list = await fetchAdminDoctors(statusFilter === 'ALL' ? undefined : statusFilter);
       setDoctors(list);
       if (selected) {
         const refreshed = list.find((d) => d.uuid === selected.uuid);
@@ -107,6 +114,7 @@ export default function AdminDoctors() {
           d.registrationNumber,
           d.clinicName,
           d.clinicAddress,
+          d.city,
           specializationLabel(d.specialization),
           d.uuid
         )
@@ -153,8 +161,11 @@ export default function AdminDoctors() {
         setRejectDialogOpen(false);
         setRejectionReason('');
       }
+      if (status === 'UNDER_REVIEW') {
+        setFilter('ALL');
+      }
       toast.success(`Status → ${statusLabel(status)}`);
-      await load();
+      await load(status === 'UNDER_REVIEW' ? 'ALL' : filter);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to update status');
     } finally {
@@ -247,6 +258,9 @@ export default function AdminDoctors() {
                       <p className="text-xs text-muted-foreground truncate">
                         {specializationLabel(d.specialization) || '—'} · {d.registrationNumber ?? '—'}
                       </p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {d.city || '—'} · Added {formatAdded(d.createdAt)}
+                      </p>
                       {d.clinicName && (
                         <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
                           <Building2 className="h-3 w-3" />
@@ -307,6 +321,12 @@ export default function AdminDoctors() {
                   <p>
                     <span className="text-muted-foreground">Affiliation:</span>{' '}
                     {selected.clinicName || 'Personal account (online consultation)'}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">City:</span> {selected.city || '—'}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Added:</span> {formatAdded(selected.createdAt)}
                   </p>
                   <DocLink href={selected.degreeCertificateUrl} label="Degree certificate" />
                   <DocLink
@@ -378,18 +398,23 @@ export default function AdminDoctors() {
                   </Button>
                   <Button
                     size="sm"
-                    disabled={saving || !allApplicableChecksPassed(selected)}
+                    disabled={
+                      saving
+                      || !allApplicableChecksPassed(selected)
+                      || selected.status === 'VERIFIED'
+                      || selected.status === 'PUBLISHED'
+                    }
                     onClick={() => void setStatus('VERIFIED')}
                   >
-                    Approve Verified
+                    {selected.status === 'VERIFIED' || selected.status === 'PUBLISHED' ? 'Verified' : 'Verify'}
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
-                    disabled={saving || selected.status !== 'VERIFIED'}
+                    disabled={saving || selected.status !== 'VERIFIED' || !allApplicableChecksPassed(selected)}
                     onClick={() => void setStatus('PUBLISHED')}
                   >
-                    Publish
+                    {selected.status === 'PUBLISHED' ? 'Published' : 'Publish'}
                   </Button>
                   <Button
                     size="sm"

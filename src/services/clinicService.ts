@@ -28,6 +28,7 @@ export interface ClinicModel {
   longitude?: number | null;
   profileImageUrl?: string | null;
   rejectionReason?: string | null;
+  createdAt?: string | null;
 }
 
 export interface ClinicDoctorModel {
@@ -476,7 +477,7 @@ export async function fetchAdminClinic(uuid: string): Promise<ClinicModel> {
 
 export async function updateAdminClinicStatus(
   uuid: string,
-  status: 'VERIFIED' | 'REJECTED',
+  status: 'VERIFIED' | 'REJECTED' | 'UNDER_REVIEW',
   rejectionReason?: string
 ): Promise<ClinicModel> {
   const res = await axiosInstance.patch<ApiSuccessResponse<ClinicModel>>(`/admin/clinics/${uuid}/status`, {

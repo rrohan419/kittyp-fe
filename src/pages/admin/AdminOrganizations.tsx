@@ -31,6 +31,13 @@ import { matchesQuery } from '@/utils/search';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
+function formatAdded(value?: string | null): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString();
+}
+
 function clinicStatus(status?: string | null): string {
   return (status ?? 'PENDING').toUpperCase();
 }
@@ -111,14 +118,16 @@ export default function AdminOrganizations() {
     }
   }, [visible, selected]);
 
-  const setStatus = async (status: 'VERIFIED' | 'REJECTED', reason?: string) => {
+  const setStatus = async (status: 'VERIFIED' | 'REJECTED' | 'UNDER_REVIEW', reason?: string) => {
     if (!selected) return;
     setSaving(true);
     try {
       const updated = await updateAdminClinicStatus(selected.uuid, status, reason);
       setClinics((prev) => prev.map((c) => (c.uuid === updated.uuid ? updated : c)));
       setSelected(updated);
-      if (status === 'VERIFIED') {
+      if (status === 'UNDER_REVIEW') {
+        setFilter('ALL');
+      } else if (status === 'VERIFIED') {
         const hasPendingClinics = clinics.some(
           (clinic) => clinic.uuid !== updated.uuid && clinicStatus(clinic.status) === 'PENDING'
         );
@@ -128,7 +137,13 @@ export default function AdminOrganizations() {
         setRejectDialogOpen(false);
         setRejectionReason('');
       }
-      toast.success(status === 'VERIFIED' ? 'Clinic verified' : 'Clinic rejected');
+      toast.success(
+        status === 'VERIFIED'
+          ? 'Clinic verified'
+          : status === 'UNDER_REVIEW'
+            ? 'Clinic marked under review'
+            : 'Clinic rejected'
+      );
     } catch (e: unknown) {
       toast.error(parseApiErrorMessage(e, 'Failed to update clinic status'));
     } finally {
@@ -165,6 +180,7 @@ export default function AdminOrganizations() {
           <SelectContent>
             <SelectItem value="ALL">All</SelectItem>
             <SelectItem value="PENDING">Pending</SelectItem>
+            <SelectItem value="UNDER_REVIEW">Under Review</SelectItem>
             <SelectItem value="VERIFIED">Verified</SelectItem>
             <SelectItem value="REJECTED">Rejected</SelectItem>
             <SelectItem value="SHUTDOWN">Shutdown</SelectItem>
@@ -210,7 +226,13 @@ export default function AdminOrganizations() {
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm truncate">{clinic.name}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {clinic.city || clinic.address || '—'}
+                      City: {clinic.city || '—'}
+                    </p>
+                    {clinic.address && (
+                      <p className="text-xs text-muted-foreground truncate">{clinic.address}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground truncate">
+                      Added {formatAdded(clinic.createdAt)}
                     </p>
                   </div>
                   <Badge variant="secondary" className={statusBadgeClass(clinic.status)}>
@@ -243,6 +265,9 @@ export default function AdminOrganizations() {
                   </p>
                   <p>
                     <span className="text-muted-foreground">City:</span> {selected.city || '—'}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Added:</span> {formatAdded(selected.createdAt)}
                   </p>
                   <p className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -284,10 +309,18 @@ export default function AdminOrganizations() {
                   <div className="flex flex-wrap gap-2 pt-2">
                     <Button
                       size="sm"
+                      variant="outline"
+                      disabled={saving}
+                      onClick={() => void setStatus('UNDER_REVIEW')}
+                    >
+                      Mark Under Review
+                    </Button>
+                    <Button
+                      size="sm"
                       disabled={saving || selectedStatus === 'VERIFIED'}
                       onClick={() => void setStatus('VERIFIED')}
                     >
-                      Approve Verified
+                      {selectedStatus === 'VERIFIED' ? 'Verified' : 'Verify'}
                     </Button>
                     <Button
                       size="sm"
