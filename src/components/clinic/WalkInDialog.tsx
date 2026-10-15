@@ -1280,83 +1280,44 @@ export function AddAppointmentDialog({
             />
           </div>
 
-          {timing === 'now' ? (
-            <div className={cn('grid gap-2', hideDoctorSelect ? 'grid-cols-1' : 'grid-cols-2')}>
-              <div>
-                <Label>Urgency</Label>
-                <Select value={form.urgency} onValueChange={(v) => set('urgency', v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ROUTINE">Routine</SelectItem>
-                    <SelectItem value="URGENT">Urgent</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {!hideDoctorSelect && (
-                <div>
-                  <Label>Assign doctor</Label>
-                  <Select
-                    value={form.doctorUuid || 'none'}
-                    onValueChange={(v) => set('doctorUuid', v === 'none' ? '' : v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Unassigned" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Unassigned</SelectItem>
-                      {activeDoctors.map((d) => (
-                        <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
-                          {d.name || d.email || d.doctorUuid}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+          <div className={cn('grid gap-2', hideDoctorSelect ? 'grid-cols-1' : 'grid-cols-2')}>
+            <div>
+              <Label>Urgency</Label>
+              <Select value={form.urgency} onValueChange={(v) => set('urgency', v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ROUTINE">Routine</SelectItem>
+                  <SelectItem value="URGENT">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          ) : (
-            <div className="space-y-3">
+            {!hideDoctorSelect && (
               <div>
-                <Label>Urgency</Label>
-                <Select value={form.urgency} onValueChange={(v) => set('urgency', v)}>
+                <Label>Assign doctor</Label>
+                <Select
+                  value={form.doctorUuid || 'none'}
+                  onValueChange={(v) => set('doctorUuid', v === 'none' ? '' : v)}
+                >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Unassigned" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ROUTINE">Routine</SelectItem>
-                    <SelectItem value="URGENT">Urgent</SelectItem>
+                    <SelectItem value="none">Unassigned</SelectItem>
+                    {activeDoctors.map((d) => (
+                      <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
+                        {d.name || d.email || d.doctorUuid}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Urgent appointments are highlighted on the calendar and counted when scheduled for today.
-                </p>
               </div>
-              {!hideDoctorSelect && (
-                <div>
-                  <Label>Assign doctor</Label>
-                  <Select
-                    value={form.doctorUuid || 'none'}
-                    onValueChange={(v) => set('doctorUuid', v === 'none' ? '' : v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Unassigned" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Unassigned</SelectItem>
-                      {activeDoctors.map((d) => (
-                        <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
-                          {d.name || d.email || d.doctorUuid}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Leave unassigned to assign later from the board
-                  </p>
-                </div>
-              )}
+            )}
+          </div>
+
+          {timing === 'schedule' && (
+            <>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label htmlFor="walk-in-date">Date</Label>
@@ -1391,7 +1352,7 @@ export function AddAppointmentDialog({
               </div>
               <p className="text-xs text-muted-foreground">Appointments are 30 minutes.</p>
               {busyHint && <p className="text-xs text-amber-600">{busyHint}</p>}
-            </div>
+            </>
           )}
 
           {!hideDoctorSelect && activeDoctors.length === 0 && (
