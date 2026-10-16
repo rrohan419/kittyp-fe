@@ -296,8 +296,15 @@ export default function DoctorAppointments() {
     }
   };
 
+  const confirmClose = (status: 'CANCELLED' | 'NO_SHOW') =>
+    window.confirm(
+      status === 'NO_SHOW'
+        ? 'Mark this appointment as no-show? This cannot be undone.'
+        : 'Cancel this appointment? This cannot be undone.'
+    );
+
   const closePastBooking = async (bookingUuid: string, status: 'CANCELLED' | 'NO_SHOW') => {
-    if (!clinicUuid) return;
+    if (!clinicUuid || !confirmClose(status)) return;
     setBusy(true);
     try {
       await patchClinicBooking(clinicUuid, bookingUuid, { status });
@@ -314,7 +321,7 @@ export default function DoctorAppointments() {
   };
 
   const closePastVisit = async (visitUuid: string, status: 'CANCELLED' | 'NO_SHOW') => {
-    if (!clinicUuid) return;
+    if (!clinicUuid || !confirmClose(status)) return;
     setBusy(true);
     try {
       await patchClinicVisit(clinicUuid, visitUuid, { status });
