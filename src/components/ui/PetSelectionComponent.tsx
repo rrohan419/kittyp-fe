@@ -221,7 +221,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                         <CardContent className="p-4">
                           <div className="flex items-center space-x-3">
                             <div className="h-14 w-14 rounded-full overflow-hidden ring-2 ring-primary/20 shrink-0">
-                              <PetImage pet={pet} alt={pet.name} className="h-full w-full object-cover" />
+                              <PetImage pet={pet} index={index} alt={pet.name} className="h-full w-full object-cover" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <h4 className="font-semibold text-base truncate">{pet.name}</h4>
@@ -536,7 +536,12 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                 {/* Pet Profile Summary */}
                 <div className="flex items-center space-x-4 p-6 bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl border border-primary/20">
                   <div className="h-20 w-20 rounded-full overflow-hidden ring-4 ring-primary/20 shrink-0">
-                    <PetImage pet={selectedPet} alt={selectedPet.name} className="h-full w-full object-cover" />
+                    <PetImage
+                      pet={selectedPet}
+                      index={Math.max(0, savedPets.findIndex((pet) => pet.uuid === selectedPet.uuid))}
+                      alt={selectedPet.name}
+                      className="h-full w-full object-cover"
+                    />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-2xl font-bold text-primary mb-2">{selectedPet.name}</h3>

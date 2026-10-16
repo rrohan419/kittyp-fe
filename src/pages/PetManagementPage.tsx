@@ -43,11 +43,11 @@ export const PetManagementPage: React.FC = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {pets.map((pet) => (
+          {pets.map((pet, index) => (
             <Card key={pet.uuid} className="border-0 shadow-sm">
               <CardContent className="p-5 flex items-center gap-4">
                 <div className="w-14 h-14 rounded-2xl bg-muted overflow-hidden shrink-0">
-                  <PetImage pet={pet} alt={pet.name} className="w-full h-full object-cover" />
+                  <PetImage pet={pet} index={index} alt={pet.name} className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold truncate">{pet.name}</p>

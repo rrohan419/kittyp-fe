@@ -5,7 +5,8 @@ import { format, parseISO, isValid } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, PawPrint, Mail } from 'lucide-react';
+import { Search, Mail } from 'lucide-react';
+import { PetPhoto } from '@/components/clinic/PetPhoto';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { AttendedPatientModel, fetchMyAttendedPatients } from '@/services/visitService';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -119,15 +120,20 @@ export default function DoctorPatients() {
       ) : (
         <>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {patients.filter((p) => p.petUuid).map((p) => {
+          {patients.filter((p) => p.petUuid).map((p, index) => {
             const last = p.lastVisitAt ? parseISO(p.lastVisitAt) : null;
             return (
               <Card key={p.petUuid} className="border-0 shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-5">
                   <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0">
-                      <PawPrint className="h-6 w-6 text-primary" />
-                    </div>
+                    <PetPhoto
+                      photoUrl={p.profilePicture}
+                      name={p.petName}
+                      species={p.species}
+                      index={index}
+                      size="md"
+                      className="w-12 h-12 rounded-2xl"
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-foreground truncate">{p.petName}</p>
                       <p className="text-xs text-muted-foreground truncate">{p.ownerName || 'Owner'}</p>

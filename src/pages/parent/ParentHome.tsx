@@ -235,7 +235,7 @@ export default function ParentHome() {
         })()
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {pets.map((p) => {
+          {pets.map((p, index) => {
             const age = p.dateOfBirth ? formatPetDobWithAge(p.dateOfBirth) : '—';
             return (
               <Link
@@ -246,6 +246,7 @@ export default function ParentHome() {
                 <div className="aspect-square bg-muted relative">
                   <PetImage
                     pet={p}
+                    index={index}
                     alt={p.name}
                     className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
                   />

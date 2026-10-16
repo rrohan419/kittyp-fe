@@ -1,44 +1,24 @@
 import { useState } from 'react';
 import { PawPrint } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { petFallbackPhotoUrl } from '@/utils/petFallbackPhoto';
 
-const DOG_FALLBACKS = [
-  'https://images.unsplash.com/photo-1552053831-71594a27632d?w=600&h=400&fit=crop',
-  'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?w=600&h=400&fit=crop',
-  'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&h=400&fit=crop',
-];
-const CAT_FALLBACKS = [
-  'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&h=400&fit=crop',
-  'https://images.unsplash.com/photo-1574158622682-e40e69881006?w=600&h=400&fit=crop',
-  'https://images.unsplash.com/photo-1592194996308-7b43878e84a6?w=600&h=400&fit=crop',
-];
-
-function hashSeed(value: string): number {
-  let h = 0;
-  for (let i = 0; i < value.length; i++) {
-    h = (h << 5) - h + value.charCodeAt(i);
-    h |= 0;
-  }
-  return Math.abs(h);
-}
-
-/** Prefer uploaded photo; otherwise a stable species stock image so tiles aren't blank. */
+/** Prefer an uploaded photo. Otherwise the stock photo at this list index. */
 export function resolvePetPhotoUrl(
   photoUrl?: string | null,
   species?: string | null,
-  seed?: string | null
+  petIndex = 0
 ): string {
   if (photoUrl?.trim()) return photoUrl.trim();
-  const kind = (species || '').toLowerCase().includes('cat') ? 'cat' : 'dog';
-  const pool = kind === 'cat' ? CAT_FALLBACKS : DOG_FALLBACKS;
-  return pool[hashSeed(seed || species || 'pet') % pool.length];
+  return petFallbackPhotoUrl(species, petIndex);
 }
 
 type PetPhotoProps = {
   photoUrl?: string | null;
   name: string;
   species?: string | null;
-  seed?: string | null;
+  /** Position in the pet list. Stock photos rotate with `index % images.length`. */
+  index?: number;
   className?: string;
   imgClassName?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -60,7 +40,7 @@ export function PetPhoto({
   photoUrl,
   name,
   species,
-  seed,
+  index = 0,
   className,
   imgClassName,
   size = 'md',
@@ -68,7 +48,7 @@ export function PetPhoto({
   variant = 'avatar',
   fit = 'cover',
 }: PetPhotoProps) {
-  const src = resolvePetPhotoUrl(photoUrl, species, seed || name);
+  const src = resolvePetPhotoUrl(photoUrl, species, index);
   const [failed, setFailed] = useState(false);
   const radius =
     rounded === 'none'

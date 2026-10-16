@@ -14,13 +14,15 @@ type PetImageProps = {
   src?: string | null;
   alt: string;
   className?: string;
+  /** Position in the pet list. Stock photos rotate with `index % images.length`. */
+  index?: number;
 };
 
-export function PetImage({ pet, src, alt, className }: PetImageProps) {
+export function PetImage({ pet, src, alt, className, index = 0 }: PetImageProps) {
   const resolved =
     src !== undefined
       ? src?.trim() || PET_IMAGE_PLACEHOLDER
-      : resolvePetImageSrc(pet ?? {});
+      : resolvePetImageSrc(pet ?? {}, index);
   const [erroredFor, setErroredFor] = useState<string | null>(null);
   const imageSrc = erroredFor === resolved ? PET_IMAGE_PLACEHOLDER : resolved;
 

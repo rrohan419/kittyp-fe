@@ -1,7 +1,13 @@
+import { petFallbackPhotoUrl } from '../../utils/petFallbackPhoto.ts';
+
 export type PetImageSource = {
   profilePicture?: string | null;
   photoUrl?: string | null;
   photos?: Array<string | null | undefined> | null;
+  /** Clinic / doctor species. */
+  species?: string | null;
+  /** Parent pet type. */
+  type?: string | null;
 };
 
 const PLACEHOLDER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img">
@@ -23,7 +29,10 @@ function firstNonBlank(...values: Array<string | null | undefined>): string | nu
   return null;
 }
 
-/** Prefer parent API `profilePicture`, then clinic `photoUrl`, then `photos[0]`. */
-export function resolvePetImageSrc(pet: PetImageSource): string {
-  return firstNonBlank(pet.profilePicture, pet.photoUrl, pet.photos?.[0]) ?? PET_IMAGE_PLACEHOLDER;
+/** Prefer parent API `profilePicture`, then clinic `photoUrl`, then `photos[0]`, then the stock photo at this list index. */
+export function resolvePetImageSrc(pet: PetImageSource, petIndex = 0): string {
+  return (
+    firstNonBlank(pet.profilePicture, pet.photoUrl, pet.photos?.[0]) ??
+    petFallbackPhotoUrl(pet.species ?? pet.type, petIndex)
+  );
 }

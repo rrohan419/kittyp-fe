@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { PET_FALLBACK_PHOTOS } from '../../utils/petFallbackPhoto.ts';
 import { PET_IMAGE_PLACEHOLDER, resolvePetImageSrc } from './petImageSrc.ts';
 
 describe('resolvePetImageSrc', () => {
@@ -33,10 +34,33 @@ describe('resolvePetImageSrc', () => {
     );
   });
 
-  it('uses the placeholder data URI when every field is blank or null', () => {
-    assert.equal(resolvePetImageSrc({}), PET_IMAGE_PLACEHOLDER);
-    assert.equal(resolvePetImageSrc({ profilePicture: null, photoUrl: '', photos: [] }), PET_IMAGE_PLACEHOLDER);
-    assert.equal(resolvePetImageSrc({ profilePicture: '   ', photos: [null, ''] }), PET_IMAGE_PLACEHOLDER);
+  it('rotates stock photos by list index within the species set', () => {
+    assert.equal(resolvePetImageSrc({ type: 'Cat' }, 0), PET_FALLBACK_PHOTOS.cat[0]);
+    assert.equal(resolvePetImageSrc({ type: 'Cat' }, 1), PET_FALLBACK_PHOTOS.cat[1]);
+    assert.equal(resolvePetImageSrc({ type: 'feline' }, 5), PET_FALLBACK_PHOTOS.cat[0]);
+    assert.equal(resolvePetImageSrc({ species: 'Dog' }, 2), PET_FALLBACK_PHOTOS.dog[2]);
+    assert.equal(resolvePetImageSrc({ species: 'canine' }, 4), PET_FALLBACK_PHOTOS.dog[4]);
+    assert.equal(resolvePetImageSrc({ type: 'rabbit' }, 3), PET_FALLBACK_PHOTOS.rabbit[3]);
+    assert.equal(resolvePetImageSrc({ species: 'Bird' }, 6), PET_FALLBACK_PHOTOS.bird[1]);
+    assert.equal(resolvePetImageSrc({}), PET_FALLBACK_PHOTOS.other[0]);
+    assert.equal(
+      resolvePetImageSrc({ profilePicture: null, photoUrl: '', photos: [], type: 'other' }, 2),
+      PET_FALLBACK_PHOTOS.other[2]
+    );
+    assert.equal(
+      resolvePetImageSrc({ profilePicture: '   ', photos: [null, ''], species: 'rabbit' }, 4),
+      PET_FALLBACK_PHOTOS.rabbit[4]
+    );
     assert.ok(PET_IMAGE_PLACEHOLDER.startsWith('data:image/svg+xml'));
+  });
+
+  it('keeps an uploaded photo ahead of the species stock image', () => {
+    assert.equal(
+      resolvePetImageSrc({
+        profilePicture: 'https://cdn.example/parent.jpg',
+        type: 'Cat',
+      }),
+      'https://cdn.example/parent.jpg'
+    );
   });
 });

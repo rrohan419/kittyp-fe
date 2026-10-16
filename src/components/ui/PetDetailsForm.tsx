@@ -245,7 +245,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
             {/* Existing Pets */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {Array.isArray(pets) && pets.length > 0 ? (
-                    pets?.map((pet) => (
+                    pets?.map((pet, index) => (
                         <Card key={pet.uuid}
                             className="relative group hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02]"
                             onClick={() => navigate(`/pet/${pet.uuid}`)}>
@@ -253,7 +253,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20 shrink-0">
-                                            <PetImage pet={pet} alt={pet.name} className="h-full w-full object-cover" />
+                                            <PetImage pet={pet} index={index} alt={pet.name} className="h-full w-full object-cover" />
                                         </div>
                                         <div>
                                             <CardTitle className="text-lg">{pet.name}</CardTitle>

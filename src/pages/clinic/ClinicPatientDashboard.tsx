@@ -315,7 +315,6 @@ export default function ClinicPatientDashboard() {
               photoUrl={pet.photoUrl}
               name={pet.name}
               species={pet.species}
-              seed={pet.globalPetId || pet.petUuid}
               variant="cover"
               fit="contain"
               rounded="2xl"
