@@ -91,12 +91,16 @@ export default function ParentHome() {
       toast.error('Pick a pet and due date/time');
       return;
     }
+    if (new Date(remDue).getTime() <= Date.now()) {
+      toast.error('Pick an upcoming time');
+      return;
+    }
     setSavingRem(true);
     try {
       await createReminder({
         petUuid: remPet,
         type: remType,
-        dueAt: new Date(remDue).toISOString().slice(0, 19),
+        dueAt: `${remDue}:00`,
         note: remNote.trim() || undefined,
       });
       toast.success('Reminder saved');
@@ -377,7 +381,12 @@ export default function ParentHome() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Due</Label>
-                  <Input type="datetime-local" value={remDue} onChange={(e) => setRemDue(e.target.value)} />
+                  <Input
+                    type="datetime-local"
+                    min={format(new Date(), "yyyy-MM-dd'T'HH:mm")}
+                    value={remDue}
+                    onChange={(e) => setRemDue(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Note</Label>

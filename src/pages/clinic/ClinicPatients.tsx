@@ -32,7 +32,6 @@ import {
   Plus,
   Calendar,
   Phone,
-  Link2,
   User,
   Building2,
   MapPin,
@@ -765,18 +764,6 @@ export default function ClinicPatients() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-semibold truncate text-base">{o.name}</p>
-                            <Badge className="bg-primary/10 text-primary hover:bg-primary/10 border-0 text-[10px]">
-                              Client
-                            </Badge>
-                            {o.linked ? (
-                              <Badge variant="secondary" className="gap-1 text-[10px]">
-                                <Link2 className="h-3 w-3" /> KittyP linked
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-[10px]">
-                                Clinic only
-                              </Badge>
-                            )}
                             {searchAllBranches && o.clinicName && (
                               <Badge variant="outline" className="text-[10px] gap-1">
                                 <Building2 className="h-3 w-3" />
@@ -878,9 +865,6 @@ export default function ClinicPatients() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-bold text-lg truncate leading-tight">{p.name}</p>
-                        <Badge className="mt-1 bg-primary/10 text-primary hover:bg-primary/10 border-0 text-[10px]">
-                          Patient
-                        </Badge>
                       </div>
                       {searchAllBranches && p.clinicName && (
                         <Badge variant="outline" className="text-[10px] shrink-0 gap-1">
