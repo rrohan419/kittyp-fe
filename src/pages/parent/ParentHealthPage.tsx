@@ -4,7 +4,6 @@ import { Heart, PawPrint } from 'lucide-react';
 import { RootState } from '@/module/store/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { formatPetDobWithAge } from '@/utils/petAge';
 import { formatPetWeight } from '@/utils/formatPetWeight';
 
 export default function ParentHealthPage() {
@@ -49,9 +48,6 @@ export default function ParentHealthPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="font-semibold truncate">{pet.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {pet.type} · {pet.dateOfBirth ? formatPetDobWithAge(pet.dateOfBirth) : '—'}
-                    </p>
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">

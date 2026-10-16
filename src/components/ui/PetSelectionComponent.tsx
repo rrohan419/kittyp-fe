@@ -184,12 +184,6 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-lg truncate">{savedPets[0].name}</p>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {savedPets[0].type} · {savedPets[0].breed || 'Mixed'}
-                      {savedPets[0].dateOfBirth
-                        ? ` · ${formatPetDobWithAge(savedPets[0].dateOfBirth)}`
-                        : ''}
-                    </p>
                     <div className="flex flex-wrap gap-2 mt-2">
                       {formatPetWeight(savedPets[0].weight) && <Badge variant="secondary">{formatPetWeight(savedPets[0].weight)} KG</Badge>}
                       {savedPets[0].activityLevel && (

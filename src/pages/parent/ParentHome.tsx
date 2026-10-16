@@ -11,8 +11,8 @@ import { PetImage } from '@/components/ui/PetImage';
 import { format, parseISO, isValid } from 'date-fns';
 import { toast } from 'sonner';
 import { RootState } from '@/module/store/store';
-import { formatPetDobWithAge } from '@/utils/petAge';
 import { formatPetWeight } from '@/utils/formatPetWeight';
+import { formatDoctorName, sameClinicAndDoctor } from '@/utils/providerLabel';
 import { ClinicVisitModel } from '@/services/clinicService';
 import { fetchMyParentVisits } from '@/services/visitService';
 import {
@@ -135,6 +135,12 @@ export default function ParentHome() {
     [visits]
   );
   const highlight = currentVisit || recentCompleted;
+  const highlightDoctor = formatDoctorName(highlight?.doctorName);
+  const highlightClinic = highlight?.clinicName?.trim() ?? '';
+  const showHighlightClinic = Boolean(highlightClinic) && !sameClinicAndDoctor(highlightClinic, highlight?.doctorName);
+  const highlightProvider = showHighlightClinic && highlightDoctor
+    ? `${highlightClinic} · ${highlightDoctor}`
+    : highlightDoctor || highlightClinic || 'Clinic';
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -184,7 +190,6 @@ export default function ParentHome() {
       ) : pets.length === 1 ? (
         (() => {
           const p = pets[0];
-          const age = p.dateOfBirth ? formatPetDobWithAge(p.dateOfBirth) : '—';
           return (
             <Card className="border-0 shadow-sm overflow-hidden">
               <div className="relative h-48 sm:h-56 bg-gradient-to-br from-primary/20 to-primary/5">
@@ -203,10 +208,6 @@ export default function ParentHome() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-primary uppercase tracking-wide mb-1">Your pet</p>
                     <h2 className="text-2xl font-bold truncate">{p.name}</h2>
-                    <p className="text-sm text-muted-foreground">
-                      {p.type} · {p.breed || 'Mixed'} · {age}
-                      {p.gender ? ` · ${p.gender}` : ''}
-                    </p>
                   </div>
                   <Button asChild>
                     <Link to={`/app/pets/${p.uuid}`}>Open full dashboard</Link>
@@ -236,9 +237,7 @@ export default function ParentHome() {
         })()
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {pets.map((p) => {
-            const age = p.dateOfBirth ? formatPetDobWithAge(p.dateOfBirth) : '—';
-            return (
+          {pets.map((p) => (
               <Link
                 key={p.uuid}
                 to={`/app/pets/${p.uuid}`}
@@ -253,13 +252,9 @@ export default function ParentHome() {
                 </div>
                 <div className="p-3 space-y-0.5">
                   <p className="font-semibold text-sm truncate">{p.name}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    {p.type} · {p.breed || 'Mixed'} · {age}
-                  </p>
                 </div>
               </Link>
-            );
-          })}
+          ))}
         </div>
       )}
 
@@ -296,10 +291,7 @@ export default function ParentHome() {
                           : ''}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {highlight.clinicName || 'Clinic'}
-                      {highlight.doctorName
-                        ? ` · Dr. ${highlight.doctorName.replace(/^Dr\.?\s*/i, '')}`
-                        : ''}
+                      {highlightProvider}
                     </p>
                     <div className="mt-1">
                       <Badge variant="secondary" className="text-[10px]">
