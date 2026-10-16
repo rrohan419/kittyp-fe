@@ -399,11 +399,36 @@ export function AddAppointmentDialog({
     }
   };
 
+  const showAttachedOwner = (owner: ClinicOwnerModel, user: PlatformUserSearchModel | undefined, message: string) => {
+    const [first = '', ...rest] = (user?.name || owner.name || '').trim().split(/\s+/);
+    setMode('new');
+    setMatchedOwner(owner);
+    setEmailLookup({
+      found: true,
+      source: 'PLATFORM',
+      owner,
+      platformUser: user ?? null,
+    });
+    setForm((s) => ({
+      ...s,
+      ownerFirstName: first || user?.email?.split('@')[0] || owner.firstName || '',
+      ownerLastName: rest.join(' ') || owner.lastName || '',
+      ownerEmail: user?.email || owner.email || '',
+      ownerPhone: digitsOnlyPhone(user?.phone || owner.phone || ''),
+    }));
+    setHits([]);
+    toast.message(message);
+  };
+
   const afterOwnerAttached = async (owner: ClinicOwnerModel, user?: PlatformUserSearchModel) => {
     const petsOfOwner = owner.pets ?? [];
     const pending = petsOfOwner.filter((pet) => pet.clinicPatient === false);
     if (pending.length > 1) {
-      toast.message('This client has more than one pet. Search and select the pet for this visit.');
+      showAttachedOwner(
+        owner,
+        user,
+        'This client has more than one pet. Choose which pet to add to this clinic.'
+      );
       return;
     }
     if (petsOfOwner.length === 1) {
@@ -429,24 +454,7 @@ export function AddAppointmentDialog({
       });
       return;
     }
-    const [first = '', ...rest] = (user?.name || owner.name || '').trim().split(/\s+/);
-    setMode('new');
-    setMatchedOwner(owner);
-    setEmailLookup({
-      found: true,
-      source: 'PLATFORM',
-      owner,
-      platformUser: user ?? null,
-    });
-    setForm((s) => ({
-      ...s,
-      ownerFirstName: first || user?.email?.split('@')[0] || owner.firstName || '',
-      ownerLastName: rest.join(' ') || owner.lastName || '',
-      ownerEmail: user?.email || owner.email || '',
-      ownerPhone: digitsOnlyPhone(user?.phone || owner.phone || ''),
-    }));
-    setHits([]);
-    toast.message('Account attached — add the pet for this appointment');
+    showAttachedOwner(owner, user, 'Account attached — add the pet for this appointment');
   };
 
   const clearSelectedPet = () => {
@@ -971,7 +979,11 @@ export function AddAppointmentDialog({
                 </div>
                 {(matchedOwner.pets?.length ?? 0) > 0 ? (
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Pets on this profile — click to schedule</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(matchedOwner.pets ?? []).filter((pet) => pet.clinicPatient === false).length > 1
+                        ? 'Choose which pet to add to this clinic with the client'
+                        : 'Pets on this profile — click to schedule'}
+                    </p>
                     <div className="border rounded-md divide-y max-h-36 overflow-y-auto bg-background">
                       {matchedOwner.pets.map((op) => (
                         <button
@@ -1003,6 +1015,9 @@ export function AddAppointmentDialog({
                           }
                         >
                           <PetNameType name={op.name} type={op.species} />
+                          {op.clinicPatient === false ? (
+                            <p className="text-[11px] text-muted-foreground">Not on this clinic list yet</p>
+                          ) : null}
                         </button>
                       ))}
                     </div>

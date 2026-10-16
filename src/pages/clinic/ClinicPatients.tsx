@@ -7,6 +7,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -46,6 +47,7 @@ import {
   OwnerEmailLookupModel,
   PlatformUserSearchModel,
   addClinicPatient,
+  admitOwnerPets,
   ensureClinicOwnerFromUser,
   fetchClinicOwners,
   fetchClinicPets,
@@ -114,6 +116,9 @@ export default function ClinicPatients() {
   const [pickerSearching, setPickerSearching] = useState(false);
   const [emailLookup, setEmailLookup] = useState<OwnerEmailLookupModel | null>(null);
   const [matchedOwner, setMatchedOwner] = useState<ClinicOwnerModel | null>(null);
+  const [petChoiceOwner, setPetChoiceOwner] = useState<ClinicOwnerModel | null>(null);
+  const [pickedPetIds, setPickedPetIds] = useState<string[]>([]);
+  const [associating, setAssociating] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const set = (key: keyof typeof emptyForm, value: string) =>
@@ -304,6 +309,8 @@ export default function ClinicPatients() {
     setMatchedOwner(null);
     setAttachUser(null);
     setAttachCode('');
+    setPetChoiceOwner(null);
+    setPickedPetIds([]);
     setFieldErrors({});
   };
 
@@ -393,11 +400,16 @@ export default function ClinicPatients() {
       const pending = (owner.pets ?? []).filter((pet) => pet.clinicPatient === false);
       toast.success(`${owner.name} attached as clinic client`);
       if (pending.length > 1) {
-        toast.message('This client has more than one pet. Choose which ones to associate with the clinic.');
+        setAttachUser(null);
+        setAttachCode('');
+        setPetChoiceOwner(owner);
+        setPickedPetIds([]);
+        return;
       }
       resetAddDialog();
       setAddOpen(false);
-      navigate(crm.owner(owner.ownerUuid));
+      const enrolled = (owner.pets ?? []).find((pet) => pet.clinicPatient !== false);
+      navigate(enrolled ? crm.pet(enrolled.petUuid) : crm.owner(owner.ownerUuid));
     } catch (err: unknown) {
       toast.error(parseApiErrorMessage(err, 'Could not attach user'));
     } finally {
@@ -448,6 +460,34 @@ export default function ClinicPatients() {
       window.clearTimeout(handle);
     };
   }, [addOpen, clinicUuid, pickerQ]);
+
+  const togglePickedPet = (petUuid: string, checked: boolean) => {
+    setPickedPetIds((current) =>
+      checked ? [...current, petUuid] : current.filter((id) => id !== petUuid)
+    );
+  };
+
+  const handleAdmitPickedPets = async () => {
+    if (!clinicUuid || !petChoiceOwner || pickedPetIds.length === 0) return;
+    setAssociating(true);
+    try {
+      const owner = await admitOwnerPets(clinicUuid, petChoiceOwner.ownerUuid, pickedPetIds);
+      toast.success(
+        pickedPetIds.length === 1
+          ? 'Pet added to this clinic with the client'
+          : 'Selected pets added to this clinic with the client'
+      );
+      const chosen = pickedPetIds.length === 1 ? pickedPetIds[0] : null;
+      resetAddDialog();
+      setAddOpen(false);
+      await reload();
+      navigate(chosen ? crm.pet(chosen) : crm.owner(owner.ownerUuid));
+    } catch (err: unknown) {
+      toast.error(parseApiErrorMessage(err, 'Could not add the selected pets'));
+    } finally {
+      setAssociating(false);
+    }
+  };
 
   const onTabChange = (value: string) => {
     setTab(value);
@@ -941,6 +981,37 @@ export default function ClinicPatients() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAdd} className="space-y-4">
+            {petChoiceOwner ? (
+              <div className="rounded-md border px-3 py-2.5 space-y-3">
+                <div>
+                  <p className="text-sm font-medium">{petChoiceOwner.name} is now a client</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This KittyP account has more than one pet. Choose which pets to add to this clinic
+                    list with the client.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {(petChoiceOwner.pets ?? [])
+                    .filter((pet) => pet.clinicPatient === false)
+                    .map((pet) => (
+                      <label key={pet.petUuid} className="flex items-start gap-2 text-sm">
+                        <Checkbox
+                          checked={pickedPetIds.includes(pet.petUuid)}
+                          onCheckedChange={(checked) => togglePickedPet(pet.petUuid, checked === true)}
+                        />
+                        <span>
+                          <span className="font-medium">{pet.name}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {[pet.species, pet.breed].filter(Boolean).join(' · ') || 'Pet'}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                </div>
+              </div>
+            ) : null}
+
+            {!petChoiceOwner ? (
             <div>
               <Label>Search KittyP or clinic clients</Label>
               <div className="relative mt-1">
@@ -1013,10 +1084,11 @@ export default function ClinicPatients() {
                 <p className="text-xs text-muted-foreground mt-1">Type at least 3 characters to search.</p>
               )}
             </div>
+            ) : null}
 
             {matchedOwner ? (
               <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm space-y-2">
-                <p className="font-medium text-foreground">Already a client of this clinic” {matchedOwner.name}</p>
+                <p className="font-medium text-foreground">Already a client of this clinic: {matchedOwner.name}</p>
                 <p className="text-xs text-muted-foreground">{matchedOwner.email}</p>
                 <Button
                   type="button"
@@ -1220,7 +1292,16 @@ export default function ClinicPatients() {
               >
                 Cancel
               </Button>
-              {!attachUser && !matchedOwner ? (
+              {petChoiceOwner ? (
+                <Button
+                  type="button"
+                  disabled={associating || pickedPetIds.length === 0}
+                  onClick={() => void handleAdmitPickedPets()}
+                >
+                  {associating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Add selected pet{pickedPetIds.length === 1 ? '' : 's'}
+                </Button>
+              ) : !attachUser && !matchedOwner ? (
                 <Button type="submit" disabled={saving}>
                   {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Add client
