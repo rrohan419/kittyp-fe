@@ -216,6 +216,16 @@ export interface InvoiceSummaryModel {
   currency?: string;
   petUuid?: string;
   createdAt?: string;
+  invoiceNumber?: string;
+  paymentStatus?: string;
+  paymentMode?: string;
+  paidAmount?: string;
+  balance?: string;
+  reason?: string;
+  diagnosis?: string;
+  doctorName?: string;
+  consultationDate?: string;
+  visitUuid?: string;
 }
 
 export interface ClinicalRecordModel {
@@ -1033,6 +1043,7 @@ export interface ClinicVisitModel {
   invoiceUuid?: string;
   healthEventUuid?: string;
   parentRating?: number | null;
+  bookingUuid?: string | null;
 }
 
 export async function fetchClinicVisits(

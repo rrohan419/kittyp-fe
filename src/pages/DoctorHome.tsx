@@ -452,7 +452,12 @@ export default function DoctorHome() {
     return {
       pet: profile?.pet ?? null,
       history,
-      healthEvents: profile?.timeline ?? [],
+      healthEvents: (profile?.timeline ?? []).filter(
+        (he) =>
+          !history.some(
+            (v) => (he.visitUuid && he.visitUuid === v.uuid) || (v.healthEventUuid && v.healthEventUuid === he.uuid)
+          )
+      ),
     };
   };
 
@@ -1280,7 +1285,10 @@ export default function DoctorHome() {
                   <p className="text-muted-foreground text-xs">No prior visits on record.</p>
                 ) : (
                   <div className="max-h-40 overflow-y-auto space-y-2 border rounded-md p-2">
-                    {eventDetail.history.slice(0, 8).map((h) => (
+                    {eventDetail.history
+                      .filter((h) => h.uuid !== eventDetail.visit?.uuid)
+                      .slice(0, 8)
+                      .map((h) => (
                       <div key={h.uuid} className="text-xs border-b border-border/60 pb-1.5 last:border-0">
                         <p className="font-medium">
                           {h.createdAt ? format(parseISO(h.createdAt), 'PP') : 'Visit'} · {h.status}

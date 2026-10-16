@@ -558,7 +558,11 @@ export default function ClinicAppointments() {
                           );
                         }}
                         onInvoice={() => openInvoiceForVisit(v)}
-                        onCancel={() => patch(v.uuid, { status: 'CANCELLED' })}
+                        onCancel={() => {
+                          if (window.confirm('Cancel this appointment? This cannot be undone.')) {
+                            void patch(v.uuid, { status: 'CANCELLED' });
+                          }
+                        }}
                         onAssign={(doctorUuid) =>
                           patch(v.uuid, { doctorUuid: doctorUuid || null })
                         }

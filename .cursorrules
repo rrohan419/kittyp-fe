@@ -31,7 +31,7 @@ Act as a Senior Full Stack Software Engineer. Provide clean, secure, and highly 
   - Avoid prop drilling (use Context or state management like Zustand/Redux if deep).
 
 ## 4. Backend Standards (kittyp-be)
-- **Architecture:** Use a Layered Architecture (Routes -> Controllers -> Services -> Data Access/Models). Keep controllers thin and put business logic in services.
+- **Architecture:** Controller → Service interface → ServiceImpl → DAO interface → DAO implementation → Repository. Controllers have no business logic. `XxxServiceImpl implements XxxService` and holds the logic. Services call DAO only and never a repository. `XxxDaoImpl` is the only layer that calls a repository.
 - **Linting/Formatting:** Enforce a strict linter (ESLint for Node, Ruff/Black for Python).
 - **API Design:**
   - Follow RESTful conventions.
@@ -49,6 +49,7 @@ Act as a Senior Full Stack Software Engineer. Provide clean, secure, and highly 
 
 ## 5. Git & Workflow Standards
 - **Branching:** Use prefixes: `feat/`, `fix/`, `chore/`, `docs/`.
+- **Before push:** Never develop on `master`. Fetch, update local `master` from `origin/master` without reset or discard, merge `origin/master` into the working branch, run tests, then push. Stop and report if conflicts or tests fail. No force-push. Do not merge the feature branch into `master` unless explicitly authorized. Review `git status` and the diff; commit only related files.
 - **Commit Messages:** Follow Conventional Commits:
   - `feat: add user authentication`
   - `fix: resolve race condition in payment flow`

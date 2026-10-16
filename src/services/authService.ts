@@ -6,6 +6,7 @@ import { setUser } from '@/module/slice/AuthSlice';
 import { fetchUserDetail } from "./UserService";
 import { TokenResponse } from "@react-oauth/google";
 import { SignupRole } from "@/utils/roles";
+import { parseApiErrorMessage } from "@/utils/validation";
 import { clearAuthStorage, getAuthItem, setAuthItem } from "@/utils/authStorage";
 
 interface SignupData {
@@ -121,7 +122,6 @@ async function postSignup(path: string, data: unknown) {
   });
   if (!response.ok) {
     const text = await response.text();
-    const { parseApiErrorMessage } = await import('@/utils/validation');
     throw new Error(parseApiErrorMessage(text, 'Signup failed. Please try again.'));
   }
   return response.json();

@@ -1,5 +1,7 @@
 import axiosInstance from "@/config/axionInstance";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/config/env";
+import { parseApiErrorMessage } from "@/utils/validation";
 
 // Types for file upload
 export interface FileUploadResponse {
@@ -221,8 +223,6 @@ export const uploadSignupDocuments = async (
 
   // Use fetch (not axios) so a business-error status cannot trigger the
   // global 401 → /login interceptor while the user is still signing up.
-  const { API_BASE_URL } = await import('@/config/env');
-  const { parseApiErrorMessage } = await import('@/utils/validation');
   const res = await fetch(
     `${API_BASE_URL}/upload/signup-documents?email=${encodeURIComponent(email)}`,
     { method: 'POST', body: formData }

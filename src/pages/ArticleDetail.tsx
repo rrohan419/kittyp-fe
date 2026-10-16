@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { formatDistance } from 'date-fns';
 import { ArrowLeft, Calendar, Clock, Heart, MessageSquare, Share2, Tag, ThumbsUp } from 'lucide-react';
-import { ArticleComment, ArticleData, fetchArticleBySlug, fetchArticleComments, addLikeForArticle, removeLikeForArticle, isLikedByUser } from '@/services/articleService';
+import { ArticleComment, ArticleData, addComment, fetchArticleBySlug, fetchArticleComments, addLikeForArticle, removeLikeForArticle, isLikedByUser } from '@/services/articleService';
 import { LoadingState } from '@/components/ui/LoadingState';
 import RichContentViewer from '@/components/RichContentViewer';
 
@@ -194,7 +194,6 @@ const ArticlePage = () => {
     const text = (newComment || '').trim();
     if (!text) return;
     try {
-      const { addComment } = await import('@/services/articleService');
       await addComment({ comment: text, articleId: article.id });
       setNewComment('');
       // Refresh comments from first page to include the new one

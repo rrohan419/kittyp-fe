@@ -40,7 +40,6 @@ import {
   verifyPetConsentOtp,
   VisitUrgency,
 } from '@/services/clinicService';
-import { fetchParentDoctorSlots } from '@/services/discoverService';
 import { isPracticeReady } from '@/services/doctorVerificationService';
 import { digitsOnlyPhone, validateEmail, validatePhone } from '@/utils/validation';
 import { toast } from 'sonner';
@@ -332,51 +331,6 @@ export function AddAppointmentDialog({
     }));
   }, [open, lockedDoctorUuid, initialSlotStart]);
 
-  /** Block times outside doctor hours or already booked. Runs for clinic and locked doctor. */
-  useEffect(() => {
-    if (!open || timing !== 'schedule') {
-      setBusyHint(null);
-      return;
-    }
-    if (!resolvedDoctorUuid || !form.slotDate || !form.slotTime || !clinicUuid) {
-      setBusyHint(null);
-      return;
-    }
-    let cancelled = false;
-    const handle = setTimeout(() => {
-      void (async () => {
-        try {
-          const raw = new Date(`${form.slotDate}T${form.slotTime}`);
-          if (Number.isNaN(raw.getTime())) return;
-          const snapped = snapToHalfHour(raw);
-          const startKey = slotMinuteKey(format(snapped, "yyyy-MM-dd'T'HH:mm:ss"));
-          const free = await fetchParentDoctorSlots(clinicUuid, resolvedDoctorUuid, form.slotDate);
-          if (cancelled) return;
-          if (free.length === 0) {
-            setBusyHint('Doctor has no availability on this day');
-            return;
-          }
-          const openSlot = free.some((s) => slotMinuteKey(s) === startKey);
-          if (!openSlot) {
-            setBusyHint(
-              `Doctor not available at ${format(snapped, 'h:mm a')} — outside working hours or already booked`
-            );
-            return;
-          }
-          setBusyHint(null);
-        } catch {
-          if (!cancelled) {
-            setBusyHint('Could not confirm doctor availability for this time');
-          }
-        }
-      })();
-    }, 350);
-    return () => {
-      cancelled = true;
-      clearTimeout(handle);
-    };
-  }, [open, timing, resolvedDoctorUuid, form.slotDate, form.slotTime, clinicUuid]);
-
   const set = (key: keyof typeof emptyNew, value: string) => {
     setForm((s) => ({ ...s, [key]: value }));
     setFieldErrors((e) => {
@@ -445,11 +399,36 @@ export function AddAppointmentDialog({
     }
   };
 
+  const showAttachedOwner = (owner: ClinicOwnerModel, user: PlatformUserSearchModel | undefined, message: string) => {
+    const [first = '', ...rest] = (user?.name || owner.name || '').trim().split(/\s+/);
+    setMode('new');
+    setMatchedOwner(owner);
+    setEmailLookup({
+      found: true,
+      source: 'PLATFORM',
+      owner,
+      platformUser: user ?? null,
+    });
+    setForm((s) => ({
+      ...s,
+      ownerFirstName: first || user?.email?.split('@')[0] || owner.firstName || '',
+      ownerLastName: rest.join(' ') || owner.lastName || '',
+      ownerEmail: user?.email || owner.email || '',
+      ownerPhone: digitsOnlyPhone(user?.phone || owner.phone || ''),
+    }));
+    setHits([]);
+    toast.message(message);
+  };
+
   const afterOwnerAttached = async (owner: ClinicOwnerModel, user?: PlatformUserSearchModel) => {
     const petsOfOwner = owner.pets ?? [];
     const pending = petsOfOwner.filter((pet) => pet.clinicPatient === false);
     if (pending.length > 1) {
-      toast.message('This client has more than one pet. Search and select the pet for this visit.');
+      showAttachedOwner(
+        owner,
+        user,
+        'This client has more than one pet. Choose which pet to add to this clinic.'
+      );
       return;
     }
     if (petsOfOwner.length === 1) {
@@ -475,24 +454,7 @@ export function AddAppointmentDialog({
       });
       return;
     }
-    const [first = '', ...rest] = (user?.name || owner.name || '').trim().split(/\s+/);
-    setMode('new');
-    setMatchedOwner(owner);
-    setEmailLookup({
-      found: true,
-      source: 'PLATFORM',
-      owner,
-      platformUser: user ?? null,
-    });
-    setForm((s) => ({
-      ...s,
-      ownerFirstName: first || user?.email?.split('@')[0] || owner.firstName || '',
-      ownerLastName: rest.join(' ') || owner.lastName || '',
-      ownerEmail: user?.email || owner.email || '',
-      ownerPhone: digitsOnlyPhone(user?.phone || owner.phone || ''),
-    }));
-    setHits([]);
-    toast.message('Account attached — add the pet for this appointment');
+    showAttachedOwner(owner, user, 'Account attached — add the pet for this appointment');
   };
 
   const clearSelectedPet = () => {
@@ -1017,7 +979,11 @@ export function AddAppointmentDialog({
                 </div>
                 {(matchedOwner.pets?.length ?? 0) > 0 ? (
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Pets on this profile — click to schedule</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(matchedOwner.pets ?? []).filter((pet) => pet.clinicPatient === false).length > 1
+                        ? 'Choose which pet to add to this clinic with the client'
+                        : 'Pets on this profile — click to schedule'}
+                    </p>
                     <div className="border rounded-md divide-y max-h-36 overflow-y-auto bg-background">
                       {matchedOwner.pets.map((op) => (
                         <button
@@ -1049,6 +1015,9 @@ export function AddAppointmentDialog({
                           }
                         >
                           <PetNameType name={op.name} type={op.species} />
+                          {op.clinicPatient === false ? (
+                            <p className="text-[11px] text-muted-foreground">Not on this clinic list yet</p>
+                          ) : null}
                         </button>
                       ))}
                     </div>
