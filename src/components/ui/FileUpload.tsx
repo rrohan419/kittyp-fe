@@ -171,7 +171,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       onClick={() => !disabled && !isUploading && fileInputRef.current?.click()}
     >
       <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-      <p className="text-sm text-muted-foreground mb-2">{placeholder}</p>
+      <p className="text-sm font-semibold text-[color:var(--placeholder)] mb-2">{placeholder}</p>
       <p className="text-xs text-muted-foreground">
         Supported formats: JPEG, PNG, WebP (Max {Math.round((options.maxFileSize || 5 * 1024 * 1024) / 1024 / 1024)}MB)
       </p>

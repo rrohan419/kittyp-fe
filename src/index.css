@@ -37,6 +37,7 @@
     --ring: 339 85% 60%;
 
     --radius: 0.75rem;
+    --placeholder: color-mix(in oklab, hsl(var(--muted-foreground)) 55%, hsl(var(--background)));
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -294,4 +295,17 @@
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.3);
   }
+}
+
+/* Hint text stays lighter and a little bolder than a filled value, for every role. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--placeholder) !important;
+  font-weight: 600 !important;
+  opacity: 1;
+}
+
+[role="combobox"][data-placeholder] {
+  color: var(--placeholder) !important;
+  font-weight: 600 !important;
 }
