@@ -57,7 +57,7 @@ export const PetManagementPage: React.FC = () => {
                     {pet.dateOfBirth ? formatPetDobWithAge(pet.dateOfBirth) : '—'}
                   </p>
                   {formatPetWeight(pet.weight) && (
-                    <p className="text-xs text-muted-foreground mt-1">{formatPetWeight(pet.weight)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{formatPetWeight(pet.weight)} KG</p>
                   )}
                 </div>
                 <Button size="sm" asChild>

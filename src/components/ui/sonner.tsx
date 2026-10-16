@@ -1,23 +1,8 @@
 import { useTheme } from "@/components/providers/ThemeProvider"
-import { toast, Toaster as Sonner } from "sonner"
+import { Toaster as Sonner } from "sonner"
 
-const TOAST_ERROR_DURATION_MS = 7000
-const ERROR_TOAST_FLAG = "__kittypErrorToast"
-
-function installErrorToastDuration() {
-  const tagged = toast as typeof toast & { [ERROR_TOAST_FLAG]?: boolean }
-  if (tagged[ERROR_TOAST_FLAG]) return
-  const error = toast.error.bind(toast)
-  toast.error = (message, data) => {
-    const explicit = data && typeof data.duration === "number" && Number.isFinite(data.duration)
-      ? data.duration
-      : TOAST_ERROR_DURATION_MS
-    return error(message, { ...data, duration: explicit })
-  }
-  tagged[ERROR_TOAST_FLAG] = true
-}
-
-installErrorToastDuration()
+/** How long every toast stays on screen. Success, error, warning, and info all use this. */
+export const TOAST_DURATION_MS = 5000
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
@@ -29,6 +14,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={resolvedMode as ToasterProps["theme"]}
       className="toaster group"
       position="bottom-right"
+      duration={TOAST_DURATION_MS}
       toastOptions={{
         classNames: {
           toast: [
@@ -95,7 +81,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
             "group-[.toast]:transition-all"
           ].join(" "),
         },
-        duration: 800,
+        duration: TOAST_DURATION_MS,
         unstyled: true,
       }}
       {...props}

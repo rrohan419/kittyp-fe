@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { displayPhone } from '@/utils/validation';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { format, parseISO, differenceInMonths, isValid } from 'date-fns';
 import {
@@ -502,7 +503,7 @@ export default function ClinicDoctorDetail() {
                       {(row.pet.weight || row.pet.microchipNumber || row.pet.dateOfBirth) && (
                         <div className="sm:col-span-2 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
                           {row.pet.dateOfBirth && <span>DOB {formatPetDobWithAge(row.pet.dateOfBirth)}</span>}
-                          {row.pet.weight && <span>Weight {row.pet.weight}</span>}
+                          {formatPetWeight(row.pet.weight) && <span>Weight {formatPetWeight(row.pet.weight)} KG</span>}
                           {row.pet.microchipNumber && <span>Chip {row.pet.microchipNumber}</span>}
                           {row.pet.globalPetId && <span>ID {row.pet.globalPetId}</span>}
                         </div>

@@ -61,7 +61,6 @@ export function FCMInitializer() {
           ({ title, body }) => {
             toast(title, {
               description: body,
-              duration: 5000,
             });
           }
         );

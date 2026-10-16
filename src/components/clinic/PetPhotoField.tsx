@@ -7,7 +7,7 @@ import { fileToBase64, uploadPetPhotos, validateFile } from '@/services/fileUplo
 import { toast } from 'sonner';
 
 const MAX_BYTES = 5 * 1024 * 1024;
-const ALLOWED = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
 
 type Props = {
   value?: string | null;
@@ -39,12 +39,7 @@ export function PetPhotoField({
       maxFiles: 1,
     });
     if (!validation.isValid) {
-      const oversize = file.size > MAX_BYTES;
-      toast.error(
-        oversize
-          ? `${file.name} is over 5MB. Use a JPEG, PNG, WebP, or GIF under 5MB.`
-          : `${file.name} is not a supported pet photo. Use a JPEG, PNG, WebP, or GIF under 5MB.`
-      );
+      toast.error(validation.errors[0] || 'Photo must be JPEG, PNG, or WebP under 5MB');
       if (inputRef.current) inputRef.current.value = '';
       return;
     }
@@ -55,8 +50,10 @@ export function PetPhotoField({
       onChange(url);
       setPreview(null);
       toast.success('Pet photo added');
-    } catch {
+    } catch (err: unknown) {
       setPreview(null);
+      const msg = err instanceof Error ? err.message : 'Could not upload photo';
+      toast.error(msg);
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -117,13 +114,13 @@ export function PetPhotoField({
               </Button>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground">JPEG, PNG, WebP, or GIF · max 5MB</p>
+          <p className="text-[11px] text-muted-foreground">JPEG, PNG, or WebP · max 5MB</p>
         </div>
       </div>
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept="image/jpeg,image/png,image/webp"
         className="hidden"
         disabled={disabled || uploading}
         onChange={(e) => void onPick(e.target.files?.[0])}

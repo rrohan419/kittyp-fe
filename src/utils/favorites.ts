@@ -23,6 +23,5 @@ export const handleToggleFavorite = async (
     }
   } catch (error) {
     console.error("Error toggling favorite:", error);
-    toast.error("Failed to update favorites");
   }
 }; 

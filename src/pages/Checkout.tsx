@@ -318,18 +318,14 @@ export default function Checkout() {
                     }
 
                     toast.dismiss();
-                    toast.error(errorMessage, {
-                        duration: 5000,
-                    });
+                    toast.error(errorMessage);
 
                     if (errorMessage.includes("Insufficient stock")) {
                         const match = errorMessage.match(/Insufficient stock for product: (.+)\. Available: (\d+)/);
                         if (match) {
                             const [, productName, availableQty] = match;
                             setTimeout(() => {
-                                toast.error(`Only ${availableQty} unit(s) available for ${productName}. Please update your cart.`, {
-                                    duration: 5000,
-                                });
+                                toast.error(`Only ${availableQty} unit(s) available for ${productName}. Please update your cart.`);
                             }, 100);
                         }
                     }
@@ -346,9 +342,7 @@ export default function Checkout() {
                     setIsPaymentPending(false);
 
                     toast.dismiss();
-                    toast.error(orderResponse.message || "Failed to place order", {
-                        duration: 5000,
-                    });
+                    toast.error(orderResponse.message || "Failed to place order");
 
                     setTimeout(() => {
                         navigate('/cart');
@@ -442,9 +436,7 @@ export default function Checkout() {
             setIsRedirecting(true);
 
             toast.dismiss(); // Clear any existing toasts
-            toast.error("Failed to place order. Please try again.", {
-                duration: 5000,
-            });
+            toast.error("Failed to place order. Please try again.");
 
             setTimeout(() => {
                 navigate('/cart');

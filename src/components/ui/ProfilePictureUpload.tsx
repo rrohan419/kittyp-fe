@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Camera, Upload, X, User } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
@@ -30,7 +31,6 @@ export const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [imageFailed, setImageFailed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sizeClasses = {
@@ -85,7 +85,6 @@ export const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error: any) {
       const errorMessage = error.message || 'Upload failed';
-      toast.error(errorMessage);
       onUploadError?.(errorMessage);
     } finally {
       setIsUploading(false);
@@ -99,43 +98,19 @@ export const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
   };
 
   const displayImage = previewUrl || currentImageUrl;
-  const showPhoto = Boolean(displayImage) && !imageFailed;
-
-  useEffect(() => {
-    setImageFailed(false);
-  }, [displayImage]);
 
   return (
     <div className={cn('flex flex-col items-center space-y-4', className)}>
       <div className="relative group">
-        <button
-          type="button"
-          onClick={handleAvatarClick}
-          className={cn('relative ring-2 ring-primary/20 shadow-md cursor-pointer overflow-hidden rounded-full bg-accent', sizeClasses[size])}
-          aria-label={userName ? `Profile photo for ${userName}` : 'Profile photo'}
-        >
-          {showPhoto ? (
-            <>
-              <img
-                src={displayImage}
-                alt=""
-                aria-hidden
-                className="absolute inset-0 h-full w-full scale-110 object-cover blur-md"
-                onError={() => setImageFailed(true)}
-              />
-              <img
-                src={displayImage}
-                alt={userName || 'Profile'}
-                className="relative z-10 h-full w-full object-contain"
-                onError={() => setImageFailed(true)}
-              />
-            </>
+        <Avatar className={cn('ring-2 ring-primary/20 shadow-md cursor-pointer overflow-hidden', sizeClasses[size])} onClick={handleAvatarClick}>
+          {displayImage ? (
+            <AvatarImage src={displayImage} alt={userName || 'Profile'} className="object-cover" />
           ) : (
-            <span className="flex h-full w-full items-center justify-center text-3xl font-semibold">
+            <AvatarFallback className="bg-accent text-3xl font-semibold">
               {getInitials(userName)}
-            </span>
+            </AvatarFallback>
           )}
-        </button>
+        </Avatar>
         {/* Overlay Camera Icon */}
         {!isUploading && !disabled && (
           <div

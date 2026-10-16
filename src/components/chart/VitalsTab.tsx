@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { ChartVitalsSlice } from './chartTabs';
 import type { VitalHistoryItem } from './prescriptionsFromVisits';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 
 function formatVisitDate(value: string | null): string {
   if (!value) return '—';
@@ -61,7 +62,7 @@ export function VitalsTab({ editable, vitals, onVitalsChange, history = [] }: Vi
           </p>
           <p className="text-sm font-medium mt-1">
             {[
-              row.weightKg ? `${row.weightKg} kg` : null,
+              formatPetWeight(row.weightKg) ? `${formatPetWeight(row.weightKg)} KG` : null,
               row.temperatureC ? `${row.temperatureC} °C` : null,
             ]
               .filter(Boolean)

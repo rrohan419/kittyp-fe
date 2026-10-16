@@ -16,6 +16,7 @@ import {
 import { PrescriptionsTab } from '@/components/chart/PrescriptionsTab';
 import { parsePatientDashboardTab } from '@/components/chart/chartTabs';
 import { prescriptionsFromVisits } from '@/components/chart/prescriptionsFromVisits';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import {
   ClinicPetMedicalProfileModel,
@@ -451,7 +452,7 @@ export default function ClinicPatientDashboard() {
                 dateOfBirth: pet.dateOfBirth,
                 species: pet.species,
                 breed: pet.breed,
-                weight: pet.weight,
+                weight: formatPetWeight(pet.weight) || undefined,
                 ownerName: owner?.name || pet.ownerName,
               }}
               clinicUuid={clinicUuid}

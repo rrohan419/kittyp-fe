@@ -595,8 +595,9 @@ export default function ClinicOwnerProfile() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Weight</Label>
+                <Label>Weight (kg)</Label>
                 <Input
+                  type="number"
                   value={petForm.weight}
                   onChange={(e) => setPetForm((s) => ({ ...s, weight: e.target.value }))}
                 />

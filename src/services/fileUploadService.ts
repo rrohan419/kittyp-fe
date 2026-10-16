@@ -137,7 +137,6 @@ export const uploadFiles = async (
   } catch (error: any) {
     console.error('File upload error:', error);
     const errorMessage = error.response?.data?.message || error.message || 'Upload failed';
-    toast.error(errorMessage);
     throw new Error(errorMessage);
   }
 };
@@ -272,7 +271,7 @@ export const uploadPetPhotos = async (
   return await uploadFiles(files, {
     onProgress,
     maxFileSize: 5 * 1024 * 1024, // 5MB for pet photos
-    allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'],
+    allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
     maxFiles: 5
   });
 };

@@ -211,7 +211,6 @@ const Signup = () => {
 
         toast.success('Account created successfully', {
           description: 'Please login with your new account',
-          duration: 3000,
         });
 
         navigate('/login');

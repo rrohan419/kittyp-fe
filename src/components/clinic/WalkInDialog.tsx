@@ -386,9 +386,7 @@ export function AddAppointmentDialog({
       setAttachCode('');
       await sendClientAttachOtp(clinicUuid, user.userUuid);
       setAttachCooldown(60);
-      toast.success('Confirmation code sent to their email — enter it to attach this account', {
-        duration: 8000,
-      });
+      toast.success('Confirmation code sent to their email — enter it to attach this account');
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -480,9 +478,7 @@ export function AddAppointmentDialog({
         setAttachCode('');
         await sendClientAttachOtp(clinicUuid, hit.platformUser.userUuid);
         setAttachCooldown(60);
-        toast.success('Confirmation code sent to their email — enter it to attach this account', {
-          duration: 8000,
-        });
+        toast.success('Confirmation code sent to their email — enter it to attach this account');
         return;
       }
       if (!owner) {
@@ -600,7 +596,7 @@ export function AddAppointmentDialog({
       setAttachSending(true);
       await sendClientAttachOtp(clinicUuid, attachUser.userUuid);
       setAttachCooldown(60);
-      toast.success('Confirmation code sent to their email', { duration: 8000 });
+      toast.success('Confirmation code sent to their email');
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||

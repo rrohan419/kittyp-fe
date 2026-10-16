@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { calculatePetAgeForDisplay } from '@/services/UserService';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import type { PrescriptionPetDetails } from './prescriptionPet';
 import type { PrescriptionHistoryItem } from './prescriptionsFromVisits';
 
@@ -46,7 +47,8 @@ export interface PrescriptionDocumentProps {
 
 export function PrescriptionDocument({ open, onOpenChange, pet, record }: PrescriptionDocumentProps) {
   const speciesBreed = [pet.species, pet.breed].filter(Boolean).join(' · ');
-  const details = [speciesBreed || null, pet.weight ? String(pet.weight) : null].filter(Boolean).join(' · ');
+  const weight = formatPetWeight(pet.weight);
+  const details = [speciesBreed || null, weight ? `${weight} KG` : null].filter(Boolean).join(' · ');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
