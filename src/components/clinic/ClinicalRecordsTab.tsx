@@ -36,14 +36,16 @@ function visitLabel(visit: ClinicVisitModel): string {
   return `${date}${doctor}`;
 }
 
-function fileLabel(url: string, index: number): string {
+function fileLabel(url: string, index: number, noun: string): string {
+  let ext = '';
   try {
-    const path = new URL(url).pathname;
-    const name = decodeURIComponent(path.split('/').pop() || '');
-    return name || `File ${index + 1}`;
+    const name = decodeURIComponent(new URL(url).pathname.split('/').pop() || '');
+    const dot = name.lastIndexOf('.');
+    if (dot > 0 && dot < name.length - 1) ext = name.slice(dot + 1).toUpperCase();
   } catch {
-    return `File ${index + 1}`;
+    /* fall through to generic label */
   }
+  return `${noun} ${index + 1}${ext ? ` (${ext})` : ''}`;
 }
 
 export function ClinicalRecordsTab({
@@ -167,7 +169,7 @@ export function ClinicalRecordsTab({
                         rel="noreferrer"
                         className="text-xs text-primary underline"
                       >
-                        {fileLabel(url, index)}
+                        {fileLabel(url, index, isLabs ? 'Lab report' : 'Surgery file')}
                       </a>
                     ))}
                   </div>

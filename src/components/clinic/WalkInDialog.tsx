@@ -40,7 +40,6 @@ import {
   verifyPetConsentOtp,
   VisitUrgency,
 } from '@/services/clinicService';
-import { fetchParentDoctorSlots } from '@/services/discoverService';
 import { isPracticeReady } from '@/services/doctorVerificationService';
 import { digitsOnlyPhone, validateEmail, validatePhone } from '@/utils/validation';
 import { toast } from 'sonner';
@@ -331,51 +330,6 @@ export function AddAppointmentDialog({
       doctorUuid: lockedDoctorUuid || s.doctorUuid,
     }));
   }, [open, lockedDoctorUuid, initialSlotStart]);
-
-  /** Block times outside doctor hours or already booked. Runs for clinic and locked doctor. */
-  useEffect(() => {
-    if (!open || timing !== 'schedule') {
-      setBusyHint(null);
-      return;
-    }
-    if (!resolvedDoctorUuid || !form.slotDate || !form.slotTime || !clinicUuid) {
-      setBusyHint(null);
-      return;
-    }
-    let cancelled = false;
-    const handle = setTimeout(() => {
-      void (async () => {
-        try {
-          const raw = new Date(`${form.slotDate}T${form.slotTime}`);
-          if (Number.isNaN(raw.getTime())) return;
-          const snapped = snapToHalfHour(raw);
-          const startKey = slotMinuteKey(format(snapped, "yyyy-MM-dd'T'HH:mm:ss"));
-          const free = await fetchParentDoctorSlots(clinicUuid, resolvedDoctorUuid, form.slotDate);
-          if (cancelled) return;
-          if (free.length === 0) {
-            setBusyHint('Doctor has no availability on this day');
-            return;
-          }
-          const openSlot = free.some((s) => slotMinuteKey(s) === startKey);
-          if (!openSlot) {
-            setBusyHint(
-              `Doctor not available at ${format(snapped, 'h:mm a')} — outside working hours or already booked`
-            );
-            return;
-          }
-          setBusyHint(null);
-        } catch {
-          if (!cancelled) {
-            setBusyHint('Could not confirm doctor availability for this time');
-          }
-        }
-      })();
-    }, 350);
-    return () => {
-      cancelled = true;
-      clearTimeout(handle);
-    };
-  }, [open, timing, resolvedDoctorUuid, form.slotDate, form.slotTime, clinicUuid]);
 
   const set = (key: keyof typeof emptyNew, value: string) => {
     setForm((s) => ({ ...s, [key]: value }));
