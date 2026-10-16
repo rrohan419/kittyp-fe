@@ -493,21 +493,62 @@ export default function ClinicPatientDashboard() {
 
         <TabsContent value="invoices" className="mt-4 space-y-3">
           {profile.invoices.length ? (
-            profile.invoices.map((inv) => (
-              <Card key={inv.uuid} className="border-0 shadow-sm">
-                <CardContent className="p-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium">
-                      {inv.currency || 'INR'} {inv.amount ?? '—'}
-                    </p>
+            profile.invoices.map((inv) => {
+              const balance = Number(inv.balance ?? 0);
+              const payment = (inv.paymentStatus || '').toUpperCase();
+              const dateRaw = inv.consultationDate || inv.createdAt;
+              return (
+                <Card key={inv.uuid} className="border-0 shadow-sm">
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium">
+                          {inv.invoiceNumber ? `#${inv.invoiceNumber} · ` : ''}
+                          {inv.currency || 'INR'} {inv.amount ?? '—'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {dateRaw ? format(parseISO(dateRaw), 'MMM d, yyyy') : '—'}
+                          {inv.doctorName ? ` · Dr. ${inv.doctorName.replace(/^Dr\.?\s*/i, '')}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap justify-end gap-1.5">
+                        {inv.paymentStatus ? (
+                          <Badge
+                            variant="outline"
+                            className={
+                              payment === 'PAID'
+                                ? 'border-emerald-400 text-emerald-700'
+                                : 'border-amber-400 text-amber-700'
+                            }
+                          >
+                            {inv.paymentStatus.replace(/_/g, ' ')}
+                          </Badge>
+                        ) : null}
+                        {inv.status && inv.status.toUpperCase() !== payment ? (
+                          <Badge variant="outline">{inv.status}</Badge>
+                        ) : null}
+                      </div>
+                    </div>
+                    {inv.reason || inv.diagnosis ? (
+                      <p className="text-xs text-muted-foreground">
+                        {[inv.reason && `Reason: ${inv.reason}`, inv.diagnosis && `Diagnosis: ${inv.diagnosis}`]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                    ) : null}
                     <p className="text-xs text-muted-foreground">
-                      {inv.createdAt ? format(parseISO(inv.createdAt), 'MMM d, yyyy') : '—'}
+                      {[
+                        inv.paidAmount != null && `Paid ${inv.currency || 'INR'} ${inv.paidAmount}`,
+                        balance > 0 && `Balance due ${inv.currency || 'INR'} ${inv.balance}`,
+                        inv.paymentMode && `Mode: ${inv.paymentMode.replace(/_/g, ' ')}`,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </p>
-                  </div>
-                  <Badge variant="outline">{inv.status || '—'}</Badge>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              );
+            })
           ) : (
             <EmptyTab label="Invoices" />
           )}

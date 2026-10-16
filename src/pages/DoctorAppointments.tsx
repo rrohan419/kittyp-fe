@@ -63,7 +63,50 @@ type ApptRow =
   | { kind: 'booking'; booking: ClinicBookingModel; sortAt: number }
   | { kind: 'visit'; visit: ClinicVisitModel; sortAt: number };
 
+type ApptCategory = 'UPCOMING' | 'IN_PROGRESS' | 'COMPLETED' | 'NO_SHOW' | 'CANCELLED';
+type ApptFilter = 'ALL' | 'ACTIVE' | 'UPCOMING' | 'IN_PROGRESS' | 'COMPLETED' | 'NO_SHOW' | 'CANCELLED';
+
+const FILTER_OPTIONS: { value: ApptFilter; label: string }[] = [
+  { value: 'ALL', label: 'All' },
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'UPCOMING', label: 'Upcoming' },
+  { value: 'IN_PROGRESS', label: 'In-Progress' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'NO_SHOW', label: 'No show' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+];
+
+function rowCategory(row: ApptRow): ApptCategory {
+  const status = ((row.kind === 'booking' ? row.booking.status : row.visit.status) || '').toUpperCase();
+  if (status === 'CANCELLED') return 'CANCELLED';
+  if (status === 'NO_SHOW') return 'NO_SHOW';
+  if (status === 'IN_PROGRESS') return 'IN_PROGRESS';
+  if (status === 'COMPLETED' || status === 'CHECKING_OUT') return 'COMPLETED';
+  return 'UPCOMING';
+}
+
+type ApptDetail =
+  | { kind: 'booking'; booking: ClinicBookingModel }
+  | { kind: 'visit'; visit: ClinicVisitModel };
+
+function DetailField({ label, value }: { label: string; value?: string | number | null }) {
+  if (value === undefined || value === null || value === '') return null;
+  return (
+    <div className="grid grid-cols-[8rem_1fr] gap-2 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="break-words">{value}</span>
+    </div>
+  );
+}
+
+function fmtDateTime(raw?: string | null): string | null {
+  if (!raw) return null;
+  const d = parseISO(raw);
+  return isValid(d) ? format(d, 'PPp') : null;
+}
+
 export default function DoctorAppointments() {
+  const [detail, setDetail] = useState<ApptDetail | null>(null);
   const navigate = useNavigate();
   const user = useAppSelector((s) => s.authReducer.user);
   const { clinicUuid, clinic, isPersonalPractice } = useActiveClinic();
@@ -77,6 +120,7 @@ export default function DoctorAppointments() {
   const [appointmentDate, setAppointmentDate] = useState(() =>
     format(startOfDay(new Date()), 'yyyy-MM-dd')
   );
+  const [filter, setFilter] = useState<ApptFilter>('ALL');
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [chartVisit, setChartVisit] = useState<ClinicVisitModel | null>(null);
@@ -147,17 +191,17 @@ export default function DoctorAppointments() {
   });
 
   const appointments = useMemo(() => {
-    const cutoff = Date.now() - 60 * 60 * 1000;
-    const today = format(startOfDay(new Date()), 'yyyy-MM-dd');
-    const viewingToday = appointmentDate === today;
     const rows: ApptRow[] = [];
+    const bookingsWithVisits = new Set(
+      visits.map((visit) => visit.bookingUuid).filter((bookingUuid): bookingUuid is string => Boolean(bookingUuid))
+    );
     for (const b of bookings) {
+      if (bookingsWithVisits.has(b.uuid)) continue;
       if (!b.slotStart) continue;
       const status = (b.status || '').toUpperCase();
-      const isClosedBooking = ['CANCELLED', 'NO_SHOW'].includes(status);
-      if (viewingToday && status === 'COMPLETED') continue;
+      if (status === 'COMPLETED') continue;
       const start = parseISO(b.slotStart);
-      if (!isValid(start) || (viewingToday && start.getTime() < cutoff && !isClosedBooking)) continue;
+      if (!isValid(start)) continue;
       rows.push({ kind: 'booking', booking: b, sortAt: start.getTime() });
     }
     for (const v of visits) {
@@ -167,11 +211,42 @@ export default function DoctorAppointments() {
       rows.push({ kind: 'visit', visit: v, sortAt: t });
     }
     return rows.sort((a, b) => a.sortAt - b.sortAt);
-  }, [appointmentDate, bookings, visits]);
+  }, [bookings, visits]);
 
-  const treated = useMemo(
+  const allTreated = useMemo(
     () => visits.filter((v) => v.status === 'CHECKING_OUT' || v.status === 'COMPLETED'),
     [visits]
+  );
+
+  const filterCounts = useMemo(() => {
+    const counts: Record<ApptFilter, number> = {
+      ALL: 0, ACTIVE: 0, UPCOMING: 0, IN_PROGRESS: 0, COMPLETED: 0, NO_SHOW: 0, CANCELLED: 0,
+    };
+    const add = (cat: ApptCategory) => {
+      counts.ALL += 1;
+      counts[cat] += 1;
+      if (cat === 'UPCOMING' || cat === 'IN_PROGRESS') counts.ACTIVE += 1;
+    };
+    appointments.forEach((r) => add(rowCategory(r)));
+    allTreated.forEach(() => add('COMPLETED'));
+    return counts;
+  }, [appointments, allTreated]);
+
+  const matchesFilter = useCallback(
+    (cat: ApptCategory) =>
+      filter === 'ALL' ||
+      filter === cat ||
+      (filter === 'ACTIVE' && (cat === 'UPCOMING' || cat === 'IN_PROGRESS')),
+    [filter]
+  );
+
+  const visibleAppointments = useMemo(
+    () => appointments.filter((r) => matchesFilter(rowCategory(r))),
+    [appointments, matchesFilter]
+  );
+  const treated = useMemo(
+    () => (matchesFilter('COMPLETED') ? allTreated : []),
+    [allTreated, matchesFilter]
   );
 
   const openChart = async (visit: ClinicVisitModel) => {
@@ -373,19 +448,34 @@ export default function DoctorAppointments() {
         />
       </div>
 
+      <div className="flex flex-wrap items-center gap-1.5">
+        {FILTER_OPTIONS.map((opt) => (
+          <Button
+            key={opt.value}
+            size="sm"
+            variant={filter === opt.value ? 'default' : 'outline'}
+            onClick={() => setFilter(opt.value)}
+          >
+            {opt.label} ({filterCounts[opt.value]})
+          </Button>
+        ))}
+      </div>
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
-      ) : appointments.length === 0 && treated.length === 0 ? (
+      ) : visibleAppointments.length === 0 && treated.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No appointments right now. Use + to add a walk-in or schedule.
+            {filter === 'ALL'
+              ? 'No appointments right now. Use + to add a walk-in or schedule.'
+              : 'No appointments match this filter.'}
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
-          {appointments.map((row) => {
+          {visibleAppointments.map((row) => {
             if (row.kind === 'booking') {
               const b = row.booking;
               const start = parseISO(b.slotStart);
@@ -400,10 +490,11 @@ export default function DoctorAppointments() {
                   title={petNameWithType(b.petName, b.species)}
                   subtitle={[b.ownerName || 'Owner', b.notes, b.clinicName].filter(Boolean).join(' · ')}
                   urgent={isUrgentVisit(b.urgency)}
-                  status="Scheduled"
+                  status={isOpenBooking ? (isPastDate || start.getTime() < Date.now() ? 'Overdue' : 'Scheduled') : b.status}
+                  onClick={() => setDetail({ kind: 'booking', booking: b })}
                   action={
                     <div className="flex flex-wrap items-center gap-2">
-                      {isPastDate && isOpenBooking ? (
+                      {isOpenBooking ? (
                         <>
                           <Button
                             size="sm"
@@ -457,14 +548,10 @@ export default function DoctorAppointments() {
                 subtitle={[v.ownerName, displayPhone(v.ownerPhone), v.reasonForVisit].filter(Boolean).join(' · ')}
                 urgent={isUrgentVisit(v.urgency)}
                 status={v.status}
-                onClick={
-                  (practiceReady && clinicActivated) || v.status === 'IN_PROGRESS'
-                    ? () => void openChart(v)
-                    : undefined
-                }
+                onClick={() => setDetail({ kind: 'visit', visit: v })}
                 action={
                   <div className="flex flex-wrap items-center gap-2">
-                    {isPastVisit && isOpenVisit ? (
+                    {isOpenVisit ? (
                       <>
                         <Button
                           size="sm"
@@ -502,7 +589,15 @@ export default function DoctorAppointments() {
           {treated.map((v) => (
             <Card key={`treated-${v.uuid}`} className={cn('border', attendedVisitSurfaceClass)}>
               <CardContent className="py-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
+                <div
+                  className="min-w-0 flex-1 cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setDetail({ kind: 'visit', visit: v })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') setDetail({ kind: 'visit', visit: v });
+                  }}
+                >
                   <p className="text-sm font-medium truncate">
                     {petNameWithType(v.petName, v.species)}
                     {v.ownerName ? ` · ${v.ownerName}` : ''}
@@ -577,6 +672,74 @@ export default function DoctorAppointments() {
         }}
         fetchUrl={fetchPreviewUrl}
       />
+
+      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Appointment details</DialogTitle>
+          </DialogHeader>
+          {detail?.kind === 'booking' ? (
+            <div className="space-y-2">
+              <DetailField label="Status" value={visitStatusLabel(detail.booking.status)} />
+              <DetailField label="Pet" value={petNameWithType(detail.booking.petName, detail.booking.species)} />
+              <DetailField label="Owner" value={detail.booking.ownerName} />
+              <DetailField label="Doctor" value={detail.booking.doctorName} />
+              <DetailField label="Specialization" value={detail.booking.doctorSpecialization} />
+              <DetailField label="Clinic" value={detail.booking.clinicName} />
+              <DetailField label="Scheduled" value={fmtDateTime(detail.booking.slotStart)} />
+              <DetailField label="Ends" value={fmtDateTime(detail.booking.slotEnd)} />
+              <DetailField label="Mode" value={detail.booking.mode?.replace(/_/g, ' ')} />
+              <DetailField label="Urgency" value={detail.booking.urgency} />
+              <DetailField label="Notes" value={detail.booking.notes} />
+            </div>
+          ) : detail?.kind === 'visit' ? (
+            <div className="space-y-2">
+              <DetailField label="Status" value={visitStatusLabel(detail.visit.status)} />
+              <DetailField label="Pet" value={petNameWithType(detail.visit.petName, detail.visit.species)} />
+              <DetailField label="Owner" value={detail.visit.ownerName} />
+              <DetailField label="Phone" value={displayPhone(detail.visit.ownerPhone)} />
+              <DetailField label="Email" value={detail.visit.ownerEmail} />
+              <DetailField label="Doctor" value={detail.visit.doctorName} />
+              <DetailField label="Clinic" value={detail.visit.clinicName} />
+              <DetailField label="Source" value={detail.visit.source?.replace(/_/g, ' ')} />
+              <DetailField label="Channel" value={detail.visit.channel?.replace(/_/g, ' ')} />
+              <DetailField label="Urgency" value={detail.visit.urgency} />
+              <DetailField label="Reason" value={detail.visit.reasonForVisit} />
+              <DetailField label="Created" value={fmtDateTime(detail.visit.createdAt)} />
+              <DetailField label="Checked in" value={fmtDateTime(detail.visit.checkedInAt)} />
+              <DetailField label="Started" value={fmtDateTime(detail.visit.startedAt)} />
+              <DetailField label="Completed" value={fmtDateTime(detail.visit.completedAt)} />
+              <DetailField label="Assessment" value={detail.visit.chart?.assessment} />
+              <DetailField label="Exam notes" value={detail.visit.chart?.examinationNotes} />
+              <DetailField label="Plan" value={detail.visit.chart?.plan} />
+              <DetailField label="Weight" value={detail.visit.chart?.vitals?.weightKg ? `${detail.visit.chart.vitals.weightKg} kg` : null} />
+              <DetailField label="Temperature" value={detail.visit.chart?.vitals?.temperatureC ? `${detail.visit.chart.vitals.temperatureC} °C` : null} />
+            </div>
+          ) : null}
+          <DialogFooter className="gap-2 flex-wrap">
+            {detail?.kind === 'visit' &&
+            (detail.visit.status === 'WAITLIST' ||
+              detail.visit.status === 'CHECKED_IN' ||
+              detail.visit.status === 'IN_PROGRESS') ? (
+              <Button
+                disabled={
+                  busy || ((!practiceReady || !clinicActivated) && detail.visit.status !== 'IN_PROGRESS')
+                }
+                onClick={() => {
+                  const v = detail.visit;
+                  setDetail(null);
+                  void openChart(v);
+                }}
+              >
+                {detail.visit.status === 'IN_PROGRESS' ? 'Open chart' : 'Attend'}
+              </Button>
+            ) : null}
+            <Button variant="outline" onClick={() => setDetail(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!chartVisit} onOpenChange={(o) => !o && setChartVisit(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">

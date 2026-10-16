@@ -26,7 +26,6 @@ import {
   ClinicDoctorModel,
   patchClinicBooking,
 } from '@/services/clinicService';
-import { fetchParentDoctorSlots } from '@/services/discoverService';
 import { petNameWithType } from '@/utils/petType';
 
 type Props = {
@@ -92,46 +91,6 @@ export function BookingEditDialog({
     setNotes(booking.notes || '');
     setBusyHint(null);
   }, [open, booking, lockedDoctorUuid]);
-
-  useEffect(() => {
-    if (!open || !resolvedDoctorUuid || !slotDate || !slotTime || !clinicUuid || !booking) {
-      setBusyHint(null);
-      return;
-    }
-    let cancelled = false;
-    const handle = setTimeout(() => {
-      void (async () => {
-        try {
-          const raw = new Date(`${slotDate}T${slotTime}`);
-          if (Number.isNaN(raw.getTime())) return;
-          const snapped = snapToHalfHour(raw);
-          const startKey = slotMinuteKey(format(snapped, "yyyy-MM-dd'T'HH:mm:ss"));
-          const sameDoctor = resolvedDoctorUuid === (booking.doctorUuid || '');
-          const keepingOwn = sameDoctor && startKey === ownSlotKey(booking.slotStart);
-          const free = await fetchParentDoctorSlots(clinicUuid, resolvedDoctorUuid, slotDate);
-          if (cancelled) return;
-          if (free.length === 0) {
-            setBusyHint(keepingOwn ? null : 'Doctor has no availability on this day');
-            return;
-          }
-          const openSlot = free.some((s) => slotMinuteKey(s) === startKey);
-          if (!openSlot && !keepingOwn) {
-            setBusyHint(
-              `Doctor not available at ${format(snapped, 'h:mm a')} — outside working hours or already booked`
-            );
-            return;
-          }
-          setBusyHint(null);
-        } catch {
-          if (!cancelled) setBusyHint('Could not confirm doctor availability for this time');
-        }
-      })();
-    }, 250);
-    return () => {
-      cancelled = true;
-      clearTimeout(handle);
-    };
-  }, [open, clinicUuid, resolvedDoctorUuid, slotDate, slotTime, booking]);
 
   const save = async () => {
     if (!booking || !clinicUuid) return;
