@@ -55,6 +55,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
             "group-[.toast]:opacity-90",
             "group-[.toast]:leading-relaxed"
           ].join(" "),
+          content: [
+            "group-[.toast]:min-w-0",
+            "group-[.toast]:flex-1",
+          ].join(" "),
           actionButton: [
             "group-[.toast]:bg-primary",
             "group-[.toast]:text-primary-foreground",
@@ -66,6 +70,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
             "group-[.toast]:h-9",
             "group-[.toast]:px-4",
             "group-[.toast]:ml-2",
+            "group-[.toast]:shrink-0",
+            "group-[.toast]:whitespace-nowrap",
+            "group-[.toast]:self-center",
             "group-[.toast]:transition-all"
           ].join(" "),
           cancelButton: [

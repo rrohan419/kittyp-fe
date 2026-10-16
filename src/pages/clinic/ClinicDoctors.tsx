@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Search, Mail, Loader2, UserPlus, Trash2, ChevronRight, Star } from 'lucide-react';
+import { Plus, Search, Mail, Loader2, UserPlus, Trash2, ChevronRight, Star, Check, CircleAlert } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
@@ -30,7 +30,6 @@ import {
   isClinicActivated,
   CLINIC_NOT_ACTIVATED_MESSAGE,
 } from '@/services/clinicService';
-import { statusLabel } from '@/services/doctorVerificationService';
 import { toast } from 'sonner';
 import { parseApiErrorMessage, validateEmail } from '@/utils/validation';
 import { canInviteDoctors, canViewDoctorCertificates } from '@/utils/roles';
@@ -427,7 +426,14 @@ export default function ClinicDoctors() {
                         <span className="text-sm font-bold text-primary">{initials}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground truncate">{d.name}</p>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <p className="font-semibold text-foreground truncate">{d.name}</p>
+                          {d.isActive === false ? (
+                            <CircleAlert className="h-4 w-4 text-orange-500 shrink-0" aria-label="Inactive" />
+                          ) : (
+                            <Check className="h-4 w-4 text-green-600 shrink-0" aria-label="Active" />
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground truncate">
                           {specializationLabel(d.specialization) || 'General'}
                         </p>
@@ -440,25 +446,6 @@ export default function ClinicDoctors() {
                         </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      <Badge
-                        variant="secondary"
-                        className={`${d.isActive === false ? 'bg-muted text-muted-foreground' : 'bg-green-100 text-green-700'} border-0 text-[10px] capitalize shrink-0`}
-                      >
-                        {d.isActive === false ? 'inactive' : 'active'}
-                      </Badge>
-                      {d.status && (
-                        <Badge variant="outline" className="text-[10px] capitalize">
-                          {statusLabel(d.status as Parameters<typeof statusLabel>[0])}
-                        </Badge>
-                      )}
-                      {d.role && (
-                        <Badge variant="secondary" className="text-[10px] capitalize">
-                          {d.role}
-                        </Badge>
-                      )}
                     </div>
 
                     {d.email && (
