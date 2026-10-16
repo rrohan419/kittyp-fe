@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Search, Mail, Loader2, UserPlus, Trash2, ChevronRight, Star, Check, CircleAlert } from 'lucide-react';
+import { Plus, Search, Mail, Loader2, UserPlus, Trash2, ChevronRight, Star, Check, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
@@ -428,10 +428,14 @@ export default function ClinicDoctors() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <p className="font-semibold text-foreground truncate">{d.name}</p>
-                          {d.isActive === false ? (
-                            <CircleAlert className="h-4 w-4 text-orange-500 shrink-0" aria-label="Inactive" />
+                          {d.isActive !== false && d.status?.toUpperCase() === 'PUBLISHED' ? (
+                            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-white shrink-0" aria-label="Active">
+                              <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                            </span>
                           ) : (
-                            <Check className="h-4 w-4 text-green-600 shrink-0" aria-label="Active" />
+                            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white shrink-0" aria-label="Inactive">
+                              <X className="h-2.5 w-2.5" strokeWidth={3} />
+                            </span>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground truncate">
