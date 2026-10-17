@@ -59,7 +59,6 @@ const ProfileHeader: React.FC = () => {
                 className="justify-center lg:justify-start"
                 label="Account ID"
                 value={user.uuid}
-                hint="Sign in with this ID or your email."
               />
             </div>
           </div>

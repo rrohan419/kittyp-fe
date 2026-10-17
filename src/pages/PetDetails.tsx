@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PetImage } from '@/components/ui/PetImage';
 import { Badge } from '@/components/ui/badge';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Heart, Calendar, Bell, TrendingUp, Award, Activity, ShoppingBag, Lightbulb, Pencil } from 'lucide-react';
 import { useNutrition } from '@/hooks/useNutrition';
@@ -125,7 +126,9 @@ const PetDetail: React.FC = () => {
                         {formatPetDobWithAge((pet as PetProfile).dateOfBirth)}
                       </Badge>
                     )}
-                    {(pet as any).weight && <Badge variant="secondary">{(pet as PetProfile).weight}</Badge>}
+                    {formatPetWeight((pet as PetProfile).weight) && (
+                        <Badge variant="secondary">{formatPetWeight((pet as PetProfile).weight)} kg</Badge>
+                      )}
                     {(pet as any).gender && <Badge variant="outline">{(pet as PetProfile).gender}</Badge>}
                     {(pet as PetProfile).microchipNumber && (
                       <Badge variant="outline">Chip {(pet as PetProfile).microchipNumber}</Badge>

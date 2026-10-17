@@ -56,7 +56,6 @@ export default function AdminSettings() {
           <CopyableId
             label="Account ID"
             value={user?.uuid}
-            hint="Sign in with this ID or your email."
           />
         </CardContent>
       </Card>

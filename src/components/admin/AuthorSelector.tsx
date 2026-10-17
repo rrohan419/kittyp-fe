@@ -102,7 +102,6 @@ export function AuthorSelector({
 
   const handleProfilePictureError = (error: string) => {
     console.error('Profile picture upload error:', error);
-    toast.error("Failed to upload profile picture");
   };
 
   return (

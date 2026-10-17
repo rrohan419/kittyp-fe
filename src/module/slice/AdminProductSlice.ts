@@ -43,10 +43,8 @@ export const updateAdminProduct = createAsyncThunk(
     ) => {
         try {
             const response = await updateProductAdmin(productUuid, productUpdateDTo);
-            toast.success("Product updated");
-            return response.data as Product; // return updated product
+            return response.data as Product;
         } catch (error: any) {
-            toast.warning("Failed to update Product");
             return rejectWithValue(error.message || "Failed to update Product");
         }
     }
@@ -54,15 +52,12 @@ export const updateAdminProduct = createAsyncThunk(
 
 
 export const deleteAdminProduct = createAsyncThunk('adminProduct/delete',
-    async ({productUuid}: { productUuid: string; }) => {
+    async ({productUuid}: { productUuid: string; }, { rejectWithValue }) => {
         try {
             await deleteProductAdmin(productUuid);
-            toast.success("Product deleted");
             return productUuid;
-
         } catch (err) {
-            toast.error("Failed to delete product");
-            // return isRejectedWithValue("Failed to delete product");
+            return rejectWithValue("Failed to delete product");
         }
     }
 )

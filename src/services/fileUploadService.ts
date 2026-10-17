@@ -137,7 +137,6 @@ export const uploadFiles = async (
   } catch (error: any) {
     console.error('File upload error:', error);
     const errorMessage = error.response?.data?.message || error.message || 'Upload failed';
-    toast.error(errorMessage);
     throw new Error(errorMessage);
   }
 };

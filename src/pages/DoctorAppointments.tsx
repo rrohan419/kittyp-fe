@@ -33,6 +33,7 @@ import {
   patchClinicVisit,
 } from '@/services/clinicService';
 import { WalkInDialog } from '@/components/clinic/WalkInDialog';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
 import {
@@ -719,7 +720,7 @@ export default function DoctorAppointments() {
               <DetailField label="Assessment" value={detail.visit.chart?.assessment} />
               <DetailField label="Exam notes" value={detail.visit.chart?.examinationNotes} />
               <DetailField label="Plan" value={detail.visit.chart?.plan} />
-              <DetailField label="Weight" value={detail.visit.chart?.vitals?.weightKg ? `${detail.visit.chart.vitals.weightKg} kg` : null} />
+              <DetailField label="Weight" value={formatPetWeight(detail.visit.chart?.vitals?.weightKg) ? `${formatPetWeight(detail.visit.chart.vitals.weightKg)} kg` : null} />
               <DetailField label="Temperature" value={detail.visit.chart?.vitals?.temperatureC ? `${detail.visit.chart.vitals.temperatureC} °C` : null} />
             </div>
           ) : null}
@@ -777,7 +778,7 @@ export default function DoctorAppointments() {
                 name: chartVisit?.petName || 'Pet',
                 species: chartVisit?.species,
                 ownerName: chartVisit?.ownerName,
-                weight: vitals.weightKg ? `${vitals.weightKg} kg` : undefined,
+                weight: formatPetWeight(vitals.weightKg) || undefined,
               }}
               thisVisit={
                 chartVisit

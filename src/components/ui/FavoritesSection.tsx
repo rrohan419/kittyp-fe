@@ -49,10 +49,8 @@ const FavoritesSection: React.FC = () => {
 
     try {
       await dispatch(removeFromFavoritesThunk({ userUuid: user.uuid, productUuid })).unwrap();
-      toast.success("Removed from favorites");
     } catch (error) {
       console.error("Error removing favorite:", error);
-      toast.error("Failed to remove from favorites");
     }
   };
 

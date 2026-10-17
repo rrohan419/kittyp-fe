@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Edit, Trash2, Heart } from 'lucide-react';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface Pet {
@@ -349,7 +350,7 @@ export const PetManagement: React.FC<PetManagementProps> = ({ userId }) => {
                 <div className="space-y-2 text-sm">
                   <p><strong>Breed:</strong> {pet.breed || 'Not specified'}</p>
                   <p><strong>Age:</strong> {pet.age} years</p>
-                  <p><strong>Weight:</strong> {pet.weight} kg</p>
+                  <p><strong>Weight:</strong> {formatPetWeight(pet.weight) ? `${formatPetWeight(pet.weight)} kg` : '—'}</p>
                   <p><strong>Color:</strong> {pet.color || 'Not specified'}</p>
                   {pet.microchipId && (
                     <p><strong>Microchip:</strong> {pet.microchipId}</p>
