@@ -43,7 +43,7 @@ export const NutritionDashboard = ({ profile, stats }: NutritionDashboardProps) 
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Weight</p>
-            <p className="font-medium">{formatPetWeight(profile.weight) ? `${formatPetWeight(profile.weight)} KG` : 'Not available'}</p>
+            <p className="font-medium">{formatPetWeight(profile.weight) ? `${formatPetWeight(profile.weight)} kg` : 'Not available'}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Activity Level</p>

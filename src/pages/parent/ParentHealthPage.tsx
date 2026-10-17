@@ -52,7 +52,7 @@ export default function ParentHealthPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {pet.healthConditions || 'No conditions on file'} · Weight:{' '}
-                  {formatPetWeight(pet.weight) ? `${formatPetWeight(pet.weight)} KG` : '—'}
+                  {formatPetWeight(pet.weight) ? `${formatPetWeight(pet.weight)} kg` : '—'}
                 </p>
                 <Button size="sm" className="w-full" asChild>
                   <Link to={`/app/pets/${pet.uuid}`}>Open pet dashboard</Link>

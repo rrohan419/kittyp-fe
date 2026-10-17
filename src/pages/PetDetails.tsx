@@ -127,7 +127,7 @@ const PetDetail: React.FC = () => {
                       </Badge>
                     )}
                     {formatPetWeight((pet as PetProfile).weight) && (
-                        <Badge variant="secondary">{formatPetWeight((pet as PetProfile).weight)} KG</Badge>
+                        <Badge variant="secondary">{formatPetWeight((pet as PetProfile).weight)} kg</Badge>
                       )}
                     {(pet as any).gender && <Badge variant="outline">{(pet as PetProfile).gender}</Badge>}
                     {(pet as PetProfile).microchipNumber && (

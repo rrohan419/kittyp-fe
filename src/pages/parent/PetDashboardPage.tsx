@@ -155,7 +155,7 @@ export default function PetDashboardPage() {
             <div className="flex flex-wrap gap-2 mt-2">
               <Badge variant="secondary">Active</Badge>
               {formatPetWeight(dashboard?.latestWeight?.weight ?? pet?.weight) && (
-                <Badge variant="outline">{formatPetWeight(dashboard?.latestWeight?.weight ?? pet?.weight)} KG</Badge>
+                <Badge variant="outline">{formatPetWeight(dashboard?.latestWeight?.weight ?? pet?.weight)} kg</Badge>
               )}
               {pet?.gender && <Badge variant="outline">{pet.gender}</Badge>}
               {pet?.microchipNumber && (

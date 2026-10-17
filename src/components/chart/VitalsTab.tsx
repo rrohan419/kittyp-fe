@@ -62,7 +62,7 @@ export function VitalsTab({ editable, vitals, onVitalsChange, history = [] }: Vi
           </p>
           <p className="text-sm font-medium mt-1">
             {[
-              formatPetWeight(row.weightKg) ? `${formatPetWeight(row.weightKg)} KG` : null,
+              formatPetWeight(row.weightKg) ? `${formatPetWeight(row.weightKg)} kg` : null,
               row.temperatureC ? `${row.temperatureC} °C` : null,
             ]
               .filter(Boolean)

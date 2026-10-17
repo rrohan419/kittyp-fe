@@ -720,7 +720,7 @@ export default function DoctorAppointments() {
               <DetailField label="Assessment" value={detail.visit.chart?.assessment} />
               <DetailField label="Exam notes" value={detail.visit.chart?.examinationNotes} />
               <DetailField label="Plan" value={detail.visit.chart?.plan} />
-              <DetailField label="Weight" value={formatPetWeight(detail.visit.chart?.vitals?.weightKg) ? `${formatPetWeight(detail.visit.chart.vitals.weightKg)} KG` : null} />
+              <DetailField label="Weight" value={formatPetWeight(detail.visit.chart?.vitals?.weightKg) ? `${formatPetWeight(detail.visit.chart.vitals.weightKg)} kg` : null} />
               <DetailField label="Temperature" value={detail.visit.chart?.vitals?.temperatureC ? `${detail.visit.chart.vitals.temperatureC} °C` : null} />
             </div>
           ) : null}

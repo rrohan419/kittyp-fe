@@ -185,7 +185,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-lg truncate">{savedPets[0].name}</p>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {formatPetWeight(savedPets[0].weight) && <Badge variant="secondary">{formatPetWeight(savedPets[0].weight)} KG</Badge>}
+                      {formatPetWeight(savedPets[0].weight) && <Badge variant="secondary">{formatPetWeight(savedPets[0].weight)} kg</Badge>}
                       {savedPets[0].activityLevel && (
                         <Badge variant="outline">{savedPets[0].activityLevel}</Badge>
                       )}
@@ -229,7 +229,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                                 )}
                                 {formatPetWeight(pet.weight) && (
                                   <Badge variant="outline" className="text-xs border-primary/20 text-primary">
-                                    {formatPetWeight(pet.weight)} KG
+                                    {formatPetWeight(pet.weight)} kg
                                   </Badge>
                                 )}
                               </div>
@@ -483,7 +483,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                     <p className="text-sm text-primary/80">
                       <strong>{manualPetData.name}</strong> - {manualPetData.breed || 'Mixed breed'} {manualPetData.breed}
                       {manualPetData.dateOfBirth && `, ${formatPetDobWithAge(manualPetData.dateOfBirth)}`}
-                      {formatPetWeight(manualPetData.weight) && `, ${formatPetWeight(manualPetData.weight)} KG`}
+                      {formatPetWeight(manualPetData.weight) && `, ${formatPetWeight(manualPetData.weight)} kg`}
                     </p>
                     <br />
                     <span className="text-sm text-primary/80">
@@ -550,7 +550,7 @@ export const PetSelectionComponent: React.FC<PetSelectionProps> = ({
                       </div>
                       <div className="bg-secondary/50 p-2 rounded-lg">
                         <span className="text-muted-foreground">Weight:</span>
-                        <p className="font-semibold text-primary">{formatPetWeight(selectedPet.weight) ? `${formatPetWeight(selectedPet.weight)} KG` : 'Not set'}</p>
+                        <p className="font-semibold text-primary">{formatPetWeight(selectedPet.weight) ? `${formatPetWeight(selectedPet.weight)} kg` : 'Not set'}</p>
                       </div>
                       <div className="bg-secondary/50 p-2 rounded-lg">
                         <span className="text-muted-foreground">Gender:</span>

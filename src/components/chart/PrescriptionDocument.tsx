@@ -48,7 +48,7 @@ export interface PrescriptionDocumentProps {
 export function PrescriptionDocument({ open, onOpenChange, pet, record }: PrescriptionDocumentProps) {
   const speciesBreed = [pet.species, pet.breed].filter(Boolean).join(' · ');
   const weight = formatPetWeight(pet.weight);
-  const details = [speciesBreed || null, weight ? `${weight} KG` : null].filter(Boolean).join(' · ');
+  const details = [speciesBreed || null, weight ? `${weight} kg` : null].filter(Boolean).join(' · ');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

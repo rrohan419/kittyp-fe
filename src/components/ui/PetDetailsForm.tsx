@@ -25,6 +25,7 @@ import { PetPhotoUpload } from './PetPhotoUpload';
 import { addPetToUser, removePetFromUser, updatePetInUser, setPetsLoading, setSaving } from '@/module/slice/AuthSlice';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { useNavigate } from 'react-router-dom';
+import { Button } from './button';
 
 interface PetDetailsFormProps {
     onPetAdded?: () => void;
@@ -290,7 +291,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                             <CardContent className="space-y-2">
                                 <div className="flex flex-wrap gap-2">
                                     {pet.dateOfBirth && <Badge variant="secondary">{formatPetDobWithAge(pet.dateOfBirth)}</Badge>}
-                                    {formatPetWeight(pet.weight) && <Badge variant="secondary">{formatPetWeight(pet.weight)} KG</Badge>}
+                                    {formatPetWeight(pet.weight) && <Badge variant="secondary">{formatPetWeight(pet.weight)} kg</Badge>}
                                     {pet.activityLevel && <Badge variant="outline">{pet.activityLevel} activity</Badge>}
                                     {pet.isNeutered && <Badge variant="outline">Neutered</Badge>}
                                     {pet.microchipNumber && <Badge variant="outline">Chip {pet.microchipNumber}</Badge>}

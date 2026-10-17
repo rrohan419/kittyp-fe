@@ -220,7 +220,7 @@ export default function ParentHome() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="rounded-xl bg-muted/50 p-3 text-center">
                     <p className="text-[10px] uppercase text-muted-foreground">Weight</p>
-                    <p className="font-semibold">{formatPetWeight(p.weight) ? `${formatPetWeight(p.weight)} KG` : '—'}</p>
+                    <p className="font-semibold">{formatPetWeight(p.weight) ? `${formatPetWeight(p.weight)} kg` : '—'}</p>
                   </div>
                   <div className="rounded-xl bg-muted/50 p-3 text-center">
                     <p className="text-[10px] uppercase text-muted-foreground">Activity</p>

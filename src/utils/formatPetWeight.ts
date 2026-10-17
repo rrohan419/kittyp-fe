@@ -1,6 +1,6 @@
 /**
- * Pet weight as a number. Drops a stored unit such as "12 kg" or "12 KG".
- * The field label supplies KG.
+ * Pet weight as a number. Drops a stored unit such as "12 kg" or "12 kg".
+ * The field label supplies kg.
  */
 export function formatPetWeight(raw: unknown): string {
   if (raw == null) return '';

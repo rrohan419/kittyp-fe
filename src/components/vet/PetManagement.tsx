@@ -350,7 +350,7 @@ export const PetManagement: React.FC<PetManagementProps> = ({ userId }) => {
                 <div className="space-y-2 text-sm">
                   <p><strong>Breed:</strong> {pet.breed || 'Not specified'}</p>
                   <p><strong>Age:</strong> {pet.age} years</p>
-                  <p><strong>Weight:</strong> {formatPetWeight(pet.weight) ? `${formatPetWeight(pet.weight)} KG` : '—'}</p>
+                  <p><strong>Weight:</strong> {formatPetWeight(pet.weight) ? `${formatPetWeight(pet.weight)} kg` : '—'}</p>
                   <p><strong>Color:</strong> {pet.color || 'Not specified'}</p>
                   {pet.microchipId && (
                     <p><strong>Microchip:</strong> {pet.microchipId}</p>

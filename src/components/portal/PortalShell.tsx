@@ -257,7 +257,7 @@ export function PortalShell({ config }: PortalShellProps) {
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex items-center gap-2 rounded-full hover:bg-muted px-1 py-1 transition-colors"
+                  className="flex items-center gap-2 rounded-full hover:bg-muted px-1 py-1 transition-colors cursor-pointer"
                   aria-label="Profile menu"
                 >
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-primary/20">
@@ -265,7 +265,7 @@ export function PortalShell({ config }: PortalShellProps) {
                   </div>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 z-[200]" sideOffset={8} collisionPadding={12}>
+              <DropdownMenuContent align="end" className="w-56 z-[200] cursor-pointer" sideOffset={8} collisionPadding={12}>
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
                     <span className="text-sm">{displayUser.name}</span>
@@ -275,32 +275,32 @@ export function PortalShell({ config }: PortalShellProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild className="cursor-pointer">
                   <Link to={config.basePath}>
                     <LayoutDashboard className="h-4 w-4 mr-2" />
                     {config.subtitle || 'Dashboard'}
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild className="cursor-pointer">
                   <Link to="/">
                     <Globe className="h-4 w-4 mr-2" />
                     Public site
                   </Link>
                 </DropdownMenuItem>
                 {canSwitchRole && (
-                  <DropdownMenuItem onClick={handleSwitchRole}>
+                  <DropdownMenuItem className="cursor-pointer" onClick={handleSwitchRole}>
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Switch role
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => setEditProfileOpen(true)}>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => setEditProfileOpen(true)}>
                   <Pencil className="h-4 w-4 mr-2" />
                   Edit profile
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleLogout}
-                  className="text-destructive focus:text-destructive"
+                  className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   Sign Out

@@ -1269,7 +1269,7 @@ export default function DoctorHome() {
                 ) : null}
                 {formatPetWeight(eventDetail.pet?.weight) ? (
                   <p>
-                    <span className="text-muted-foreground">Weight:</span> {formatPetWeight(eventDetail.pet?.weight)} KG
+                    <span className="text-muted-foreground">Weight:</span> {formatPetWeight(eventDetail.pet?.weight)} kg
                   </p>
                 ) : null}
                 {eventDetail.pet?.gender ? (

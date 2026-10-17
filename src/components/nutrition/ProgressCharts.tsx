@@ -74,7 +74,7 @@ export const ProgressCharts = ({ weightHistory, dailyLogs, onLogWeight, currentD
         </div>
         {weightHistory.length > 0 && (
           <p className="text-xs sm:text-sm text-muted-foreground mt-2">
-            Last recorded: {weightHistory[weightHistory.length - 1].weight.toFixed(1)} KG on{' '}
+            Last recorded: {weightHistory[weightHistory.length - 1].weight.toFixed(1)} kg on{' '}
             {new Date(weightHistory[weightHistory.length - 1].date).toLocaleDateString()}
           </p>
         )}

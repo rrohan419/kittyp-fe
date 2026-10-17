@@ -52,7 +52,7 @@ export const PetManagementPage: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold truncate">{pet.name}</p>
                   {formatPetWeight(pet.weight) && (
-                    <p className="text-xs text-muted-foreground mt-1">{formatPetWeight(pet.weight)} KG</p>
+                    <p className="text-xs text-muted-foreground mt-1">{formatPetWeight(pet.weight)} kg</p>
                   )}
                 </div>
                 <Button size="sm" asChild>
