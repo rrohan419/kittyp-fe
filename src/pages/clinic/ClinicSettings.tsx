@@ -281,7 +281,6 @@ export default function ClinicSettings() {
           <CopyableId
             label="Clinic ID"
             value={clinic?.uuid}
-            hint="Sign in with this ID or your email."
           />
         </div>
       </div>

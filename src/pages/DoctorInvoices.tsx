@@ -34,7 +34,7 @@ import { fetchClinicPetMedicalProfile } from '@/services/clinicService';
 import { fetchMyDoctorVisits } from '@/services/visitService';
 import { formatInr } from '@/services/availabilityService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
-import { collectInvoicePayment, isInvoiceUnpaid, toastInvoicePaymentError } from '@/utils/collectInvoicePayment';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import { MarkInvoicePaidDialog } from '@/components/invoice/MarkInvoicePaidDialog';
 import { WhatsAppSendGate } from '@/components/invoice/WhatsAppSendGate';
 import { ListPager } from '@/components/ui/ListPager';
@@ -100,7 +100,7 @@ export default function DoctorInvoices() {
     if (from.diagnosis) setDiagnosis(from.diagnosis);
     if (from.doctorNotes) setDoctorNotes(from.doctorNotes);
     if (from.nextVisitNotes) setNextVisitNotes(from.nextVisitNotes);
-    if (from.petWeight) setPetWeight(from.petWeight);
+    if (from.petWeight) setPetWeight(formatPetWeight(from.petWeight));
     if (from.clinicUuid) setLinkClinicUuid(from.clinicUuid);
     if (from.petUuid) setLinkPetUuid(from.petUuid);
     if (from.visitUuid) setLinkVisitUuid(from.visitUuid);
@@ -115,7 +115,7 @@ export default function DoctorInvoices() {
       if (pet?.name) setPetName((prev) => prev || pet.name);
       if (pet?.breed) setPetBreed((prev) => prev || pet.breed || '');
       if (pet?.species) setPetSpecies((prev) => prev || pet.species || '');
-      if (pet?.weight) setPetWeight((prev) => prev || pet.weight || '');
+      if (pet?.weight) setPetWeight((prev) => prev || formatPetWeight(pet.weight));
       if (owner?.name) setOwnerName((prev) => prev || owner.name);
       if (owner?.phone) setOwnerPhone((prev) => prev || owner.phone || '');
       if (owner?.email) setOwnerEmail((prev) => prev || owner.email || '');
@@ -179,8 +179,8 @@ export default function DoctorInvoices() {
               diagnosis: visit.chart?.assessment || undefined,
               doctorNotes: visit.chart?.plan || undefined,
               nextVisitNotes: visit.chart?.nextVisitNotes || undefined,
-              petWeight: String(
-                (visit.chart?.vitals as { weightKg?: number } | undefined)?.weightKg ?? ''
+              petWeight: formatPetWeight(
+                (visit.chart?.vitals as { weightKg?: number } | undefined)?.weightKg
               ) || undefined,
             };
           } else {

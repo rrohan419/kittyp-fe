@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Search, Mail, Loader2, UserPlus, Trash2, ChevronRight, Star } from 'lucide-react';
+import { Plus, Search, Mail, Loader2, UserPlus, Trash2, ChevronRight, Star, Check, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
@@ -30,7 +30,6 @@ import {
   isClinicActivated,
   CLINIC_NOT_ACTIVATED_MESSAGE,
 } from '@/services/clinicService';
-import { statusLabel } from '@/services/doctorVerificationService';
 import { toast } from 'sonner';
 import { parseApiErrorMessage, validateEmail } from '@/utils/validation';
 import { canInviteDoctors, canViewDoctorCertificates } from '@/utils/roles';
@@ -188,18 +187,18 @@ export default function ClinicDoctors() {
       const acceptPath = sent.token
         ? `${window.location.origin}/clinic-invite/accept?token=${encodeURIComponent(sent.token)}`
         : null;
-      toast.success('Invitation sent — the doctor will see it under Notifications on /doctor', {
+      toast.success('Invitation sent', {
         description: acceptPath
-          ? 'Email may be delayed locally — copy the accept link to share manually.'
-          : undefined,
+          ? 'The doctor can accept this invitation from their notifications, or with the secure link.'
+          : 'The doctor can review and accept this invitation from their notifications.',
         action: acceptPath
           ? {
-              label: 'Copy link',
-              onClick: () => {
-                void navigator.clipboard.writeText(acceptPath);
-                toast.message('Accept link copied');
-              },
-            }
+            label: 'Copy link',
+            onClick: () => {
+              void navigator.clipboard.writeText(acceptPath);
+              toast.message('Invitation link copied');
+            },
+          }
           : undefined,
       });
       setInviteOpen(false);
@@ -427,7 +426,31 @@ export default function ClinicDoctors() {
                         <span className="text-sm font-bold text-primary">{initials}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground truncate">{d.name}</p>
+
+                        <div className="flex items-center gap-2 min-w-0">
+                          <p className="font-semibold text-foreground truncate">
+                            {d.name}
+                          </p>
+
+                          {d.isActive !== false && d.status?.toUpperCase() === "PUBLISHED" ? (
+                            <span
+                              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-emerald-600/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                              aria-label="Active"
+                              title="Active"
+                            >
+                              <Check className="h-3 w-3" strokeWidth={2.5} />
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-muted-foreground/20 bg-muted text-muted-foreground"
+                              aria-label="Inactive"
+                              title="Inactive"
+                            >
+                              <X className="h-3 w-3" strokeWidth={2} />
+                            </span>
+                          )}
+                        </div>
+
                         <p className="text-xs text-muted-foreground truncate">
                           {specializationLabel(d.specialization) || 'General'}
                         </p>
@@ -440,25 +463,6 @@ export default function ClinicDoctors() {
                         </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      <Badge
-                        variant="secondary"
-                        className={`${d.isActive === false ? 'bg-muted text-muted-foreground' : 'bg-green-100 text-green-700'} border-0 text-[10px] capitalize shrink-0`}
-                      >
-                        {d.isActive === false ? 'inactive' : 'active'}
-                      </Badge>
-                      {d.status && (
-                        <Badge variant="outline" className="text-[10px] capitalize">
-                          {statusLabel(d.status as Parameters<typeof statusLabel>[0])}
-                        </Badge>
-                      )}
-                      {d.role && (
-                        <Badge variant="secondary" className="text-[10px] capitalize">
-                          {d.role}
-                        </Badge>
-                      )}
                     </div>
 
                     {d.email && (
@@ -484,98 +488,98 @@ export default function ClinicDoctors() {
       )}
 
       {canInvite && (
-      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Invite Doctor</DialogTitle>
-            <DialogDescription>
-              Send an email invitation. When accepted, the doctor will be linked to this clinic and appear here for
-              appointments.
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={handleInvite}
-            className="space-y-4"
-            noValidate
-          >
-            <div className="space-y-2">
-              <Label htmlFor="inviteName">Doctor name {inviteDoctorId.trim() ? '' : '*'}</Label>
-              <Input
-                id="inviteName"
-                name="doctorName"
-                autoComplete="name"
-                placeholder="Dr. Jane Doe"
-                value={inviteName}
-                onChange={(e) => setInviteName(e.target.value)}
-                required={!inviteDoctorId.trim()}
-                disabled={!!inviteDoctorId.trim() && !!lookedUp}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="inviteEmail">Doctor email {inviteDoctorId.trim() ? '' : '*'}</Label>
-              <Input
-                id="inviteEmail"
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="doctor@example.com"
-                value={inviteEmail}
-                onChange={(e) => {
-                  setInviteEmail(e.target.value);
-                  if (e.target.value.trim()) {
-                    setInviteDoctorId('');
-                    setLookedUp(null);
-                  }
-                }}
-                required={!inviteDoctorId.trim()}
-                disabled={!!inviteDoctorId.trim()}
-              />
-            </div>
-            <div className="relative flex items-center gap-3 py-1">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-xs text-muted-foreground uppercase">or</span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="inviteDoctorId">Doctor ID (already on KittyP)</Label>
-              <div className="flex gap-2">
+        <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Invite Doctor</DialogTitle>
+              <DialogDescription>
+                Send an email invitation. When accepted, the doctor will be linked to this clinic and appear here for
+                appointments.
+              </DialogDescription>
+            </DialogHeader>
+            <form
+              onSubmit={handleInvite}
+              className="space-y-4"
+              noValidate
+            >
+              <div className="space-y-2">
+                <Label htmlFor="inviteName">Doctor name {inviteDoctorId.trim() ? '' : '*'}</Label>
                 <Input
-                  id="inviteDoctorId"
-                  placeholder="6-character Doctor ID"
-                  value={inviteDoctorId}
-                  onChange={(e) => {
-                    setInviteDoctorId(e.target.value);
-                    setLookedUp(null);
-                    if (e.target.value.trim()) setInviteEmail('');
-                  }}
-                  disabled={!!inviteEmail.trim()}
+                  id="inviteName"
+                  name="doctorName"
+                  autoComplete="name"
+                  placeholder="Dr. Jane Doe"
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                  required={!inviteDoctorId.trim()}
+                  disabled={!!inviteDoctorId.trim() && !!lookedUp}
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleLookup}
-                  disabled={lookingUp || !inviteDoctorId.trim() || !!inviteEmail.trim()}
-                >
-                  {lookingUp ? '…' : 'Look up'}
-                </Button>
               </div>
-              {lookedUp && (
-                <p className="text-xs text-muted-foreground">
-                  Invite will go to <strong>{lookedUp.name}</strong> ({lookedUp.email})
-                </p>
-              )}
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={inviting}>
-                {inviting ? 'Sending…' : 'Send invite'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+              <div className="space-y-2">
+                <Label htmlFor="inviteEmail">Doctor email {inviteDoctorId.trim() ? '' : '*'}</Label>
+                <Input
+                  id="inviteEmail"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="doctor@example.com"
+                  value={inviteEmail}
+                  onChange={(e) => {
+                    setInviteEmail(e.target.value);
+                    if (e.target.value.trim()) {
+                      setInviteDoctorId('');
+                      setLookedUp(null);
+                    }
+                  }}
+                  required={!inviteDoctorId.trim()}
+                  disabled={!!inviteDoctorId.trim()}
+                />
+              </div>
+              <div className="relative flex items-center gap-3 py-1">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs text-muted-foreground uppercase">or</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="inviteDoctorId">Doctor ID (already on KittyP)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="inviteDoctorId"
+                    placeholder="6-character Doctor ID"
+                    value={inviteDoctorId}
+                    onChange={(e) => {
+                      setInviteDoctorId(e.target.value);
+                      setLookedUp(null);
+                      if (e.target.value.trim()) setInviteEmail('');
+                    }}
+                    disabled={!!inviteEmail.trim()}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleLookup}
+                    disabled={lookingUp || !inviteDoctorId.trim() || !!inviteEmail.trim()}
+                  >
+                    {lookingUp ? '…' : 'Look up'}
+                  </Button>
+                </div>
+                {lookedUp && (
+                  <p className="text-xs text-muted-foreground">
+                    Invite will go to <strong>{lookedUp.name}</strong> ({lookedUp.email})
+                  </p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={inviting}>
+                  {inviting ? 'Sending…' : 'Send invite'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

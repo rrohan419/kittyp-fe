@@ -2,6 +2,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus, Droplets, Flame, Scale } from 'lucide-react';
 import { NutritionStats, PetProfileSummary } from '@/types/nutrition';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 
 interface NutritionDashboardProps {
   profile: PetProfileSummary;
@@ -42,7 +43,7 @@ export const NutritionDashboard = ({ profile, stats }: NutritionDashboardProps) 
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Weight</p>
-            <p className="font-medium">{profile.weight || 'Not available'}</p>
+            <p className="font-medium">{formatPetWeight(profile.weight) ? `${formatPetWeight(profile.weight)} kg` : 'Not available'}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Activity Level</p>

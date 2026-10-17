@@ -85,10 +85,7 @@ export const removePetFromUser = createAsyncThunk(
       // Refresh user data from server to ensure consistency
       const updatedUser = await fetchUserDetail();
       dispatch(setUser(updatedUser));
-      
-      toast.success("Pet Removed Successfully");
     } catch (err) {
-      toast.error("Failed to remove pet.");
       throw err;
     }
   }

@@ -18,6 +18,7 @@ import {
   updateClinicPet,
 } from '@/services/clinicService';
 import { parseApiErrorMessage } from '@/utils/validation';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import { normalizePetGender } from '@/utils/petType';
 import { toast } from 'sonner';
 
@@ -72,7 +73,7 @@ function formFromPet(pet: ClinicPetListModel): PetForm {
     breed: pet.breed || '',
     gender: normalizePetGender(pet.gender),
     dateOfBirth: toDateInput(pet.dateOfBirth),
-    weight: pet.weight || '',
+    weight: formatPetWeight(pet.weight),
     microchipNumber: pet.microchipNumber || '',
     photoUrl: pet.photoUrl || '',
   };
@@ -220,9 +221,10 @@ export function ClinicPetEditDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="clinic-pet-weight">Weight</Label>
+              <Label htmlFor="clinic-pet-weight">Weight (kg)</Label>
               <Input
                 id="clinic-pet-weight"
+                type="number"
                 value={form.weight}
                 onChange={(e) => setForm((s) => ({ ...s, weight: e.target.value }))}
                 disabled={saving}

@@ -53,7 +53,7 @@ function formatWeightForSave(rawWeight: string): string {
   if (!rawWeight) return '';
   const numeric = extractNumericWeight(rawWeight);
   if (!numeric) return '';
-  return `${numeric} kg`;
+  return numeric;
 }
 
 function toDateInput(value?: string): string {

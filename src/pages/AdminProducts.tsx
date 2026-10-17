@@ -430,6 +430,7 @@ const AdminProducts = () => {
                         setValue('productImageUrls.0', urls[0], { shouldValidate: true });
                       } catch (error) {
                         console.error('Upload failed:', error);
+                        toast.error('Upload failed');
                       }
                     }
                   }}

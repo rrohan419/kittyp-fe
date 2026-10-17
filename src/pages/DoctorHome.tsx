@@ -44,6 +44,7 @@ import {
   statusLabel,
 } from '@/services/doctorVerificationService';
 import { formatPetDobWithAge } from '@/utils/petAge';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import {
   DoctorInviteModel,
   HealthEventModel,
@@ -134,7 +135,7 @@ function chartFormFromVisit(visit: ClinicVisitModel, petWeight = '') {
     plan: visit.chart?.plan || '',
     nextVisitNotes: visit.chart?.nextVisitNotes || '',
     internalNotes: visit.chart?.internalNotes || '',
-    weightKg: String((visit.chart?.vitals as { weightKg?: number })?.weightKg ?? petWeight),
+    weightKg: formatPetWeight((visit.chart?.vitals as { weightKg?: number })?.weightKg ?? petWeight),
     temperatureC: String((visit.chart?.vitals as { temperatureC?: number })?.temperatureC ?? ''),
   };
 }
@@ -1178,7 +1179,7 @@ export default function DoctorHome() {
                 name: chartVisit?.petName || 'Pet',
                 species: chartVisit?.species,
                 ownerName: chartVisit?.ownerName,
-                weight: form.weightKg ? `${form.weightKg} kg` : undefined,
+                weight: formatPetWeight(form.weightKg) || undefined,
               }}
               thisVisit={
                 chartVisit
@@ -1266,9 +1267,9 @@ export default function DoctorHome() {
                     {formatPetDobWithAge(eventDetail.pet.dateOfBirth)}
                   </p>
                 ) : null}
-                {eventDetail.pet?.weight ? (
+                {formatPetWeight(eventDetail.pet?.weight) ? (
                   <p>
-                    <span className="text-muted-foreground">Weight:</span> {eventDetail.pet.weight} kg
+                    <span className="text-muted-foreground">Weight:</span> {formatPetWeight(eventDetail.pet?.weight)} kg
                   </p>
                 ) : null}
                 {eventDetail.pet?.gender ? (

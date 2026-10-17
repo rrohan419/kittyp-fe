@@ -185,9 +185,7 @@ export const resetCartThunk = createAsyncThunk(
         await clearCartService(userUuid);
       }
       dispatch(resetCart());
-      // toast.success("Cart reset successfully");
     } catch (err) {
-      toast.error("Failed to reset cart");
       throw err;
     }
   }
