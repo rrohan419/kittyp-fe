@@ -300,7 +300,7 @@ export function PortalShell({ config }: PortalShellProps) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleLogout}
-                  className="font-bold text-red-950 bg-[#fc7474] focus:bg-[#fc7474] focus:text-red-950"
+                  className="text-destructive focus:text-destructive"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   Sign Out
@@ -485,7 +485,7 @@ function SidebarInner({
         <button
           onClick={onLogout}
           className={cn(
-            'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold text-red-950 bg-[#fc7474] hover:bg-[#f85c5c] transition-colors',
+            'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors',
             collapsed && 'justify-center'
           )}
         >
