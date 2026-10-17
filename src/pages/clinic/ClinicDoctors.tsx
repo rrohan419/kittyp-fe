@@ -187,16 +187,16 @@ export default function ClinicDoctors() {
       const acceptPath = sent.token
         ? `${window.location.origin}/clinic-invite/accept?token=${encodeURIComponent(sent.token)}`
         : null;
-      toast.success('Invitation sent — the doctor will see it under Notifications on /doctor', {
+      toast.success('Invitation sent', {
         description: acceptPath
-          ? 'Email may be delayed locally — copy the accept link to share manually.'
-          : undefined,
+          ? 'The doctor can accept this invitation from their notifications, or with the secure link.'
+          : 'The doctor can review and accept this invitation from their notifications.',
         action: acceptPath
           ? {
             label: 'Copy link',
             onClick: () => {
               void navigator.clipboard.writeText(acceptPath);
-              toast.message('Accept link copied');
+              toast.message('Invitation link copied');
             },
           }
           : undefined,
