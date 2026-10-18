@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { addDays, format, startOfDay } from 'date-fns';
-import { FileSpreadsheet, Plus, Trash2, FileDown, ExternalLink, Send, Banknote, CheckCircle } from 'lucide-react';
+import { FileSpreadsheet, FileDown, ExternalLink, Send, Banknote, CheckCircle, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,24 +18,25 @@ import {
 import { toast } from 'sonner';
 import {
   ConsultationInvoice,
-  ITEM_TYPE_OPTIONS,
   InvoiceFromVisitState,
-  TreatmentItemType,
   TreatmentLineItem,
   createClinicInvoice,
+  draftFormFromInvoice,
   fetchClinicInvoicePdfUrl,
   fetchClinicInvoices,
   generateClinicInvoicePdf,
   markClinicInvoicePaid,
   sendClinicInvoiceWhatsApp,
+  updateClinicInvoice,
 } from '@/services/invoiceService';
 import { fetchClinicPetMedicalProfile, fetchClinicVisits } from '@/services/clinicService';
 import { formatInr } from '@/services/availabilityService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
 import { hasRole, ROLES } from '@/utils/roles';
-import { collectInvoicePayment, isInvoiceUnpaid, toastInvoicePaymentError } from '@/utils/collectInvoicePayment';
+import { collectInvoicePayment, isInvoiceUnpaid, SHOW_COLLECT_PAYMENT, toastInvoicePaymentError } from '@/utils/collectInvoicePayment';
 import { formatPetWeight } from '@/utils/formatPetWeight';
+import { InvoiceLineEditor, apiErrorMessage, prepareInventoryLines, useInventoryCatalog } from '@/components/invoice/InvoiceLineEditor';
 import { MarkInvoicePaidDialog } from '@/components/invoice/MarkInvoicePaidDialog';
 import { WhatsAppSendGate } from '@/components/invoice/WhatsAppSendGate';
 import { ListPager } from '@/components/ui/ListPager';
@@ -59,6 +60,7 @@ export default function ClinicInvoices() {
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
   const user = useAppSelector((s) => s.authReducer.user);
   const canConfigureWhatsApp = hasRole(user?.roles, ROLES.CLINIC_ADMIN);
+  const catalog = useInventoryCatalog(clinicUuid);
 
   const [items, setItems] = useState<TreatmentLineItem[]>([emptyItem()]);
   const [petName, setPetName] = useState('');
@@ -90,6 +92,9 @@ export default function ClinicInvoices() {
   const [linkVisitUuid, setLinkVisitUuid] = useState<string | undefined>();
   const [petWeight, setPetWeight] = useState('');
   const [fromVisitBanner, setFromVisitBanner] = useState(false);
+  const [editingInvoiceUuid, setEditingInvoiceUuid] = useState<string | null>(null);
+  const [editingInvoiceNumber, setEditingInvoiceNumber] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const applyFromVisit = (from: InvoiceFromVisitState) => {
     if (from.petName) setPetName(from.petName);
@@ -245,10 +250,6 @@ export default function ClinicInvoices() {
   const paidNum = Number(paidAmount) || 0;
   const balance = Math.max(0, grandTotal - paidNum);
 
-  const updateItem = (index: number, patch: Partial<TreatmentLineItem>) => {
-    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
-  };
-
   const resetForm = () => {
     setItems([emptyItem()]);
     setPetName('');
@@ -270,7 +271,37 @@ export default function ClinicInvoices() {
     setLinkPetUuid(undefined);
     setLinkVisitUuid(undefined);
     setFromVisitBanner(false);
+    setEditingInvoiceUuid(null);
+    setEditingInvoiceNumber(null);
     hydratedRef.current = null;
+  };
+
+  const beginEdit = (inv: ConsultationInvoice) => {
+    const draft = draftFormFromInvoice(inv);
+    setItems(draft.items.length ? draft.items : [emptyItem()]);
+    setPetName(draft.petName);
+    setPetBreed(draft.petBreed);
+    setPetSpecies(draft.petSpecies);
+    setPetWeight(draft.petWeight);
+    setOwnerName(draft.ownerName);
+    setOwnerPhone(draft.ownerPhone);
+    setOwnerEmail(draft.ownerEmail);
+    setReason(draft.reason);
+    setDiagnosis(draft.diagnosis);
+    setDoctorNotes(draft.doctorNotes);
+    setNextVisitNotes(draft.nextVisitNotes);
+    setDiscount(draft.discount);
+    setCgst(draft.cgst);
+    setSgst(draft.sgst);
+    setPaidAmount(draft.paidAmount);
+    setPaymentMode(draft.paymentMode);
+    setLinkPetUuid(draft.petUuid);
+    setLinkVisitUuid(draft.visitUuid);
+    setLinkClinicUuid(clinicUuid || undefined);
+    setFromVisitBanner(false);
+    setEditingInvoiceUuid(inv.uuid);
+    setEditingInvoiceNumber(inv.invoiceNumber || null);
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
 
   const createDraft = async (e: React.FormEvent, withWhatsApp: boolean) => {
@@ -284,10 +315,16 @@ export default function ClinicInvoices() {
       toast.error('Owner phone is required to send on WhatsApp');
       return;
     }
-    if (!items.length || items.some((i) => !i.description.trim())) {
-      toast.error('Add at least one line item with a description');
+    if (!clinicUuid) {
+      toast.error('Select a clinic first');
       return;
     }
+    const prepared = prepareInventoryLines(items, catalog.items, clinicUuid);
+    if (!prepared) return;
+    await submitDraft(prepared, withWhatsApp);
+  };
+
+  const submitDraft = async (billedItems: TreatmentLineItem[], withWhatsApp: boolean) => {
     if (!clinicUuid) {
       toast.error('Select a clinic first');
       return;
@@ -295,8 +332,8 @@ export default function ClinicInvoices() {
     submittingRef.current = true;
     setLoading(true);
     try {
-      const result = await createClinicInvoice(clinicUuid, {
-        items: items.map((item) => ({
+      const payload = {
+        items: billedItems.map((item) => ({
           ...item,
           total: Number(item.quantity) * Number(item.unitPrice),
         })),
@@ -326,20 +363,38 @@ export default function ClinicInvoices() {
         paymentStatus: paidNum <= 0 ? 'UNPAID' : balance <= 0 ? 'PAID' : 'PARTIAL',
         generatePdf: withWhatsApp,
         sendWhatsApp: withWhatsApp,
-      });
-      const created = result.invoice;
-      if (withWhatsApp && result.whatsappSent) {
-        toast.success(`Invoice ${created.invoiceNumber || ''} sent on WhatsApp`);
-      } else if (withWhatsApp) {
-        toast.warning(
-          `Invoice ${created.invoiceNumber || ''} saved. ${
-            result.whatsappError || 'WhatsApp is not configured — use the WhatsApp button on the invoice row when ready.'
-          }`
-        );
+      };
+      if (editingInvoiceUuid) {
+        const updated = await updateClinicInvoice(clinicUuid, editingInvoiceUuid, payload);
+        if (withWhatsApp) {
+          try {
+            await sendClinicInvoiceWhatsApp(clinicUuid, updated.uuid);
+            toast.success(`Invoice ${updated.invoiceNumber || ''} sent on WhatsApp`);
+          } catch (sendErr: unknown) {
+            toast.warning(
+              `Invoice ${updated.invoiceNumber || ''} updated. ${apiErrorMessage(sendErr, 'WhatsApp could not be sent.')}`
+            );
+          }
+        } else {
+          toast.success('Draft invoice updated');
+        }
       } else {
-        toast.success('Draft invoice created');
+        const result = await createClinicInvoice(clinicUuid, payload);
+        const created = result.invoice;
+        if (withWhatsApp && result.whatsappSent) {
+          toast.success(`Invoice ${created.invoiceNumber || ''} sent on WhatsApp`);
+        } else if (withWhatsApp) {
+          toast.warning(
+            `Invoice ${created.invoiceNumber || ''} saved. ${
+              result.whatsappError || 'WhatsApp is not configured — use the WhatsApp button on the invoice row when ready.'
+            }`
+          );
+        } else {
+          toast.success('Draft invoice created');
+        }
       }
       resetForm();
+      catalog.reload();
       await load();
     } catch (err: unknown) {
       const ax = err as {
@@ -367,9 +422,10 @@ export default function ClinicInvoices() {
       const url = await fetchClinicInvoicePdfUrl(clinicUuid, uuid);
       window.open(url, '_blank');
       toast.success('PDF ready');
+      catalog.reload();
       await load();
-    } catch {
-      toast.error('Could not generate PDF');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Could not generate PDF'));
     } finally {
       setBusyUuid(null);
     }
@@ -433,6 +489,7 @@ export default function ClinicInvoices() {
       await markClinicInvoicePaid(clinicUuid, markPaidInvoice.uuid, { paymentMode, transactionId });
       toast.success('Marked as paid. PDF updated.');
       setMarkPaidInvoice(null);
+      catalog.reload();
       await load();
     } catch (error) {
       toastInvoicePaymentError(error);
@@ -462,13 +519,18 @@ export default function ClinicInvoices() {
         </div>
       )}
 
-      <Card className="border-0 shadow-sm">
+      <Card ref={formRef} className="border-0 shadow-sm">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <FileSpreadsheet className="h-4 w-4" /> Create treatment invoice
+            <FileSpreadsheet className="h-4 w-4" />{' '}
+            {editingInvoiceUuid
+              ? `Edit draft ${editingInvoiceNumber || ''}`.trim()
+              : 'Create treatment invoice'}
           </CardTitle>
           <CardDescription>
-            Capture services, medicines, and visit details. Billing staff can generate the PDF after.
+            {editingInvoiceUuid
+              ? 'Update this draft. The invoice number stays the same.'
+              : 'Capture services, medicines, and visit details. Billing staff can generate the PDF after.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -516,81 +578,15 @@ export default function ClinicInvoices() {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Line items</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setItems((prev) => [...prev, emptyItem()])}
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Add item
-                </Button>
-              </div>
-              {items.map((item, index) => (
-                <div
-                  key={index}
-                  className="grid grid-cols-1 sm:grid-cols-12 gap-2 p-3 rounded-lg border border-border"
-                >
-                  <div className="sm:col-span-3">
-                    <Select
-                      value={item.itemType}
-                      onValueChange={(v) => updateItem(index, { itemType: v as TreatmentItemType })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ITEM_TYPE_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="sm:col-span-4">
-                    <Input
-                      placeholder="Description"
-                      value={item.description}
-                      onChange={(e) => updateItem(index, { description: e.target.value })}
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      placeholder="Qty"
-                      value={item.quantity}
-                      onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      placeholder="Rate ₹"
-                      value={item.unitPrice}
-                      onChange={(e) => updateItem(index, { unitPrice: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div className="sm:col-span-1 flex items-center justify-end">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      disabled={items.length === 1}
-                      onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <InvoiceLineEditor
+              items={items}
+              clinicUuid={clinicUuid}
+              catalog={catalog.items}
+              catalogLoading={catalog.loading}
+              catalogError={catalog.error}
+              onRetryCatalog={() => void catalog.reload()}
+              onChange={setItems}
+            />
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="space-y-2">
@@ -656,7 +652,7 @@ export default function ClinicInvoices() {
 
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={loading || hydrating} variant="outline">
-                {loading ? 'Saving…' : 'Save draft'}
+                {loading ? 'Saving…' : editingInvoiceUuid ? 'Update draft' : 'Save draft'}
               </Button>
               <WhatsAppSendGate blocked={whatsappBlocked} checking={whatsappChecking} configureTo={canConfigureWhatsApp ? '/clinic/whatsapp' : undefined}>
                 <Button
@@ -665,9 +661,14 @@ export default function ClinicInvoices() {
                   onClick={(e) => void createDraft(e, true)}
                 >
                   <Send className="h-4 w-4 mr-1.5" />
-                  {loading ? 'Sending…' : 'Save and send WhatsApp'}
+                  {loading ? 'Sending…' : editingInvoiceUuid ? 'Update and send WhatsApp' : 'Save and send WhatsApp'}
                 </Button>
               </WhatsAppSendGate>
+              {editingInvoiceUuid ? (
+                <Button type="button" variant="ghost" disabled={loading} onClick={resetForm}>
+                  Cancel
+                </Button>
+              ) : null}
             </div>
           </form>
         </CardContent>
@@ -695,26 +696,39 @@ export default function ClinicInvoices() {
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg bg-muted/50 text-sm"
               >
                 <div className="min-w-0">
-                  <p className="font-medium truncate">
-                    {inv.invoiceNumber || inv.uuid.slice(0, 8)}
-                    {inv.notes ? ` · ${inv.notes}` : ''}
+                  <p className="font-medium flex items-center gap-2 min-w-0">
+                    <span className="truncate">
+                      {inv.invoiceNumber || inv.uuid.slice(0, 8)}
+                      {inv.notes ? ` · ${inv.notes}` : ''}
+                    </span>
+                    {inv.status !== 'ISSUED' ? (
+                      <Badge variant="secondary" className="shrink-0">
+                        {inv.status}
+                      </Badge>
+                    ) : null}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatInr(Number(inv.amount))} ·{' '}
                     {inv.paymentStatus || (inv.status === 'ISSUED' ? 'UNPAID' : inv.status)}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {inv.status !== 'ISSUED' ? <Badge variant="secondary">{inv.status}</Badge> : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  {inv.status === 'DRAFT' ? (
+                    <Button size="sm" variant="outline" onClick={() => beginEdit(inv)} aria-label="Edit draft">
+                      <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                    </Button>
+                  ) : null}
                   {isInvoiceUnpaid(inv) && (
                     <>
-                      <Button
-                        size="sm"
-                        disabled={busyUuid === inv.uuid}
-                        onClick={() => void onCollectPayment(inv)}
-                      >
-                        <Banknote className="h-3.5 w-3.5 mr-1" /> Collect payment
-                      </Button>
+                      {SHOW_COLLECT_PAYMENT ? (
+                        <Button
+                          size="sm"
+                          disabled={busyUuid === inv.uuid}
+                          onClick={() => void onCollectPayment(inv)}
+                        >
+                          <Banknote className="h-3.5 w-3.5 mr-1" /> Collect payment
+                        </Button>
+                      ) : null}
                       <Button
                         size="sm"
                         variant="outline"

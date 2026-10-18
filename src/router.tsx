@@ -383,6 +383,10 @@ export const router = createBrowserRouter(
               element: <PageTransition><DoctorArticleEditor /></PageTransition>,
             },
             {
+              path: "inventory",
+              element: <PageTransition><ClinicInventory /></PageTransition>,
+            },
+            {
               path: "invoices",
               element: <PageTransition><DoctorInvoices /></PageTransition>,
             },
