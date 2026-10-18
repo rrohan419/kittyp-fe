@@ -11,6 +11,8 @@ export type TreatmentItemType =
   | 'HOSPITALIZATION'
   | 'CONSUMABLE'
   | 'VACCINATION'
+  | 'FOOD'
+  | 'EQUIPMENT'
   | 'OTHER';
 
 export interface TreatmentLineItem {
@@ -408,5 +410,7 @@ export const ITEM_TYPE_OPTIONS: { value: TreatmentItemType; label: string }[] = 
   { value: 'HOSPITALIZATION', label: 'Hospitalization' },
   { value: 'CONSUMABLE', label: 'Consumable' },
   { value: 'VACCINATION', label: 'Vaccination' },
+  { value: 'FOOD', label: 'Food' },
+  { value: 'EQUIPMENT', label: 'Equipment' },
   { value: 'OTHER', label: 'Other' },
 ];

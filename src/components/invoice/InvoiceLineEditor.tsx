@@ -21,9 +21,61 @@ import {
   TreatmentLineItem,
 } from '@/services/invoiceService';
 
-export function stockCategoryForItemType(itemType: TreatmentItemType): 'MEDICATION' | 'SUPPLY' | null {
+type StockLevel = 'healthy' | 'watch' | 'critical';
+
+/** Green above twice the reorder level, yellow between that and reorder, red at or below reorder. */
+export function stockLevel(quantity: number, reorderLevel: number): StockLevel {
+  if (quantity <= reorderLevel) return 'critical';
+  if (quantity > reorderLevel * 2) return 'healthy';
+  return 'watch';
+}
+
+const stockLevelStyle: Record<StockLevel, { text: string; dot: string; label: string }> = {
+  healthy: {
+    text: 'text-emerald-700 dark:text-emerald-400',
+    dot: 'bg-emerald-500',
+    label: 'Well stocked',
+  },
+  watch: {
+    text: 'text-amber-700 dark:text-amber-300',
+    dot: 'bg-amber-500',
+    label: 'Running low',
+  },
+  critical: {
+    text: 'text-red-700 dark:text-red-400',
+    dot: 'bg-red-500',
+    label: 'Reorder',
+  },
+};
+
+function StockOnHand({
+  quantity,
+  unit,
+  reorderLevel,
+}: {
+  quantity: number;
+  unit: string;
+  reorderLevel: number;
+}) {
+  const style = stockLevelStyle[stockLevel(quantity, reorderLevel)];
+  return (
+    <p className={`flex min-w-0 items-center gap-1.5 truncate text-[11px] font-medium leading-4 ${style.text}`}>
+      <span className={`size-1.5 shrink-0 rounded-full ${style.dot}`} aria-hidden />
+      <span className="truncate">
+        {quantity} {unit} on hand
+        <span className="font-normal"> · {style.label}</span>
+      </span>
+    </p>
+  );
+}
+
+export function stockCategoryForItemType(
+  itemType: TreatmentItemType,
+): 'MEDICATION' | 'SUPPLY' | 'FOOD' | 'EQUIPMENT' | null {
   if (itemType === 'MEDICINE' || itemType === 'VACCINATION') return 'MEDICATION';
   if (itemType === 'CONSUMABLE') return 'SUPPLY';
+  if (itemType === 'FOOD') return 'FOOD';
+  if (itemType === 'EQUIPMENT') return 'EQUIPMENT';
   return null;
 }
 
@@ -42,11 +94,13 @@ export function useInventoryCatalog(clinicUuid?: string | null) {
     setLoading(true);
     setError(null);
     try {
-      const [medication, supply] = await Promise.all([
+      const [medication, supply, food, equipment] = await Promise.all([
         fetchClinicInventoryOptions(clinicUuid, 'MEDICATION'),
         fetchClinicInventoryOptions(clinicUuid, 'SUPPLY'),
+        fetchClinicInventoryOptions(clinicUuid, 'FOOD'),
+        fetchClinicInventoryOptions(clinicUuid, 'EQUIPMENT'),
       ]);
-      setItems([...medication, ...supply]);
+      setItems([...medication, ...supply, ...food, ...equipment]);
     } catch {
       setItems([]);
       setError('Inventory could not be loaded. Please try again.');
@@ -68,11 +122,15 @@ export function prepareInventoryLines(
   catalog: ClinicInventoryItem[],
   clinicUuid?: string | null,
 ): TreatmentLineItem[] | null {
-  if (!items.length || items.some((item) => !item.description.trim() && !item.inventoryItemUuid)) {
-    toast.error('Add at least one line item with a description');
+  if (!items.length) {
+    toast.error('Add at least one line item');
     return null;
   }
   if (!clinicUuid) {
+    if (items.some((item) => !item.description.trim())) {
+      toast.error('Add at least one line item with a description');
+      return null;
+    }
     return items.map((item) => ({ ...item, inventoryItemUuid: undefined, allowShortStock: undefined }));
   }
   const byId = new Map(catalog.map((item) => [item.uuid, item]));
@@ -91,7 +149,7 @@ export function prepareInventoryLines(
       continue;
     }
     if (!item.inventoryItemUuid) {
-      toast.error('Choose an inventory item for medicine, consumable, and vaccination lines');
+      toast.error(`Choose a ${category.toLowerCase()} item from inventory`);
       return null;
     }
     if (!Number.isInteger(item.quantity) || item.quantity < 1) {
@@ -103,6 +161,8 @@ export function prepareInventoryLines(
       toast.error('That inventory item is no longer available');
       return null;
     }
+    item.description = stock.name;
+    item.unit = stock.unit;
     const onHand = remaining.get(item.inventoryItemUuid) ?? 0;
     if (item.quantity > onHand) {
       short.push(`${stock.name}: ${stock.quantity} on hand, billing ${item.quantity}`);
@@ -164,7 +224,9 @@ export function InvoiceLineEditor({
       ) : null}
       {items.map((item, index) => {
         const category = clinicUuid ? stockCategoryForItemType(item.itemType) : null;
-        const choices = category ? catalog.filter((row) => row.category === category) : [];
+        const choices = category
+          ? catalog.filter((row) => row.category?.toUpperCase() === category)
+          : [];
         const selected = item.inventoryItemUuid
           ? catalog.find((row) => row.uuid === item.inventoryItemUuid)
           : undefined;
@@ -216,15 +278,23 @@ export function InvoiceLineEditor({
                     </SelectTrigger>
                     <SelectContent>
                       {choices.map((row) => (
-                        <SelectItem key={row.uuid} value={row.uuid}>
-                          {row.name} · {row.quantity} {row.unit} on hand
+                        <SelectItem key={row.uuid} value={row.uuid} title={row.name}>
+                          {row.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {selected ? (
-                    <p className="text-[11px] text-muted-foreground">{selected.quantity} {selected.unit} on hand</p>
-                  ) : null}
+                  <div className="min-h-4">
+                    {selected ? (
+                      <StockOnHand
+                        quantity={selected.quantity}
+                        unit={selected.unit}
+                        reorderLevel={selected.reorderLevel}
+                      />
+                    ) : (
+                      <p className="truncate text-[11px] leading-4 text-muted-foreground">On hand shows here after you choose an item</p>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <Input
