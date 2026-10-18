@@ -22,6 +22,8 @@ export interface TreatmentLineItem {
   discount?: number;
   tax?: number;
   total?: number;
+  inventoryItemUuid?: string;
+  allowShortStock?: boolean;
 }
 
 export interface ConsultationInvoice {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { addDays, format, startOfDay } from 'date-fns';
-import { FileSpreadsheet, Plus, Trash2, FileDown, ExternalLink, Send, Banknote, CheckCircle } from 'lucide-react';
+import { FileSpreadsheet, FileDown, ExternalLink, Send, Banknote, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,9 +18,7 @@ import {
 import { toast } from 'sonner';
 import {
   ConsultationInvoice,
-  ITEM_TYPE_OPTIONS,
   InvoiceFromVisitState,
-  TreatmentItemType,
   TreatmentLineItem,
   createClinicInvoice,
   fetchClinicInvoicePdfUrl,
@@ -36,6 +34,7 @@ import { useAppSelector } from '@/module/store/hooks';
 import { hasRole, ROLES } from '@/utils/roles';
 import { collectInvoicePayment, isInvoiceUnpaid, toastInvoicePaymentError } from '@/utils/collectInvoicePayment';
 import { formatPetWeight } from '@/utils/formatPetWeight';
+import { InvoiceLineEditor, apiErrorMessage, prepareInventoryLines, useInventoryCatalog } from '@/components/invoice/InvoiceLineEditor';
 import { MarkInvoicePaidDialog } from '@/components/invoice/MarkInvoicePaidDialog';
 import { WhatsAppSendGate } from '@/components/invoice/WhatsAppSendGate';
 import { ListPager } from '@/components/ui/ListPager';
@@ -59,6 +58,7 @@ export default function ClinicInvoices() {
   const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
   const user = useAppSelector((s) => s.authReducer.user);
   const canConfigureWhatsApp = hasRole(user?.roles, ROLES.CLINIC_ADMIN);
+  const catalog = useInventoryCatalog(clinicUuid);
 
   const [items, setItems] = useState<TreatmentLineItem[]>([emptyItem()]);
   const [petName, setPetName] = useState('');
@@ -245,10 +245,6 @@ export default function ClinicInvoices() {
   const paidNum = Number(paidAmount) || 0;
   const balance = Math.max(0, grandTotal - paidNum);
 
-  const updateItem = (index: number, patch: Partial<TreatmentLineItem>) => {
-    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
-  };
-
   const resetForm = () => {
     setItems([emptyItem()]);
     setPetName('');
@@ -284,19 +280,17 @@ export default function ClinicInvoices() {
       toast.error('Owner phone is required to send on WhatsApp');
       return;
     }
-    if (!items.length || items.some((i) => !i.description.trim())) {
-      toast.error('Add at least one line item with a description');
-      return;
-    }
     if (!clinicUuid) {
       toast.error('Select a clinic first');
       return;
     }
+    const billedItems = prepareInventoryLines(items, catalog.items, clinicUuid);
+    if (!billedItems) return;
     submittingRef.current = true;
     setLoading(true);
     try {
       const result = await createClinicInvoice(clinicUuid, {
-        items: items.map((item) => ({
+        items: billedItems.map((item) => ({
           ...item,
           total: Number(item.quantity) * Number(item.unitPrice),
         })),
@@ -368,8 +362,8 @@ export default function ClinicInvoices() {
       window.open(url, '_blank');
       toast.success('PDF ready');
       await load();
-    } catch {
-      toast.error('Could not generate PDF');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Could not generate PDF'));
     } finally {
       setBusyUuid(null);
     }
@@ -516,81 +510,15 @@ export default function ClinicInvoices() {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Line items</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setItems((prev) => [...prev, emptyItem()])}
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Add item
-                </Button>
-              </div>
-              {items.map((item, index) => (
-                <div
-                  key={index}
-                  className="grid grid-cols-1 sm:grid-cols-12 gap-2 p-3 rounded-lg border border-border"
-                >
-                  <div className="sm:col-span-3">
-                    <Select
-                      value={item.itemType}
-                      onValueChange={(v) => updateItem(index, { itemType: v as TreatmentItemType })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ITEM_TYPE_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="sm:col-span-4">
-                    <Input
-                      placeholder="Description"
-                      value={item.description}
-                      onChange={(e) => updateItem(index, { description: e.target.value })}
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      placeholder="Qty"
-                      value={item.quantity}
-                      onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      placeholder="Rate ₹"
-                      value={item.unitPrice}
-                      onChange={(e) => updateItem(index, { unitPrice: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div className="sm:col-span-1 flex items-center justify-end">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      disabled={items.length === 1}
-                      onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <InvoiceLineEditor
+              items={items}
+              clinicUuid={clinicUuid}
+              catalog={catalog.items}
+              catalogLoading={catalog.loading}
+              catalogError={catalog.error}
+              onRetryCatalog={() => void catalog.reload()}
+              onChange={setItems}
+            />
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="space-y-2">

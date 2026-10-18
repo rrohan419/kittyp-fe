@@ -394,10 +394,49 @@ export async function fetchClinicReports(
 
 export async function fetchClinicInventory(
   clinicUuid: string,
-  params: { pageNumber?: number; pageSize?: number } = {}
+  params: { pageNumber?: number; pageSize?: number; category?: string } = {}
 ): Promise<PaginationModel<ClinicInventoryItem>> {
   const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<ClinicInventoryItem>>>(
     `/clinic/${clinicUuid}/inventory`,
+    { params }
+  );
+  return res.data.data ?? emptyPage(params.pageSize ?? 10);
+}
+
+export async function fetchClinicInventoryOptions(
+  clinicUuid: string,
+  category: string
+): Promise<ClinicInventoryItem[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ClinicInventoryItem[]>>(
+    `/clinic/${clinicUuid}/inventory/options`,
+    { params: { category } }
+  );
+  return res.data.data ?? [];
+}
+
+export type InventoryMovementAction = 'OPENING' | 'ADJUST' | 'CONSUME';
+
+export interface ClinicInventoryMovement {
+  uuid: string;
+  itemUuid: string;
+  itemName: string;
+  action: InventoryMovementAction;
+  quantityDelta: number;
+  quantityAfter: number;
+  note?: string | null;
+  source: 'MANUAL' | 'INVOICE';
+  invoiceUuid?: string | null;
+  invoiceNumber?: string | null;
+  actorName?: string | null;
+  createdAt?: string;
+}
+
+export async function fetchClinicInventoryMovements(
+  clinicUuid: string,
+  params: { pageNumber?: number; pageSize?: number } = {}
+): Promise<PaginationModel<ClinicInventoryMovement>> {
+  const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<ClinicInventoryMovement>>>(
+    `/clinic/${clinicUuid}/inventory/movements`,
     { params }
   );
   return res.data.data ?? emptyPage(params.pageSize ?? 10);
@@ -421,6 +460,18 @@ export async function updateClinicInventoryItem(
 ): Promise<ClinicInventoryItem> {
   const res = await axiosInstance.patch<ApiSuccessResponse<ClinicInventoryItem>>(
     `/clinic/${clinicUuid}/inventory/${itemUuid}`,
+    payload
+  );
+  return res.data.data;
+}
+
+export async function adjustClinicInventoryStock(
+  clinicUuid: string,
+  itemUuid: string,
+  payload: { direction: 'ADD' | 'REMOVE'; quantity: number; note?: string }
+): Promise<ClinicInventoryItem> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ClinicInventoryItem>>(
+    `/clinic/${clinicUuid}/inventory/${itemUuid}/stock`,
     payload
   );
   return res.data.data;
