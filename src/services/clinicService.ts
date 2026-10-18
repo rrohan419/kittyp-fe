@@ -367,6 +367,7 @@ export interface ClinicInventoryItem {
   reorderLevel: number;
   unitPrice: number;
   active: boolean;
+  reserved?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -414,7 +415,7 @@ export async function fetchClinicInventoryOptions(
   return res.data.data ?? [];
 }
 
-export type InventoryMovementAction = 'OPENING' | 'ADJUST' | 'CONSUME';
+export type InventoryMovementAction = 'OPENING' | 'ADJUST' | 'CONSUME' | 'RESERVE' | 'RELEASE';
 
 export interface ClinicInventoryMovement {
   uuid: string;

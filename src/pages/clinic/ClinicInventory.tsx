@@ -35,8 +35,22 @@ import {
 const categoryLabels: Record<string, string> = { MEDICATION: 'Medication', SUPPLY: 'Supply', EQUIPMENT: 'Equipment', FOOD: 'Food' };
 const emptyForm: ClinicInventoryRequest = { name: '', category: 'SUPPLY', quantity: 0, unit: 'pcs', reorderLevel: 0, unitPrice: 0, active: true };
 
+function onHandLabel(quantity: number, unit: string, reserved = 0): string {
+  const held = reserved > 0 ? ` · ${reserved} ${unit} held` : '';
+  if (quantity <= 0) return `0 ${unit} · Out of stock${held}`;
+  return `${quantity} ${unit}${held}`;
+}
+
+function onHandClass(quantity: number, reorderLevel: number): string {
+  if (quantity <= 0) return 'font-medium text-red-700 dark:text-red-400';
+  if (quantity < reorderLevel) return 'font-medium text-amber-600';
+  return 'font-medium';
+}
+
 function movementLabel(movement: ClinicInventoryMovement): string {
   const amount = Math.abs(movement.quantityDelta);
+  if (movement.action === 'RESERVE') return `Reserved ${amount}`;
+  if (movement.action === 'RELEASE') return `Released ${amount}`;
   if (movement.action === 'CONSUME' || movement.source === 'INVOICE') return `Billed ${amount}`;
   if (movement.quantityDelta < 0) return `Removed ${amount}`;
   return `Added ${amount}`;
@@ -153,7 +167,6 @@ export default function ClinicInventory() {
               <div className="border-b border-border pb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Price</div>
               <div className="border-b border-border pb-2 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{canManage ? 'Actions' : ''}</div>
               {items.map((item) => {
-                const low = item.quantity < item.reorderLevel;
                 return (
                   <Fragment key={item.uuid}>
                     <div className={`${catalogCell} flex min-w-0 items-center gap-2`}>
@@ -163,7 +176,7 @@ export default function ClinicInventory() {
                     <div className={catalogCell}>
                       <Badge variant="secondary" className="border-0 bg-muted text-[10px]">{categoryLabels[item.category] || item.category}</Badge>
                     </div>
-                    <div className={`${catalogCell} font-medium ${low ? 'text-amber-600' : ''}`}>{item.quantity} {item.unit}</div>
+                    <div className={`${catalogCell} ${onHandClass(item.quantity, item.reorderLevel)}`}>{onHandLabel(item.quantity, item.unit, item.reserved ?? 0)}</div>
                     <div className={`${catalogCell} text-muted-foreground`}>{item.reorderLevel} {item.unit}</div>
                     <div className={`${catalogCell} font-medium`}>₹{item.unitPrice.toFixed(2)}</div>
                     <div className={`${catalogCell} flex flex-nowrap justify-center gap-0.5`}>
@@ -184,7 +197,6 @@ export default function ClinicInventory() {
 
           <div className="space-y-3 md:hidden">
             {items.map((item) => {
-              const low = item.quantity < item.reorderLevel;
               return (
                 <div key={item.uuid} className="space-y-3 rounded-xl border bg-card p-4">
                   <div className="min-w-0">
@@ -194,7 +206,7 @@ export default function ClinicInventory() {
                   <div className="grid grid-cols-3 gap-2 text-sm">
                     <div>
                       <p className="text-[11px] text-muted-foreground">On hand</p>
-                      <p className={`font-medium ${low ? 'text-amber-600' : ''}`}>{item.quantity} {item.unit}</p>
+                      <p className={onHandClass(item.quantity, item.reorderLevel)}>{onHandLabel(item.quantity, item.unit, item.reserved ?? 0)}</p>
                     </div>
                     <div>
                       <p className="text-[11px] text-muted-foreground">Reorder</p>

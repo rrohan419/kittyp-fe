@@ -48,6 +48,13 @@ const stockLevelStyle: Record<StockLevel, { text: string; dot: string; label: st
   },
 };
 
+function stockStatus(quantity: number, reorderLevel: number) {
+  if (quantity <= 0) {
+    return { ...stockLevelStyle.critical, label: 'Out of stock' };
+  }
+  return stockLevelStyle[stockLevel(quantity, reorderLevel)];
+}
+
 function StockOnHand({
   quantity,
   unit,
@@ -57,7 +64,7 @@ function StockOnHand({
   unit: string;
   reorderLevel: number;
 }) {
-  const style = stockLevelStyle[stockLevel(quantity, reorderLevel)];
+  const style = stockStatus(quantity, reorderLevel);
   return (
     <p className={`flex min-w-0 items-center gap-1.5 truncate text-[11px] font-medium leading-4 ${style.text}`}>
       <span className={`size-1.5 shrink-0 rounded-full ${style.dot}`} aria-hidden />
@@ -116,7 +123,11 @@ export function useInventoryCatalog(clinicUuid?: string | null) {
   return { items, loading, error, reload: load };
 }
 
-/** Returns lines ready to save, or null when the user must fix the form or declined a short-stock bill. */
+function freeQuantity(item: ClinicInventoryItem): number {
+  return Math.max(0, item.quantity - (item.reserved ?? 0));
+}
+
+/** Returns lines ready to save, or null when the form itself is invalid. */
 export function prepareInventoryLines(
   items: TreatmentLineItem[],
   catalog: ClinicInventoryItem[],
@@ -131,17 +142,15 @@ export function prepareInventoryLines(
       toast.error('Add at least one line item with a description');
       return null;
     }
-    return items.map((item) => ({ ...item, inventoryItemUuid: undefined, allowShortStock: undefined }));
+    return items.map((item) => ({ ...item, inventoryItemUuid: undefined }));
   }
   const byId = new Map(catalog.map((item) => [item.uuid, item]));
-  const remaining = new Map(catalog.map((item) => [item.uuid, item.quantity]));
+  const remaining = new Map(catalog.map((item) => [item.uuid, freeQuantity(item)]));
   const next = items.map((item) => ({ ...item }));
-  const short: string[] = [];
   for (const item of next) {
     const category = stockCategoryForItemType(item.itemType);
     if (!category) {
       item.inventoryItemUuid = undefined;
-      item.allowShortStock = undefined;
       if (!item.description.trim()) {
         toast.error('Add a description for every line');
         return null;
@@ -164,16 +173,7 @@ export function prepareInventoryLines(
     item.description = stock.name;
     item.unit = stock.unit;
     const onHand = remaining.get(item.inventoryItemUuid) ?? 0;
-    if (item.quantity > onHand) {
-      short.push(`${stock.name}: ${stock.quantity} on hand, billing ${item.quantity}`);
-      item.allowShortStock = true;
-    } else {
-      item.allowShortStock = false;
-    }
     remaining.set(item.inventoryItemUuid, onHand - item.quantity);
-  }
-  if (short.length > 0 && !window.confirm(`Stock is short.\n${short.join('\n')}\n\nBill anyway?`)) {
-    return null;
   }
   return next;
 }
@@ -239,8 +239,8 @@ export function InvoiceLineEditor({
                   const itemType = value as TreatmentItemType;
                   const stocked = Boolean(clinicUuid && stockCategoryForItemType(itemType));
                   updateItem(index, stocked
-                    ? { itemType, description: '', inventoryItemUuid: undefined, allowShortStock: false, unit: undefined }
-                    : { itemType, inventoryItemUuid: undefined, allowShortStock: undefined });
+                    ? { itemType, description: '', inventoryItemUuid: undefined, unit: undefined }
+                    : { itemType, inventoryItemUuid: undefined });
                 }}
               >
                 <SelectTrigger>
@@ -269,7 +269,6 @@ export function InvoiceLineEditor({
                         description: stock.name,
                         unit: stock.unit,
                         unitPrice: Number(stock.unitPrice),
-                        allowShortStock: false,
                       });
                     }}
                   >
@@ -287,7 +286,7 @@ export function InvoiceLineEditor({
                   <div className="min-h-4">
                     {selected ? (
                       <StockOnHand
-                        quantity={selected.quantity}
+                        quantity={freeQuantity(selected)}
                         unit={selected.unit}
                         reorderLevel={selected.reorderLevel}
                       />
@@ -311,7 +310,7 @@ export function InvoiceLineEditor({
                 step={category ? 1 : 0.01}
                 placeholder="Qty"
                 value={item.quantity}
-                onChange={(event) => updateItem(index, { quantity: Number(event.target.value), allowShortStock: false })}
+                onChange={(event) => updateItem(index, { quantity: Number(event.target.value) })}
               />
             </div>
             <div className="sm:col-span-2">

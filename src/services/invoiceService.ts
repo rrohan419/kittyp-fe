@@ -25,7 +25,6 @@ export interface TreatmentLineItem {
   tax?: number;
   total?: number;
   inventoryItemUuid?: string;
-  allowShortStock?: boolean;
 }
 
 export interface ConsultationInvoice {
@@ -50,6 +49,12 @@ export interface ConsultationInvoice {
   razorpayOrderId?: string;
   diagnosis?: string;
   reason?: string;
+  doctorNotes?: string;
+  nextVisitNotes?: string;
+  cgst?: number;
+  sgst?: number;
+  visitUuid?: string;
+  petSnapshot?: string;
   createdAt?: string;
 }
 
@@ -116,6 +121,79 @@ export type InvoiceFromVisitState = {
   doctorNotes?: string;
   nextVisitNotes?: string;
 };
+
+const PAYMENT_MODES = ['UPI', 'Cash', 'Card', 'NEFT', 'Other'];
+
+function parseRecord(raw?: string | null): Record<string, unknown> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function textField(value: unknown): string {
+  return value == null ? '' : String(value);
+}
+
+/** Fields the create form needs from a draft row already returned by the list. */
+export function draftFormFromInvoice(inv: ConsultationInvoice) {
+  const pet = parseRecord(inv.petSnapshot);
+  const owner = parseRecord(inv.ownerSnapshot);
+  let items: TreatmentLineItem[] = [];
+  if (inv.lineItems) {
+    try {
+      const parsed = JSON.parse(inv.lineItems) as TreatmentLineItem[];
+      if (Array.isArray(parsed)) items = parsed;
+    } catch {
+      items = [];
+    }
+  }
+  const mode = inv.paymentMode && PAYMENT_MODES.includes(inv.paymentMode) ? inv.paymentMode : 'UPI';
+  return {
+    items,
+    petName: textField(pet.petName),
+    petBreed: textField(pet.petBreed),
+    petSpecies: textField(pet.petSpecies),
+    petWeight: textField(pet.petWeight),
+    ownerName: textField(owner.ownerName),
+    ownerPhone: textField(owner.ownerPhone),
+    ownerEmail: textField(owner.ownerEmail),
+    reason: inv.reason || '',
+    diagnosis: inv.diagnosis || '',
+    doctorNotes: inv.doctorNotes || '',
+    nextVisitNotes: inv.nextVisitNotes || '',
+    discount: String(inv.discount ?? 0),
+    cgst: String(inv.cgst ?? 0),
+    sgst: String(inv.sgst ?? 0),
+    paidAmount: String(inv.paidAmount ?? 0),
+    paymentMode: mode,
+    petUuid: inv.petUuid,
+    visitUuid: inv.visitUuid,
+  };
+}
+
+export async function updateConsultationInvoice(
+  uuid: string,
+  body: CreateTreatmentInvoicePayload
+): Promise<ConsultationInvoice> {
+  const res = await axiosInstance.put<ApiSuccessResponse<ConsultationInvoice>>(`/invoice/${uuid}`, body);
+  return res.data.data;
+}
+
+export async function updateClinicInvoice(
+  clinicUuid: string,
+  invoiceUuid: string,
+  body: CreateTreatmentInvoicePayload
+): Promise<ConsultationInvoice> {
+  const res = await axiosInstance.put<ApiSuccessResponse<ConsultationInvoice>>(
+    `/clinic/${clinicUuid}/invoices/${invoiceUuid}`,
+    { ...body, clinicUuid }
+  );
+  return res.data.data;
+}
 
 export async function createConsultationInvoice(
   body: CreateTreatmentInvoicePayload
