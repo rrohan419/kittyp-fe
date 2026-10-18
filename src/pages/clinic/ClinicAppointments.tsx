@@ -402,22 +402,27 @@ export default function ClinicAppointments() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2 items-center">
-        <Select value={doctorFilter} onValueChange={setDoctorFilter}>
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="Doctor" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All doctors</SelectItem>
-            <SelectItem value="unassigned">Unassigned</SelectItem>
-            {doctors.map((d) => (
-              <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
-                {d.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+      <div className="flex items-end gap-2">
+        <div className="min-w-0 flex-1 sm:flex-none">
+          <Label htmlFor="clinic-doctor-filter" className="text-sm text-muted-foreground">
+            Doctor
+          </Label>
+          <Select value={doctorFilter} onValueChange={setDoctorFilter}>
+            <SelectTrigger id="clinic-doctor-filter" className="mt-1.5 h-11 w-full sm:w-[220px]">
+              <SelectValue placeholder="Doctor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All doctors</SelectItem>
+              <SelectItem value="unassigned">Unassigned</SelectItem>
+              {doctors.map((d) => (
+                <SelectItem key={d.doctorUuid} value={d.doctorUuid}>
+                  {d.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button variant="outline" className="h-11 shrink-0" onClick={load} disabled={loading}>
           Refresh
         </Button>
       </div>
@@ -428,10 +433,17 @@ export default function ClinicAppointments() {
         </div>
       ) : (
         <Tabs defaultValue="flow">
-          <TabsList className="w-full max-w-full h-auto flex flex-wrap justify-start">
-            <TabsTrigger value="flow">Today&apos;s flow</TabsTrigger>
-            <TabsTrigger value="done">Completed</TabsTrigger>
-            <TabsTrigger value="scheduled">Upcoming</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 h-auto p-1">
+            <TabsTrigger value="flow" className="px-1.5 py-2 text-xs sm:text-sm">
+              <span className="sm:hidden">Flow</span>
+              <span className="hidden sm:inline">Today&apos;s flow</span>
+            </TabsTrigger>
+            <TabsTrigger value="done" className="px-1.5 py-2 text-xs sm:text-sm">
+              Completed
+            </TabsTrigger>
+            <TabsTrigger value="scheduled" className="px-1.5 py-2 text-xs sm:text-sm">
+              Upcoming
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="flow" className="mt-4">

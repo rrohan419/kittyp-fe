@@ -5,6 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -443,20 +451,38 @@ export default function DoctorAppointments() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <label htmlFor="doctor-appointment-date" className="text-sm text-muted-foreground">
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+        <Label htmlFor="doctor-appointment-date" className="text-sm text-muted-foreground shrink-0">
           Appointment date
-        </label>
+        </Label>
         <Input
           id="doctor-appointment-date"
           type="date"
-          className="w-[170px]"
+          className="w-full sm:w-[170px] h-11 sm:h-10"
           value={appointmentDate}
           onChange={(event) => setAppointmentDate(event.target.value)}
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="md:hidden">
+        <Label htmlFor="doctor-appointment-filter" className="text-sm text-muted-foreground">
+          Status
+        </Label>
+        <Select value={filter} onValueChange={(value) => setFilter(value as ApptFilter)}>
+          <SelectTrigger id="doctor-appointment-filter" className="mt-1.5 h-11 w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FILTER_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label} ({filterCounts[opt.value]})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="hidden md:flex flex-wrap items-center gap-1.5" role="group" aria-label="Status">
         {FILTER_OPTIONS.map((opt) => (
           <Button
             key={opt.value}
