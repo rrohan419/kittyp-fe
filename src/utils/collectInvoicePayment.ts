@@ -6,6 +6,9 @@ import { isInvoiceUnpaid, prefillFromInvoice } from '@/utils/invoicePaymentState
 
 export { isInvoiceUnpaid, prefillFromInvoice, invoiceRemainingBalance } from '@/utils/invoicePaymentState';
 
+/** Clinic, staff, and doctor invoice lists. Set to true to show Collect payment again. */
+export const SHOW_COLLECT_PAYMENT: boolean = false;
+
 export async function collectInvoicePayment(invoice: ConsultationInvoice): Promise<void> {
   if (!isInvoiceUnpaid(invoice)) {
     throw new Error('Invoice is already paid');

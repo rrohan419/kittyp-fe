@@ -32,7 +32,7 @@ import { formatInr } from '@/services/availabilityService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
 import { hasRole, ROLES } from '@/utils/roles';
-import { collectInvoicePayment, isInvoiceUnpaid, toastInvoicePaymentError } from '@/utils/collectInvoicePayment';
+import { collectInvoicePayment, isInvoiceUnpaid, SHOW_COLLECT_PAYMENT, toastInvoicePaymentError } from '@/utils/collectInvoicePayment';
 import { formatPetWeight } from '@/utils/formatPetWeight';
 import { InvoiceLineEditor, apiErrorMessage, prepareInventoryLines, useInventoryCatalog } from '@/components/invoice/InvoiceLineEditor';
 import { MarkInvoicePaidDialog } from '@/components/invoice/MarkInvoicePaidDialog';
@@ -636,13 +636,15 @@ export default function ClinicInvoices() {
                   {inv.status !== 'ISSUED' ? <Badge variant="secondary">{inv.status}</Badge> : null}
                   {isInvoiceUnpaid(inv) && (
                     <>
-                      <Button
-                        size="sm"
-                        disabled={busyUuid === inv.uuid}
-                        onClick={() => void onCollectPayment(inv)}
-                      >
-                        <Banknote className="h-3.5 w-3.5 mr-1" /> Collect payment
-                      </Button>
+                      {SHOW_COLLECT_PAYMENT ? (
+                        <Button
+                          size="sm"
+                          disabled={busyUuid === inv.uuid}
+                          onClick={() => void onCollectPayment(inv)}
+                        >
+                          <Banknote className="h-3.5 w-3.5 mr-1" /> Collect payment
+                        </Button>
+                      ) : null}
                       <Button
                         size="sm"
                         variant="outline"
