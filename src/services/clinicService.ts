@@ -47,6 +47,8 @@ export interface ClinicDoctorModel {
   experienceYears?: number | null;
   registrationNumber?: string | null;
   clinicUuid?: string | null;
+  canEditInventory?: boolean;
+  clinicOwner?: boolean;
 }
 
 export interface ClinicDoctorPatientModel {
@@ -731,6 +733,7 @@ export interface StaffMemberModel {
   role?: string;
   joinedAt?: string | null;
   enabled: boolean;
+  canEditInventory?: boolean;
 }
 
 export async function inviteStaff(
@@ -740,6 +743,39 @@ export async function inviteStaff(
   const res = await axiosInstance.post<ApiSuccessResponse<StaffInviteModel>>(
     `/clinic/${clinicUuid}/staff/invite`,
     payload
+  );
+  return res.data.data;
+}
+
+export async function updateStaffInventoryAccess(
+  clinicUuid: string,
+  userUuid: string,
+  canEditInventory: boolean
+): Promise<StaffMemberModel> {
+  const res = await axiosInstance.patch<ApiSuccessResponse<StaffMemberModel>>(
+    `/clinic/${clinicUuid}/staff/${userUuid}/inventory`,
+    { canEditInventory }
+  );
+  return res.data.data;
+}
+
+export async function updateDoctorInventoryAccess(
+  clinicUuid: string,
+  doctorUuid: string,
+  canEditInventory: boolean
+): Promise<ClinicDoctorModel> {
+  const res = await axiosInstance.patch<ApiSuccessResponse<ClinicDoctorModel>>(
+    `/clinic/${clinicUuid}/doctors/${doctorUuid}/inventory`,
+    { canEditInventory }
+  );
+  return res.data.data;
+}
+
+export async function fetchClinicInventoryEditAccess(
+  clinicUuid: string
+): Promise<{ canEditInventory: boolean }> {
+  const res = await axiosInstance.get<ApiSuccessResponse<{ canEditInventory: boolean }>>(
+    `/clinic/${clinicUuid}/inventory/edit-access`
   );
   return res.data.data;
 }

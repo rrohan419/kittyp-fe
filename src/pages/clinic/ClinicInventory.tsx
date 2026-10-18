@@ -28,6 +28,7 @@ import {
   createClinicInventoryItem,
   deleteClinicInventoryItem,
   fetchClinicInventory,
+  fetchClinicInventoryEditAccess,
   fetchClinicInventoryMovements,
   updateClinicInventoryItem,
 } from '@/services/clinicService';
@@ -60,7 +61,9 @@ export default function ClinicInventory() {
   const location = useLocation();
   const doctorPortal = location.pathname.startsWith('/doctor');
   const user = useAppSelector((s) => s.authReducer.user);
-  const canManage = hasRole(user?.roles, ROLES.CLINIC_ADMIN) && !doctorPortal;
+  const canAdjust = hasRole(user?.roles, ROLES.CLINIC_ADMIN) && !doctorPortal;
+  const [canEditItems, setCanEditItems] = useState(false);
+  const showActions = canAdjust || canEditItems;
   const { clinicUuid, loading: clinicLoading } = useActiveClinic();
   const [items, setItems] = useState<ClinicInventoryItem[]>([]);
   const [page, setPage] = useState(1);
@@ -106,6 +109,27 @@ export default function ClinicInventory() {
       setMovementTotal(result.totalElements);
     } catch { setMovements([]); setMovementsError('Inventory audit could not be loaded. Please try again.'); } finally { setMovementsLoading(false); }
   }, [clinicUuid]);
+  useEffect(() => {
+    if (!clinicUuid) {
+      setCanEditItems(false);
+      return;
+    }
+    if (canAdjust) {
+      setCanEditItems(true);
+      return;
+    }
+    let cancelled = false;
+    void fetchClinicInventoryEditAccess(clinicUuid)
+      .then((access) => {
+        if (!cancelled) setCanEditItems(Boolean(access.canEditInventory));
+      })
+      .catch(() => {
+        if (!cancelled) setCanEditItems(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [clinicUuid, canAdjust]);
   useEffect(() => { void load(page); }, [load, page]);
   useEffect(() => { void loadMovements(movementPage); }, [loadMovements, movementPage]);
   const lowStock = items.filter((item) => item.quantity < item.reorderLevel);
@@ -126,7 +150,7 @@ export default function ClinicInventory() {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Inventory</h1>
           <p className="text-muted-foreground mt-1 text-sm">{totalItems} items · {lowStock.length} below reorder on this page</p>
         </div>
-        <div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => { void load(page); void loadMovements(movementPage); }} disabled={!clinicUuid || loading} aria-label="Refresh inventory"><RefreshCw className="h-4 w-4" /></Button>{canManage ? <Button size="sm" onClick={openCreate} disabled={!clinicUuid}><Plus className="h-4 w-4 mr-2" />Add Item</Button> : null}</div>
+        <div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => { void load(page); void loadMovements(movementPage); }} disabled={!clinicUuid || loading} aria-label="Refresh inventory"><RefreshCw className="h-4 w-4" /></Button>{canEditItems ? <Button size="sm" onClick={openCreate} disabled={!clinicUuid}><Plus className="h-4 w-4 mr-2" />Add Item</Button> : null}</div>
       </div>
 
       {clinicLoading || loading ? <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">Loading live inventory...</div> : null}
@@ -165,7 +189,7 @@ export default function ClinicInventory() {
               <div className="border-b border-border pb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">On hand</div>
               <div className="border-b border-border pb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Reorder</div>
               <div className="border-b border-border pb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Price</div>
-              <div className="border-b border-border pb-2 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{canManage ? 'Actions' : ''}</div>
+              <div className="border-b border-border pb-2 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{showActions ? 'Actions' : ''}</div>
               {items.map((item) => {
                 return (
                   <Fragment key={item.uuid}>
@@ -180,12 +204,18 @@ export default function ClinicInventory() {
                     <div className={`${catalogCell} text-muted-foreground`}>{item.reorderLevel} {item.unit}</div>
                     <div className={`${catalogCell} font-medium`}>₹{item.unitPrice.toFixed(2)}</div>
                     <div className={`${catalogCell} flex flex-nowrap justify-center gap-0.5`}>
-                      {canManage ? (
+                      {showActions ? (
                         <>
-                          <Button variant="ghost" size="icon" title={`Add stock to ${item.name}`} aria-label={`Add stock to ${item.name}`} onClick={() => openStock(item, 'ADD')}><Plus className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" title={`Remove stock from ${item.name}`} aria-label={`Remove stock from ${item.name}`} onClick={() => openStock(item, 'REMOVE')}><Minus className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" title={`Edit ${item.name}`} aria-label={`Edit ${item.name}`} onClick={() => openEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" title={`Delete ${item.name}`} aria-label={`Delete ${item.name}`} onClick={() => void remove(item)} disabled={deleting === item.uuid}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                          {canEditItems ? (
+                            <>
+                              <Button variant="ghost" size="icon" title={`Add stock to ${item.name}`} aria-label={`Add stock to ${item.name}`} onClick={() => openStock(item, 'ADD')}><Plus className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" title={`Remove stock from ${item.name}`} aria-label={`Remove stock from ${item.name}`} onClick={() => openStock(item, 'REMOVE')}><Minus className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" title={`Edit ${item.name}`} aria-label={`Edit ${item.name}`} onClick={() => openEdit(item)}><Pencil className="h-4 w-4" /></Button>
+                            </>
+                          ) : null}
+                          {canAdjust ? (
+                            <Button variant="ghost" size="icon" title={`Delete ${item.name}`} aria-label={`Delete ${item.name}`} onClick={() => void remove(item)} disabled={deleting === item.uuid}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                          ) : null}
                         </>
                       ) : null}
                     </div>
@@ -217,12 +247,18 @@ export default function ClinicInventory() {
                       <p className="font-medium">₹{item.unitPrice.toFixed(2)}</p>
                     </div>
                   </div>
-                  {canManage ? (
+                  {showActions ? (
                     <div className="grid grid-cols-2 gap-2">
-                      <Button variant="outline" size="sm" onClick={() => openStock(item, 'ADD')}>Add</Button>
-                      <Button variant="outline" size="sm" onClick={() => openStock(item, 'REMOVE')}>Remove</Button>
-                      <Button variant="outline" size="sm" onClick={() => openEdit(item)}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button>
-                      <Button variant="outline" size="sm" onClick={() => void remove(item)} disabled={deleting === item.uuid}><Trash2 className="mr-1 h-3.5 w-3.5" />Delete</Button>
+                      {canEditItems ? (
+                        <>
+                          <Button variant="outline" size="sm" onClick={() => openStock(item, 'ADD')}>Add</Button>
+                          <Button variant="outline" size="sm" onClick={() => openStock(item, 'REMOVE')}>Remove</Button>
+                          <Button variant="outline" size="sm" onClick={() => openEdit(item)}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button>
+                        </>
+                      ) : null}
+                      {canAdjust ? (
+                        <Button variant="outline" size="sm" onClick={() => void remove(item)} disabled={deleting === item.uuid}><Trash2 className="mr-1 h-3.5 w-3.5" />Delete</Button>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
