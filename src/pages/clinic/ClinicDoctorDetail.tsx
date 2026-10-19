@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { displayPhone } from '@/utils/validation';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { format, parseISO, differenceInMonths, isValid } from 'date-fns';
 import {
@@ -12,9 +13,11 @@ import {
   Mail,
   PawPrint,
   Phone,
+  Check,
   Star,
   Stethoscope,
   User,
+  X,
   XCircle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -30,12 +33,10 @@ import {
   fetchClinicDoctorDetail,
   fetchClinicDoctors,
 } from '@/services/clinicService';
-import { statusLabel } from '@/services/doctorVerificationService';
 import { canViewDoctorCertificates } from '@/utils/roles';
 import { specializationLabel } from '@/utils/specialization';
 import { useDoctorsBasePath } from '@/hooks/useDoctorsBasePath';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 
 type CheckItem = { key: keyof ClinicDoctorDetailModel; label: string; submitted?: boolean };
 
@@ -293,7 +294,18 @@ export default function ClinicDoctorDetail() {
             </div>
           )}
           <div className="min-w-0">
-            <h1 className="text-2xl lg:text-3xl font-bold text-foreground truncate">{detail.name}</h1>
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-2xl lg:text-3xl font-bold text-foreground truncate">{detail.name}</h1>
+              {detail.isActive !== false && detail.status?.toUpperCase() === 'PUBLISHED' ? (
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-white shrink-0" aria-label="Active">
+                  <Check className="h-3 w-3" strokeWidth={3} />
+                </span>
+              ) : (
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shrink-0" aria-label="Inactive">
+                  <X className="h-3 w-3" strokeWidth={3} />
+                </span>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground mt-1">
               {specializationLabel(detail.specialization) || 'General'}
               {clinic?.name ? ` · ${clinic.name}` : ''}
@@ -313,29 +325,6 @@ export default function ClinicDoctorDetail() {
                 <span>Not rated yet</span>
               )}
             </p>
-            <div className="flex flex-wrap gap-2 mt-2">
-              <Badge
-                variant="secondary"
-                className={cn(
-                  'border-0 capitalize',
-                  detail.isActive === false
-                    ? 'bg-muted text-muted-foreground'
-                    : 'bg-green-100 text-green-700'
-                )}
-              >
-                {detail.isActive === false ? 'inactive' : 'active'}
-              </Badge>
-              {detail.role && (
-                <Badge variant="secondary" className="capitalize">
-                  {detail.role}
-                </Badge>
-              )}
-              {showFullDossier && detail.status && (
-                <Badge variant="outline" className="capitalize">
-                  {statusLabel(detail.status as Parameters<typeof statusLabel>[0])}
-                </Badge>
-              )}
-            </div>
           </div>
         </div>
       </div>
@@ -502,7 +491,7 @@ export default function ClinicDoctorDetail() {
                       {(row.pet.weight || row.pet.microchipNumber || row.pet.dateOfBirth) && (
                         <div className="sm:col-span-2 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
                           {row.pet.dateOfBirth && <span>DOB {formatPetDobWithAge(row.pet.dateOfBirth)}</span>}
-                          {row.pet.weight && <span>Weight {row.pet.weight}</span>}
+                          {formatPetWeight(row.pet.weight) && <span>Weight {formatPetWeight(row.pet.weight)} kg</span>}
                           {row.pet.microchipNumber && <span>Chip {row.pet.microchipNumber}</span>}
                           {row.pet.globalPetId && <span>ID {row.pet.globalPetId}</span>}
                         </div>

@@ -83,10 +83,8 @@ export const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
       onUploadComplete(url);
       setPreviewUrl(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-      toast.success('Profile picture updated successfully!');
     } catch (error: any) {
       const errorMessage = error.message || 'Upload failed';
-      toast.error(errorMessage);
       onUploadError?.(errorMessage);
     } finally {
       setIsUploading(false);

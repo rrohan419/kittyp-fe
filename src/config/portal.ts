@@ -9,6 +9,7 @@ import {
   Stethoscope,
   Building2,
   Package,
+  Boxes,
   FileText,
   ShoppingCart,
   PawPrint,
@@ -84,6 +85,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Clients', path: '/doctor/clients', icon: PawPrint },
       { label: 'Nutrition', path: '/doctor/nutrition', icon: Apple },
       { label: 'Blog', path: '/doctor/blog', icon: FileText },
+      { label: 'Inventory', path: '/doctor/inventory', icon: Boxes },
       { label: 'Invoices', path: '/doctor/invoices', icon: Package },
       { label: 'WhatsApp', path: '/doctor/whatsapp', icon: MessageCircle },
       { label: 'Settings', path: '/doctor/settings', icon: Settings },
@@ -132,6 +134,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Appointments', path: '/clinic/appointments', icon: Calendar },
       { label: 'Clients', path: '/clinic/patients', icon: PawPrint },
       { label: 'Doctors', path: '/clinic/doctors', icon: Stethoscope },
+      { label: 'Inventory', path: '/clinic/inventory', icon: Package },
       { label: 'Billing', path: '/clinic/invoices', icon: Package },
     ],
     bottomTabs: [

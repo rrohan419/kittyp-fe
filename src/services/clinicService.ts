@@ -47,6 +47,8 @@ export interface ClinicDoctorModel {
   experienceYears?: number | null;
   registrationNumber?: string | null;
   clinicUuid?: string | null;
+  canEditInventory?: boolean;
+  clinicOwner?: boolean;
 }
 
 export interface ClinicDoctorPatientModel {
@@ -367,6 +369,7 @@ export interface ClinicInventoryItem {
   reorderLevel: number;
   unitPrice: number;
   active: boolean;
+  reserved?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -394,10 +397,49 @@ export async function fetchClinicReports(
 
 export async function fetchClinicInventory(
   clinicUuid: string,
-  params: { pageNumber?: number; pageSize?: number } = {}
+  params: { pageNumber?: number; pageSize?: number; category?: string } = {}
 ): Promise<PaginationModel<ClinicInventoryItem>> {
   const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<ClinicInventoryItem>>>(
     `/clinic/${clinicUuid}/inventory`,
+    { params }
+  );
+  return res.data.data ?? emptyPage(params.pageSize ?? 10);
+}
+
+export async function fetchClinicInventoryOptions(
+  clinicUuid: string,
+  category: string
+): Promise<ClinicInventoryItem[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ClinicInventoryItem[]>>(
+    `/clinic/${clinicUuid}/inventory/options`,
+    { params: { category } }
+  );
+  return res.data.data ?? [];
+}
+
+export type InventoryMovementAction = 'OPENING' | 'ADJUST' | 'CONSUME' | 'RESERVE' | 'RELEASE';
+
+export interface ClinicInventoryMovement {
+  uuid: string;
+  itemUuid: string;
+  itemName: string;
+  action: InventoryMovementAction;
+  quantityDelta: number;
+  quantityAfter: number;
+  note?: string | null;
+  source: 'MANUAL' | 'INVOICE';
+  invoiceUuid?: string | null;
+  invoiceNumber?: string | null;
+  actorName?: string | null;
+  createdAt?: string;
+}
+
+export async function fetchClinicInventoryMovements(
+  clinicUuid: string,
+  params: { pageNumber?: number; pageSize?: number } = {}
+): Promise<PaginationModel<ClinicInventoryMovement>> {
+  const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<ClinicInventoryMovement>>>(
+    `/clinic/${clinicUuid}/inventory/movements`,
     { params }
   );
   return res.data.data ?? emptyPage(params.pageSize ?? 10);
@@ -421,6 +463,18 @@ export async function updateClinicInventoryItem(
 ): Promise<ClinicInventoryItem> {
   const res = await axiosInstance.patch<ApiSuccessResponse<ClinicInventoryItem>>(
     `/clinic/${clinicUuid}/inventory/${itemUuid}`,
+    payload
+  );
+  return res.data.data;
+}
+
+export async function adjustClinicInventoryStock(
+  clinicUuid: string,
+  itemUuid: string,
+  payload: { direction: 'ADD' | 'REMOVE'; quantity: number; note?: string }
+): Promise<ClinicInventoryItem> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ClinicInventoryItem>>(
+    `/clinic/${clinicUuid}/inventory/${itemUuid}/stock`,
     payload
   );
   return res.data.data;
@@ -679,6 +733,7 @@ export interface StaffMemberModel {
   role?: string;
   joinedAt?: string | null;
   enabled: boolean;
+  canEditInventory?: boolean;
 }
 
 export async function inviteStaff(
@@ -688,6 +743,39 @@ export async function inviteStaff(
   const res = await axiosInstance.post<ApiSuccessResponse<StaffInviteModel>>(
     `/clinic/${clinicUuid}/staff/invite`,
     payload
+  );
+  return res.data.data;
+}
+
+export async function updateStaffInventoryAccess(
+  clinicUuid: string,
+  userUuid: string,
+  canEditInventory: boolean
+): Promise<StaffMemberModel> {
+  const res = await axiosInstance.patch<ApiSuccessResponse<StaffMemberModel>>(
+    `/clinic/${clinicUuid}/staff/${userUuid}/inventory`,
+    { canEditInventory }
+  );
+  return res.data.data;
+}
+
+export async function updateDoctorInventoryAccess(
+  clinicUuid: string,
+  doctorUuid: string,
+  canEditInventory: boolean
+): Promise<ClinicDoctorModel> {
+  const res = await axiosInstance.patch<ApiSuccessResponse<ClinicDoctorModel>>(
+    `/clinic/${clinicUuid}/doctors/${doctorUuid}/inventory`,
+    { canEditInventory }
+  );
+  return res.data.data;
+}
+
+export async function fetchClinicInventoryEditAccess(
+  clinicUuid: string
+): Promise<{ canEditInventory: boolean }> {
+  const res = await axiosInstance.get<ApiSuccessResponse<{ canEditInventory: boolean }>>(
+    `/clinic/${clinicUuid}/inventory/edit-access`
   );
   return res.data.data;
 }

@@ -12,6 +12,7 @@ import { fetchMyParentBookings, fetchMyParentVisits, rateParentVisit } from '@/s
 import { toast } from 'sonner';
 import { petNameWithType } from '@/utils/petType';
 import { specializationLabel } from '@/utils/specialization';
+import { formatDoctorName, sameClinicAndDoctor } from '@/utils/providerLabel';
 import { consultPath, isVideoConsult } from '@/utils/consult';
 
 const ACTIVE: VisitStatus[] = ['WAITLIST', 'CHECKED_IN', 'IN_PROGRESS', 'CHECKING_OUT'];
@@ -45,13 +46,12 @@ function ProviderLines({
   doctorName?: string | null;
   specialization?: string | null;
 }) {
-  const doctor = doctorName
-    ? `Dr. ${doctorName.replace(/^Dr\.?\s*/i, '')}`
-    : null;
+  const doctor = formatDoctorName(doctorName) || null;
   const specialty = specializationLabel(specialization) || null;
+  const showClinic = Boolean(clinicName?.trim()) && !sameClinicAndDoctor(clinicName, doctorName);
   return (
     <div className="text-sm leading-snug">
-      {clinicName ? (
+      {showClinic ? (
         <div className="font-medium text-foreground">{clinicName}</div>
       ) : null}
       {doctor ? <div className="text-muted-foreground">{doctor}</div> : (

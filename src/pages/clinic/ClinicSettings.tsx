@@ -4,14 +4,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Building2, AlertTriangle, Plus, Power, Pencil, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import {
+  ClinicDoctorModel,
+  fetchClinicDoctors,
+  fetchClinicStaff,
   shutdownClinic,
   reopenClinic,
   sendClinicContactOtp,
+  StaffMemberModel,
   updateClinic,
+  updateDoctorInventoryAccess,
+  updateStaffInventoryAccess,
   verifyClinicContactOtp,
 } from '@/services/clinicService';
 import { ClinicHoursDisplay, ClinicHoursEditor } from '@/components/clinic/ClinicHoursEditor';
@@ -36,6 +43,11 @@ export default function ClinicSettings() {
   const canManagePracticeProfile =
     hasRole(user?.roles, ROLES.CLINIC_ADMIN) ||
     (hasRole(user?.roles, ROLES.DOCTOR) && !!clinic?.personal);
+  const showInventoryAccess = hasRole(user?.roles, ROLES.CLINIC_ADMIN) && !clinic?.personal;
+  const [staff, setStaff] = useState<StaffMemberModel[]>([]);
+  const [doctors, setDoctors] = useState<ClinicDoctorModel[]>([]);
+  const [accessLoading, setAccessLoading] = useState(false);
+  const [savingAccessKey, setSavingAccessKey] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
   const isShutdown = clinic?.status === 'SHUTDOWN';
 
@@ -57,6 +69,71 @@ export default function ClinicSettings() {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [phoneOtpMethod, setPhoneOtpMethod] = useState<'WHATSAPP' | 'PHONE'>('WHATSAPP');
   const [otpBusy, setOtpBusy] = useState<'EMAIL' | 'PHONE' | null>(null);
+
+  useEffect(() => {
+    if (!clinicUuid || !showInventoryAccess) {
+      setStaff([]);
+      setDoctors([]);
+      return;
+    }
+    let cancelled = false;
+    setAccessLoading(true);
+    void Promise.all([fetchClinicStaff(clinicUuid), fetchClinicDoctors(clinicUuid)])
+      .then(([staffRows, doctorRows]) => {
+        if (cancelled) return;
+        setStaff(staffRows.filter((row) => row.enabled));
+        setDoctors(doctorRows.filter((row) => row.isActive !== false));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setStaff([]);
+          setDoctors([]);
+          toast.error('Could not load inventory access');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setAccessLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [clinicUuid, showInventoryAccess]);
+
+  const setStaffInventoryAccess = async (member: StaffMemberModel, canEditInventory: boolean) => {
+    if (!clinicUuid) return;
+    setSavingAccessKey(`staff:${member.userUuid}`);
+    try {
+      const updated = await updateStaffInventoryAccess(clinicUuid, member.userUuid, canEditInventory);
+      setStaff((rows) =>
+        rows.map((row) =>
+          row.userUuid === member.userUuid ? { ...row, canEditInventory: updated.canEditInventory } : row
+        )
+      );
+    } catch {
+      toast.error('Could not update inventory access');
+    } finally {
+      setSavingAccessKey(null);
+    }
+  };
+
+  const setDoctorInventoryAccess = async (doctor: ClinicDoctorModel, canEditInventory: boolean) => {
+    if (!clinicUuid || doctor.clinicOwner) return;
+    setSavingAccessKey(`doctor:${doctor.doctorUuid}`);
+    try {
+      const updated = await updateDoctorInventoryAccess(clinicUuid, doctor.doctorUuid, canEditInventory);
+      setDoctors((rows) =>
+        rows.map((row) =>
+          row.doctorUuid === doctor.doctorUuid
+            ? { ...row, canEditInventory: updated.canEditInventory, clinicOwner: updated.clinicOwner }
+            : row
+        )
+      );
+    } catch {
+      toast.error('Could not update inventory access');
+    } finally {
+      setSavingAccessKey(null);
+    }
+  };
 
   useEffect(() => {
     if (!clinic || editingProfile) return;
@@ -281,7 +358,6 @@ export default function ClinicSettings() {
           <CopyableId
             label="Clinic ID"
             value={clinic?.uuid}
-            hint="Sign in with this ID or your email."
           />
         </div>
       </div>
@@ -522,6 +598,87 @@ export default function ClinicSettings() {
           </Button>
         </CardContent>
       </Card>
+
+      {showInventoryAccess ? (
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base">Inventory</CardTitle>
+            <CardDescription>
+              Choose which doctors and staff can add items, edit items, and add or remove stock. Delete stays with you.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {accessLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <>
+                <div>
+                  <p className="mb-2 text-sm font-medium">Doctors</p>
+                  {doctors.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No doctors yet.{' '}
+                      <Link to="/clinic/doctors" className="text-primary underline-offset-4 hover:underline">
+                        Invite a doctor
+                      </Link>
+                      .
+                    </p>
+                  ) : (
+                    <ul className="divide-y">
+                      {doctors.map((doctor) => (
+                        <li key={doctor.doctorUuid} className="flex items-center justify-between gap-3 py-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{doctor.name || doctor.email}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {doctor.clinicOwner
+                                ? 'Clinic owner · always on'
+                                : 'Add items, edit, and change stock'}
+                            </p>
+                          </div>
+                          <Switch
+                            checked={Boolean(doctor.canEditInventory || doctor.clinicOwner)}
+                            disabled={Boolean(doctor.clinicOwner) || savingAccessKey === `doctor:${doctor.doctorUuid}`}
+                            onCheckedChange={(checked) => void setDoctorInventoryAccess(doctor, checked)}
+                            aria-label={`Allow ${doctor.name || doctor.email} to add and edit inventory items`}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-2 text-sm font-medium">Staff</p>
+                  {staff.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No staff yet.{' '}
+                      <Link to="/clinic/staff" className="text-primary underline-offset-4 hover:underline">
+                        Invite staff
+                      </Link>
+                      .
+                    </p>
+                  ) : (
+                    <ul className="divide-y">
+                      {staff.map((member) => (
+                        <li key={member.userUuid} className="flex items-center justify-between gap-3 py-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{member.name || member.email}</p>
+                            <p className="text-xs text-muted-foreground">Add items, edit, and change stock</p>
+                          </div>
+                          <Switch
+                            checked={Boolean(member.canEditInventory)}
+                            disabled={savingAccessKey === `staff:${member.userUuid}`}
+                            onCheckedChange={(checked) => void setStaffInventoryAccess(member, checked)}
+                            aria-label={`Allow ${member.name || member.email} to add and edit inventory items`}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card
         className={`border shadow-sm ${

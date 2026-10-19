@@ -5,7 +5,7 @@ import { PawPrint, Plus } from 'lucide-react';
 import { RootState } from '@/module/store/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { formatPetDobWithAge } from '@/utils/petAge';
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import { PetImage } from '@/components/ui/PetImage';
 import { OwnerPetEditDialog } from '@/components/ui/OwnerPetEditDialog';
 
@@ -43,20 +43,16 @@ export const PetManagementPage: React.FC = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {pets.map((pet, index) => (
+          {pets.map((pet) => (
             <Card key={pet.uuid} className="border-0 shadow-sm">
               <CardContent className="p-5 flex items-center gap-4">
                 <div className="w-14 h-14 rounded-2xl bg-muted overflow-hidden shrink-0">
-                  <PetImage pet={pet} index={index} alt={pet.name} className="w-full h-full object-cover" />
+                  <PetImage pet={pet} alt={pet.name} className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold truncate">{pet.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {pet.type} · {pet.breed || 'Mixed'} ·{' '}
-                    {pet.dateOfBirth ? formatPetDobWithAge(pet.dateOfBirth) : '—'}
-                  </p>
-                  {pet.weight != null && (
-                    <p className="text-xs text-muted-foreground mt-1">{pet.weight} kg</p>
+                  {formatPetWeight(pet.weight) && (
+                    <p className="text-xs text-muted-foreground mt-1">{formatPetWeight(pet.weight)} kg</p>
                   )}
                 </div>
                 <Button size="sm" asChild>

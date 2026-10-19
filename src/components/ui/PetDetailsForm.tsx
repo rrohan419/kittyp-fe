@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button } from "@/components/ui/button";
+import { formatPetWeight } from '@/utils/formatPetWeight';
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,7 @@ import { PetPhotoUpload } from './PetPhotoUpload';
 import { addPetToUser, removePetFromUser, updatePetInUser, setPetsLoading, setSaving } from '@/module/slice/AuthSlice';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { useNavigate } from 'react-router-dom';
+import { Button } from './button';
 
 interface PetDetailsFormProps {
     onPetAdded?: () => void;
@@ -120,7 +121,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
         if (!rawWeight) return '';
         const numeric = extractNumericWeight(rawWeight);
         if (!numeric) return '';
-        return `${numeric} kg`;
+        return numeric;
     };
 
     const handleAddPet = async () => {
@@ -290,7 +291,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                             <CardContent className="space-y-2">
                                 <div className="flex flex-wrap gap-2">
                                     {pet.dateOfBirth && <Badge variant="secondary">{formatPetDobWithAge(pet.dateOfBirth)}</Badge>}
-                                    {pet.weight && <Badge variant="secondary">{pet.weight}</Badge>}
+                                    {formatPetWeight(pet.weight) && <Badge variant="secondary">{formatPetWeight(pet.weight)} kg</Badge>}
                                     {pet.activityLevel && <Badge variant="outline">{pet.activityLevel} activity</Badge>}
                                     {pet.isNeutered && <Badge variant="outline">Neutered</Badge>}
                                     {pet.microchipNumber && <Badge variant="outline">Chip {pet.microchipNumber}</Badge>}

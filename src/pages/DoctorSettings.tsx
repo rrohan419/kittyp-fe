@@ -226,7 +226,6 @@ export default function DoctorSettings() {
           <CopyableId
             label="Doctor ID"
             value={profile?.uuid}
-            hint="Use this ID or your email to sign in. Clinics invite you with this ID."
           />
           <div className="flex items-center gap-2 text-muted-foreground">
             <Phone className="h-4 w-4 shrink-0" />

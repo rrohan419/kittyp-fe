@@ -108,7 +108,6 @@ const Login = () => {
         if (hasGuestCartItems) {
           toast.success("Logging you in", {
             description: "Your cart items will be synced in the background",
-            duration: 3000,
           });
         }
       }

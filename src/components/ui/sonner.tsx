@@ -1,6 +1,9 @@
 import { useTheme } from "@/components/providers/ThemeProvider"
 import { Toaster as Sonner } from "sonner"
 
+/** How long every toast stays on screen. Success, error, warning, and info all use this. */
+export const TOAST_DURATION_MS = 5000
+
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
 const Toaster = ({ ...props }: ToasterProps) => {
@@ -11,6 +14,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={resolvedMode as ToasterProps["theme"]}
       className="toaster group"
       position="bottom-right"
+      duration={TOAST_DURATION_MS}
       toastOptions={{
         classNames: {
           toast: [
@@ -51,6 +55,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
             "group-[.toast]:opacity-90",
             "group-[.toast]:leading-relaxed"
           ].join(" "),
+          content: [
+            "group-[.toast]:min-w-0",
+            "group-[.toast]:flex-1",
+          ].join(" "),
           actionButton: [
             "group-[.toast]:bg-primary",
             "group-[.toast]:text-primary-foreground",
@@ -62,6 +70,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
             "group-[.toast]:h-9",
             "group-[.toast]:px-4",
             "group-[.toast]:ml-2",
+            "group-[.toast]:shrink-0",
+            "group-[.toast]:whitespace-nowrap",
+            "group-[.toast]:self-center",
             "group-[.toast]:transition-all"
           ].join(" "),
           cancelButton: [
@@ -77,7 +88,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
             "group-[.toast]:transition-all"
           ].join(" "),
         },
-        duration: 800,
+        duration: TOAST_DURATION_MS,
         unstyled: true,
       }}
       {...props}
