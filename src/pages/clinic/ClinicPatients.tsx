@@ -845,7 +845,7 @@ export default function ClinicPatients() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {pets.map((p, index) => (
+              {pets.map((p) => (
                 <Card
                   key={`${p.clinicUuid}-${p.petUuid}`}
                   className="border border-border shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/30 transition-all overflow-hidden bg-card"
@@ -855,7 +855,7 @@ export default function ClinicPatients() {
                       photoUrl={p.photoUrl}
                       name={p.name}
                       species={p.species}
-                      index={index}
+                      petUuid={p.petUuid}
                       variant="cover"
                       fit="contain"
                       className="h-40 rounded-xl bg-muted/40"

@@ -51,7 +51,7 @@ export default function ClinicPatientDashboard() {
   const { petUuid = '' } = useParams();
   const { pathname } = useLocation();
   const isDoctorPortal = pathname.startsWith('/doctor');
-  const patientsPath = isDoctorPortal ? '/doctor/patients' : '/clinic/patients';
+  const patientsPath = isDoctorPortal ? '/doctor/patients' : '/clinic/patients?tab=pets';
   const patientsLabel = isDoctorPortal ? 'Patients' : 'Clients & Pets';
   const user = useAppSelector((s) => s.authReducer.user);
   const canEditMicrochip = canManageClinicOps(user?.roles) && !isDoctorPortal;
@@ -316,6 +316,7 @@ export default function ClinicPatientDashboard() {
               photoUrl={pet.photoUrl}
               name={pet.name}
               species={pet.species}
+              petUuid={pet.petUuid}
               variant="cover"
               fit="contain"
               rounded="2xl"

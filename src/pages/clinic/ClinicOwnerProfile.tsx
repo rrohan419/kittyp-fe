@@ -378,14 +378,14 @@ export default function ClinicOwnerProfile() {
           </p>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {owner.pets.map((p, index) => (
+          {owner.pets.map((p) => (
             <Card key={p.petUuid} className="border-0 shadow-sm overflow-hidden">
               <div className="p-3 pb-0">
                 <PetPhoto
                   photoUrl={p.photoUrl}
                   name={p.name}
                   species={p.species}
-                  index={index}
+                  petUuid={p.petUuid}
                   variant="cover"
                   fit="contain"
                   className="h-28 rounded-xl bg-muted/40"

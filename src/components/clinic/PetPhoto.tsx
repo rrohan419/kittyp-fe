@@ -1,31 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PawPrint } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ensurePetDefaultPhoto } from '@/utils/ensurePetDefaultPhoto';
 import { petFallbackPhotoUrl } from '@/utils/petFallbackPhoto';
-
-/** Prefer an uploaded photo. Otherwise the stock photo at this list index. */
-export function resolvePetPhotoUrl(
-  photoUrl?: string | null,
-  species?: string | null,
-  petIndex = 0
-): string {
-  if (photoUrl?.trim()) return photoUrl.trim();
-  return petFallbackPhotoUrl(species, petIndex);
-}
 
 type PetPhotoProps = {
   photoUrl?: string | null;
   name: string;
   species?: string | null;
-  /** Position in the pet list. Stock photos rotate with `index % images.length`. */
-  index?: number;
+  petUuid?: string | null;
   className?: string;
   imgClassName?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   rounded?: 'xl' | '2xl' | 'full' | 'none';
-  /** Full-bleed area for card headers / profile panels */
   variant?: 'avatar' | 'cover';
-  /** contain = show full image (no crop); cover = fill frame */
   fit?: 'contain' | 'cover';
 };
 
@@ -40,7 +28,7 @@ export function PetPhoto({
   photoUrl,
   name,
   species,
-  index = 0,
+  petUuid,
   className,
   imgClassName,
   size = 'md',
@@ -48,8 +36,30 @@ export function PetPhoto({
   variant = 'avatar',
   fit = 'cover',
 }: PetPhotoProps) {
-  const src = resolvePetPhotoUrl(photoUrl, species, index);
+  const [src, setSrc] = useState(
+    () => photoUrl?.trim() || petFallbackPhotoUrl(species, petUuid)
+  );
   const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    const existing = photoUrl?.trim();
+    if (existing) {
+      setSrc(existing);
+      return;
+    }
+    if (!petUuid) {
+      setSrc(petFallbackPhotoUrl(species, petUuid));
+      return;
+    }
+    let alive = true;
+    ensurePetDefaultPhoto(petUuid, photoUrl, species).then((url) => {
+      if (alive) setSrc(url);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [photoUrl, petUuid, species]);
+
   const radius =
     rounded === 'none'
       ? 'rounded-none'

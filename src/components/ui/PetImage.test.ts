@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { PET_FALLBACK_PHOTOS } from '../../utils/petFallbackPhoto.ts';
+import { PET_FALLBACK_PHOTOS, petFallbackPhotoUrl } from '../../utils/petFallbackPhoto.ts';
 import { PET_IMAGE_PLACEHOLDER, resolvePetImageSrc } from './petImageSrc.ts';
 
 describe('resolvePetImageSrc', () => {
@@ -34,22 +34,18 @@ describe('resolvePetImageSrc', () => {
     );
   });
 
-  it('rotates stock photos by list index within the species set', () => {
-    assert.equal(resolvePetImageSrc({ type: 'Cat' }, 0), PET_FALLBACK_PHOTOS.cat[0]);
-    assert.equal(resolvePetImageSrc({ type: 'Cat' }, 1), PET_FALLBACK_PHOTOS.cat[1]);
-    assert.equal(resolvePetImageSrc({ type: 'feline' }, 5), PET_FALLBACK_PHOTOS.cat[0]);
-    assert.equal(resolvePetImageSrc({ species: 'Dog' }, 2), PET_FALLBACK_PHOTOS.dog[2]);
-    assert.equal(resolvePetImageSrc({ species: 'canine' }, 4), PET_FALLBACK_PHOTOS.dog[4]);
-    assert.equal(resolvePetImageSrc({ type: 'rabbit' }, 3), PET_FALLBACK_PHOTOS.rabbit[3]);
-    assert.equal(resolvePetImageSrc({ species: 'Bird' }, 6), PET_FALLBACK_PHOTOS.bird[1]);
-    assert.equal(resolvePetImageSrc({}), PET_FALLBACK_PHOTOS.other[0]);
+  it('uses the same stock photo for the same pet uuid everywhere', () => {
+    const catA = resolvePetImageSrc({ type: 'Cat', uuid: 'pet-1' });
+    const catB = resolvePetImageSrc({ type: 'feline', uuid: 'pet-1' });
+    assert.equal(catA, catB);
+    assert.ok(PET_FALLBACK_PHOTOS.cat.includes(catA));
     assert.equal(
-      resolvePetImageSrc({ profilePicture: null, photoUrl: '', photos: [], type: 'other' }, 2),
-      PET_FALLBACK_PHOTOS.other[2]
+      resolvePetImageSrc({ species: 'Dog', uuid: 'dog-9' }),
+      petFallbackPhotoUrl('Dog', 'dog-9')
     );
     assert.equal(
-      resolvePetImageSrc({ profilePicture: '   ', photos: [null, ''], species: 'rabbit' }, 4),
-      PET_FALLBACK_PHOTOS.rabbit[4]
+      resolvePetImageSrc({ type: 'rabbit', uuid: 'r-1' }),
+      resolvePetImageSrc({ species: 'bunny', uuid: 'r-1' })
     );
     assert.ok(PET_IMAGE_PLACEHOLDER.startsWith('data:image/svg+xml'));
   });
@@ -59,6 +55,7 @@ describe('resolvePetImageSrc', () => {
       resolvePetImageSrc({
         profilePicture: 'https://cdn.example/parent.jpg',
         type: 'Cat',
+        uuid: 'pet-1',
       }),
       'https://cdn.example/parent.jpg'
     );

@@ -254,7 +254,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20 shrink-0">
-                                            <PetImage pet={pet} index={index} alt={pet.name} className="h-full w-full object-cover" />
+                                            <PetImage pet={pet} alt={pet.name} className="h-full w-full object-cover" />
                                         </div>
                                         <div>
                                             <CardTitle className="text-lg">{pet.name}</CardTitle>

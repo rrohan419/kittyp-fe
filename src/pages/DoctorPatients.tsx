@@ -120,7 +120,7 @@ export default function DoctorPatients() {
       ) : (
         <>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {patients.filter((p) => p.petUuid).map((p, index) => {
+          {patients.filter((p) => p.petUuid).map((p) => {
             const last = p.lastVisitAt ? parseISO(p.lastVisitAt) : null;
             return (
               <Card key={p.petUuid} className="border-0 shadow-sm hover:shadow-md transition-shadow">
@@ -130,7 +130,7 @@ export default function DoctorPatients() {
                       photoUrl={p.profilePicture}
                       name={p.petName}
                       species={p.species}
-                      index={index}
+                      petUuid={p.petUuid}
                       size="md"
                       className="w-12 h-12 rounded-2xl"
                     />

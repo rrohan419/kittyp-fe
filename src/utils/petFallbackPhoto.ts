@@ -27,9 +27,18 @@ export function petFallbackKind(speciesOrType?: string | null): PetFallbackKind 
   return 'other';
 }
 
-/** `images[petIndex % images.length]` within the species set. */
-export function petFallbackPhotoUrl(speciesOrType?: string | null, petIndex = 0): string {
+function hashSeed(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = (hash << 5) - hash + value.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+/** Same pet uuid always maps to the same stock photo in that species set. */
+export function petFallbackPhotoUrl(speciesOrType?: string | null, petUuid?: string | null): string {
   const images = PET_FALLBACK_PHOTOS[petFallbackKind(speciesOrType)];
-  const index = petIndex >= 0 ? petIndex : 0;
-  return images[index % images.length];
+  const key = petUuid?.trim() || speciesOrType?.trim() || 'pet';
+  return images[hashSeed(key) % images.length];
 }

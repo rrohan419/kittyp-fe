@@ -25,6 +25,7 @@ import { AddPet, UpdatePet } from '@/services/UserService';
 import { addPetToUser, updatePetInUser } from '@/module/slice/AuthSlice';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { normalizePetGender } from '@/utils/petType';
+import { ensurePetDefaultPhoto } from '@/utils/ensurePetDefaultPhoto';
 
 type PetForm = Omit<UpdatePet, 'uuid' | 'isNeutered'> & { isNeutered: string; type: string };
 
@@ -94,6 +95,14 @@ export function OwnerPetEditDialog({ open, onOpenChange, pet, onSaved }: Props) 
   useEffect(() => {
     if (!open) return;
     setForm(pet ? formFromPet(pet) : emptyForm);
+    if (!pet?.uuid || pet.profilePicture?.trim()) return;
+    let alive = true;
+    ensurePetDefaultPhoto(pet.uuid, pet.profilePicture, pet.type).then((url) => {
+      if (alive) setForm((s) => (s.profilePicture?.trim() ? s : { ...s, profilePicture: url }));
+    });
+    return () => {
+      alive = false;
+    };
   }, [open, pet]);
 
   const handleSubmit = async (e: FormEvent) => {
