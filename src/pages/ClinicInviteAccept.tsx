@@ -21,6 +21,17 @@ import { ROLES, hasAnyRole } from '@/utils/roles';
 import { parseApiErrorMessage } from '@/utils/validation';
 import { fetchMyDoctorProfile, isPracticeReady, statusLabel } from '@/services/doctorVerificationService';
 
+function apiErrorMessage(err: unknown, fallback: string): string {
+  const ax = err as { response?: { data?: unknown }; message?: string };
+  const raw =
+    typeof ax.response?.data === 'string'
+      ? ax.response.data
+      : ax.response?.data
+        ? JSON.stringify(ax.response.data)
+        : ax.message || '';
+  return parseApiErrorMessage(raw, fallback);
+}
+
 export default function ClinicInviteAccept() {
   const [params] = useSearchParams();
   const token = params.get('token') || '';
@@ -35,6 +46,8 @@ export default function ClinicInviteAccept() {
   const [error, setError] = useState<string | null>(null);
   const [practiceReady, setPracticeReady] = useState(true);
   const [doctorStatusLabel, setDoctorStatusLabel] = useState<string | null>(null);
+  /** Set after a successful decline so we show confirmation instead of redirecting to /doctor. */
+  const [justDeclined, setJustDeclined] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,14 +101,7 @@ export default function ClinicInviteAccept() {
       notifyInviteAddressed();
       navigate('/doctor/appointments');
     } catch (err: unknown) {
-      const ax = err as { response?: { data?: unknown }; message?: string };
-      const raw =
-        typeof ax.response?.data === 'string'
-          ? ax.response.data
-          : ax.response?.data
-            ? JSON.stringify(ax.response.data)
-            : ax.message || '';
-      toast.error(parseApiErrorMessage(raw, 'Failed to accept invite'));
+      toast.error(apiErrorMessage(err, 'Failed to accept invite'));
     } finally {
       setAccepting(false);
     }
@@ -106,27 +112,30 @@ export default function ClinicInviteAccept() {
     setRejecting(true);
     try {
       await rejectInvite(token);
+      setPreview((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'REJECTED',
+              accepted: false,
+              expired: false,
+            }
+          : prev
+      );
+      setJustDeclined(true);
       toast.success('Invite declined — the clinic has been notified');
       notifyInviteAddressed();
-      navigate('/doctor');
     } catch (err: unknown) {
-      const ax = err as { response?: { data?: unknown }; message?: string };
-      const raw =
-        typeof ax.response?.data === 'string'
-          ? ax.response.data
-          : ax.response?.data
-            ? JSON.stringify(ax.response.data)
-            : ax.message || '';
-      toast.error(parseApiErrorMessage(raw, 'Failed to decline invite'));
+      toast.error(apiErrorMessage(err, 'Failed to decline invite'));
     } finally {
       setRejecting(false);
     }
   };
 
   const isDoctor = hasAnyRole(user?.roles, [ROLES.DOCTOR]);
-  const declined = preview?.status === 'REJECTED';
+  const declined = preview?.status === 'REJECTED' || justDeclined;
   const pending =
-    preview && !preview.expired && !preview.accepted && preview.status === 'PENDING';
+    preview && !preview.expired && !preview.accepted && preview.status === 'PENDING' && !justDeclined;
 
   return (
     <div className="min-h-screen bg-background">
@@ -175,8 +184,18 @@ export default function ClinicInviteAccept() {
                     </p>
                   )}
 
-                  {declined && (
-                    <p className="text-sm text-muted-foreground">This invite was declined.</p>
+                  {declined && !preview.accepted && (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground flex items-start gap-2">
+                        <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-green-700" />
+                        {justDeclined
+                          ? 'Invite declined. The clinic has been notified.'
+                          : 'This invite was declined.'}
+                      </p>
+                      <Button variant="outline" className="w-full" asChild>
+                        <Link to="/">Go to home</Link>
+                      </Button>
+                    </div>
                   )}
 
                   {preview.expired && !preview.accepted && !declined && (
@@ -186,11 +205,15 @@ export default function ClinicInviteAccept() {
                   )}
 
                   {pending && (
-                    <>
+                    <div className="space-y-3">
                       {!isAuthenticated && (
                         <div className="flex flex-col gap-2">
+                          <p className="text-xs text-muted-foreground">
+                            Sign in or create a doctor account with the invited email to accept. You can decline
+                            without signing in.
+                          </p>
                           <Button asChild>
-                            <Link to={redirectLogin}>Sign in to respond</Link>
+                            <Link to={redirectLogin}>Sign in to accept</Link>
                           </Button>
                           <Button variant="outline" asChild>
                             <Link to={redirectSignup}>Create doctor account</Link>
@@ -212,7 +235,7 @@ export default function ClinicInviteAccept() {
                         <div className="space-y-2">
                           <p className="text-xs text-muted-foreground">
                             Responding as <strong>{user?.email}</strong>. You must be signed in with the invited
-                            email ({preview.email}).
+                            email ({preview.email}) to accept.
                           </p>
                           {!practiceReady ? (
                             <p className="text-sm text-amber-700 dark:text-amber-300">
@@ -227,17 +250,18 @@ export default function ClinicInviteAccept() {
                           >
                             {accepting ? 'Joining…' : 'Accept invitation'}
                           </Button>
-                          <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={handleReject}
-                            disabled={accepting || rejecting}
-                          >
-                            {rejecting ? 'Declining…' : 'Decline invitation'}
-                          </Button>
                         </div>
                       )}
-                    </>
+
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={handleReject}
+                        disabled={accepting || rejecting}
+                      >
+                        {rejecting ? 'Declining…' : 'Decline invitation'}
+                      </Button>
+                    </div>
                   )}
                 </>
               )}
