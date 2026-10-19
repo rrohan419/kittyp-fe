@@ -68,9 +68,7 @@ export default function BlogEditor({ content, onChange }: { content: string; onC
       }),
       Typography,
       TextStyle,
-      CharacterCount.configure({
-        limit: 10000,
-      }),
+      CharacterCount,
       DragHandle,
       Dropcursor.configure({
         color: '#3b82f6',
@@ -98,18 +96,6 @@ export default function BlogEditor({ content, onChange }: { content: string; onC
       const incoming = content ?? '';
       const current = editor.getHTML();
       if (incoming === current) return;
-
-      // Avoid expensive resets if the document is equivalent
-      const parseTemp = document.createElement('div');
-      parseTemp.innerHTML = incoming;
-      const incomingText = parseTemp.textContent || '';
-
-      const parseCurrent = document.createElement('div');
-      parseCurrent.innerHTML = current;
-      const currentText = parseCurrent.textContent || '';
-
-      if (incomingText === currentText) return;
-
       editor.commands.setContent(incoming);
     } catch {
       editor.commands.setContent(content);
