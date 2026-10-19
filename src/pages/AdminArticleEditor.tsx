@@ -101,6 +101,7 @@ const AdminArticleEditor = ({
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [htmlToImport, setHtmlToImport] = useState("");
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [editorRemountKey, setEditorRemountKey] = useState(0);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
@@ -748,7 +749,9 @@ const AdminArticleEditor = ({
                             }
 
                             try {
-                              form.setValue('content', htmlToImport, { shouldValidate: true });
+                              form.setValue('content', htmlToImport, { shouldValidate: true, shouldDirty: true });
+                              setEditorRemountKey((key) => key + 1);
+                              setHasUnsavedChanges(true);
                               setHtmlToImport('');
                               setImportDialogOpen(false);
                               toast.success("HTML content imported successfully!");
@@ -774,7 +777,7 @@ const AdminArticleEditor = ({
                           <FormItem>
                             <FormControl>
                               <BlogEditor
-                                key={slug || 'new-article'}
+                                key={`${slug || 'new-article'}-${editorRemountKey}`}
                                 content={field.value}
                                 onChange={field.onChange}
                               />
