@@ -41,6 +41,7 @@ import {
   patchClinicVisit,
 } from '@/services/clinicService';
 import { WalkInDialog } from '@/components/clinic/WalkInDialog';
+import { PrescriptionFirstDialog } from '@/components/chart/PrescriptionFirstDialog';
 import { formatPetWeight } from '@/utils/formatPetWeight';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
@@ -132,6 +133,7 @@ export default function DoctorAppointments() {
   const [filter, setFilter] = useState<ApptFilter>('ALL');
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  const [rxOpen, setRxOpen] = useState(false);
   const [chartVisit, setChartVisit] = useState<ClinicVisitModel | null>(null);
   const [chartTab, setChartTab] = useState<ChartTabId>('vitals');
   const [busy, setBusy] = useState(false);
@@ -442,13 +444,22 @@ export default function DoctorAppointments() {
             </p>
           ) : null}
         </div>
-        <Button
-          onClick={() => setAddOpen(true)}
-          disabled={!clinicUuid || !lockedDoctorUuid || !practiceReady || !clinicActivated}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setRxOpen(true)}
+            disabled={!clinicUuid || !lockedDoctorUuid || !practiceReady || !clinicActivated}
+          >
+            New prescription
+          </Button>
+          <Button
+            onClick={() => setAddOpen(true)}
+            disabled={!clinicUuid || !lockedDoctorUuid || !practiceReady || !clinicActivated}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
@@ -685,6 +696,21 @@ export default function DoctorAppointments() {
             </Card>
           ))}
         </div>
+      )}
+
+      {clinicUuid && (
+        <PrescriptionFirstDialog
+          open={rxOpen}
+          onOpenChange={setRxOpen}
+          clinicUuid={clinicUuid}
+          onCreated={(visit) => {
+            toast.success('Prescription saved');
+            void load().then(async () => {
+              await openChart(visit);
+              setChartTab('prescriptions');
+            });
+          }}
+        />
       )}
 
       {clinicUuid && (
