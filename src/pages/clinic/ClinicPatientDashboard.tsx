@@ -276,7 +276,11 @@ export default function ClinicPatientDashboard() {
               </div>
               <div>
                 <dt className="text-muted-foreground text-xs mb-1">Weight</dt>
-                <dd className="font-medium">{pet.weight || '—'}</dd>
+                <dd className="font-medium">
+                  {formatPetWeight(pet.weight)
+                    ? `${formatPetWeight(pet.weight)} kg`
+                    : '—'}
+                </dd>
               </div>
               <div className="col-span-2">
                 <dt className="text-muted-foreground text-xs mb-1">Microchip</dt>
@@ -461,10 +465,10 @@ export default function ClinicPatientDashboard() {
               thisVisit={
                 openVisitForRx
                   ? {
-                      uuid: openVisitForRx.uuid,
-                      doctorName: openVisitForRx.doctorName,
-                      date: openVisitForRx.startedAt || openVisitForRx.createdAt,
-                    }
+                    uuid: openVisitForRx.uuid,
+                    doctorName: openVisitForRx.doctorName,
+                    date: openVisitForRx.startedAt || openVisitForRx.createdAt,
+                  }
                   : null
               }
             />
