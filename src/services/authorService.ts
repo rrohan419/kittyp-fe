@@ -7,6 +7,11 @@ export const fetchAuthors = async ({ page, size }) : Promise<AuthorApiResponse> 
     return response.data;
   };
 
+  export const fetchTeamKittypAuthor = async (): Promise<Author> => {
+    const response = await axiosInstance.get<ApiSuccessResponse<Author>>('/article/author/team-kittyp');
+    return response.data.data;
+  };
+
   export const createAuthors = async (body: SaveAuthor): Promise<ApiSuccessResponse<Author>> => {
     const response = await axiosInstance.post('admin/author/create', body);
     return response.data;

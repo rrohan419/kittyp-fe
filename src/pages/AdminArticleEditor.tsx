@@ -44,9 +44,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { AuthorSelector } from '@/components/admin/AuthorSelector';
 import { Author } from '@/pages/Interface/PagesInterface';
 import { getAuthItem } from '@/utils/authStorage';
+import { fetchTeamKittypAuthor } from '@/services/authorService';
 
 const CATEGORIES = [
   'Pet Care',
@@ -125,6 +125,16 @@ const AdminArticleEditor = ({
           const roles = JSON.parse(getAuthItem('roles') || '[]');
           const isAdmin = Array.isArray(roles) && roles.includes('ROLE_ADMIN');
           setUserRole(isAdmin ? 'ROLE_ADMIN' : null);
+          // New admin articles always use Team Kittyp. Edit loads the article author below.
+          if (isAdmin && !slug) {
+            const team = await fetchTeamKittypAuthor();
+            setSelectedAuthor({
+              id: team.id.toString(),
+              name: team.name,
+              avatar: team.avatar,
+              role: team.role,
+            });
+          }
         }
       } catch {
         toast.error('Could not load article editor');
@@ -134,7 +144,7 @@ const AdminArticleEditor = ({
       }
     };
     void init();
-  }, [selfAuthor]);
+  }, [selfAuthor, slug]);
 
   const form = useForm<ArticleFormValues>({
     resolver: zodResolver(articleFormSchema),
@@ -433,25 +443,12 @@ const AdminArticleEditor = ({
                 <CardHeader>
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <CardTitle>Article Details</CardTitle>
-                    {selfAuthor && selectedAuthor ? (
+                    {selectedAuthor ? (
                       <span className="inline-flex items-center rounded-md border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                         {selectedAuthor.name}
                         {selectedAuthor.role ? ` · ${selectedAuthor.role}` : ''}
                       </span>
-                    ) : selectedAuthor && slug ? (
-                      <span className="inline-flex items-center rounded-md border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                        {selectedAuthor.name}
-                        {selectedAuthor.role ? ` · ${selectedAuthor.role}` : ''}
-                      </span>
-                    ) : (
-                      <div className="inline-flex items-center rounded-md border border-primary/40 bg-primary/10">
-                        <AuthorSelector
-                          compact
-                          selectedAuthor={selectedAuthor}
-                          onAuthorChange={setSelectedAuthor}
-                        />
-                      </div>
-                    )}
+                    ) : null}
                   </div>
                   <CardDescription>Basic information about your article</CardDescription>
                 </CardHeader>
