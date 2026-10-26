@@ -2,7 +2,6 @@ import { useEffect, useState, FormEvent } from 'react';
 import { Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -25,6 +24,7 @@ import { AddPet, UpdatePet } from '@/services/UserService';
 import { addPetToUser, updatePetInUser } from '@/module/slice/AuthSlice';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { normalizePetGender } from '@/utils/petType';
+import { PetDobField } from '@/components/ui/PetDobField';
 
 type PetForm = Omit<UpdatePet, 'uuid' | 'isNeutered'> & { isNeutered: string; type: string };
 
@@ -202,17 +202,18 @@ export function OwnerPetEditDialog({ open, onOpenChange, pet, onSaved }: Props) 
                 disabled={saving}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="owner-pet-dob">Date of Birth</Label>
-              <DatePicker
-                id="owner-pet-dob"
-                value={form.dateOfBirth}
-                onChange={(dateOfBirth) => setForm((s) => ({ ...s, dateOfBirth }))}
-                placeholder="Select date of birth"
-                disableFuture
-                disabled={saving}
-              />
-            </div>
+          </div>{/* end 2-col grid */}
+
+          {/* Date of Birth / Age — full width so toggle is always visible */}
+          <PetDobField
+            id="owner-pet-dob"
+            value={form.dateOfBirth}
+            onChange={(dateOfBirth) => setForm((s) => ({ ...s, dateOfBirth }))}
+            disabled={saving}
+            defaultMode={isEdit ? 'date' : 'months'}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="owner-pet-weight">Weight (kg)</Label>
               <Input

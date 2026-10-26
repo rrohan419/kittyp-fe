@@ -1003,6 +1003,26 @@ export async function fetchClinicOwnerProfile(
   return res.data.data;
 }
 
+export async function updateClinicOwner(
+  clinicUuid: string,
+  ownerUuid: string,
+  payload: {
+    firstName: string;
+    lastName?: string;
+    email: string;
+    phone?: string;
+    alternatePhone?: string;
+    address?: string;
+    notes?: string;
+  }
+): Promise<ClinicOwnerModel> {
+  const res = await axiosInstance.patch<ApiSuccessResponse<ClinicOwnerModel>>(
+    `/clinic/${clinicUuid}/owners/${ownerUuid}`,
+    payload
+  );
+  return res.data.data;
+}
+
 export async function addPetToClinicOwner(
   clinicUuid: string,
   ownerUuid: string,
@@ -1168,7 +1188,7 @@ export async function createWalkInVisit(
       phone: string;
       address?: string;
     };
-    newPet?: { name: string; species?: string; breed?: string; gender?: string };
+    newPet?: { name: string; species?: string; breed?: string; gender?: string; dateOfBirth?: string };
     reasonForVisit?: string;
     urgency?: VisitUrgency;
     doctorUuid?: string;

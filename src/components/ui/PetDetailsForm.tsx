@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { formatPetWeight } from '@/utils/formatPetWeight';
 import { Input } from "@/components/ui/input";
-import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +25,7 @@ import { addPetToUser, removePetFromUser, updatePetInUser, setPetsLoading, setSa
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './button';
+import { PetDobField } from '@/components/ui/PetDobField';
 
 interface PetDetailsFormProps {
     onPetAdded?: () => void;
@@ -396,17 +396,17 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                                <DatePicker
-                                    id="dateOfBirth"
-                                    value={petForm.dateOfBirth}
-                                    onChange={(dateOfBirth) => setPetForm({ ...petForm, dateOfBirth })}
-                                    placeholder="Select date of birth"
-                                    disableFuture
-                                    className="border-primary/20"
-                                />
-                            </div>
+                        </div>{/* end 2-col grid */}
+
+                        {/* Date of Birth — full width so the toggle is always visible */}
+                        <PetDobField
+                            id="dateOfBirth"
+                            value={petForm.dateOfBirth}
+                            onChange={(dateOfBirth) => setPetForm((prev) => ({ ...prev, dateOfBirth }))}
+                            defaultMode="months"
+                        />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                             {/* <div className="space-y-2">
                                 <Label htmlFor="weight">Weight</Label>

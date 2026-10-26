@@ -47,8 +47,8 @@ import { notifyPortalRefresh } from '@/components/portal/PortalNotifications';
 import { cn } from '@/lib/utils';
 import { PetPhotoField } from '@/components/clinic/PetPhotoField';
 import { PetNameType } from '@/components/ui/PetNameType';
-import {
-  APPOINTMENT_SEARCH_MIN,
+import { PetDobField } from '@/components/ui/PetDobField';
+import { APPOINTMENT_SEARCH_MIN,
   matchesEmailOrGeneratedId,
   normalizeAppointmentSearchQuery,
 } from '@/utils/appointmentPatientSearch';
@@ -75,6 +75,7 @@ const emptyNew = {
   petName: '',
   petType: 'CAT',
   petBreed: '',
+  dateOfBirth: '',
   petPhotoUrl: '',
   reason: '',
   urgency: 'ROUTINE' as VisitUrgency,
@@ -636,7 +637,7 @@ export function AddAppointmentDialog({
     if (!form.petName.trim()) errors.petName = 'Pet name is required';
     const emailErr = validateEmail(form.ownerEmail);
     if (emailErr) errors.ownerEmail = emailErr;
-    const phoneErr = validatePhone(form.ownerPhone, true);
+    const phoneErr = validatePhone(form.ownerPhone, false);
     if (phoneErr) errors.ownerPhone = phoneErr;
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -662,13 +663,12 @@ export function AddAppointmentDialog({
     return Object.keys(errors).length === 0;
   };
 
-  const ownerPetCount = emailLookup?.owner?.petCount ?? matchedOwner?.petCount ?? 0;
-  const linkedOwner = Boolean(emailLookup?.owner?.linked || matchedOwner?.linked);
+  const linkedOwner = Boolean(emailLookup?.owner?.linked || matchedOwner?.linked || attachUser);
   const needsOwnerConsent =
     mode === 'new' &&
     timing === 'schedule' &&
     !selectedPet &&
-    (ownerPetCount > 0 || linkedOwner);
+    linkedOwner;
 
   const patientPayload = () => {
     if (mode === 'existing' && selectedPet) {
@@ -689,6 +689,7 @@ export function AddAppointmentDialog({
         species: form.petType || undefined,
         breed: form.petBreed || undefined,
         photoUrl: form.petPhotoUrl.trim() || undefined,
+        dateOfBirth: form.dateOfBirth || undefined        
       },
     };
   };
@@ -1092,7 +1093,7 @@ export function AddAppointmentDialog({
                   value={form.ownerPhone}
                   onChange={(e) => set('ownerPhone', digitsOnlyPhone(e.target.value))}
                   onBlur={() => {
-                    const err = validatePhone(form.ownerPhone, true);
+                    const err = validatePhone(form.ownerPhone, false);
                     if (err) setFieldErrors((s) => ({ ...s, ownerPhone: err }));
                   }}
                 />
@@ -1142,6 +1143,13 @@ export function AddAppointmentDialog({
                   <Label>Breed</Label>
                   <Input value={form.petBreed} onChange={(e) => set('petBreed', e.target.value)} />
                 </div>
+                {/* Date of Birth — full width so the toggle is always visible */}
+                <PetDobField
+                  id="dateOfBirth"
+                  value={form.dateOfBirth}
+                  onChange={(dateOfBirth) => set('dateOfBirth', dateOfBirth)}
+                  defaultMode="months"
+                />
                 <PetPhotoField
                   value={form.petPhotoUrl || null}
                   onChange={(url) => set('petPhotoUrl', url || '')}
@@ -1156,7 +1164,7 @@ export function AddAppointmentDialog({
               <div className="rounded-md border px-3 py-2.5 space-y-2">
                 <p className="text-sm font-medium">Owner consent (email OTP)</p>
                 <p className="text-xs text-muted-foreground">
-                  Scheduling a new pet on an existing profile requires a one-time code sent to the
+                  Scheduling a new pet on a KittyP-linked profile requires a one-time code sent to the
                   owner&apos;s email. Walk-ins skip this.
                 </p>
                 <div className="flex flex-wrap gap-2">
