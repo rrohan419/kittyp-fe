@@ -44,8 +44,6 @@ interface RefreshResponse {
   payload?: RefreshResponse;
 }
 
-const REFRESH_ENDPOINT = '/api/v1/auth/refresh';
-
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 45000,
@@ -149,7 +147,7 @@ const refreshAccessToken = async (): Promise<string> => {
   }
 
   const response = await refreshClient.post(
-    REFRESH_ENDPOINT,
+    `/auth/refresh`,
     { refreshToken }
   );
 

@@ -28,6 +28,7 @@ interface AuthData {
 
 interface JwtResponseModel {
   token: string;
+  refreshToken: string;
   type: string;
   id: number;
   username: string;
@@ -153,9 +154,10 @@ export const socialSso = async (tokenResponse: TokenResponse) => {
     const data = await response.json();
 
     if (data.success && data.data) {
-      const { token, roles } = data.data;
+      const { token, roles, refreshToken } = data.data;
 
       setAuthItem("access_token", token);
+      setAuthItem("refresh_token", refreshToken);
       setAuthItem("roles", JSON.stringify(roles));
     } else {
       throw new Error(data.message || "Signup failed");
@@ -174,9 +176,10 @@ export const login = async (data: AuthData): Promise<{ token: string; roles: str
     // Step 1: Login to get token
     const loginResponse = await axiosInstance.post<WrappedJwtResponse>('/auth/signin', data);
 
-    const { token, roles } = loginResponse.data.data; // <-- This is JwtResponseModel
+    const { token, roles, refreshToken } = loginResponse.data.data; // <-- This is JwtResponseModel
 
     setAuthItem('access_token', token);
+    setAuthItem("refresh_token", refreshToken);
     setAuthItem('roles', JSON.stringify(roles));
 
     return { token, roles };
