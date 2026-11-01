@@ -365,13 +365,54 @@ export interface ClinicInventoryItem {
   name: string;
   category: ClinicInventoryCategory;
   quantity: number;
+  availableQuantity?: number;
   unit: string;
   reorderLevel: number;
   unitPrice: number;
   active: boolean;
   reserved?: number;
+  eligibleQuantity?: number;
+  expiredQuantity?: number;
+  unreviewedQuantity?: number;
+  expiringSoonQuantity?: number;
+  nextExpiryDate?: string | null;
+  expiringSoon?: boolean;
+  expiryWarningDays?: number;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface ClinicInventoryBatch {
+  uuid: string;
+  batchNumber?: string | null;
+  expiryDate?: string | null;
+  nonExpiring: boolean;
+  quantityReceived: number;
+  quantityOnHand: number;
+  availableQuantity: number;
+  reserved: number;
+  unitCost: number;
+  receivedAt?: string;
+  status?: 'EXPIRED' | 'EXPIRING_SOON' | 'ELIGIBLE' | 'UNREVIEWED' | string;
+  reviewRequired?: boolean;
+  daysToExpiry?: number | null;
+}
+
+export interface ClinicInventoryBatchRequest {
+  batchNumber?: string;
+  expiryDate?: string;
+  nonExpiring: boolean;
+  quantity: number;
+  unitCost?: number;
+  note?: string;
+}
+
+export interface ClinicInventoryBatchReviewRequest {
+  batchNumber?: string;
+  expiryDate?: string;
+  nonExpiring: boolean;
+  unitCost?: number;
+  note?: string;
 }
 
 export interface ClinicInventoryRequest {
@@ -417,7 +458,42 @@ export async function fetchClinicInventoryOptions(
   return res.data.data ?? [];
 }
 
-export type InventoryMovementAction = 'OPENING' | 'ADJUST' | 'CONSUME' | 'RESERVE' | 'RELEASE';
+export async function fetchClinicInventoryBatches(
+  clinicUuid: string,
+  itemUuid: string
+): Promise<ClinicInventoryBatch[]> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ClinicInventoryBatch[]>>(
+    `/clinic/${clinicUuid}/inventory/${itemUuid}/batches`
+  );
+  return res.data.data ?? [];
+}
+
+export async function receiveClinicInventoryBatch(
+  clinicUuid: string,
+  itemUuid: string,
+  payload: ClinicInventoryBatchRequest
+): Promise<ClinicInventoryBatch> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ClinicInventoryBatch>>(
+    `/clinic/${clinicUuid}/inventory/${itemUuid}/batches`,
+    payload
+  );
+  return res.data.data;
+}
+
+export async function reviewClinicInventoryBatch(
+  clinicUuid: string,
+  itemUuid: string,
+  batchUuid: string,
+  payload: ClinicInventoryBatchReviewRequest
+): Promise<ClinicInventoryBatch> {
+  const res = await axiosInstance.patch<ApiSuccessResponse<ClinicInventoryBatch>>(
+    `/clinic/${clinicUuid}/inventory/${itemUuid}/batches/${batchUuid}`,
+    payload
+  );
+  return res.data.data;
+}
+
+export type InventoryMovementAction = 'OPENING' | 'ADJUST' | 'CONSUME' | 'RESERVE' | 'RELEASE' | 'RECEIVE' | 'REVIEW';
 
 export interface ClinicInventoryMovement {
   uuid: string;
@@ -432,6 +508,8 @@ export interface ClinicInventoryMovement {
   invoiceNumber?: string | null;
   actorName?: string | null;
   createdAt?: string;
+  batchUuid?: string | null;
+  batchNumber?: string | null;
 }
 
 export async function fetchClinicInventoryMovements(
@@ -471,7 +549,7 @@ export async function updateClinicInventoryItem(
 export async function adjustClinicInventoryStock(
   clinicUuid: string,
   itemUuid: string,
-  payload: { direction: 'ADD' | 'REMOVE'; quantity: number; note?: string }
+  payload: { direction: 'ADD' | 'REMOVE'; quantity: number; note?: string; batchUuid?: string }
 ): Promise<ClinicInventoryItem> {
   const res = await axiosInstance.post<ApiSuccessResponse<ClinicInventoryItem>>(
     `/clinic/${clinicUuid}/inventory/${itemUuid}/stock`,
