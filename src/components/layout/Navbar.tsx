@@ -18,7 +18,7 @@ import { clearUser } from '@/module/slice/AuthSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { ThemeSwitcher } from '../ui/theme-switcher';
-import { UserProfile } from '@/services/authService';
+import { UserProfile, logoutRequest } from '@/services/authService';
 import { isEcommerceEnabled } from '@/config/features';
 import { AppRole, getPortalHome, getRoleLabel, PORTAL_HOME } from '@/utils/roles';
 import { clearAuthStorage } from '@/utils/authStorage';
@@ -73,6 +73,7 @@ export function Navbar() {
       setIsLoggingOut(true);
       closeMenu();
 
+      await logoutRequest();
       clearAuthStorage();
 
       // Then dispatch actions in sequence
