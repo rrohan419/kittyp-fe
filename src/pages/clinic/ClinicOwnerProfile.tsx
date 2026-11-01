@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react';
-import { displayPhone } from '@/utils/validation';
+import {
+  digitsOnlyPhone,
+  displayPhone,
+  parseApiErrorMessage,
+  validateEmail,
+  validatePhone,
+} from '@/utils/validation';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
+import { PetDobField } from '@/components/ui/PetDobField';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -27,6 +35,7 @@ import {
   Loader2,
   Mail,
   MapPin,
+  Pencil,
   Phone,
   Plus,
   Link2,
@@ -42,6 +51,7 @@ import {
   admitOwnerPets,
   fetchClinicOwnerProfile,
   sendPetConsentOtp,
+  updateClinicOwner,
   verifyPetConsentOtp,
 } from '@/services/clinicService';
 import { PetPhoto } from '@/components/clinic/PetPhoto';
@@ -61,6 +71,16 @@ const emptyPet = {
   photoUrl: '',
 };
 
+const emptyOwnerEdit = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  alternatePhone: '',
+  address: '',
+  notes: '',
+};
+
 export default function ClinicOwnerProfile() {
   const { ownerUuid = '' } = useParams();
   const { pathname } = useLocation();
@@ -78,6 +98,87 @@ export default function ClinicOwnerProfile() {
   const [pickedPetIds, setPickedPetIds] = useState<string[]>([]);
   const [associating, setAssociating] = useState(false);
   const [consentPet, setConsentPet] = useState<ClinicOwnerPetModel | null>(null);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState(emptyOwnerEdit);
+  const [editErrors, setEditErrors] = useState<{
+    firstName?: string;
+    email?: string;
+    phone?: string;
+    alternatePhone?: string;
+  }>({});
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEditDialog = () => {
+    if (!profile) return;
+    const o = profile.owner;
+    setEditForm({
+      firstName: o.firstName || o.name || '',
+      lastName: o.lastName || '',
+      email: o.email || '',
+      phone: o.phone ? digitsOnlyPhone(o.phone) : '',
+      alternatePhone: o.alternatePhone ? digitsOnlyPhone(o.alternatePhone) : '',
+      address: o.address || '',
+      notes: o.notes || '',
+    });
+    setEditErrors({});
+    setEditOpen(true);
+  };
+
+  const handleSaveOwner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clinicUuid || !ownerUuid || !profile) return;
+    if (profile.owner.linked) {
+      toast.error('KittyP-linked client profiles cannot be edited by the clinic.');
+      return;
+    }
+
+    const errors: { firstName?: string; email?: string; phone?: string; alternatePhone?: string } = {};
+    if (!editForm.firstName.trim()) {
+      errors.firstName = 'First name is required';
+    }
+    const emailErr = validateEmail(editForm.email, true);
+    if (emailErr) {
+      errors.email = emailErr;
+    }
+    if (editForm.phone.trim()) {
+      const phoneErr = validatePhone(editForm.phone, false);
+      if (phoneErr) {
+        errors.phone = phoneErr;
+      }
+    }
+    if (editForm.alternatePhone.trim()) {
+      const altPhoneErr = validatePhone(editForm.alternatePhone, false);
+      if (altPhoneErr) {
+        errors.alternatePhone = altPhoneErr;
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setEditErrors(errors);
+      return;
+    }
+
+    setEditSaving(true);
+    try {
+      await updateClinicOwner(clinicUuid, ownerUuid, {
+        firstName: editForm.firstName.trim(),
+        lastName: editForm.lastName.trim() || undefined,
+        email: editForm.email.trim(),
+        phone: editForm.phone.trim() ? digitsOnlyPhone(editForm.phone) : undefined,
+        alternatePhone: editForm.alternatePhone.trim() ? digitsOnlyPhone(editForm.alternatePhone) : undefined,
+        address: editForm.address.trim() || undefined,
+        notes: editForm.notes.trim() || undefined,
+      });
+      toast.success('Client updated successfully');
+      setEditOpen(false);
+      await reload();
+    } catch (err: unknown) {
+      toast.error(parseApiErrorMessage(err, 'Failed to update client'));
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const reload = async () => {
     if (!clinicUuid || !ownerUuid) return;
@@ -111,7 +212,7 @@ export default function ClinicOwnerProfile() {
     };
   }, [clinicUuid, ownerUuid, clinicLoading]);
 
-  const needsPetConsent = Boolean(profile?.owner.linked) || (profile?.owner.petCount ?? 0) > 0;
+  const needsPetConsent = Boolean(profile?.owner.linked);
 
   const handleAddPet = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -291,6 +392,12 @@ export default function ClinicOwnerProfile() {
           </Link>
         </Button>
         <div className="flex items-center gap-2">
+          {!owner.linked && (
+            <Button variant="outline" onClick={openEditDialog}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit client
+            </Button>
+          )}
           <Button onClick={() => setAddOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add pet
@@ -521,9 +628,7 @@ export default function ClinicOwnerProfile() {
             <div className="rounded-md border px-3 py-2.5 space-y-2">
               <p className="text-sm font-medium">Owner consent (email OTP)</p>
               <p className="text-xs text-muted-foreground">
-                {owner.linked
-                  ? 'KittyP-linked clients need an email OTP for every new pet added by the clinic.'
-                  : 'Required from the second pet onward. A one-time code is emailed for this pet name only.'}
+                KittyP-linked clients need an email OTP for every new pet added by the clinic.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -582,17 +687,13 @@ export default function ClinicOwnerProfile() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="clinic-owner-pet-dob">Date of birth</Label>
-                <DatePicker
-                  id="clinic-owner-pet-dob"
-                  value={petForm.dateOfBirth}
-                  onChange={(dateOfBirth) => setPetForm((s) => ({ ...s, dateOfBirth }))}
-                  placeholder="Select date of birth"
-                  disableFuture
-                />
-              </div>
             </div>
+            <PetDobField
+              id="clinic-owner-pet-dob"
+              value={petForm.dateOfBirth}
+              onChange={(dateOfBirth) => setPetForm((s) => ({ ...s, dateOfBirth }))}
+              defaultMode="months"
+            />
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Weight (kg)</Label>
@@ -622,6 +723,142 @@ export default function ClinicOwnerProfile() {
               <Button type="submit" disabled={saving || (needsPetConsent && !consentVerified)}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Add pet
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Client Dialog (Clinic-only clients) */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit client</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveOwner} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="editFirstName">First name *</Label>
+                <Input
+                  id="editFirstName"
+                  value={editForm.firstName}
+                  onChange={(e) => {
+                    setEditForm((prev) => ({ ...prev, firstName: e.target.value }));
+                    setEditErrors((prev) => ({ ...prev, firstName: undefined }));
+                  }}
+                  required
+                />
+                {editErrors.firstName && (
+                  <p className="text-xs text-destructive">{editErrors.firstName}</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="editLastName">Last name</Label>
+                <Input
+                  id="editLastName"
+                  value={editForm.lastName}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, lastName: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="editEmail">Email *</Label>
+              <Input
+                id="editEmail"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => {
+                  setEditForm((prev) => ({ ...prev, email: e.target.value }));
+                  setEditErrors((prev) => ({ ...prev, email: undefined }));
+                }}
+                required
+              />
+              {editErrors.email && (
+                <p className="text-xs text-destructive">{editErrors.email}</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="editPhone">Phone (optional)</Label>
+                <Input
+                  id="editPhone"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="9876543210"
+                  value={editForm.phone}
+                  onChange={(e) => {
+                    setEditForm((prev) => ({ ...prev, phone: digitsOnlyPhone(e.target.value) }));
+                    setEditErrors((prev) => ({ ...prev, phone: undefined }));
+                  }}
+                />
+                {editErrors.phone && (
+                  <p className="text-xs text-destructive">{editErrors.phone}</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="editAlternatePhone">Alternate phone</Label>
+                <Input
+                  id="editAlternatePhone"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="9876543210"
+                  value={editForm.alternatePhone}
+                  onChange={(e) => {
+                    setEditForm((prev) => ({
+                      ...prev,
+                      alternatePhone: digitsOnlyPhone(e.target.value),
+                    }));
+                    setEditErrors((prev) => ({ ...prev, alternatePhone: undefined }));
+                  }}
+                />
+                {editErrors.alternatePhone && (
+                  <p className="text-xs text-destructive">{editErrors.alternatePhone}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="editAddress">Address</Label>
+              <Textarea
+                id="editAddress"
+                rows={2}
+                placeholder="Clinic client address"
+                value={editForm.address}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, address: e.target.value }))
+                }
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="editNotes">Notes</Label>
+              <Textarea
+                id="editNotes"
+                rows={3}
+                placeholder="Additional notes about client..."
+                value={editForm.notes}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, notes: e.target.value }))
+                }
+              />
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={editSaving}
+                onClick={() => setEditOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={editSaving}>
+                {editSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Save changes
               </Button>
             </DialogFooter>
           </form>

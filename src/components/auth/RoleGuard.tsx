@@ -6,6 +6,7 @@ import { RootState, AppDispatch } from '@/module/store/store';
 import { setActiveRole } from '@/module/slice/AuthSlice';
 import { AppRole, canSwitchWorkspace, hasAnyRole, getPortalHome, ROLES } from '@/utils/roles';
 import { resolvePreferredRole } from '@/utils/workspacePreference';
+import { hasAuthToken } from '@/utils/authStorage';
 
 interface RoleGuardProps {
   allowed: AppRole | AppRole[];
@@ -29,9 +30,10 @@ function SyncActiveRole({ role, children }: { role: AppRole; children: React.Rea
 export function RoleGuard({ allowed, children }: RoleGuardProps) {
   const { user, isAuthenticated, loading, activeRole } = useSelector((s: RootState) => s.authReducer);
   const location = useLocation();
+  const tokenExists = hasAuthToken();
   const allowedRoles = Array.isArray(allowed) ? allowed : [allowed];
 
-  if (loading) {
+  if (loading || (tokenExists && (!isAuthenticated || !user))) {
     return <div className="flex h-screen items-center justify-center">Loading...</div>;
   }
 

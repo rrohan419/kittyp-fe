@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { addDays, format, startOfDay } from 'date-fns';
 import { FileSpreadsheet, FileDown, ExternalLink, Send, Banknote, CheckCircle, Pencil } from 'lucide-react';
@@ -39,6 +39,7 @@ import { formatPetWeight } from '@/utils/formatPetWeight';
 import { InvoiceLineEditor, apiErrorMessage, prepareInventoryLines, useInventoryCatalog } from '@/components/invoice/InvoiceLineEditor';
 import { MarkInvoicePaidDialog } from '@/components/invoice/MarkInvoicePaidDialog';
 import { WhatsAppSendGate } from '@/components/invoice/WhatsAppSendGate';
+import { InvoicePdfDialog } from '@/components/invoice/InvoicePdfDialog';
 import { ListPager } from '@/components/ui/ListPager';
 
 const emptyItem = (): TreatmentLineItem => ({
@@ -82,6 +83,8 @@ export default function DoctorInvoices() {
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
   const [busyUuid, setBusyUuid] = useState<string | null>(null);
+  const [previewInvoiceUuid, setPreviewInvoiceUuid] = useState<string | null>(null);
+  const fetchPreviewUrl = useCallback((uuid: string) => fetchInvoicePdfUrl(uuid), []);
   const [doctorWaConfigured, setDoctorWaConfigured] = useState<boolean | null>(null);
   const [markPaidInvoice, setMarkPaidInvoice] = useState<ConsultationInvoice | null>(null);
   const [hydrating, setHydrating] = useState(false);
@@ -234,17 +237,7 @@ export default function DoctorInvoices() {
     if (!invoiceQ || hydratedRef.current === `invoice:${invoiceQ}`) return;
     if (clinicLoading) return;
     hydratedRef.current = `invoice:${invoiceQ}`;
-    void (async () => {
-      setBusyUuid(invoiceQ);
-      try {
-        const url = await fetchInvoicePdfUrl(invoiceQ);
-        window.open(url, '_blank');
-      } catch {
-        toast.error('PDF not available yet — generate it first');
-      } finally {
-        setBusyUuid(null);
-      }
-    })();
+    setPreviewInvoiceUuid(invoiceQ);
   }, [searchParams, clinicLoading]);
 
   const orderedInvoices = invoices;
@@ -422,11 +415,10 @@ export default function DoctorInvoices() {
     setBusyUuid(uuid);
     try {
       await generateInvoicePdf(uuid);
-      const url = await fetchInvoicePdfUrl(uuid);
-      window.open(url, '_blank');
       toast.success('PDF ready');
       catalog.reload();
       await load();
+      setPreviewInvoiceUuid(uuid);
     } catch (error) {
       toast.error(apiErrorMessage(error, 'Could not generate PDF'));
     } finally {
@@ -434,16 +426,8 @@ export default function DoctorInvoices() {
     }
   };
 
-  const onViewPdf = async (uuid: string) => {
-    setBusyUuid(uuid);
-    try {
-      const url = await fetchInvoicePdfUrl(uuid);
-      window.open(url, '_blank');
-    } catch {
-      toast.error('PDF not available yet — generate it first');
-    } finally {
-      setBusyUuid(null);
-    }
+  const onViewPdf = (uuid: string) => {
+    setPreviewInvoiceUuid(uuid);
   };
 
   const onSendWhatsApp = async (uuid: string) => {
@@ -748,7 +732,7 @@ export default function DoctorInvoices() {
                         size="sm"
                         variant="outline"
                         disabled={busyUuid === inv.uuid}
-                        onClick={() => void onViewPdf(inv.uuid)}
+                        onClick={() => onViewPdf(inv.uuid)}
                       >
                         <ExternalLink className="h-3.5 w-3.5 mr-1" /> PDF
                       </Button>
@@ -801,6 +785,14 @@ export default function DoctorInvoices() {
           }
         }}
         onConfirm={(mode, txn) => void onMarkPaid(mode, txn)}
+      />
+      <InvoicePdfDialog
+        open={Boolean(previewInvoiceUuid)}
+        invoiceUuid={previewInvoiceUuid}
+        onOpenChange={(open) => {
+          if (!open) setPreviewInvoiceUuid(null);
+        }}
+        fetchUrl={fetchPreviewUrl}
       />
     </div>
   );
