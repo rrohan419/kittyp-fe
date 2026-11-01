@@ -4,8 +4,19 @@ import { UserProfile, PetProfile } from '@/services/authService';
 import { addPet, AddPet, deletePet, editPet, UpdatePet, fetchUserDetail, saveUserFcmToken } from '@/services/UserService';
 import { toast } from 'sonner';
 import type { AppRole } from '@/utils/roles';
-import { getAuthItem, removeAuthItem, setAuthItem } from '@/utils/authStorage';
+import { getAuthItem, hasAuthToken, removeAuthItem, setAuthItem } from '@/utils/authStorage';
 
+function getCachedUser(): UserProfile | null {
+  try {
+    const raw = getAuthItem('user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+const cachedUser = getCachedUser();
+const hasToken = hasAuthToken();
 export interface AuthState {
   user: UserProfile | null;
   loading: boolean;
@@ -20,10 +31,11 @@ export interface AuthState {
 }
 
 const initialState: AuthState = {
-  user: null,
-  loading: false,
+  user: cachedUser,
+  // If token exists but user profile is not parsed yet, mark loading as true
+  loading: hasToken && !cachedUser,
   error: null,
-  isAuthenticated: false,
+  isAuthenticated: Boolean(hasToken),
   petsLoading: false,
   saving: false,
   activeRole: (getAuthItem('role') as AppRole | null) || null,

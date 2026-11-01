@@ -39,6 +39,7 @@ import {
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { PetPhoto } from '@/components/clinic/PetPhoto';
 import { PetPhotoField } from '@/components/clinic/PetPhotoField';
+import { PetDobField } from '@/components/ui/PetDobField';
 import { resolveClinicSearchTarget } from '@/utils/clinicSearchNavigate';
 import {
   ClinicOwnerModel,
@@ -1228,33 +1229,27 @@ export default function ClinicPatients() {
                     <Label htmlFor="petBreed">Breed</Label>
                     <Input id="petBreed" value={form.petBreed} onChange={(e) => set('petBreed', e.target.value)} />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="petGender">Gender</Label>
-                      <Select
-                        value={form.petGender || undefined}
-                        onValueChange={(value) => set('petGender', value)}
-                      >
-                        <SelectTrigger id="petGender">
-                          <SelectValue placeholder="Select gender" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="petDateOfBirth">Date of birth</Label>
-                      <DatePicker
-                        id="petDateOfBirth"
-                        value={form.petDateOfBirth}
-                        onChange={(petDateOfBirth) => set('petDateOfBirth', petDateOfBirth)}
-                        placeholder="Select date of birth"
-                        disableFuture
-                      />
-                    </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="petGender">Gender</Label>
+                    <Select
+                      value={form.petGender || undefined}
+                      onValueChange={(value) => set('petGender', value)}
+                    >
+                      <SelectTrigger id="petGender">
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+                  <PetDobField
+                    id="petDateOfBirth"
+                    value={form.petDateOfBirth}
+                    onChange={(petDateOfBirth) => set('petDateOfBirth', petDateOfBirth)}
+                    defaultMode="months"
+                  />
                   <PetPhotoField
                     value={form.petPhotoUrl || null}
                     onChange={(url) => set('petPhotoUrl', url || '')}

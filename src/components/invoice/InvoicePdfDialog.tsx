@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -64,7 +64,20 @@ export function InvoicePdfDialog({ open, invoiceUuid, onOpenChange, fetchUrl }: 
             <iframe title="Invoice PDF" src={url} className="h-full w-full border-0" />
           ) : null}
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex flex-row justify-end gap-2">
+          {url && (
+            <Button asChild variant="default">
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                download={`invoice-${invoiceUuid || 'document'}.pdf`}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download PDF
+              </a>
+            </Button>
+          )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>

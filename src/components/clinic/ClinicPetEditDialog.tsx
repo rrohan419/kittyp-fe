@@ -2,6 +2,7 @@ import { useEffect, useState, FormEvent } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
+import { PetDobField } from '@/components/ui/PetDobField';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -207,18 +208,14 @@ export function ClinicPetEditDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="clinic-pet-dob">Date of birth</Label>
-              <DatePicker
-                id="clinic-pet-dob"
-                value={form.dateOfBirth}
-                onChange={(dateOfBirth) => setForm((s) => ({ ...s, dateOfBirth }))}
-                placeholder="Select date of birth"
-                disableFuture
-                disabled={saving}
-              />
-            </div>
           </div>
+          <PetDobField
+            id="clinic-pet-dob"
+            value={form.dateOfBirth}
+            onChange={(dateOfBirth) => setForm((s) => ({ ...s, dateOfBirth }))}
+            disabled={saving}
+            defaultMode="months"
+          />
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="clinic-pet-weight">Weight (kg)</Label>
