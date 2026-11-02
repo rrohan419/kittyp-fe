@@ -69,7 +69,7 @@ function StockOnHand({
     <p className={`flex min-w-0 items-center gap-1.5 truncate text-[11px] font-medium leading-4 ${style.text}`}>
       <span className={`size-1.5 shrink-0 rounded-full ${style.dot}`} aria-hidden />
       <span className="truncate">
-        {quantity} {unit} on hand
+        {quantity} {unit} available to bill
         <span className="font-normal"> · {style.label}</span>
       </span>
     </p>
@@ -124,6 +124,7 @@ export function useInventoryCatalog(clinicUuid?: string | null) {
 }
 
 function freeQuantity(item: ClinicInventoryItem): number {
+  if (item.availableQuantity !== undefined) return Math.max(0, item.availableQuantity);
   return Math.max(0, item.quantity - (item.reserved ?? 0));
 }
 
@@ -291,7 +292,7 @@ export function InvoiceLineEditor({
                         reorderLevel={selected.reorderLevel}
                       />
                     ) : (
-                      <p className="truncate text-[11px] leading-4 text-muted-foreground">On hand shows here after you choose an item</p>
+                      <p className="truncate text-[11px] leading-4 text-muted-foreground">Billable availability shows here after you choose an item</p>
                     )}
                   </div>
                 </div>

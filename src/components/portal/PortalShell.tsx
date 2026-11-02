@@ -36,6 +36,7 @@ import { useAppointmentNavCount } from '@/hooks/useAppointmentNavCount';
 import { resolveClinicSearchTarget } from '@/utils/clinicSearchNavigate';
 import { clearStuckUiLocks, installStuckUiLockGuard } from '@/utils/clearStuckUiLocks';
 import { clearAuthStorage } from '@/utils/authStorage';
+import { logoutRequest } from '@/services/authService';
 import {
   Dialog,
   DialogContent,
@@ -137,6 +138,7 @@ export function PortalShell({ config }: PortalShellProps) {
   }, [location.search]);
 
   const handleLogout = () => {
+    void logoutRequest();
     clearAuthStorage();
     dispatch(clearUser());
     navigate('/login');
