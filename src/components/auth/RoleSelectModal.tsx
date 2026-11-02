@@ -8,12 +8,15 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AppRole, getContinueAsLabel, getPortalPath, getRoleLabel } from '@/utils/roles';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/module/store/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/module/store/store';
 import { setActiveRole } from '@/module/slice/AuthSlice';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { Star } from 'lucide-react';
 import {
+  getDefaultWorkspace,
+  saveLastWorkspace,
   setDefaultWorkspace,
 } from '@/utils/workspacePreference';
 
@@ -29,9 +32,11 @@ export function RoleSelectModal({ open, roles, onOpenChange, redirectTo }: RoleS
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const [saveAsDefault, setSaveAsDefault] = useState(false);
+  const userUuid = useSelector((s: RootState) => s.authReducer.user?.uuid);
 
   const handleSelect = (role: AppRole) => {
     dispatch(setActiveRole(role));
+    saveLastWorkspace(userUuid, { role });
     if (saveAsDefault) {
       setDefaultWorkspace(role);
     }
@@ -63,7 +68,15 @@ export function RoleSelectModal({ open, roles, onOpenChange, redirectTo }: RoleS
               onClick={() => handleSelect(role)}
             >
               <div className="flex flex-col items-start text-left">
-                <span className="font-semibold">{getContinueAsLabel(role)}</span>
+                <span className="flex items-center gap-2 font-semibold">
+                  {getContinueAsLabel(role)}
+                  {role === getDefaultWorkspace() && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                      <Star className="h-3 w-3 fill-current" aria-hidden />
+                      Default
+                    </span>
+                  )}
+                </span>
                 <span className="text-xs text-muted-foreground">
                   {getRoleLabel(role)} · {getPortalPath(role)}
                 </span>

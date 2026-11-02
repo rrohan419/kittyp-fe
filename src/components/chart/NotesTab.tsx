@@ -24,6 +24,7 @@ export function NotesTab({ editable, notes, onNotesChange, history = [] }: Notes
   };
 
   if (editable) {
+    const showRequired = !notes.assessment.trim();
     return (
       <div className="space-y-3">
         <div>
@@ -37,14 +38,21 @@ export function NotesTab({ editable, notes, onNotesChange, history = [] }: Notes
           />
         </div>
         <div>
-          <Label htmlFor="chart-assessment">Assessment / diagnosis</Label>
+          <Label htmlFor="chart-assessment">
+            Assessment / diagnosis <span className="text-destructive">*</span>
+          </Label>
           <Textarea
             id="chart-assessment"
             value={notes.assessment}
             onChange={(e) => set('assessment', e.target.value)}
             rows={2}
-            placeholder="Required to complete"
+            placeholder="Required to finish treatment"
+            aria-required="true"
+            className={showRequired ? 'border-destructive focus-visible:ring-destructive' : undefined}
           />
+          {showRequired ? (
+            <p className="mt-1 text-xs text-destructive">Required to finish treatment.</p>
+          ) : null}
         </div>
         <div>
           <Label htmlFor="chart-next">Next visit notes</Label>

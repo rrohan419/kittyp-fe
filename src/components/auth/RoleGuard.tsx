@@ -5,12 +5,22 @@ import { useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/module/store/store';
 import { setActiveRole } from '@/module/slice/AuthSlice';
 import { AppRole, canSwitchWorkspace, hasAnyRole, getPortalHome, ROLES } from '@/utils/roles';
-import { resolvePreferredRole } from '@/utils/workspacePreference';
+import { resolvePreferredRole, saveLastWorkspace } from '@/utils/workspacePreference';
 import { hasAuthToken } from '@/utils/authStorage';
 
 interface RoleGuardProps {
   allowed: AppRole | AppRole[];
   children: React.ReactNode;
+}
+
+function RememberRole({ role, children }: { role: AppRole; children: React.ReactNode }) {
+  const userUuid = useSelector((s: RootState) => s.authReducer.user?.uuid);
+
+  useEffect(() => {
+    saveLastWorkspace(userUuid, { role });
+  }, [userUuid, role]);
+
+  return <>{children}</>;
 }
 
 /** When entering a portal the user is allowed into, sync activeRole to match. */
@@ -24,7 +34,7 @@ function SyncActiveRole({ role, children }: { role: AppRole; children: React.Rea
     }
   }, [activeRole, role, dispatch]);
 
-  return <>{children}</>;
+  return <RememberRole role={role}>{children}</RememberRole>;
 }
 
 export function RoleGuard({ allowed, children }: RoleGuardProps) {
@@ -38,7 +48,7 @@ export function RoleGuard({ allowed, children }: RoleGuardProps) {
   }
 
   if (!isAuthenticated || !user) {
-    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
+    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   }
 
   if (!hasAnyRole(user.roles, allowedRoles)) {
@@ -50,7 +60,7 @@ export function RoleGuard({ allowed, children }: RoleGuardProps) {
   // Multi-workspace: pick a default instead of bouncing back to a chooser after login.
   if (canSwitchWorkspace(roles) && !activeRole) {
     const preferred =
-      resolvePreferredRole(roles) ||
+      resolvePreferredRole(roles, user.uuid) ||
       (roles.includes(ROLES.DOCTOR) && allowedRoles.includes(ROLES.DOCTOR) ? ROLES.DOCTOR : undefined) ||
       allowedRoles.find((r) => roles.includes(r));
     if (preferred && allowedRoles.includes(preferred)) {
@@ -76,6 +86,10 @@ export function RoleGuard({ allowed, children }: RoleGuardProps) {
       return <Navigate to={getPortalHome([activeRole])} replace />;
     }
     return <Navigate to="/select-role" replace state={{ roles }} />;
+  }
+
+  if (activeRole && allowedRoles.includes(activeRole)) {
+    return <RememberRole role={activeRole}>{children}</RememberRole>;
   }
 
   return <>{children}</>;

@@ -528,6 +528,7 @@ export default function DoctorHome() {
       return;
     }
     if (andComplete && !form.assessment.trim()) {
+      setChartTab('notes');
       toast.error('Add an assessment / diagnosis before completing');
       return;
     }
