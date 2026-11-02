@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, Building2, PawPrint, ShieldCheck, Stethoscope } from 'lucide-react';
+import { ArrowRight, Building2, PawPrint, ShieldCheck, Star, Stethoscope } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
@@ -14,7 +14,10 @@ import {
   PORTAL_HOME,
 } from '@/utils/roles';
 import {
+  clearDefaultWorkspace,
+  getDefaultWorkspace,
   resolvePreferredRole,
+  saveLastWorkspace,
   setDefaultWorkspace,
 } from '@/utils/workspacePreference';
 import { getAuthItem } from '@/utils/authStorage';
@@ -38,6 +41,7 @@ const SelectRole = () => {
     return Array.isArray(roles) ? roles.filter((role): role is AppRole => typeof role === 'string') : [];
   }, [rolesFromState, authState.user?.roles]);
   const [saveAsDefault, setSaveAsDefault] = useState(false);
+  const [defaultRole, setDefaultRole] = useState<AppRole | null>(() => getDefaultWorkspace());
 
   const workspaceRoles = useMemo(() => {
     const seen = new Set<string>();
@@ -73,15 +77,16 @@ const SelectRole = () => {
       return;
     }
 
-    const preferred = resolvePreferredRole(effectiveRoles);
+    const preferred = resolvePreferredRole(effectiveRoles, authState.user?.uuid);
     if (preferred) {
       dispatch(setActiveRole(preferred));
       navigate(getPortalPath(preferred), { replace: true });
     }
-  }, [effectiveRoles, workspaceRoles, navigate, dispatch, rolesFromState, forceSelection]);
+  }, [effectiveRoles, workspaceRoles, navigate, dispatch, rolesFromState, forceSelection, authState.user?.uuid]);
 
   const handleRoleSelect = (role: AppRole) => {
     dispatch(setActiveRole(role));
+    saveLastWorkspace(authState.user?.uuid, { role });
     if (saveAsDefault) {
       setDefaultWorkspace(role);
     }
@@ -145,7 +150,15 @@ const SelectRole = () => {
                     <Icon className="h-5 w-5" aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-semibold text-foreground">{getContinueAsLabel(role)}</span>
+                    <span className="flex items-center gap-2 font-semibold text-foreground">
+                      {getContinueAsLabel(role)}
+                      {role === defaultRole && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                          <Star className="h-3 w-3 fill-current" aria-hidden />
+                          Default
+                        </span>
+                      )}
+                    </span>
                     <span className="block truncate text-sm text-muted-foreground">
                       {getRoleLabel(role)} · {getPortalPath(role)}
                     </span>
@@ -169,6 +182,19 @@ const SelectRole = () => {
             />
             Save as default workspace
           </label>
+          {defaultRole && workspaceRoles.includes(defaultRole) && (
+            <button
+              type="button"
+              className="mx-auto mt-2 block text-xs text-muted-foreground underline hover:text-foreground"
+              onClick={() => {
+                clearDefaultWorkspace();
+                setDefaultRole(null);
+                toast.success('Default workspace cleared');
+              }}
+            >
+              Clear default ({getRoleLabel(defaultRole)})
+            </button>
+          )}
         </div>
       </div>
     </div>

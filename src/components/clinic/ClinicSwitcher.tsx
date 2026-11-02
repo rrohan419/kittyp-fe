@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from 'react-redux';
-import { Building2, ChevronsUpDown, Check, Plus, UserRound } from 'lucide-react';
+import { Building2, ChevronsUpDown, Check, Plus, Star, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,12 @@ import { setPendingClinicPinned } from '@/utils/activeClinic';
 import { cn } from '@/lib/utils';
 import { Link, useLocation } from 'react-router-dom';
 import { hasAnyRole, ROLES } from '@/utils/roles';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ClinicPortal,
+  getDefaultClinicId,
+  setDefaultClinicId,
+} from '@/utils/workspacePreference';
 import { clearStuckUiLocks } from '@/utils/clearStuckUiLocks';
 
 interface ClinicSwitcherProps {
@@ -35,6 +40,22 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
   const onDoctorPortal = location.pathname.startsWith('/doctor');
+  const portal: ClinicPortal = onDoctorPortal ? 'doctor' : 'clinic';
+  const [defaultClinicId, setDefaultClinicState] = useState<string | null>(() =>
+    getDefaultClinicId(user?.uuid, portal)
+  );
+
+  useEffect(() => {
+    setDefaultClinicState(getDefaultClinicId(user?.uuid, portal));
+  }, [user?.uuid, portal]);
+
+  const toggleDefault = (item: ClinicModel) => {
+    const next = item.uuid === defaultClinicId ? null : item.uuid;
+    setDefaultClinicId(user?.uuid, portal, next);
+    setDefaultClinicState(next);
+    const name = onDoctorPortal && item.personal ? 'Personal' : item.name || 'Practice';
+    toast.success(next ? `${name} will open by default` : 'Default cleared');
+  };
   // Only clinic accounts create clinics. Doctors never register a clinic from this switcher.
   const canAddClinic =
     !onDoctorPortal && hasAnyRole(user?.roles, [ROLES.CLINIC_ADMIN, ROLES.CLINIC_STAFF]);
@@ -159,6 +180,7 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
           {ordered.map((item) => {
             const itemShutdown = item.status === 'SHUTDOWN';
             const selected = item.uuid === (activeClinicId ?? clinic?.uuid);
+            const isDefault = item.uuid === defaultClinicId;
             const label =
               showPersonal && item.personal ? 'Personal' : item.name || 'Practice';
             const secondary =
@@ -196,6 +218,25 @@ export function ClinicSwitcher({ className }: ClinicSwitcherProps) {
                     <p className="truncate text-[11px] text-muted-foreground">{secondary}</p>
                   ) : null}
                 </div>
+                <button
+                  type="button"
+                  aria-label={isDefault ? 'Remove as default' : 'Set as default'}
+                  title={isDefault ? 'Default on login (click to remove)' : 'Open this by default on login'}
+                  className="ml-2 shrink-0 rounded p-1 hover:bg-accent"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleDefault(item);
+                  }}
+                >
+                  <Star
+                    className={cn(
+                      'h-4 w-4',
+                      isDefault ? 'fill-amber-400 text-amber-500' : 'text-muted-foreground'
+                    )}
+                  />
+                </button>
               </DropdownMenuItem>
             );
           })}

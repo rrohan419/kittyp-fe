@@ -86,6 +86,7 @@ import { ParentLayout } from './pages/parent/ParentLayout';
 import ParentHome from './pages/parent/ParentHome';
 import PetDashboardPage from './pages/parent/PetDashboardPage';
 import { RoleGuard } from './components/auth/RoleGuard';
+import { PublicHomeGate } from './components/auth/PublicHomeGate';
 import { ROLES } from './utils/roles';
 import DoctorBlog from './pages/DoctorBlog';
 import DoctorArticleEditor from './pages/DoctorArticleEditor';
@@ -106,7 +107,7 @@ export const router = createBrowserRouter(
       children: [
         {
           index: true,
-          element: <PageTransition><Index /></PageTransition>,
+          element: <PublicHomeGate><PageTransition><Index /></PageTransition></PublicHomeGate>,
         },
         {
           path: "products",

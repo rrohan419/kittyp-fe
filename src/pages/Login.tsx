@@ -21,10 +21,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/module/store/store';
 import { setActiveRole, validateAndSetUser, clearUser } from '@/module/slice/AuthSlice';
 import { initializeUserAndCart } from '@/module/slice/CartSlice';
-import { AppRole, getPortalPath, ROLES } from '@/utils/roles';
+import { AppRole } from '@/utils/roles';
 import { isEcommerceEnabled } from '@/config/features';
 import { validateLoginIdentifier, normalizeLoginIdentifier } from '@/utils/validation';
-import { resolvePreferredRole } from '@/utils/workspacePreference';
+import { resolvePostLoginTarget } from '@/utils/workspacePreference';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -51,7 +51,7 @@ const Login = () => {
     return redirect;
   };
 
-  const finishAuth = (roles: string[] | undefined) => {
+  const finishAuth = (roles: string[] | undefined, userUuid?: string) => {
     const redirect = safeRedirect();
     const appRoles = (roles || []).filter((r): r is AppRole => typeof r === 'string');
 
@@ -61,25 +61,15 @@ const Login = () => {
       return;
     }
 
-    const preferred =
-      resolvePreferredRole(appRoles) ||
-      (appRoles.includes(ROLES.DOCTOR) ? ROLES.DOCTOR : appRoles[0]);
-    dispatch(setActiveRole(preferred));
-    if (
-      redirect &&
-      ((preferred === ROLES.DOCTOR && redirect.startsWith('/doctor')) ||
-        (preferred !== ROLES.DOCTOR && redirect.startsWith('/clinic')) ||
-        (!redirect.startsWith('/doctor') && !redirect.startsWith('/clinic')))
-    ) {
-      navigate(redirect, { replace: true });
-      return;
-    }
-    navigate(getPortalPath(preferred), { replace: true });
+    const target = resolvePostLoginTarget(appRoles, userUuid, redirect);
+    if (!target) return;
+    dispatch(setActiveRole(target.role));
+    navigate(target.path, { replace: true });
   };
 
   useEffect(() => {
     if (authLoading || !isAuthenticated || !currentUser) return;
-    finishAuth(currentUser.roles);
+    finishAuth(currentUser.roles, currentUser.uuid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isAuthenticated, currentUser?.uuid]);
 
@@ -112,7 +102,7 @@ const Login = () => {
         }
       }
 
-      finishAuth(user?.roles);
+      finishAuth(user?.roles, user?.uuid);
     } catch (error: any) {
       console.error("Signin Error:", error);
       setErrorMessage(error.message || 'Login failed');
@@ -140,7 +130,7 @@ const Login = () => {
           description: "Welcome back!",
         });
 
-        finishAuth(user?.roles);
+        finishAuth(user?.roles, user?.uuid);
       } catch (error: any) {
         console.error("Google Login Error:", error);
         toast.error("Google Signup Failed", {

@@ -7,6 +7,12 @@ import { setActiveClinic } from '@/module/slice/AuthSlice';
 import { ClinicModel, fetchMyClinics, fetchUserClinics } from '@/services/clinicService';
 import { getAuthItem } from '@/utils/authStorage';
 import {
+  ClinicPortal,
+  getDefaultClinicId,
+  getLastClinicId,
+  saveLastWorkspace,
+} from '@/utils/workspacePreference';
+import {
   isDoctorPortalPath,
   isPendingClinicPinned,
   resolveActiveClinicId,
@@ -38,6 +44,7 @@ export function useActiveClinic() {
   const activeClinicId = useSelector((s: RootState) => s.authReducer.activeClinicId);
   const userUuid = useSelector((s: RootState) => s.authReducer.user?.uuid);
   const doctorPortal = isDoctorPortalPath(location.pathname);
+  const portal: ClinicPortal = doctorPortal ? 'doctor' : 'clinic';
   const {
     data: clinics = [],
     error: queryError,
@@ -63,7 +70,7 @@ export function useActiveClinic() {
   }, [refetch]);
 
   useEffect(() => {
-    const stored = getAuthItem('activeClinicId');
+    const stored = getAuthItem('activeClinicId') || getDefaultClinicId(userUuid, portal) || getLastClinicId(userUuid, portal);
     const portalClinics = doctorPortal ? clinics : clinics.filter((clinic) => !clinic.personal);
     if (portalClinics.length) {
       const resolved = doctorPortal
@@ -71,11 +78,14 @@ export function useActiveClinic() {
         : stored && portalClinics.some((c) => c.uuid === stored)
           ? stored
           : portalClinics[0].uuid;
+      if (resolved) {
+        saveLastWorkspace(userUuid, { portal, clinicId: resolved });
+      }
       if (resolved && resolved !== activeClinicId) {
         dispatch(setActiveClinic(resolved));
       }
     }
-  }, [activeClinicId, clinics, dispatch, doctorPortal]);
+  }, [activeClinicId, clinics, dispatch, doctorPortal, portal, userUuid]);
 
   const clinicUuid =
     visibleClinics.length === 0

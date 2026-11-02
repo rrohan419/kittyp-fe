@@ -355,6 +355,7 @@ export default function DoctorAppointments() {
       return;
     }
     if (andComplete && !notes.assessment.trim()) {
+      setChartTab('notes');
       toast.error('Add an assessment / diagnosis before completing');
       return;
     }

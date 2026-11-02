@@ -54,7 +54,14 @@ export function VisitChartTabs({
     >
       <TabsList className="w-full justify-start">
         <TabsTrigger value="vitals">Vitals</TabsTrigger>
-        <TabsTrigger value="notes">Notes</TabsTrigger>
+        <TabsTrigger value="notes">
+          Notes
+          {editable && !notes.assessment.trim() ? (
+            <span className="ml-1 text-destructive" title="Assessment required to finish" aria-label="Required field missing">
+              *
+            </span>
+          ) : null}
+        </TabsTrigger>
         <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
       </TabsList>
 
