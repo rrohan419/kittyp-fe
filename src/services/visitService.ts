@@ -54,8 +54,17 @@ export async function saveDoctorVisitChart(
 export type PrescriptionFirstPayload = {
   clinicUuid: string;
   petUuid?: string;
-  owner?: { firstName: string; lastName?: string; email: string; phone: string };
-  newPet?: { name: string; species?: string; breed?: string; gender?: string };
+  owner?: { firstName: string; lastName?: string; email: string; phone?: string };
+  newPet?: {
+    name: string;
+    species?: string;
+    breed?: string;
+    gender?: string;
+    photoUrl?: string;
+    dateOfBirth?: string;
+  };
+  reasonForVisit?: string;
+  urgency?: 'ROUTINE' | 'URGENT';
   confirmNewConsultation?: boolean;
   chart: {
     examinationNotes?: string;

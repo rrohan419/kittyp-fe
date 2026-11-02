@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { PetPhotoField } from '@/components/clinic/PetPhotoField';
+import { PetDobField } from '@/components/ui/PetDobField';
 import {
   admitClinicPet,
   ensureClinicOwnerFromUser,
@@ -33,6 +35,7 @@ import {
   type ClinicPetListModel,
   type ClinicVisitModel,
   type PlatformUserSearchModel,
+  type VisitUrgency,
 } from '@/services/clinicService';
 import {
   APPOINTMENT_SEARCH_MIN,
@@ -46,7 +49,12 @@ type SearchHit =
 import { Badge } from '@/components/ui/badge';
 import { PetNameType } from '@/components/ui/PetNameType';
 import { createPrescriptionFirst, type PrescriptionFirstPayload } from '@/services/visitService';
-import { parseApiErrorMessage } from '@/utils/validation';
+import {
+  digitsOnlyPhone,
+  parseApiErrorMessage,
+  validateEmail,
+  validatePhone,
+} from '@/utils/validation';
 
 type Props = {
   open: boolean;
@@ -61,8 +69,12 @@ const EMPTY_FORM = {
   ownerEmail: '',
   ownerPhone: '',
   newPetName: '',
-  newPetSpecies: '',
+  newPetSpecies: 'CAT',
   newPetBreed: '',
+  dateOfBirth: '',
+  petPhotoUrl: '',
+  reason: '',
+  urgency: 'ROUTINE' as VisitUrgency,
   temperatureC: '',
   weightKg: '',
   examinationNotes: '',
@@ -78,6 +90,7 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
   const [petUuid, setPetUuid] = useState('');
   const [selectedLabel, setSelectedLabel] = useState('');
   const [form, setForm] = useState(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [attachUser, setAttachUser] = useState<PlatformUserSearchModel | null>(null);
@@ -87,8 +100,15 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
   const [consentPet, setConsentPet] = useState<ClinicPetListModel | null>(null);
   const [consentCode, setConsentCode] = useState('');
 
-  const set = (key: keyof typeof form) => (e: { target: { value: string } }) =>
+  const set = (key: keyof typeof form) => (e: { target: { value: string } }) => {
     setForm((f) => ({ ...f, [key]: e.target.value }));
+    setFieldErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  };
 
   // Dialog stays mounted between uses — start blank on every open.
   useEffect(() => {
@@ -99,6 +119,7 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
     setPetUuid('');
     setSelectedLabel('');
     setForm(EMPTY_FORM);
+    setFieldErrors({});
     setConflict(false);
     setAttachUser(null);
     setAttachCode('');
@@ -253,10 +274,17 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
   const save = async (confirmNewConsultation: boolean) => {
     if (!form.plan.trim()) return toast.error('Add a prescription before saving');
     if (mode === 'existing' && !petUuid) return toast.error('Select a pet');
-    if (mode === 'new' && (!form.ownerFirstName.trim() || !form.ownerEmail.trim() || !form.newPetName.trim()))
-      return toast.error('Enter owner name, email and pet name');
-    if (mode === 'new' && form.ownerPhone.replace(/\D/g, '').length !== 10)
-      return toast.error('Enter a valid 10-digit owner phone');
+    if (mode === 'new') {
+      const errors: Record<string, string> = {};
+      if (!form.ownerFirstName.trim()) errors.ownerFirstName = 'First name is required';
+      const emailError = validateEmail(form.ownerEmail);
+      if (emailError) errors.ownerEmail = emailError;
+      const phoneError = validatePhone(form.ownerPhone, false);
+      if (phoneError) errors.ownerPhone = phoneError;
+      if (!form.newPetName.trim()) errors.newPetName = 'Pet name is required';
+      setFieldErrors(errors);
+      if (Object.keys(errors).length) return toast.error('Fix the highlighted fields');
+    }
 
     const vitals: Record<string, unknown> = {};
     if (form.temperatureC && Number.isFinite(Number(form.temperatureC))) vitals.temperatureC = Number(form.temperatureC);
@@ -265,6 +293,8 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
     const payload: PrescriptionFirstPayload = {
       clinicUuid,
       confirmNewConsultation,
+      reasonForVisit: form.reason.trim() || undefined,
+      urgency: form.urgency,
       chart: {
         examinationNotes: form.examinationNotes || undefined,
         assessment: form.assessment || undefined,
@@ -279,12 +309,14 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
               firstName: form.ownerFirstName.trim(),
               lastName: form.ownerLastName.trim() || undefined,
               email: form.ownerEmail.trim(),
-              phone: form.ownerPhone.replace(/\D/g, ''),
+              phone: digitsOnlyPhone(form.ownerPhone) || undefined,
             },
             newPet: {
               name: form.newPetName.trim(),
               species: form.newPetSpecies || undefined,
               breed: form.newPetBreed.trim() || undefined,
+              dateOfBirth: form.dateOfBirth || undefined,
+              photoUrl: form.petPhotoUrl || undefined,
             },
           }),
     };
@@ -456,11 +488,67 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {field('rx-owner-name', 'Owner first name', 'ownerFirstName')}
+              <div>
+                <Label htmlFor="rx-owner-name">Owner first name *</Label>
+                <Input
+                  id="rx-owner-name"
+                  value={form.ownerFirstName}
+                  onChange={set('ownerFirstName')}
+                  required
+                />
+                {fieldErrors.ownerFirstName ? (
+                  <p className="mt-1 text-xs text-destructive">{fieldErrors.ownerFirstName}</p>
+                ) : null}
+              </div>
               {field('rx-owner-last-name', 'Owner last name', 'ownerLastName')}
-              {field('rx-owner-phone', 'Owner phone (10-digit)', 'ownerPhone')}
-              {field('rx-owner-email', 'Owner email', 'ownerEmail')}
-              {field('rx-pet-name', 'Pet name', 'newPetName')}
+              <div>
+                <Label htmlFor="rx-owner-phone">Owner phone (optional)</Label>
+                <Input
+                  id="rx-owner-phone"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="9876543210"
+                  value={form.ownerPhone}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, ownerPhone: digitsOnlyPhone(e.target.value) }));
+                    setFieldErrors((current) => {
+                      if (!current.ownerPhone) return current;
+                      const next = { ...current };
+                      delete next.ownerPhone;
+                      return next;
+                    });
+                  }}
+                />
+                {fieldErrors.ownerPhone ? (
+                  <p className="mt-1 text-xs text-destructive">{fieldErrors.ownerPhone}</p>
+                ) : null}
+              </div>
+              <div>
+                <Label htmlFor="rx-owner-email">Owner email *</Label>
+                <Input
+                  id="rx-owner-email"
+                  type="email"
+                  value={form.ownerEmail}
+                  onChange={set('ownerEmail')}
+                  required
+                />
+                {fieldErrors.ownerEmail ? (
+                  <p className="mt-1 text-xs text-destructive">{fieldErrors.ownerEmail}</p>
+                ) : null}
+              </div>
+              <div>
+                <Label htmlFor="rx-pet-name">Pet name *</Label>
+                <Input
+                  id="rx-pet-name"
+                  value={form.newPetName}
+                  onChange={set('newPetName')}
+                  required
+                />
+                {fieldErrors.newPetName ? (
+                  <p className="mt-1 text-xs text-destructive">{fieldErrors.newPetName}</p>
+                ) : null}
+              </div>
               <div>
                 <Label htmlFor="rx-pet-species">Species</Label>
                 <Select
@@ -480,8 +568,53 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
                 </Select>
               </div>
               <div className="col-span-2">{field('rx-pet-breed', 'Breed', 'newPetBreed')}</div>
+              <div className="col-span-2">
+                <PetDobField
+                  id="rx-pet-dob"
+                  value={form.dateOfBirth}
+                  onChange={(dateOfBirth) => setForm((f) => ({ ...f, dateOfBirth }))}
+                  defaultMode="months"
+                />
+              </div>
+              <PetPhotoField
+                className="col-span-2"
+                value={form.petPhotoUrl || null}
+                onChange={(petPhotoUrl) => setForm((f) => ({ ...f, petPhotoUrl: petPhotoUrl || '' }))}
+                disabled={saving}
+              />
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="rx-reason">Reason for visit</Label>
+              <Input
+                id="rx-reason"
+                value={form.reason}
+                onChange={set('reason')}
+                placeholder="e.g. Leg injury"
+              />
+            </div>
+            <div>
+              <Label htmlFor="rx-urgency">Urgency</Label>
+              <Select
+                value={form.urgency}
+                onValueChange={(urgency) => {
+                  if (urgency === 'ROUTINE' || urgency === 'URGENT') {
+                    setForm((f) => ({ ...f, urgency }));
+                  }
+                }}
+              >
+                <SelectTrigger id="rx-urgency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ROUTINE">Routine</SelectItem>
+                  <SelectItem value="URGENT">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             {field('rx-temp', 'Temperature (°C)', 'temperatureC')}
