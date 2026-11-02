@@ -28,7 +28,6 @@ interface AuthData {
 
 interface JwtResponseModel {
   token: string;
-  refreshToken: string;
   type: string;
   id: number;
   username: string;
@@ -138,6 +137,7 @@ export const socialSso = async (tokenResponse: TokenResponse) => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/social-sso`, {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
@@ -154,10 +154,9 @@ export const socialSso = async (tokenResponse: TokenResponse) => {
     const data = await response.json();
 
     if (data.success && data.data) {
-      const { token, roles, refreshToken } = data.data;
+      const { token, roles } = data.data;
 
       setAuthItem("access_token", token);
-      setAuthItem("refresh_token", refreshToken);
       setAuthItem("roles", JSON.stringify(roles));
     } else {
       throw new Error(data.message || "Signup failed");
@@ -174,17 +173,27 @@ export const login = async (data: AuthData): Promise<{ token: string; roles: str
 
   try {
     // Step 1: Login to get token
-    const loginResponse = await axiosInstance.post<WrappedJwtResponse>('/auth/signin', data);
+    const loginResponse = await axiosInstance.post<WrappedJwtResponse>('/auth/signin', data, {
+      withCredentials: true,
+    });
 
-    const { token, roles, refreshToken } = loginResponse.data.data; // <-- This is JwtResponseModel
+    const { token, roles } = loginResponse.data.data; // <-- This is JwtResponseModel
 
     setAuthItem('access_token', token);
-    setAuthItem("refresh_token", refreshToken);
     setAuthItem('roles', JSON.stringify(roles));
 
     return { token, roles };
   } catch (error: any) {
     throw new Error(error?.response?.data?.message || 'Login or user fetch failed.');
+  }
+};
+
+/** Revokes the refresh token server-side and clears its cookie. Best effort. */
+export const logoutRequest = async (): Promise<void> => {
+  try {
+    await axiosInstance.post('/auth/logout', null, { withCredentials: true });
+  } catch {
+    /* local logout proceeds regardless */
   }
 };
 

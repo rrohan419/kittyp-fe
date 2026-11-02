@@ -38,7 +38,6 @@ type RetryableRequest = InternalAxiosRequestConfig & {
 interface RefreshResponse {
   token?: string;
   accessToken?: string;
-  refreshToken?: string;
   data?: RefreshResponse;
   result?: RefreshResponse;
   payload?: RefreshResponse;
@@ -50,9 +49,11 @@ const axiosInstance: AxiosInstance = axios.create({
 });
 
 // Separate client: refresh failures must not re-enter the main interceptor.
+// The refresh token lives in an HttpOnly cookie, so credentials must be sent.
 const refreshClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 45000,
+  withCredentials: true,
 });
 
 let refreshPromise: Promise<string> | null = null;
@@ -108,27 +109,15 @@ const getAuthorizationHeader = (
   return typeof value === 'string' ? value : undefined;
 };
 
-const extractTokens = (responseData: unknown): {
-  accessToken: string;
-  refreshToken?: string;
-} => {
+const extractAccessToken = (responseData: unknown): string => {
   let current = responseData as RefreshResponse | null | undefined;
 
-  // Supports common response wrappers such as:
-  // { token, refreshToken }
-  // { data: { token, refreshToken } }
-  // { data: { data: { token, refreshToken } } }
+  // Supports wrappers such as { token }, { data: { token } }, { data: { data: { token } } }
   for (let depth = 0; depth < 5 && current; depth++) {
     const accessToken = current.token || current.accessToken;
 
     if (typeof accessToken === 'string' && accessToken.length > 0) {
-      return {
-        accessToken,
-        refreshToken:
-          typeof current.refreshToken === 'string'
-            ? current.refreshToken
-            : undefined,
-      };
+      return accessToken;
     }
 
     current = current.data || current.result || current.payload;
@@ -140,29 +129,11 @@ const extractTokens = (responseData: unknown): {
 };
 
 const refreshAccessToken = async (): Promise<string> => {
-  const refreshToken = getAuthItem('refresh_token');
-
-  if (!refreshToken) {
-    throw new Error('Refresh token is missing.');
-  }
-
-  const response = await refreshClient.post(
-    `/auth/refresh`,
-    { refreshToken }
-  );
-
-  const tokens = extractTokens(response.data);
-
-  // Store the new access token.
-  setAuthItem('access_token', tokens.accessToken);
-
-  // If the backend rotates refresh tokens, store the new one.
-  // Otherwise, preserve the existing refresh token.
-  if (tokens.refreshToken) {
-    setAuthItem('refresh_token', tokens.refreshToken);
-  }
-
-  return tokens.accessToken;
+  // The refresh token is sent automatically via the HttpOnly cookie.
+  const response = await refreshClient.post('/auth/refresh');
+  const accessToken = extractAccessToken(response.data);
+  setAuthItem('access_token', accessToken);
+  return accessToken;
 };
 
 const getNewAccessToken = (): Promise<string> => {
@@ -234,12 +205,6 @@ axiosInstance.interceptors.response.use(
     }
 
     // Do not try to refresh when the failed request is itself the
-    // refresh request, or when no refresh credential is available.
-    if (!getAuthItem('refresh_token')) {
-      redirectToLogin();
-      return Promise.reject(error);
-    }
-
     originalRequest._retry = true;
 
     try {

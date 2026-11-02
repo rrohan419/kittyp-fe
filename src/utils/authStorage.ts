@@ -5,6 +5,8 @@
 
 const AUTH_KEYS = [
   'access_token',
+  // Legacy: the refresh token now lives in an HttpOnly cookie. Kept so old
+  // localStorage values are wiped on logout.
   'refresh_token',
   'roles',
   'role',

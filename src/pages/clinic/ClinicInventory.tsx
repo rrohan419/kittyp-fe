@@ -14,17 +14,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Minus, AlertTriangle, Boxes, Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, AlertTriangle, Boxes, CalendarClock, Pencil, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { ListPager } from '@/components/ui/ListPager';
 import { useAppSelector } from '@/module/store/hooks';
 import { hasRole, ROLES } from '@/utils/roles';
+import InventoryBatchDialog from '@/components/clinic/InventoryBatchDialog';
 import {
   ClinicInventoryItem,
   ClinicInventoryMovement,
   ClinicInventoryRequest,
-  adjustClinicInventoryStock,
   createClinicInventoryItem,
   deleteClinicInventoryItem,
   fetchClinicInventory,
@@ -42,6 +42,10 @@ function onHandLabel(quantity: number, unit: string, reserved = 0): string {
   return `${quantity} ${unit}${held}`;
 }
 
+function billableQuantity(item: ClinicInventoryItem): number {
+  return Math.max(0, item.availableQuantity ?? item.quantity - (item.reserved ?? 0));
+}
+
 function onHandClass(quantity: number, reorderLevel: number): string {
   if (quantity <= 0) return 'font-medium text-red-700 dark:text-red-400';
   if (quantity < reorderLevel) return 'font-medium text-amber-600';
@@ -50,6 +54,8 @@ function onHandClass(quantity: number, reorderLevel: number): string {
 
 function movementLabel(movement: ClinicInventoryMovement): string {
   const amount = Math.abs(movement.quantityDelta);
+  if (movement.action === 'RECEIVE') return `Received ${amount}`;
+  if (movement.action === 'REVIEW') return 'Expiry reviewed';
   if (movement.action === 'RESERVE') return `Reserved ${amount}`;
   if (movement.action === 'RELEASE') return `Released ${amount}`;
   if (movement.action === 'CONSUME' || movement.source === 'INVOICE') return `Billed ${amount}`;
@@ -76,11 +82,7 @@ export default function ClinicInventory() {
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [stockItem, setStockItem] = useState<ClinicInventoryItem | null>(null);
-  const [stockDirection, setStockDirection] = useState<'ADD' | 'REMOVE'>('ADD');
-  const [stockQty, setStockQty] = useState(1);
-  const [stockNote, setStockNote] = useState('');
-  const [stockSaving, setStockSaving] = useState(false);
+  const [batchItem, setBatchItem] = useState<ClinicInventoryItem | null>(null);
   const [movements, setMovements] = useState<ClinicInventoryMovement[]>([]);
   const [movementPage, setMovementPage] = useState(1);
   const [movementTotalPages, setMovementTotalPages] = useState(0);
@@ -132,13 +134,15 @@ export default function ClinicInventory() {
   }, [clinicUuid, canAdjust]);
   useEffect(() => { void load(page); }, [load, page]);
   useEffect(() => { void loadMovements(movementPage); }, [loadMovements, movementPage]);
-  const lowStock = items.filter((item) => item.quantity < item.reorderLevel);
+  const lowStock = items.filter((item) => billableQuantity(item) < item.reorderLevel);
+  const expiryAttentionCount = items.filter((item) =>
+    (item.expiredQuantity ?? 0) > 0 || (item.unreviewedQuantity ?? 0) > 0 || (item.expiringSoonQuantity ?? 0) > 0,
+  ).length;
   const openCreate = () => { setEditing(null); setForm(emptyForm); setFormOpen(true); };
-  const openStock = (item: ClinicInventoryItem, direction: 'ADD' | 'REMOVE') => { setStockItem(item); setStockDirection(direction); setStockQty(1); setStockNote(''); };
+  const openStock = (item: ClinicInventoryItem) => setBatchItem(item);
   const openEdit = (item: ClinicInventoryItem) => { setEditing(item); setForm({ name: item.name, category: item.category, quantity: item.quantity, unit: item.unit, reorderLevel: item.reorderLevel, unitPrice: item.unitPrice, active: item.active }); setFormOpen(true); };
   const updateField = (field: keyof ClinicInventoryRequest, value: string | number) => setForm((current) => ({ ...current, [field]: value }));
   const save = async (event: React.FormEvent) => { event.preventDefault(); if (!clinicUuid || !form.name.trim()) return; setSaving(true); try { if (editing) await updateClinicInventoryItem(clinicUuid, editing.uuid, form); else await createClinicInventoryItem(clinicUuid, { ...form, name: form.name.trim() });       setFormOpen(false); await load(page); await loadMovements(1); toast.success(editing ? 'Inventory item updated' : 'Inventory item added'); } catch { toast.error('Could not save inventory item'); } finally { setSaving(false); } };
-  const saveStock = async (event: React.FormEvent) => { event.preventDefault(); if (!clinicUuid || !stockItem || stockQty < 1) return; setStockSaving(true); try { await adjustClinicInventoryStock(clinicUuid, stockItem.uuid, { direction: stockDirection, quantity: stockQty, note: stockNote.trim() || undefined }); setStockItem(null); await load(page); await loadMovements(1); toast.success(stockDirection === 'ADD' ? 'Stock added' : 'Stock removed'); } catch (error) { const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message; toast.error(message || 'Could not update stock'); } finally { setStockSaving(false); } };
   const remove = async (item: ClinicInventoryItem) => { if (!clinicUuid || !window.confirm(`Delete ${item.name}?`)) return; setDeleting(item.uuid); try { await deleteClinicInventoryItem(clinicUuid, item.uuid); await load(page); await loadMovements(1); toast.success('Inventory item deleted'); } catch { toast.error('Could not delete inventory item'); } finally { setDeleting(null); } };
 
   const catalogCell = 'border-b border-border py-3';
@@ -164,6 +168,19 @@ export default function ClinicInventory() {
             <div>
               <p className="text-sm font-medium">{lowStock.length} items need reordering</p>
               <p className="text-xs text-muted-foreground mt-1">{lowStock.map((i) => i.name).join(', ')}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {expiryAttentionCount > 0 && (
+        <Card className="border-0 bg-red-500/5 shadow-sm">
+          <CardContent className="flex items-start gap-3 p-4">
+            <CalendarClock className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+            <div>
+              <p className="text-sm font-medium">{expiryAttentionCount} items on this page need expiry attention</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Review unknown expiry, remove expired stock, or use batches expiring within 90 days. Expired and unreviewed stock cannot be billed.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -200,16 +217,26 @@ export default function ClinicInventory() {
                     <div className={catalogCell}>
                       <Badge variant="secondary" className="border-0 bg-muted text-[10px]">{categoryLabels[item.category] || item.category}</Badge>
                     </div>
-                    <div className={`${catalogCell} ${onHandClass(item.quantity, item.reorderLevel)}`}>{onHandLabel(item.quantity, item.unit, item.reserved ?? 0)}</div>
+                    <div className={`${catalogCell} ${onHandClass(billableQuantity(item), item.reorderLevel)}`}>
+                      {onHandLabel(item.quantity, item.unit, item.reserved ?? 0)}
+                      {item.availableQuantity !== undefined ? <p className="mt-1 text-xs font-normal text-muted-foreground">{item.availableQuantity} {item.unit} available to bill</p> : null}
+                      {item.nextExpiryDate ? <p className="mt-1 text-xs font-normal text-muted-foreground">Next expiry {item.nextExpiryDate}</p> : null}
+                      {(item.expiredQuantity ?? 0) > 0 || (item.unreviewedQuantity ?? 0) > 0 || (item.expiringSoonQuantity ?? 0) > 0 ? (
+                        <p className="mt-1 text-xs font-normal text-amber-700">
+                          {(item.expiredQuantity ?? 0) > 0 ? `${item.expiredQuantity} expired · ` : ''}
+                          {(item.unreviewedQuantity ?? 0) > 0 ? `${item.unreviewedQuantity} unreviewed · ` : ''}
+                          {(item.expiringSoonQuantity ?? 0) > 0 ? `${item.expiringSoonQuantity} expiring soon` : ''}
+                        </p>
+                      ) : null}
+                    </div>
                     <div className={`${catalogCell} text-muted-foreground`}>{item.reorderLevel} {item.unit}</div>
                     <div className={`${catalogCell} font-medium`}>₹{item.unitPrice.toFixed(2)}</div>
                     <div className={`${catalogCell} flex flex-nowrap justify-center gap-0.5`}>
+                      <Button variant="ghost" size="icon" title={`View batches for ${item.name}`} aria-label={`View batches for ${item.name}`} onClick={() => openStock(item)}><CalendarClock className="h-4 w-4" /></Button>
                       {showActions ? (
                         <>
                           {canEditItems ? (
                             <>
-                              <Button variant="ghost" size="icon" title={`Add stock to ${item.name}`} aria-label={`Add stock to ${item.name}`} onClick={() => openStock(item, 'ADD')}><Plus className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" title={`Remove stock from ${item.name}`} aria-label={`Remove stock from ${item.name}`} onClick={() => openStock(item, 'REMOVE')}><Minus className="h-4 w-4" /></Button>
                               <Button variant="ghost" size="icon" title={`Edit ${item.name}`} aria-label={`Edit ${item.name}`} onClick={() => openEdit(item)}><Pencil className="h-4 w-4" /></Button>
                             </>
                           ) : null}
@@ -236,7 +263,15 @@ export default function ClinicInventory() {
                   <div className="grid grid-cols-3 gap-2 text-sm">
                     <div>
                       <p className="text-[11px] text-muted-foreground">On hand</p>
-                      <p className={onHandClass(item.quantity, item.reorderLevel)}>{onHandLabel(item.quantity, item.unit, item.reserved ?? 0)}</p>
+                      <p className={onHandClass(billableQuantity(item), item.reorderLevel)}>{onHandLabel(item.quantity, item.unit, item.reserved ?? 0)}</p>
+                      {item.availableQuantity !== undefined ? <p className="mt-1 text-xs text-muted-foreground">{item.availableQuantity} {item.unit} available to bill</p> : null}
+                      {(item.expiredQuantity ?? 0) > 0 || (item.unreviewedQuantity ?? 0) > 0 || (item.expiringSoonQuantity ?? 0) > 0 ? (
+                        <p className="mt-1 text-xs text-amber-700">
+                          {(item.expiredQuantity ?? 0) > 0 ? `${item.expiredQuantity} expired ` : ''}
+                          {(item.unreviewedQuantity ?? 0) > 0 ? `${item.unreviewedQuantity} unreviewed ` : ''}
+                          {(item.expiringSoonQuantity ?? 0) > 0 ? `${item.expiringSoonQuantity} expiring soon` : ''}
+                        </p>
+                      ) : null}
                     </div>
                     <div>
                       <p className="text-[11px] text-muted-foreground">Reorder</p>
@@ -247,20 +282,21 @@ export default function ClinicInventory() {
                       <p className="font-medium">₹{item.unitPrice.toFixed(2)}</p>
                     </div>
                   </div>
-                  {showActions ? (
-                    <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" size="sm" className="col-span-2" onClick={() => openStock(item)}><CalendarClock className="mr-1 h-3.5 w-3.5" />View batches</Button>
+                    {showActions ? (
+                      <>
                       {canEditItems ? (
                         <>
-                          <Button variant="outline" size="sm" onClick={() => openStock(item, 'ADD')}>Add</Button>
-                          <Button variant="outline" size="sm" onClick={() => openStock(item, 'REMOVE')}>Remove</Button>
                           <Button variant="outline" size="sm" onClick={() => openEdit(item)}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button>
                         </>
                       ) : null}
                       {canAdjust ? (
                         <Button variant="outline" size="sm" onClick={() => void remove(item)} disabled={deleting === item.uuid}><Trash2 className="mr-1 h-3.5 w-3.5" />Delete</Button>
                       ) : null}
-                    </div>
-                  ) : null}
+                      </>
+                    ) : null}
+                  </div>
                 </div>
               );
             })}
@@ -282,7 +318,7 @@ export default function ClinicInventory() {
                   <div className="min-w-0 space-y-1">
                     <p className="truncate font-medium">{movement.itemName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {[movement.actorName, movement.invoiceNumber].filter(Boolean).join(' · ') || 'Manual'}
+                      {[movement.actorName, movement.invoiceNumber, movement.batchNumber ? `Batch ${movement.batchNumber}` : null].filter(Boolean).join(' · ') || 'Manual'}
                     </p>
                     {movement.note ? <p className="text-xs text-muted-foreground">{movement.note}</p> : null}
                     {movement.createdAt ? <p className="text-xs text-muted-foreground">{new Date(movement.createdAt).toLocaleString()}</p> : null}
@@ -300,30 +336,16 @@ export default function ClinicInventory() {
       </TabsContent>
       </Tabs>
 
-      <Dialog open={stockItem !== null} onOpenChange={(open) => { if (!open) setStockItem(null); }}>
-        <DialogContent>
-          <form onSubmit={saveStock} className="space-y-4">
-            <DialogHeader>
-              <DialogTitle>{stockDirection === 'ADD' ? 'Add stock' : 'Remove stock'}</DialogTitle>
-              <DialogDescription>
-                {stockItem ? `${stockItem.name} · ${stockItem.quantity} ${stockItem.unit} on hand` : ''}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2">
-              <Label htmlFor="stock-qty">Quantity</Label>
-              <Input id="stock-qty" type="number" min="1" step="1" value={stockQty} onChange={(event) => setStockQty(Number(event.target.value))} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="stock-note">Note</Label>
-              <Input id="stock-note" value={stockNote} onChange={(event) => setStockNote(event.target.value)} placeholder="Optional" maxLength={200} />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setStockItem(null)}>Cancel</Button>
-              <Button type="submit" disabled={stockSaving}>{stockSaving ? 'Saving...' : stockDirection === 'ADD' ? 'Add stock' : 'Remove stock'}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {clinicUuid ? (
+        <InventoryBatchDialog
+          clinicUuid={clinicUuid}
+          item={batchItem}
+          open={batchItem !== null}
+          canEdit={canEditItems}
+          onOpenChange={(open) => { if (!open) setBatchItem(null); }}
+          onChanged={() => { void load(page); void loadMovements(1); }}
+        />
+      ) : null}
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent>
@@ -331,7 +353,7 @@ export default function ClinicInventory() {
             <DialogHeader>
               <DialogTitle>{editing ? 'Edit inventory item' : 'Add inventory item'}</DialogTitle>
               <DialogDescription>
-                {editing ? 'Name, category, unit, reorder level, and price. On-hand quantity stays the same.' : 'Add a catalog item and its starting quantity.'}
+                {editing ? 'Name, category, unit, reorder level, and price. On-hand quantity stays the same.' : 'Create the catalog item first, then receive stock in batches with expiry details.'}
               </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -354,12 +376,7 @@ export default function ClinicInventory() {
                   <Label>On hand</Label>
                   <p className="flex h-10 items-center text-sm font-medium">{editing.quantity} {editing.unit}</p>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label htmlFor="inventory-quantity">Starting quantity</Label>
-                  <Input id="inventory-quantity" type="number" min="0" value={form.quantity} onChange={(event) => updateField('quantity', Number(event.target.value))} required />
-                </div>
-              )}
+              ) : <p className="text-sm text-muted-foreground sm:col-span-2">Starting stock is added after creation so expiry information can be recorded for each batch.</p>}
               <div className="space-y-2">
                 <Label htmlFor="inventory-reorder">Reorder level</Label>
                 <Input id="inventory-reorder" type="number" min="0" value={form.reorderLevel} onChange={(event) => updateField('reorderLevel', Number(event.target.value))} required />
