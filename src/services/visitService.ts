@@ -51,6 +51,41 @@ export async function saveDoctorVisitChart(
   return res.data.data;
 }
 
+export type PrescriptionFirstPayload = {
+  clinicUuid: string;
+  petUuid?: string;
+  owner?: { firstName: string; lastName?: string; email: string; phone?: string };
+  newPet?: {
+    name: string;
+    species?: string;
+    breed?: string;
+    gender?: string;
+    photoUrl?: string;
+    dateOfBirth?: string;
+  };
+  reasonForVisit?: string;
+  urgency?: 'ROUTINE' | 'URGENT';
+  confirmNewConsultation?: boolean;
+  chart: {
+    examinationNotes?: string;
+    assessment?: string;
+    plan: string;
+    nextVisitNotes?: string;
+    vitals?: Record<string, unknown>;
+    internalNotes?: string;
+  };
+};
+
+export async function createPrescriptionFirst(
+  payload: PrescriptionFirstPayload
+): Promise<ClinicVisitModel> {
+  const res = await axiosInstance.post<ApiSuccessResponse<ClinicVisitModel>>(
+    '/doctor/visits/prescription-first',
+    payload
+  );
+  return res.data.data;
+}
+
 export async function completeDoctorVisit(visitUuid: string): Promise<ClinicVisitModel> {
   const res = await axiosInstance.post<ApiSuccessResponse<ClinicVisitModel>>(
     `/doctor/visits/${visitUuid}/complete`

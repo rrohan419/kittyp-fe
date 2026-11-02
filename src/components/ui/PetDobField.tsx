@@ -31,51 +31,60 @@ export function PetDobField({
     return defaultMode;
   });
 
-  const [monthsInput, setMonthsInput] = useState<string>(() => {
-    if (value) {
-      const calculatedMonths = dobToTotalMonths(value);
-      return calculatedMonths != null ? String(calculatedMonths) : '';
-    }
-    return '';
-  });
+  const splitMonths = (value: string) => {
+    const total = value ? dobToTotalMonths(value) : null;
+    if (total == null) return { y: '', m: '' };
+    const y = Math.floor(total / 12);
+    const m = total % 12;
+    return { y: y > 0 ? String(y) : '', m: m > 0 || y === 0 ? String(m) : '' };
+  };
 
-  // Keep monthsInput in sync if value changes externally
+  const [yearsInput, setYearsInput] = useState<string>(() => splitMonths(value).y);
+  const [monthsInput, setMonthsInput] = useState<string>(() => splitMonths(value).m);
+
+  const totalFrom = (y: string, m: string) => {
+    const yn = parseInt(y, 10);
+    const mn = parseInt(m, 10);
+    if (isNaN(yn) && isNaN(mn)) return null;
+    return (isNaN(yn) ? 0 : yn) * 12 + (isNaN(mn) ? 0 : mn);
+  };
+
+  // Keep inputs in sync if value changes externally
   useEffect(() => {
     if (!value) {
+      setYearsInput('');
       setMonthsInput('');
       return;
     }
-    // Only update if not already matching the current months input to avoid cursor jump
-    const currentFromInput = monthsInput ? ageInMonthsToDob(parseInt(monthsInput, 10) || 0) : '';
+    // Only update if not already matching the current inputs to avoid cursor jump
+    const t = totalFrom(yearsInput, monthsInput);
+    const currentFromInput = t != null ? ageInMonthsToDob(t) : '';
     if (value !== currentFromInput) {
-      const m = dobToTotalMonths(value);
-      setMonthsInput(m != null ? String(m) : '');
+      const { y, m } = splitMonths(value);
+      setYearsInput(y);
+      setMonthsInput(m);
     }
   }, [value]);
 
   const handleModeChange = (newMode: 'months' | 'date') => {
     setMode(newMode);
-    if (newMode === 'months') {
-      if (value) {
-        const m = dobToTotalMonths(value);
-        setMonthsInput(m != null ? String(m) : '');
-      }
-    } else {
-      // Switching to date picker mode: if we had months entered, value is already computed
+    if (newMode === 'months' && value) {
+      const { y, m } = splitMonths(value);
+      setYearsInput(y);
+      setMonthsInput(m);
     }
   };
 
-  const handleMonthsChange = (val: string) => {
-    setMonthsInput(val);
-    const num = parseInt(val, 10);
-    if (!val || isNaN(num) || num < 0) {
-      onChange('');
-    } else {
-      onChange(ageInMonthsToDob(num));
-    }
+  const applyAge = (y: string, m: string) => {
+    setYearsInput(y);
+    setMonthsInput(m);
+    const t = totalFrom(y, m);
+    onChange(t == null || t < 0 ? '' : ageInMonthsToDob(t));
   };
 
-  const approxDobText = monthsInput && parseInt(monthsInput, 10) > 0 ? ageInMonthsToDob(parseInt(monthsInput, 10)) : null;
+  const totalMonthsEntered = totalFrom(yearsInput, monthsInput);
+  const approxDobText =
+    totalMonthsEntered != null && totalMonthsEntered > 0 ? ageInMonthsToDob(totalMonthsEntered) : null;
 
   return (
     <div className={`space-y-2 ${className}`}>
@@ -94,7 +103,7 @@ export function PetDobField({
                 : 'bg-background text-muted-foreground hover:bg-muted'
             }`}
           >
-            Age in months
+            Enter age (y / m)
           </button>
           <button
             type="button"
@@ -113,17 +122,31 @@ export function PetDobField({
 
       {mode === 'months' ? (
         <div className="space-y-1">
-          <Input
-            id={id}
-            type="number"
-            min="0"
-            max="360"
-            value={monthsInput}
-            onChange={(e) => handleMonthsChange(e.target.value)}
-            placeholder="Enter age in months (e.g. 6)"
-            disabled={disabled}
-            className="border-primary/20 focus:border-primary"
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              id={id}
+              type="number"
+              min="0"
+              max="30"
+              value={yearsInput}
+              onChange={(e) => applyAge(e.target.value, monthsInput)}
+              placeholder="0"
+              disabled={disabled}
+              className="border-primary/20 focus:border-primary"
+            />
+            <span className="text-sm text-muted-foreground">y</span>
+            <Input
+              type="number"
+              min="0"
+              max="11"
+              value={monthsInput}
+              onChange={(e) => applyAge(yearsInput, e.target.value)}
+              placeholder="0"
+              disabled={disabled}
+              className="border-primary/20 focus:border-primary"
+            />
+            <span className="text-sm text-muted-foreground">m</span>
+          </div>
           {approxDobText ? (
             <p className="text-xs text-muted-foreground">
               Approx. date of birth: <span className="font-medium">{approxDobText}</span>
