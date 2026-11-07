@@ -18,11 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Search, X } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { addHours, format, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
 import {
   ClinicDoctorModel,
   ClinicOwnerModel,
+  ClinicOwnerPetModel,
   ClinicPetListModel,
   OwnerEmailLookupModel,
   PlatformUserSearchModel,
@@ -30,10 +31,7 @@ import {
   createClinicBooking,
   createWalkInVisit,
   ensureClinicOwnerFromUser,
-  fetchClinicOwners,
-  fetchClinicPets,
   lookupOwnerByEmail,
-  searchPlatformUsers,
   sendClientAttachOtp,
   sendPetConsentOtp,
   verifyClientAttachOtp,
@@ -46,12 +44,9 @@ import { toast } from 'sonner';
 import { notifyPortalRefresh } from '@/components/portal/PortalNotifications';
 import { cn } from '@/lib/utils';
 import { PetPhotoField } from '@/components/clinic/PetPhotoField';
+import { PatientSearch } from '@/components/clinic/PatientSearch';
 import { PetNameType } from '@/components/ui/PetNameType';
 import { PetDobField } from '@/components/ui/PetDobField';
-import { APPOINTMENT_SEARCH_MIN,
-  matchesEmailOrGeneratedId,
-  normalizeAppointmentSearchQuery,
-} from '@/utils/appointmentPatientSearch';
 
 type Props = {
   open: boolean;
@@ -83,11 +78,6 @@ const emptyNew = {
   slotDate: '',
   slotTime: '',
 };
-
-type SearchHit =
-  | { kind: 'pet'; pet: ClinicPetListModel }
-  | { kind: 'owner'; owner: ClinicOwnerModel; pet: ClinicPetListModel }
-  | { kind: 'user'; user: PlatformUserSearchModel };
 
 /** Snap: :00 stays; 1–30 → :30; >30 → next hour :00. */
 export function snapToHalfHour(date: Date): Date {
@@ -127,15 +117,13 @@ export function AddAppointmentDialog({
 }: Props) {
   const hideDoctorSelect = Boolean(lockedDoctorUuid);
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
+  const [searchScope, setSearchScope] = useState<'local' | 'global'>('local');
   const [timing, setTiming] = useState<TimingMode>('now');
   const [petSearch, setPetSearch] = useState('');
-  const [debouncedQ, setDebouncedQ] = useState('');
-  const [hits, setHits] = useState<SearchHit[]>([]);
   const [selectedPet, setSelectedPet] = useState<ClinicPetListModel | null>(null);
   const [form, setForm] = useState(emptyNew);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [searching, setSearching] = useState(false);
   const [busyHint, setBusyHint] = useState<string | null>(null);
   const [emailLookup, setEmailLookup] = useState<OwnerEmailLookupModel | null>(null);
   const [matchedOwner, setMatchedOwner] = useState<ClinicOwnerModel | null>(null);
@@ -148,6 +136,9 @@ export function AddAppointmentDialog({
   const [attachSending, setAttachSending] = useState(false);
   const [attachVerifying, setAttachVerifying] = useState(false);
   const [attachCooldown, setAttachCooldown] = useState(0);
+  const [pendingPlatformPet, setPendingPlatformPet] = useState<ClinicOwnerPetModel | null>(null);
+  const [consentPet, setConsentPet] = useState<ClinicPetListModel | null>(null);
+  const [selectionBusy, setSelectionBusy] = useState(false);
 
   useEffect(() => {
     if (attachCooldown <= 0) return;
@@ -169,142 +160,12 @@ export function AddAppointmentDialog({
   const resolvedDoctorUuid = lockedDoctorUuid || form.doctorUuid;
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(normalizeAppointmentSearchQuery(petSearch)), 250);
-    return () => clearTimeout(t);
-  }, [petSearch]);
-
-  useEffect(() => {
-    if (!open || !clinicUuid || mode !== 'existing' || selectedPet) {
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      const q = debouncedQ.trim();
-      if (q.length < APPOINTMENT_SEARCH_MIN) {
-        setHits([]);
-        setSearching(false);
-        return;
-      }
-      setSearching(true);
-      try {
-        const emailOrId = { by: 'emailOrId' as const };
-        const [petsPage, ownersPage, users] = await Promise.all([
-          fetchClinicPets(clinicUuid, q, { ...emailOrId, pageSize: 50 }),
-          fetchClinicOwners(clinicUuid, q, { ...emailOrId, pageSize: 50 }),
-          searchPlatformUsers(clinicUuid, q, emailOrId),
-        ]);
-        if (cancelled) return;
-        const pets = petsPage.models ?? [];
-        const owners = ownersPage.models ?? [];
-        const petHits = pets.slice(0, 30).map((pet) => ({ kind: 'pet' as const, pet }));
-        const ownerPetHits: Extract<SearchHit, { kind: 'owner' }>[] = [];
-        for (const owner of owners.slice(0, 20)) {
-          const petsOfOwner = owner.pets ?? [];
-          if (petsOfOwner.length === 0) continue;
-          for (const op of petsOfOwner.slice(0, 5)) {
-            ownerPetHits.push({
-              kind: 'owner',
-              owner,
-              pet: {
-                petUuid: op.petUuid,
-                globalPetId: op.globalPetId,
-                name: op.name,
-                species: op.species,
-                breed: op.breed,
-                gender: op.gender,
-                dateOfBirth: op.dateOfBirth,
-                weight: op.weight,
-                microchipNumber: op.microchipNumber,
-                photoUrl: op.photoUrl,
-                patientNumber: op.patientNumber,
-                ownerUuid: owner.ownerUuid,
-                ownerName: owner.name,
-                ownerPhone: owner.phone,
-                ownerEmail: owner.email,
-                linked: owner.linked,
-                lastVisit: op.lastVisit,
-              },
-            });
-          }
-        }
-        const userHits = users.slice(0, 20).map((user) => ({ kind: 'user' as const, user }));
-        const seenPet = new Set<string>();
-        const seenOwner = new Set<string>();
-        const seenUser = new Set<string>();
-        const merged: SearchHit[] = [];
-
-        for (const hit of petHits) {
-          if (seenPet.has(hit.pet.petUuid)) continue;
-          seenPet.add(hit.pet.petUuid);
-          if (hit.pet.ownerUuid) seenOwner.add(hit.pet.ownerUuid);
-          if (hit.pet.ownerEmail) seenOwner.add(hit.pet.ownerEmail.toLowerCase());
-          merged.push(hit);
-        }
-        for (const hit of ownerPetHits) {
-          if (seenPet.has(hit.pet.petUuid)) continue;
-          seenPet.add(hit.pet.petUuid);
-          if (hit.owner.ownerUuid) seenOwner.add(hit.owner.ownerUuid);
-          if (hit.owner.email) seenOwner.add(hit.owner.email.toLowerCase());
-          merged.push(hit);
-        }
-        for (const hit of userHits) {
-          if (seenUser.has(hit.user.userUuid)) continue;
-          const ownerKey = hit.user.clinicOwnerUuid;
-          const emailKey = hit.user.email?.toLowerCase();
-          // Skip only when we already listed one of their pets — still show
-          // KittyP users who are clients but have no pets yet at this clinic.
-          if (ownerKey && seenOwner.has(ownerKey)) continue;
-          if (emailKey && seenOwner.has(emailKey)) continue;
-          seenUser.add(hit.user.userUuid);
-          merged.push(hit);
-        }
-        const byEmailOrId = merged.filter((hit) => {
-          if (hit.kind === 'user') {
-            return matchesEmailOrGeneratedId(q, hit.user.email, hit.user.userUuid);
-          }
-          if (hit.kind === 'owner') {
-            return matchesEmailOrGeneratedId(
-              q,
-              hit.owner.email,
-              hit.owner.ownerUuid,
-              hit.pet.petUuid,
-              hit.pet.globalPetId,
-              hit.pet.patientNumber
-            );
-          }
-          return matchesEmailOrGeneratedId(
-            q,
-            hit.pet.ownerEmail,
-            hit.pet.ownerUuid,
-            hit.pet.petUuid,
-            hit.pet.globalPetId,
-            hit.pet.patientNumber
-          );
-        });
-        setHits(byEmailOrId.slice(0, 40));
-      } catch (err) {
-        console.error('Appointment patient search failed', err);
-        if (!cancelled) {
-          setHits([]);
-          toast.error('Could not search patients — check clinic selection and try again');
-        }
-      } finally {
-        if (!cancelled) setSearching(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [open, clinicUuid, mode, debouncedQ, selectedPet]);
-
-  useEffect(() => {
     if (!open) {
       setForm({ ...emptyNew, ...defaultScheduleParts(), doctorUuid: lockedDoctorUuid || '' });
       setSelectedPet(null);
       setPetSearch('');
-      setDebouncedQ('');
-      setHits([]);
       setMode('existing');
+      setSearchScope('local');
       setTiming('now');
       setFieldErrors({});
       setBusyHint(null);
@@ -312,6 +173,11 @@ export function AddAppointmentDialog({
       setMatchedOwner(null);
       setConsentCode('');
       setConsentVerified(false);
+      setAttachUser(null);
+      setAttachCode('');
+      setAttachCooldown(0);
+      setPendingPlatformPet(null);
+      setConsentPet(null);
       return;
     }
     if (initialSlotStart && !Number.isNaN(initialSlotStart.getTime())) {
@@ -358,34 +224,52 @@ export function AddAppointmentDialog({
 
   const selectPet = async (p: ClinicPetListModel) => {
     try {
-      setSearching(true);
+      setSelectionBusy(true);
       const admitted = await admitClinicPet(clinicUuid, p.petUuid);
       setSelectedPet(admitted);
       setPetSearch('');
-      setHits([]);
       return true;
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         'Could not admit pet to this clinic';
+      if (message.toLowerCase().includes('consent') && p.ownerUuid) {
+        setMode('existing');
+        setConsentPet(p);
+        setConsentCode('');
+      }
       toast.error(message);
       return false;
     } finally {
-      setSearching(false);
+      setSelectionBusy(false);
     }
   };
 
-  const selectPlatformUser = async (user: PlatformUserSearchModel) => {
+  const platformPetModel = (pet: ClinicOwnerPetModel, owner: ClinicOwnerModel): ClinicPetListModel => ({
+    ...pet,
+    ownerUuid: owner.ownerUuid,
+    ownerName: owner.name,
+    ownerPhone: owner.phone,
+    ownerEmail: owner.email,
+    linked: owner.linked,
+  });
+
+  const selectPlatformUser = async (user: PlatformUserSearchModel, pet?: ClinicOwnerPetModel) => {
     try {
-      setSearching(true);
+      setSelectionBusy(true);
       if (user.alreadyClient) {
         const owner = await ensureClinicOwnerFromUser(clinicUuid, user.userUuid);
-        await afterOwnerAttached(owner, user);
+        if (pet) {
+          await selectPet(platformPetModel(pet, owner));
+        } else {
+          await afterOwnerAttached(owner, user);
+        }
         return;
       }
-      setAttachUser(user);
-      setAttachCode('');
       await sendClientAttachOtp(clinicUuid, user.userUuid);
+      setAttachUser(user);
+      setPendingPlatformPet(pet ?? null);
+      setAttachCode('');
       setAttachCooldown(60);
       toast.success('Confirmation code sent to their email — enter it to attach this account');
     } catch (err: unknown) {
@@ -394,7 +278,22 @@ export function AddAppointmentDialog({
         'Could not select KittyP user';
       toast.error(message);
     } finally {
-      setSearching(false);
+      setSelectionBusy(false);
+    }
+  };
+
+  const selectPlatformPet = async (user: PlatformUserSearchModel, pet: ClinicOwnerPetModel) => {
+    if (pet.clinicPatient) {
+      await selectPet({
+        ...pet,
+        ownerUuid: user.clinicOwnerUuid ?? '',
+        ownerName: user.name,
+        ownerPhone: user.phone,
+        ownerEmail: user.email,
+        linked: user.alreadyClient,
+      });
+    } else {
+      await selectPlatformUser(user, pet);
     }
   };
 
@@ -404,7 +303,7 @@ export function AddAppointmentDialog({
     setMatchedOwner(owner);
     setEmailLookup({
       found: true,
-      source: 'PLATFORM',
+      source: user ? 'PLATFORM' : 'CLINIC',
       owner,
       platformUser: user ?? null,
     });
@@ -415,7 +314,6 @@ export function AddAppointmentDialog({
       ownerEmail: user?.email || owner.email || '',
       ownerPhone: digitsOnlyPhone(user?.phone || owner.phone || ''),
     }));
-    setHits([]);
     toast.message(message);
   };
 
@@ -469,7 +367,6 @@ export function AddAppointmentDialog({
   const applyMatchedOwner = async (hit: OwnerEmailLookupModel) => {
     if (!hit.found) return;
     try {
-      setSearching(true);
       let owner = hit.owner ?? null;
       if (!owner && hit.platformUser?.alreadyClient) {
         owner = await ensureClinicOwnerFromUser(clinicUuid, hit.platformUser.userUuid);
@@ -501,8 +398,6 @@ export function AddAppointmentDialog({
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         'Could not use existing profile';
       toast.error(message);
-    } finally {
-      setSearching(false);
     }
   };
 
@@ -620,7 +515,13 @@ export function AddAppointmentDialog({
       const user = attachUser;
       setAttachUser(null);
       setAttachCode('');
-      await afterOwnerAttached(owner, user);
+      if (pendingPlatformPet) {
+        setMode('existing');
+        await selectPet(platformPetModel(pendingPlatformPet, owner));
+        setPendingPlatformPet(null);
+      } else {
+        await afterOwnerAttached(owner, user);
+      }
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -628,6 +529,42 @@ export function AddAppointmentDialog({
       toast.error(message);
     } finally {
       setAttachVerifying(false);
+    }
+  };
+
+  const handleSendSelectedPetConsent = async () => {
+    if (!consentPet) return;
+    try {
+      setConsentSending(true);
+      await sendPetConsentOtp(clinicUuid, consentPet.ownerUuid, consentPet.name);
+      toast.success('Consent code sent to owner email');
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Failed to send consent code';
+      toast.error(message);
+    } finally {
+      setConsentSending(false);
+    }
+  };
+
+  const handleVerifySelectedPetConsent = async () => {
+    if (!consentPet || !consentCode.trim()) return;
+    try {
+      setConsentVerifying(true);
+      await verifyPetConsentOtp(clinicUuid, consentPet.ownerUuid, consentPet.name, consentCode.trim());
+      const admitted = await selectPet(consentPet);
+      if (admitted) {
+        setConsentPet(null);
+        setConsentCode('');
+      }
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Invalid consent code';
+      toast.error(message);
+    } finally {
+      setConsentVerifying(false);
     }
   };
 
@@ -814,6 +751,45 @@ export function AddAppointmentDialog({
           {attachVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
           Attach
         </Button>
+        <Button type="button" variant="ghost" size="sm" disabled={attachSending || attachVerifying}
+          onClick={() => {
+            setAttachUser(null);
+            setAttachCode('');
+            setPendingPlatformPet(null);
+            setAttachCooldown(0);
+          }}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  ) : null;
+
+  const selectedPetConsentPanel = consentPet ? (
+    <div className="rounded-md border px-3 py-2.5 space-y-2">
+      <p className="text-sm font-medium">Owner consent for {consentPet.name} (email OTP)</p>
+      <p className="text-xs text-muted-foreground">
+        Send a code to the owner and verify it before adding this pet.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" disabled={consentSending || consentVerifying}
+          onClick={() => void handleSendSelectedPetConsent()}>
+          {consentSending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+          Send code
+        </Button>
+        <Input className="max-w-[140px] h-8" placeholder="6-digit code" aria-label="Pet consent code"
+          value={consentCode} onChange={(e) => setConsentCode(e.target.value)} />
+        <Button type="button" size="sm" disabled={consentVerifying || consentSending || !consentCode.trim()}
+          onClick={() => void handleVerifySelectedPetConsent()}>
+          {consentVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+          Verify and select
+        </Button>
+        <Button type="button" variant="ghost" size="sm" disabled={consentSending || consentVerifying}
+          onClick={() => {
+            setConsentPet(null);
+            setConsentCode('');
+          }}>
+          Cancel
+        </Button>
       </div>
     </div>
   ) : null;
@@ -828,6 +804,7 @@ export function AddAppointmentDialog({
         <div className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1">
           <button
             type="button"
+            disabled={selectionBusy || attachSending || attachVerifying || consentSending || consentVerifying}
             className={cn(
               'rounded-sm px-3 py-1.5 text-sm font-medium',
               mode === 'existing' ? 'bg-background shadow-sm' : 'text-muted-foreground'
@@ -835,6 +812,9 @@ export function AddAppointmentDialog({
             onClick={() => {
               setMode('existing');
               clearSelectedPet();
+              setAttachUser(null);
+              setPendingPlatformPet(null);
+              setConsentPet(null);
               setFieldErrors({});
               setEmailLookup(null);
               setMatchedOwner(null);
@@ -845,6 +825,7 @@ export function AddAppointmentDialog({
           </button>
           <button
             type="button"
+            disabled={selectionBusy || attachSending || attachVerifying || consentSending || consentVerifying}
             className={cn(
               'rounded-sm px-3 py-1.5 text-sm font-medium',
               mode === 'new' ? 'bg-background shadow-sm' : 'text-muted-foreground'
@@ -852,6 +833,9 @@ export function AddAppointmentDialog({
             onClick={() => {
               setMode('new');
               clearSelectedPet();
+              setAttachUser(null);
+              setPendingPlatformPet(null);
+              setConsentPet(null);
               setFieldErrors({});
               setEmailLookup(null);
               setMatchedOwner(null);
@@ -880,83 +864,41 @@ export function AddAppointmentDialog({
                 </div>
               </div>
             ) : (
-              <div>
-                <Label>Search by email or ID</Label>
-                <div className="relative mt-1">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    className="pl-8"
-                    placeholder="Owner email, pet ID, or patient number..."
-                    value={petSearch}
-                    autoFocus
-                    onChange={(e) => setPetSearch(e.target.value)}
-                  />
-                </div>
-                {searching ? (
-                  <div className="flex justify-center py-6">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  </div>
-                ) : (
-                  <div className="border rounded-md max-h-52 overflow-y-auto divide-y mt-2">
-                    {hits.length === 0 ? (
-                      <p className="p-3 text-sm text-muted-foreground">
-                        {debouncedQ.trim().length >= APPOINTMENT_SEARCH_MIN
-                          ? 'No match for that email or ID — try New patient'
-                          : 'Type at least 3 characters of an email or generated ID'}
-                      </p>
-                    ) : (
-                      hits.map((hit) =>
-                        hit.kind === 'user' ? (
-                          <button
-                            key={`user-${hit.user.userUuid}`}
-                            type="button"
-                            className="w-full text-left px-3 py-2.5 text-sm hover:bg-muted/60"
-                            onClick={() => void selectPlatformUser(hit.user)}
-                          >
-                            <div className="font-medium flex items-center gap-2">
-                              {hit.user.email || hit.user.name}
-                              <Badge variant="secondary" className="text-[10px] font-normal">
-                                KittyP
-                              </Badge>
-                            </div>
-                            {hit.user.userUuid ? (
-                              <p className="text-[11px] text-muted-foreground font-mono truncate">
-                                {hit.user.userUuid}
-                              </p>
-                            ) : null}
-                          </button>
-                        ) : (
-                          <button
-                            key={hit.pet.petUuid}
-                            type="button"
-                            className="w-full text-left px-3 py-2.5 text-sm hover:bg-muted/60"
-                            onClick={() => void selectPet(hit.pet)}
-                          >
-                            <PetNameType name={hit.pet.name} type={hit.pet.species} />
-                            <p className="text-xs text-muted-foreground truncate">
-                              {hit.kind === 'owner' ? hit.owner.email : hit.pet.ownerEmail}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground font-mono truncate">
-                              {[hit.pet.patientNumber, hit.pet.globalPetId || hit.pet.petUuid]
-                                .filter(Boolean)
-                                .join(' · ')}
-                            </p>
-                          </button>
-                        )
-                      )
-                    )}
-                  </div>
-                )}
-              </div>
+              <PatientSearch
+                clinicUuid={clinicUuid}
+                scope={searchScope}
+                query={petSearch}
+                inputId="appointment-patient-search"
+                autoFocus
+                disabled={selectionBusy || attachSending || attachVerifying || consentSending || consentVerifying}
+                paused={Boolean(attachUser || consentPet)}
+                onQueryChange={setPetSearch}
+                onScopeChange={(scope) => {
+                  setSearchScope(scope);
+                  setAttachUser(null);
+                  setAttachCode('');
+                  setAttachCooldown(0);
+                  setPendingPlatformPet(null);
+                  setConsentPet(null);
+                  setConsentCode('');
+                }}
+                onSelect={(hit) => {
+                  if (hit.kind === 'pet') void selectPet(hit.pet);
+                  else if (hit.kind === 'client') showAttachedOwner(hit.owner, undefined, 'Client selected — add a pet for this appointment');
+                  else if (hit.kind === 'platformPet') void selectPlatformPet(hit.user, hit.pet);
+                  else void selectPlatformUser(hit.user);
+                }}
+              />
             )}
             {attachPanel}
+            {selectedPetConsentPanel}
           </div>
         ) : (
           <div className="space-y-3 mt-1">
             {emailLookup?.found || matchedOwner ? (
               <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm space-y-1">
                 <p className="text-foreground font-medium">
-                  This email is already on KittyP
+                  This client already has a profile
                   {matchedOwner?.name ? ` — ${matchedOwner.name}` : ''}.
                 </p>
                 <p className="text-muted-foreground text-xs">
@@ -987,29 +929,11 @@ export function AddAppointmentDialog({
                           key={op.petUuid}
                           type="button"
                           className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
-                          onClick={() =>
-                            void selectPet({
-                              petUuid: op.petUuid,
-                              globalPetId: op.globalPetId,
-                              name: op.name,
-                              species: op.species,
-                              breed: op.breed,
-                              gender: op.gender,
-                              dateOfBirth: op.dateOfBirth,
-                              weight: op.weight,
-                              microchipNumber: op.microchipNumber,
-                              photoUrl: op.photoUrl,
-                              patientNumber: op.patientNumber,
-                              ownerUuid: matchedOwner.ownerUuid,
-                              ownerName: matchedOwner.name,
-                              ownerPhone: matchedOwner.phone,
-                              ownerEmail: matchedOwner.email,
-                              linked: matchedOwner.linked,
-                              lastVisit: op.lastVisit,
-                            }).then((ok) => {
+                          onClick={() => {
+                            void selectPet(platformPetModel(op, matchedOwner)).then((ok) => {
                               if (ok) setMode('existing');
-                            })
-                          }
+                            });
+                          }}
                         >
                           <PetNameType name={op.name} type={op.species} />
                           {op.clinicPatient === false ? (

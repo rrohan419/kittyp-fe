@@ -176,6 +176,7 @@ export interface PlatformUserSearchModel {
   phone?: string;
   clinicOwnerUuid?: string;
   alreadyClient: boolean;
+  pets?: ClinicOwnerPetModel[];
 }
 
 export interface OwnerEmailLookupModel {
@@ -438,7 +439,7 @@ export async function fetchClinicReports(
 
 export async function fetchClinicInventory(
   clinicUuid: string,
-  params: { pageNumber?: number; pageSize?: number; category?: string } = {}
+  params: { pageNumber?: number; pageSize?: number; category?: string; search?: string } = {}
 ): Promise<PaginationModel<ClinicInventoryItem>> {
   const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<ClinicInventoryItem>>>(
     `/clinic/${clinicUuid}/inventory`,
@@ -941,7 +942,7 @@ export async function fetchClinicPatientDetail(
 export async function fetchClinicOwners(
   clinicUuid: string,
   q?: string,
-  opts?: { by?: 'emailOrId'; pageNumber?: number; pageSize?: number }
+  opts?: { by?: 'emailOrId' | 'appointment' | 'appointmentLocal'; pageNumber?: number; pageSize?: number }
 ): Promise<PaginationModel<ClinicOwnerModel>> {
   const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<ClinicOwnerModel>>>(
     `/clinic/${clinicUuid}/owners`,
@@ -960,7 +961,7 @@ export async function fetchClinicOwners(
 export async function searchPlatformUsers(
   clinicUuid: string,
   q: string,
-  opts?: { by?: 'emailOrId' }
+  opts?: { by?: 'emailOrId' | 'appointment' }
 ): Promise<PlatformUserSearchModel[]> {
   const query = q.trim();
   if (query.length < 3) return [];
@@ -1126,7 +1127,7 @@ export async function addPetToClinicOwner(
 export async function fetchClinicPets(
   clinicUuid: string,
   q?: string,
-  opts?: { by?: 'emailOrId'; pageNumber?: number; pageSize?: number }
+  opts?: { by?: 'emailOrId' | 'appointment' | 'appointmentLocal'; pageNumber?: number; pageSize?: number }
 ): Promise<PaginationModel<ClinicPetListModel>> {
   const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<ClinicPetListModel>>>(
     `/clinic/${clinicUuid}/pets`,

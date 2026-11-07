@@ -39,6 +39,7 @@ import {
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { PetPhoto } from '@/components/clinic/PetPhoto';
 import { PetPhotoField } from '@/components/clinic/PetPhotoField';
+import { PatientSearch } from '@/components/clinic/PatientSearch';
 import { PetDobField } from '@/components/ui/PetDobField';
 import { resolveClinicSearchTarget } from '@/utils/clinicSearchNavigate';
 import {
@@ -64,10 +65,6 @@ import { cn } from '@/lib/utils';
 
 type OwnerRow = ClinicOwnerModel & { clinicUuid?: string; clinicName?: string };
 type PetRow = ClinicPetListModel & { clinicUuid?: string; clinicName?: string };
-type AddPickerHit =
-  | { kind: 'user'; user: PlatformUserSearchModel }
-  | { kind: 'owner'; owner: ClinicOwnerModel };
-
 const emptyForm = {
   ownerFirstName: '',
   ownerLastName: '',
@@ -112,8 +109,7 @@ export default function ClinicPatients() {
   const [attachSending, setAttachSending] = useState(false);
   const [attachVerifying, setAttachVerifying] = useState(false);
   const [pickerQ, setPickerQ] = useState('');
-  const [pickerHits, setPickerHits] = useState<AddPickerHit[]>([]);
-  const [pickerSearching, setPickerSearching] = useState(false);
+  const [pickerScope, setPickerScope] = useState<'local' | 'global'>('local');
   const [emailLookup, setEmailLookup] = useState<OwnerEmailLookupModel | null>(null);
   const [matchedOwner, setMatchedOwner] = useState<ClinicOwnerModel | null>(null);
   const [petChoiceOwner, setPetChoiceOwner] = useState<ClinicOwnerModel | null>(null);
@@ -304,7 +300,7 @@ export default function ClinicPatients() {
   const resetAddDialog = () => {
     setForm(emptyForm);
     setPickerQ('');
-    setPickerHits([]);
+    setPickerScope('local');
     setEmailLookup(null);
     setMatchedOwner(null);
     setAttachUser(null);
@@ -416,50 +412,6 @@ export default function ClinicPatients() {
       setAttachVerifying(false);
     }
   };
-
-  useEffect(() => {
-    if (!addOpen || !clinicUuid) {
-      setPickerHits([]);
-      return;
-    }
-    const q = pickerQ.trim();
-    if (q.length < 3) {
-      setPickerHits([]);
-      return;
-    }
-    let cancelled = false;
-    const handle = window.setTimeout(() => {
-      void (async () => {
-        setPickerSearching(true);
-        try {
-          const [users, ownersPage] = await Promise.all([
-            searchPlatformUsers(clinicUuid, q),
-            fetchClinicOwners(clinicUuid, q, { pageNumber: 1, pageSize: 10 }),
-          ]);
-          if (cancelled) return;
-          const hits: AddPickerHit[] = [];
-          const seenOwner = new Set<string>();
-          for (const user of users) {
-            hits.push({ kind: 'user', user });
-            if (user.clinicOwnerUuid) seenOwner.add(user.clinicOwnerUuid);
-          }
-          for (const owner of ownersPage.models ?? []) {
-            if (seenOwner.has(owner.ownerUuid)) continue;
-            hits.push({ kind: 'owner', owner });
-          }
-          setPickerHits(hits);
-        } catch {
-          if (!cancelled) setPickerHits([]);
-        } finally {
-          if (!cancelled) setPickerSearching(false);
-        }
-      })();
-    }, 250);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(handle);
-    };
-  }, [addOpen, clinicUuid, pickerQ]);
 
   const togglePickedPet = (petUuid: string, checked: boolean) => {
     setPickedPetIds((current) =>
@@ -996,79 +948,32 @@ export default function ClinicPatients() {
               </div>
             ) : null}
 
-            {!petChoiceOwner ? (
-            <div>
-              <Label>Search KittyP or clinic clients</Label>
-              <div className="relative mt-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  className="pl-8"
-                  placeholder="Email, phone, name, or ID¦"
-                  value={pickerQ}
-                  onChange={(e) => setPickerQ(e.target.value)}
-                />
-              </div>
-              {pickerSearching ? (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                </div>
-              ) : pickerQ.trim().length >= 3 ? (
-                <div className="border rounded-md max-h-44 overflow-y-auto divide-y mt-2">
-                  {pickerHits.length === 0 ? (
-                    <p className="p-3 text-sm text-muted-foreground">
-                      No KittyP or clinic match, fill the form below for a new client.
-                    </p>
-                  ) : (
-                    pickerHits.map((hit) =>
-                      hit.kind === 'user' ? (
-                        <button
-                          key={`user-${hit.user.userUuid}`}
-                          type="button"
-                          className="w-full text-left px-3 py-2.5 text-sm hover:bg-muted/60"
-                          onClick={() => void selectPlatformUser(hit.user)}
-                        >
-                          <div className="font-medium flex items-center gap-2 flex-wrap">
-                            {hit.user.name || hit.user.email}
-                            <Badge variant="secondary" className="text-[10px] font-normal">
-                              KittyP
-                            </Badge>
-                            {hit.user.alreadyClient ? (
-                              <Badge variant="outline" className="text-[10px]">
-                                Already a client
-                              </Badge>
-                            ) : null}
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">{hit.user.email}</p>
-                          {hit.user.phone ? (
-                            <p className="text-xs text-muted-foreground">{hit.user.phone}</p>
-                          ) : null}
-                        </button>
-                      ) : (
-                        <button
-                          key={`owner-${hit.owner.ownerUuid}`}
-                          type="button"
-                          className="w-full text-left px-3 py-2.5 text-sm hover:bg-muted/60"
-                          onClick={() => {
-                            setAddOpen(false);
-                            navigate(crm.owner(hit.owner.ownerUuid));
-                          }}
-                        >
-                          <div className="font-medium flex items-center gap-2">
-                            {hit.owner.name}
-                            <Badge variant="outline" className="text-[10px]">
-                              Clinic client
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">{hit.owner.email}</p>
-                        </button>
-                      )
-                    )
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground mt-1">Type at least 3 characters to search.</p>
-              )}
-            </div>
+            {!petChoiceOwner && clinicUuid ? (
+              <PatientSearch
+                clinicUuid={clinicUuid}
+                scope={pickerScope}
+                query={pickerQ}
+                inputId="add-client-search"
+                includePhone
+                emptyAction="the new client form"
+                disabled={attachSending || attachVerifying || saving}
+                paused={Boolean(attachUser || matchedOwner)}
+                onQueryChange={setPickerQ}
+                onScopeChange={setPickerScope}
+                onSelect={(hit) => {
+                  if (hit.kind === 'user' || hit.kind === 'platformPet') {
+                    void selectPlatformUser(hit.user);
+                  } else {
+                    const ownerUuid = hit.kind === 'client' ? hit.owner.ownerUuid : hit.pet.ownerUuid;
+                    if (!ownerUuid) {
+                      toast.error('This pet has no clinic client profile');
+                      return;
+                    }
+                    setAddOpen(false);
+                    navigate(crm.owner(ownerUuid));
+                  }
+                }}
+              />
             ) : null}
 
             {matchedOwner ? (
@@ -1084,6 +989,14 @@ export default function ClinicPatients() {
                   }}
                 >
                   Open client profile
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => {
+                  setMatchedOwner(null);
+                  setAttachUser(null);
+                  setEmailLookup(null);
+                  setForm(emptyForm);
+                }}>
+                  Cancel
                 </Button>
               </div>
             ) : null}
@@ -1125,6 +1038,15 @@ export default function ClinicPatients() {
                   >
                     {attachVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
                     Attach
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" disabled={attachSending || attachVerifying}
+                    onClick={() => {
+                      setAttachUser(null);
+                      setAttachCode('');
+                      setEmailLookup(null);
+                      setForm(emptyForm);
+                    }}>
+                    Cancel
                   </Button>
                 </div>
               </div>

@@ -20,33 +20,22 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PetPhotoField } from '@/components/clinic/PetPhotoField';
+import { PatientSearch } from '@/components/clinic/PatientSearch';
 import { PetDobField } from '@/components/ui/PetDobField';
 import {
   admitClinicPet,
   ensureClinicOwnerFromUser,
-  fetchClinicOwners,
-  fetchClinicPets,
-  searchPlatformUsers,
   sendClientAttachOtp,
   sendPetConsentOtp,
   verifyClientAttachOtp,
   verifyPetConsentOtp,
   type ClinicOwnerPetModel,
+  type ClinicOwnerModel,
   type ClinicPetListModel,
   type ClinicVisitModel,
   type PlatformUserSearchModel,
   type VisitUrgency,
 } from '@/services/clinicService';
-import {
-  APPOINTMENT_SEARCH_MIN,
-  matchesEmailOrGeneratedId,
-  normalizeAppointmentSearchQuery,
-} from '@/utils/appointmentPatientSearch';
-
-type SearchHit =
-  | { kind: 'pet'; pet: ClinicPetListModel }
-  | { kind: 'user'; user: PlatformUserSearchModel };
-import { Badge } from '@/components/ui/badge';
 import { PetNameType } from '@/components/ui/PetNameType';
 import { createPrescriptionFirst, type PrescriptionFirstPayload } from '@/services/visitService';
 import {
@@ -85,8 +74,9 @@ const EMPTY_FORM = {
 
 export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCreated }: Props) {
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
+  const [searchScope, setSearchScope] = useState<'local' | 'global'>('local');
   const [search, setSearch] = useState('');
-  const [hits, setHits] = useState<SearchHit[]>([]);
+  const [selectionBusy, setSelectionBusy] = useState(false);
   const [petUuid, setPetUuid] = useState('');
   const [selectedLabel, setSelectedLabel] = useState('');
   const [form, setForm] = useState(EMPTY_FORM);
@@ -95,6 +85,7 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
   const [conflict, setConflict] = useState(false);
   const [attachUser, setAttachUser] = useState<PlatformUserSearchModel | null>(null);
   const [attachCode, setAttachCode] = useState('');
+  const [pendingPet, setPendingPet] = useState<ClinicOwnerPetModel | null>(null);
   const [ownerPets, setOwnerPets] = useState<ClinicOwnerPetModel[]>([]);
   const [attachedOwnerUuid, setAttachedOwnerUuid] = useState('');
   const [consentPet, setConsentPet] = useState<ClinicPetListModel | null>(null);
@@ -114,8 +105,8 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
   useEffect(() => {
     if (!open) return;
     setMode('existing');
+    setSearchScope('local');
     setSearch('');
-    setHits([]);
     setPetUuid('');
     setSelectedLabel('');
     setForm(EMPTY_FORM);
@@ -123,152 +114,144 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
     setConflict(false);
     setAttachUser(null);
     setAttachCode('');
+    setPendingPet(null);
     setOwnerPets([]);
     setAttachedOwnerUuid('');
     setConsentPet(null);
     setConsentCode('');
-  }, [open ]);
+  }, [open]);
 
-  // Same existing-patient search as new appointment (WalkInDialog): clinic pets + owners +
-  // KittyP users in one deduped list, filtered by email / generated ID.
-  useEffect(() => {
-    if (!open || mode !== 'existing' || petUuid) return;
-    const t = setTimeout(() => {
-      const q = normalizeAppointmentSearchQuery(search);
-      if (q.length < APPOINTMENT_SEARCH_MIN) {
-        setHits([]);
-        return;
+  const selectPet = async (pet: ClinicPetListModel) => {
+    try {
+      setSelectionBusy(true);
+      const admitted = await admitClinicPet(clinicUuid, pet.petUuid);
+      setPetUuid(admitted.petUuid);
+      setSearch(admitted.name);
+      setSelectedLabel(`${admitted.name} · ${admitted.ownerName}`);
+      setOwnerPets([]);
+      setConsentPet(null);
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '';
+      if (message.toLowerCase().includes('consent') && pet.ownerUuid) {
+        setConsentPet(pet);
+        toast.error('Owner consent required — send and verify the email OTP for this pet');
+      } else {
+        toast.error(message || 'Could not admit pet to this clinic');
       }
-      const emailOrId = { by: 'emailOrId' as const };
-      void Promise.all([
-        fetchClinicPets(clinicUuid, q, { ...emailOrId, pageSize: 50 }),
-        fetchClinicOwners(clinicUuid, q, { ...emailOrId, pageSize: 50 }),
-        searchPlatformUsers(clinicUuid, q, emailOrId),
-      ])
-        .then(([petsPage, ownersPage, users]) => {
-          const merged: SearchHit[] = [];
-          const seenPet = new Set<string>();
-          const seenOwner = new Set<string>();
-          const addPet = (pet: ClinicPetListModel) => {
-            if (seenPet.has(pet.petUuid)) return;
-            seenPet.add(pet.petUuid);
-            if (pet.ownerUuid) seenOwner.add(pet.ownerUuid);
-            if (pet.ownerEmail) seenOwner.add(pet.ownerEmail.toLowerCase());
-            merged.push({ kind: 'pet', pet });
-          };
-          (petsPage.models ?? []).slice(0, 30).forEach(addPet);
-          (ownersPage.models ?? []).slice(0, 20).forEach((owner) =>
-            (owner.pets ?? []).slice(0, 5).forEach((op) =>
-              addPet({
-                petUuid: op.petUuid,
-                globalPetId: op.globalPetId,
-                name: op.name,
-                species: op.species,
-                breed: op.breed,
-                gender: op.gender,
-                dateOfBirth: op.dateOfBirth,
-                weight: op.weight,
-                microchipNumber: op.microchipNumber,
-                photoUrl: op.photoUrl,
-                patientNumber: op.patientNumber,
-                ownerUuid: owner.ownerUuid,
-                ownerName: owner.name,
-                ownerPhone: owner.phone,
-                ownerEmail: owner.email,
-                linked: owner.linked,
-                lastVisit: op.lastVisit,
-              })
-            )
-          );
-          users.slice(0, 20).forEach((user) => {
-            if (user.clinicOwnerUuid && seenOwner.has(user.clinicOwnerUuid)) return;
-            if (user.email && seenOwner.has(user.email.toLowerCase())) return;
-            merged.push({ kind: 'user', user });
-          });
-          setHits(
-            merged
-              .filter((hit) =>
-                hit.kind === 'user'
-                  ? matchesEmailOrGeneratedId(q, hit.user.email, hit.user.userUuid)
-                  : matchesEmailOrGeneratedId(
-                      q,
-                      hit.pet.ownerEmail,
-                      hit.pet.ownerUuid,
-                      hit.pet.petUuid,
-                      hit.pet.globalPetId,
-                      hit.pet.patientNumber
-                    )
-              )
-              .slice(0, 40)
-          );
-        })
-        .catch(() => setHits([]));
-    }, 250);
-    return () => clearTimeout(t);
-  }, [open, mode, search, clinicUuid, petUuid]);
-
-  // Same as new appointment (WalkInDialog): pet not linked to clinic -> email OTP to share data.
-  const selectPet = (pet: ClinicPetListModel) => {
-    void admitClinicPet(clinicUuid, pet.petUuid)
-      .then((admitted) => {
-        setPetUuid(admitted.petUuid);
-        setSearch(admitted.name);
-        setSelectedLabel(`${admitted.name} · ${admitted.ownerName}`);
-        setOwnerPets([]);
-        setHits([]);
-        setConsentPet(null);
-      })
-      .catch((err: unknown) => {
-        const message =
-          (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '';
-        if (message.toLowerCase().includes('consent')) {
-          // Same as new appointment: owner email OTP before this pet can be admitted.
-          setConsentPet(pet);
-          toast.error('Owner consent required — send and verify the email OTP for this pet');
-        } else {
-          toast.error(message || 'Could not admit pet to this clinic');
-        }
-      });
-  };
-
-  const verifyConsent = () => {
-    if (!consentPet || !consentCode.trim()) return;
-    void verifyPetConsentOtp(clinicUuid, consentPet.ownerUuid, consentPet.name, consentCode.trim())
-      .then(() => {
-        setConsentCode('');
-        selectPet(consentPet);
-      })
-      .catch(() => toast.error('Invalid consent code'));
-  };
-
-  const selectPlatformUser = (user: PlatformUserSearchModel) => {
-    if (user.alreadyClient) {
-      void ensureClinicOwnerFromUser(clinicUuid, user.userUuid)
-        .then((owner) => {
-          setOwnerPets(owner.pets ?? []);
-          setAttachedOwnerUuid(owner.ownerUuid);
-        })
-        .catch(() => toast.error('Could not load existing profile'));
-      return;
+    } finally {
+      setSelectionBusy(false);
     }
-    setAttachUser(user);
-    setAttachCode('');
-    void sendClientAttachOtp(clinicUuid, user.userUuid)
-      .then(() => toast.success('Confirmation code sent to their email — enter it to attach this account'))
-      .catch(() => toast.error('Could not send confirmation code'));
   };
 
-  const verifyAttach = () => {
+  const verifyConsent = async () => {
+    if (!consentPet || !consentCode.trim()) return;
+    try {
+      setSelectionBusy(true);
+      await verifyPetConsentOtp(clinicUuid, consentPet.ownerUuid, consentPet.name, consentCode.trim());
+      setConsentCode('');
+      await selectPet(consentPet);
+    } catch (err: unknown) {
+      toast.error(parseApiErrorMessage(err, 'Invalid consent code'));
+    } finally {
+      setSelectionBusy(false);
+    }
+  };
+
+  const sendConsent = async () => {
+    if (!consentPet) return;
+    try {
+      setSelectionBusy(true);
+      await sendPetConsentOtp(clinicUuid, consentPet.ownerUuid, consentPet.name);
+      toast.success('Consent code sent to owner email');
+    } catch (err: unknown) {
+      toast.error(parseApiErrorMessage(err, 'Could not send consent code'));
+    } finally {
+      setSelectionBusy(false);
+    }
+  };
+
+  const changeMode = (next: 'existing' | 'new') => {
+    if (next === mode) return;
+    setMode(next);
+    setPetUuid('');
+    setSelectedLabel('');
+    setAttachUser(null);
+    setAttachCode('');
+    setPendingPet(null);
+    setOwnerPets([]);
+    setAttachedOwnerUuid('');
+    setConsentPet(null);
+    setConsentCode('');
+  };
+
+  const selectClient = (owner: ClinicOwnerModel) => {
+    const [first = '', ...last] = (owner.name || '').trim().split(/\s+/);
+    setForm((current) => ({
+      ...current,
+      ownerFirstName: owner.firstName || first,
+      ownerLastName: owner.lastName || last.join(' '),
+      ownerEmail: owner.email || '',
+      ownerPhone: digitsOnlyPhone(owner.phone || ''),
+    }));
+    setMode('new');
+    toast.message('Client selected — add a pet for this prescription');
+  };
+
+  const selectAttachedOwner = async (owner: ClinicOwnerModel, pet?: ClinicOwnerPetModel | null) => {
+    if (pet) {
+      await selectPet({
+        ...pet,
+        ownerUuid: owner.ownerUuid,
+        ownerName: owner.name,
+        ownerEmail: owner.email,
+        ownerPhone: owner.phone,
+        linked: owner.linked,
+      });
+    } else if (owner.pets?.length) {
+      setOwnerPets(owner.pets);
+      setAttachedOwnerUuid(owner.ownerUuid);
+    } else {
+      selectClient(owner);
+    }
+  };
+
+  const selectPlatformUser = async (user: PlatformUserSearchModel, pet?: ClinicOwnerPetModel) => {
+    try {
+      setSelectionBusy(true);
+      if (user.alreadyClient) {
+        const owner = await ensureClinicOwnerFromUser(clinicUuid, user.userUuid);
+        await selectAttachedOwner(owner, pet);
+      } else {
+        await sendClientAttachOtp(clinicUuid, user.userUuid);
+        setAttachUser(user);
+        setPendingPet(pet ?? null);
+        setAttachCode('');
+        toast.success('Confirmation code sent to their email — enter it to attach this account');
+      }
+    } catch (err: unknown) {
+      toast.error(parseApiErrorMessage(err, 'Could not select KittyP user'));
+    } finally {
+      setSelectionBusy(false);
+    }
+  };
+
+  const verifyAttach = async () => {
     if (!attachUser || !attachCode.trim()) return;
-    void verifyClientAttachOtp(clinicUuid, attachUser.userUuid, attachCode.trim())
-      .then(() => ensureClinicOwnerFromUser(clinicUuid, attachUser.userUuid))
-      .then((owner) => {
-        setAttachUser(null);
-        setOwnerPets(owner.pets ?? []);
-        setAttachedOwnerUuid(owner.ownerUuid);
-        toast.success('Account attached — select the pet');
-      })
-      .catch(() => toast.error('Invalid confirmation code'));
+    try {
+      setSelectionBusy(true);
+      await verifyClientAttachOtp(clinicUuid, attachUser.userUuid, attachCode.trim());
+      const owner = await ensureClinicOwnerFromUser(clinicUuid, attachUser.userUuid);
+      setAttachUser(null);
+      setAttachCode('');
+      setPendingPet(null);
+      toast.success('Account attached');
+      await selectAttachedOwner(owner, pendingPet);
+    } catch (err: unknown) {
+      toast.error(parseApiErrorMessage(err, 'Could not attach account'));
+    } finally {
+      setSelectionBusy(false);
+    }
   };
 
   const save = async (confirmNewConsultation: boolean) => {
@@ -366,62 +349,47 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
 
         <div className="space-y-4">
           <div className="flex gap-2">
-            <Button size="sm" variant={mode === 'existing' ? 'default' : 'outline'} onClick={() => setMode('existing')}>
+            <Button size="sm" disabled={selectionBusy} variant={mode === 'existing' ? 'default' : 'outline'} onClick={() => changeMode('existing')}>
               Existing patient
             </Button>
-            <Button size="sm" variant={mode === 'new' ? 'default' : 'outline'} onClick={() => setMode('new')}>
+            <Button size="sm" disabled={selectionBusy} variant={mode === 'new' ? 'default' : 'outline'} onClick={() => changeMode('new')}>
               New patient
             </Button>
           </div>
 
           {mode === 'existing' ? (
             <div className="space-y-2">
-              <Label htmlFor="rx-pet-search">Search by email or ID</Label>
-              <Input
-                id="rx-pet-search"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPetUuid(''); }}
-                placeholder="Owner email, pet ID, or patient number..."
+              <PatientSearch
+                clinicUuid={clinicUuid}
+                scope={searchScope}
+                query={search}
+                inputId="rx-pet-search"
+                disabled={selectionBusy}
+                paused={Boolean(petUuid || attachUser || consentPet || ownerPets.length)}
+                onQueryChange={(value) => { setSearch(value); setPetUuid(''); setSelectedLabel(''); }}
+                onScopeChange={(scope) => {
+                  setSearchScope(scope);
+                  setPetUuid('');
+                  setSelectedLabel('');
+                  setAttachUser(null);
+                  setAttachCode('');
+                  setPendingPet(null);
+                  setOwnerPets([]);
+                  setAttachedOwnerUuid('');
+                  setConsentPet(null);
+                  setConsentCode('');
+                }}
+                onSelect={(hit) => {
+                  if (hit.kind === 'pet') void selectPet(hit.pet);
+                  else if (hit.kind === 'client') selectClient(hit.owner);
+                  else if (hit.kind === 'user') void selectPlatformUser(hit.user);
+                  else if (hit.pet.clinicPatient) void selectPet({
+                    ...hit.pet, ownerUuid: hit.user.clinicOwnerUuid ?? '', ownerName: hit.user.name,
+                    ownerEmail: hit.user.email, ownerPhone: hit.user.phone, linked: hit.user.alreadyClient,
+                  });
+                  else void selectPlatformUser(hit.user, hit.pet);
+                }}
               />
-              {!petUuid && !attachUser && ownerPets.length === 0 && hits.length > 0 ? (
-                <div className="border rounded-md max-h-52 overflow-y-auto divide-y">
-                  {hits.map((hit) =>
-                    hit.kind === 'pet' ? (
-                      <button
-                        key={hit.pet.petUuid}
-                        type="button"
-                        className="w-full text-left px-3 py-2.5 text-sm hover:bg-muted/60"
-                        onClick={() => selectPet(hit.pet)}
-                      >
-                        <PetNameType name={hit.pet.name} type={hit.pet.species} />
-                        <p className="text-xs text-muted-foreground truncate">{hit.pet.ownerEmail}</p>
-                        <p className="text-[11px] text-muted-foreground font-mono truncate">
-                          {[hit.pet.patientNumber, hit.pet.globalPetId || hit.pet.petUuid]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </p>
-                      </button>
-                    ) : (
-                      <button
-                        key={hit.user.userUuid}
-                        type="button"
-                        className="w-full text-left px-3 py-2.5 text-sm hover:bg-muted/60"
-                        onClick={() => selectPlatformUser(hit.user)}
-                      >
-                        <div className="font-medium flex items-center gap-2">
-                          {hit.user.email || hit.user.name}
-                          <Badge variant="secondary" className="text-[10px] font-normal">
-                            KittyP
-                          </Badge>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">
-                          Not linked to clinic — OTP verification on select
-                        </p>
-                      </button>
-                    )
-                  )}
-                </div>
-              ) : null}
               {attachUser ? (
                 <div className="flex gap-2">
                   <Input
@@ -429,8 +397,21 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
                     onChange={(e) => setAttachCode(e.target.value)}
                     placeholder="Email OTP from pet parent"
                   />
-                  <Button size="sm" onClick={verifyAttach} disabled={!attachCode.trim()}>
+                  <Button size="sm" onClick={() => void verifyAttach()} disabled={selectionBusy || !attachCode.trim()}>
                     Verify OTP
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" disabled={selectionBusy}
+                    onClick={() => { setAttachUser(null); setAttachCode(''); setPendingPet(null); }}>
+                    Cancel
+                  </Button>
+                </div>
+              ) : null}
+              {!petUuid && ownerPets.length > 0 ? (
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-muted-foreground">Select a pet on this client&apos;s account.</p>
+                  <Button type="button" variant="ghost" size="sm" disabled={selectionBusy}
+                    onClick={() => { setOwnerPets([]); setAttachedOwnerUuid(''); }}>
+                    Cancel
                   </Button>
                 </div>
               ) : null}
@@ -438,9 +419,10 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
                 <button
                   key={p.petUuid}
                   type="button"
+                  disabled={selectionBusy}
                   className="block w-full text-left text-sm border rounded-md px-3 py-2"
                   onClick={() =>
-                    selectPet({
+                    void selectPet({
                       petUuid: p.petUuid,
                       name: p.name,
                       species: p.species,
@@ -463,11 +445,8 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() =>
-                        void sendPetConsentOtp(clinicUuid, consentPet.ownerUuid, consentPet.name)
-                          .then(() => toast.success('Consent code sent to owner email'))
-                          .catch(() => toast.error('Could not send consent code'))
-                      }
+                      disabled={selectionBusy}
+                      onClick={() => void sendConsent()}
                     >
                       Send code
                     </Button>
@@ -476,14 +455,24 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
                       onChange={(e) => setConsentCode(e.target.value)}
                       placeholder="OTP code"
                     />
-                    <Button size="sm" onClick={verifyConsent} disabled={!consentCode.trim()}>
+                    <Button size="sm" onClick={() => void verifyConsent()} disabled={selectionBusy || !consentCode.trim()}>
                       Verify &amp; select
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" disabled={selectionBusy}
+                      onClick={() => { setConsentPet(null); setConsentCode(''); }}>
+                      Cancel
                     </Button>
                   </div>
                 </div>
               ) : null}
               {petUuid ? (
-                <p className="text-sm border rounded-md px-3 py-2">Selected: {selectedLabel} ✓</p>
+                <div className="flex items-center justify-between gap-2 text-sm border rounded-md px-3 py-2">
+                  <span>Selected: {selectedLabel} ✓</span>
+                  <Button type="button" variant="ghost" size="sm" disabled={selectionBusy}
+                    onClick={() => { setPetUuid(''); setSelectedLabel(''); setSearch(''); }}>
+                    Change
+                  </Button>
+                </div>
               ) : null}
             </div>
           ) : (
