@@ -439,7 +439,7 @@ export async function fetchClinicReports(
 
 export async function fetchClinicInventory(
   clinicUuid: string,
-  params: { pageNumber?: number; pageSize?: number; category?: string } = {}
+  params: { pageNumber?: number; pageSize?: number; category?: string; search?: string } = {}
 ): Promise<PaginationModel<ClinicInventoryItem>> {
   const res = await axiosInstance.get<ApiSuccessResponse<PaginationModel<ClinicInventoryItem>>>(
     `/clinic/${clinicUuid}/inventory`,

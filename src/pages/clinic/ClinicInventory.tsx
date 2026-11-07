@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,9 +14,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, AlertTriangle, Boxes, CalendarClock, Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, AlertTriangle, Boxes, CalendarClock, Pencil, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
+import { useDebounce } from '@/hooks/useDebounce';
 import { ListPager } from '@/components/ui/ListPager';
 import { useAppSelector } from '@/module/store/hooks';
 import { hasRole, ROLES } from '@/utils/roles';
@@ -73,9 +74,15 @@ export default function ClinicInventory() {
   const { clinicUuid, loading: clinicLoading } = useActiveClinic();
   const [items, setItems] = useState<ClinicInventoryItem[]>([]);
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search.trim(), 300);
+  const searchPending = search.trim() !== debouncedSearch;
+  const inventoryRequest = useRef(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadedSearch, setLoadedSearch] = useState<string | null>(null);
+  const [inventoryRevision, setInventoryRevision] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<ClinicInventoryRequest>(emptyForm);
   const [editing, setEditing] = useState<ClinicInventoryItem | null>(null);
@@ -90,16 +97,22 @@ export default function ClinicInventory() {
   const [movementsLoading, setMovementsLoading] = useState(true);
   const [movementsError, setMovementsError] = useState<string | null>(null);
   const load = useCallback(async (requestedPage: number) => {
+    const requestId = ++inventoryRequest.current;
     if (!clinicUuid) { setItems([]); setLoading(false); setTotalPages(0); setTotalItems(0); return; }
     setLoading(true); setError(null);
     try {
-      const result = await fetchClinicInventory(clinicUuid, { pageNumber: requestedPage, pageSize: 20 });
+      const result = await fetchClinicInventory(clinicUuid, { pageNumber: requestedPage, pageSize: 20, search: debouncedSearch || undefined });
+      if (requestId !== inventoryRequest.current) return;
       setItems(result.models);
-      setPage(result.pageNumber ?? requestedPage);
+      setLoadedSearch(debouncedSearch);
       setTotalPages(result.totalPages);
       setTotalItems(result.totalElements);
-    } catch { setItems([]); setError('Inventory could not be loaded. Please try again.'); } finally { setLoading(false); }
-  }, [clinicUuid]);
+    } catch {
+      if (requestId === inventoryRequest.current) { setItems([]); setError('Inventory could not be loaded. Please try again.'); }
+    } finally {
+      if (requestId === inventoryRequest.current) setLoading(false);
+    }
+  }, [clinicUuid, debouncedSearch]);
   const loadMovements = useCallback(async (requestedPage: number) => {
     if (!clinicUuid) { setMovements([]); setMovementsLoading(false); setMovementTotalPages(0); setMovementTotal(0); return; }
     setMovementsLoading(true); setMovementsError(null);
@@ -132,18 +145,22 @@ export default function ClinicInventory() {
       cancelled = true;
     };
   }, [clinicUuid, canAdjust]);
-  useEffect(() => { void load(page); }, [load, page]);
+  useEffect(() => {
+    void load(page);
+    return () => { inventoryRequest.current += 1; };
+  }, [load, page, inventoryRevision]);
   useEffect(() => { void loadMovements(movementPage); }, [loadMovements, movementPage]);
-  const lowStock = items.filter((item) => billableQuantity(item) < item.reorderLevel);
-  const expiryAttentionCount = items.filter((item) =>
+  const visibleItems = searchPending || loading || loadedSearch !== debouncedSearch ? [] : items;
+  const lowStock = visibleItems.filter((item) => billableQuantity(item) < item.reorderLevel);
+  const expiryAttentionCount = visibleItems.filter((item) =>
     (item.expiredQuantity ?? 0) > 0 || (item.unreviewedQuantity ?? 0) > 0 || (item.expiringSoonQuantity ?? 0) > 0,
   ).length;
   const openCreate = () => { setEditing(null); setForm(emptyForm); setFormOpen(true); };
   const openStock = (item: ClinicInventoryItem) => setBatchItem(item);
   const openEdit = (item: ClinicInventoryItem) => { setEditing(item); setForm({ name: item.name, category: item.category, quantity: item.quantity, unit: item.unit, reorderLevel: item.reorderLevel, unitPrice: item.unitPrice, active: item.active }); setFormOpen(true); };
   const updateField = (field: keyof ClinicInventoryRequest, value: string | number) => setForm((current) => ({ ...current, [field]: value }));
-  const save = async (event: React.FormEvent) => { event.preventDefault(); if (!clinicUuid || !form.name.trim()) return; setSaving(true); try { if (editing) await updateClinicInventoryItem(clinicUuid, editing.uuid, form); else await createClinicInventoryItem(clinicUuid, { ...form, name: form.name.trim() });       setFormOpen(false); await load(page); await loadMovements(1); toast.success(editing ? 'Inventory item updated' : 'Inventory item added'); } catch { toast.error('Could not save inventory item'); } finally { setSaving(false); } };
-  const remove = async (item: ClinicInventoryItem) => { if (!clinicUuid || !window.confirm(`Delete ${item.name}?`)) return; setDeleting(item.uuid); try { await deleteClinicInventoryItem(clinicUuid, item.uuid); await load(page); await loadMovements(1); toast.success('Inventory item deleted'); } catch { toast.error('Could not delete inventory item'); } finally { setDeleting(null); } };
+  const save = async (event: React.FormEvent) => { event.preventDefault(); if (!clinicUuid || !form.name.trim()) return; setSaving(true); try { if (editing) await updateClinicInventoryItem(clinicUuid, editing.uuid, form); else await createClinicInventoryItem(clinicUuid, { ...form, name: form.name.trim() }); setFormOpen(false); setInventoryRevision((value) => value + 1); await loadMovements(1); toast.success(editing ? 'Inventory item updated' : 'Inventory item added'); } catch { toast.error('Could not save inventory item'); } finally { setSaving(false); } };
+  const remove = async (item: ClinicInventoryItem) => { if (!clinicUuid || !window.confirm(`Delete ${item.name}?`)) return; setDeleting(item.uuid); try { await deleteClinicInventoryItem(clinicUuid, item.uuid); setInventoryRevision((value) => value + 1); await loadMovements(1); toast.success('Inventory item deleted'); } catch { toast.error('Could not delete inventory item'); } finally { setDeleting(null); } };
 
   const catalogCell = 'border-b border-border py-3';
 
@@ -152,7 +169,7 @@ export default function ClinicInventory() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Inventory</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{totalItems} items · {lowStock.length} below reorder on this page</p>
+          <p className="text-muted-foreground mt-1 text-sm">{totalItems} items{debouncedSearch ? ' matching search' : ''} · {lowStock.length} below reorder on this page</p>
         </div>
         <div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => { void load(page); void loadMovements(movementPage); }} disabled={!clinicUuid || loading} aria-label="Refresh inventory"><RefreshCw className="h-4 w-4" /></Button>{canEditItems ? <Button size="sm" onClick={openCreate} disabled={!clinicUuid}><Plus className="h-4 w-4 mr-2" />Add Item</Button> : null}</div>
       </div>
@@ -195,8 +212,19 @@ export default function ClinicInventory() {
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-3"><CardTitle className="text-base font-semibold">Stock list</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          {!loading && clinicUuid && !error && items.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No inventory items yet.</p>
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              aria-label="Search inventory by item name or category"
+              placeholder="Search name or category"
+              value={search}
+              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
+              className="pl-9"
+            />
+          </div>
+          {searchPending ? <p className="text-sm text-muted-foreground">Searching inventory...</p> : null}
+          {!loading && !searchPending && clinicUuid && !error && items.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">{debouncedSearch ? 'No inventory items match your search.' : 'No inventory items yet.'}</p>
           ) : null}
 
           <div className="hidden overflow-x-auto md:block">
@@ -207,7 +235,7 @@ export default function ClinicInventory() {
               <div className="border-b border-border pb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Reorder</div>
               <div className="border-b border-border pb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Price</div>
               <div className="border-b border-border pb-2 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{showActions ? 'Actions' : ''}</div>
-              {items.map((item) => {
+              {visibleItems.map((item) => {
                 return (
                   <Fragment key={item.uuid}>
                     <div className={`${catalogCell} flex min-w-0 items-center gap-2`}>
@@ -253,7 +281,7 @@ export default function ClinicInventory() {
           </div>
 
           <div className="space-y-3 md:hidden">
-            {items.map((item) => {
+            {visibleItems.map((item) => {
               return (
                 <div key={item.uuid} className="space-y-3 rounded-xl border bg-card p-4">
                   <div className="min-w-0">
@@ -301,7 +329,7 @@ export default function ClinicInventory() {
               );
             })}
           </div>
-          <ListPager page={page} totalPages={totalPages} totalElements={totalItems} noun="items" disabled={loading} onPageChange={setPage} />
+          <ListPager page={page} totalPages={totalPages} totalElements={totalItems} noun="items" disabled={loading || searchPending} onPageChange={setPage} />
         </CardContent>
       </Card>
       </TabsContent>
@@ -343,7 +371,7 @@ export default function ClinicInventory() {
           open={batchItem !== null}
           canEdit={canEditItems}
           onOpenChange={(open) => { if (!open) setBatchItem(null); }}
-          onChanged={() => { void load(page); void loadMovements(1); }}
+          onChanged={() => { setInventoryRevision((value) => value + 1); void loadMovements(1); }}
         />
       ) : null}
 
