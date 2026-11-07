@@ -1,11 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Camera, Upload, X, User } from 'lucide-react';
+import { Camera, X } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { ImageCropDialog } from '@/components/ui/ImageCropDialog';
 import { uploadProfilePicture, fileToBase64, type UploadProgress } from '@/services/fileUploadService';
 import { toast } from 'sonner';
+
+const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
 
 interface ProfilePictureUploadProps {
   currentImageUrl?: string;
@@ -31,7 +34,19 @@ export const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [croppedFile, setCroppedFile] = useState<File | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropFileName, setCropFileName] = useState('photo.jpg');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => () => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+  }, [cropSrc]);
+
+  const closeCrop = () => {
+    setCropSrc(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const sizeClasses = {
     sm: 'h-20 w-20',
@@ -49,21 +64,26 @@ export const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
       .slice(0, 2);
   };
 
-  const handleFileSelect = async (file: File) => {
-    try {
-      const preview = await fileToBase64(file);
-      setPreviewUrl(preview);
-    } catch (error) {
-      console.error('Error creating preview:', error);
-      toast.error('Error creating image preview');
+  const handleFileSelect = (file: File) => {
+    if (!ALLOWED.includes(file.type)) {
+      toast.error('Use JPEG, PNG, or WebP only');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
     }
+    setCropFileName(file.name);
+    setCropSrc(URL.createObjectURL(file));
   };
 
-  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      await handleFileSelect(file);
-    }
+    if (file) handleFileSelect(file);
+  };
+
+  const handleCropComplete = async (file: File) => {
+    const preview = await fileToBase64(file);
+    setCroppedFile(file);
+    setPreviewUrl(preview);
+    closeCrop();
   };
 
   const handleAvatarClick = () => {
@@ -71,20 +91,20 @@ export const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
   };
 
   const handleUpload = async () => {
-    if (!fileInputRef.current?.files?.[0]) {
+    if (!croppedFile) {
       toast.error('Please select an image first');
       return;
     }
-    const file = fileInputRef.current.files[0];
     setIsUploading(true);
     setProgress(null);
     try {
-      const url = await uploadProfilePicture(file, (progress) => setProgress(progress));
+      const url = await uploadProfilePicture(croppedFile, (progress) => setProgress(progress));
       onUploadComplete(url);
       setPreviewUrl(null);
+      setCroppedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (error: any) {
-      const errorMessage = error.message || 'Upload failed';
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
       onUploadError?.(errorMessage);
     } finally {
       setIsUploading(false);
@@ -94,6 +114,7 @@ export const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
 
   const handleCancel = () => {
     setPreviewUrl(null);
+    setCroppedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -124,7 +145,7 @@ export const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
           type="file"
           ref={fileInputRef}
           onChange={handleFileInputChange}
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           className="hidden"
           disabled={disabled || isUploading}
         />
@@ -162,8 +183,16 @@ export const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
       )}
       {/* Help Text */}
       <p className="text-xs text-muted-foreground text-center max-w-xs">
-        Supported formats: JPEG, PNG, WebP (Max 5MB)
+        JPEG, PNG, or WebP. Cropped photos are limited to 5MB.
       </p>
+      <ImageCropDialog
+        open={Boolean(cropSrc)}
+        imageSrc={cropSrc}
+        fileName={cropFileName}
+        circular
+        onCancel={closeCrop}
+        onComplete={handleCropComplete}
+      />
     </div>
   );
 }; 

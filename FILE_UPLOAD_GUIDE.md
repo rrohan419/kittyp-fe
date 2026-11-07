@@ -114,6 +114,10 @@ import { ProfilePictureUpload } from '@/components/ui/ProfilePictureUpload';
 />
 ```
 
+The profile picture picker opens a square crop dialog with a circular preview.
+Users can pan, zoom, and rotate before applying the crop, then choose **Save
+Photo** to upload it. Cancelling the crop preserves the previous photo.
+
 ### 3. ProductImageUpload Component
 
 ```tsx
@@ -139,6 +143,15 @@ import { PetPhotoUpload } from '@/components/ui/PetPhotoUpload';
   maxPhotos={5}
 />
 ```
+
+Pet photo pickers use the same square crop dialog; multiple selected photos
+are adjusted in sequence. Previously applied crops remain in the preview if
+the remaining sequence is cancelled. The clinic `PetPhotoField` uploads
+immediately after a crop is applied.
+
+These pickers accept JPEG, PNG, and WebP input and produce JPEG files with the
+original file name. Output is limited to 5 MB per photo and up to 4096 pixels
+per side. This crop step does not apply to the generic `FileUpload` component.
 
 ## Use Cases
 
