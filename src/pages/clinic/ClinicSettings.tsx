@@ -22,7 +22,9 @@ import {
   verifyClinicContactOtp,
 } from '@/services/clinicService';
 import { ClinicHoursDisplay, ClinicHoursEditor } from '@/components/clinic/ClinicHoursEditor';
+import { ClinicAddressSearch } from '@/components/clinic/ClinicAddressSearch';
 import { TimeZoneSelect } from '@/components/clinic/TimeZoneSelect';
+import { EMPTY_CLINIC_ADDRESS, stitchClinicAddress, type ParsedClinicAddress } from '@/utils/googlePlaces';
 import {
   type ClinicHourDay,
   defaultClinicHours,
@@ -58,6 +60,9 @@ export default function ClinicSettings() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState<ParsedClinicAddress | null>(null);
+  const [locationChanged, setLocationChanged] = useState(false);
+  const [resolvingLocation, setResolvingLocation] = useState(false);
   const [timezone, setTimezone] = useState('');
   const [hours, setHours] = useState<ClinicHourDay[]>([]);
   const [legacyHours, setLegacyHours] = useState<string | null>(null);
@@ -69,6 +74,11 @@ export default function ClinicSettings() {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [phoneOtpMethod, setPhoneOtpMethod] = useState<'WHATSAPP' | 'PHONE'>('WHATSAPP');
   const [otpBusy, setOtpBusy] = useState<'EMAIL' | 'PHONE' | null>(null);
+
+  useEffect(() => {
+    setEditingProfile(false);
+    setResolvingLocation(false);
+  }, [clinicUuid]);
 
   useEffect(() => {
     if (!clinicUuid || !showInventoryAccess) {
@@ -142,6 +152,8 @@ export default function ClinicSettings() {
     setEmail(clinic.email ?? '');
     setPhone(clinic.phone ?? '');
     setAddress(clinic.address ?? '');
+    setSelectedLocation(null);
+    setLocationChanged(false);
     setTimezone(clinic.timezone ?? '');
     const parsed = parseOperatingHours(clinic.operatingHours);
     setHours(parsed.days);
@@ -324,6 +336,13 @@ export default function ClinicSettings() {
         name: name.trim(),
         licenseNumber: licenseNumber.trim() || undefined,
         address: address.trim() || undefined,
+        ...(locationChanged ? {
+          updateLocation: true,
+          city: selectedLocation?.city.trim() || null,
+          latitude: selectedLocation?.latitude ?? null,
+          longitude: selectedLocation?.longitude ?? null,
+          googlePlaceId: selectedLocation?.placeId ?? null,
+        } : {}),
         phone: phone.trim() ? digitsOnlyPhone(phone) : undefined,
         email: email.trim().toLowerCase() || undefined,
         timezone: nextTimezone || undefined,
@@ -536,12 +555,33 @@ export default function ClinicSettings() {
               )}
             </div>
           </div>
+          {editingProfile && (
+            <ClinicAddressSearch
+              key={clinicUuid}
+              idPrefix="edit-clinic"
+              value={selectedLocation ?? EMPTY_CLINIC_ADDRESS}
+              onChange={(location) => {
+                setSelectedLocation(location);
+                setAddress(stitchClinicAddress(location));
+                setLocationChanged(true);
+              }}
+              disabled={savingProfile}
+              searchOnly
+              onResolvingChange={setResolvingLocation}
+            />
+          )}
           <div className="space-y-2">
-            <Label>Address</Label>
+            <Label htmlFor="clinic-address">Address</Label>
             <Input
+              id="clinic-address"
               value={editingProfile ? address : clinic?.address ?? ''}
               readOnly={!editingProfile}
-              onChange={(e) => setAddress(e.target.value)}
+              disabled={savingProfile || resolvingLocation}
+              onChange={(e) => {
+                setAddress(e.target.value);
+                setSelectedLocation(null);
+                setLocationChanged(e.target.value.trim() !== (clinic?.address ?? '').trim());
+              }}
             />
           </div>
           <div className="space-y-2">
@@ -554,7 +594,7 @@ export default function ClinicSettings() {
           </div>
           {editingProfile && (
             <div className="flex flex-wrap gap-2">
-              <Button type="button" onClick={() => void saveProfile()} disabled={savingProfile}>
+              <Button type="button" onClick={() => void saveProfile()} disabled={savingProfile || resolvingLocation}>
                 {savingProfile ? 'Saving…' : 'Save'}
               </Button>
               <Button

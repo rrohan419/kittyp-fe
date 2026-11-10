@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Camera, Upload, X, Plus, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ImageCropDialog } from '@/components/ui/ImageCropDialog';
 import { uploadPetPhotos, fileToBase64, type UploadProgress } from '@/services/fileUploadService';
 import { updatePetPhotos } from '@/services/UserService';
 import { toast } from 'sonner';
@@ -34,7 +35,14 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [previewPhotos, setPreviewPhotos] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropFileName, setCropFileName] = useState('photo.jpg');
+  const cropQueueRef = useRef<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => () => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+  }, [cropSrc]);
 
   const allPhotos = [...currentPhotos, ...previewPhotos];
   const canAddMore = allPhotos.length < maxPhotos;
@@ -45,37 +53,56 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
     
     if (fileArray.length > remainingSlots) {
       toast.error(`You can only add ${remainingSlots} more photo${remainingSlots !== 1 ? 's' : ''}`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
-    const maxBytes = 5 * 1024 * 1024;
     for (const file of fileArray) {
-      if (file.size > maxBytes) {
-        toast.error(`${file.name} is over 5MB — choose a smaller photo`);
-        return;
-      }
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
         toast.error('Use JPEG, PNG, or WebP only');
+        if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
     }
 
-    try {
-      const previews = await Promise.all(
-        fileArray.map(file => fileToBase64(file))
-      );
-      setPreviewPhotos(prev => [...prev, ...previews]);
-      setSelectedFiles(prev => [...prev, ...fileArray]);
-    } catch (error) {
-      console.error('Error creating previews:', error);
-      toast.error('Error creating image previews');
-    }
+    const first = fileArray[0];
+    if (!first) return;
+    cropQueueRef.current = fileArray.slice(1);
+    openCrop(first);
   };
 
-  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const openCrop = (file: File) => {
+    const url = URL.createObjectURL(file);
+    setCropFileName(file.name);
+    setCropSrc(url);
+  };
+
+  const closeCropSession = () => {
+    cropQueueRef.current = [];
+    setCropSrc(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const advanceCropQueue = () => {
+    const next = cropQueueRef.current.shift();
+    if (next) {
+      openCrop(next);
+      return;
+    }
+    closeCropSession();
+  };
+
+  const handleCropComplete = async (file: File) => {
+    const preview = await fileToBase64(file);
+    setPreviewPhotos((prev) => [...prev, preview]);
+    setSelectedFiles((prev) => [...prev, file]);
+    advanceCropQueue();
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      await handleFileSelect(files);
+      void handleFileSelect(files);
     }
   };
 
@@ -107,8 +134,8 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
         fileInputRef.current.value = '';
       }
       toast.success('Pet photos uploaded successfully!');
-    } catch (error: any) {
-      const errorMessage = error.message || 'Upload failed';
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
       toast.error(errorMessage);
       onUploadError?.(errorMessage);
     } finally {
@@ -133,7 +160,8 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
     } else {
       // Remove from preview photos
       const previewIndex = index - currentPhotos.length;
-      setPreviewPhotos(prev => prev.filter((_, i) => i !== previewIndex));
+      setPreviewPhotos((prev) => prev.filter((_, i) => i !== previewIndex));
+      setSelectedFiles((prev) => prev.filter((_, i) => i !== previewIndex));
     }
   };
 
@@ -248,10 +276,17 @@ export const PetPhotoUpload: React.FC<PetPhotoUploadProps> = ({
 
           {/* Help Text */}
           <p className="text-xs text-muted-foreground mt-4">
-            Supported formats: JPEG, PNG, WebP (Max 5MB per photo, up to {maxPhotos} photos)
+            JPEG, PNG, or WebP (cropped photos max 5MB each, up to {maxPhotos} photos)
           </p>
         </CardContent>
       </Card>
+      <ImageCropDialog
+        open={Boolean(cropSrc)}
+        imageSrc={cropSrc}
+        fileName={cropFileName}
+        onCancel={closeCropSession}
+        onComplete={handleCropComplete}
+      />
     </div>
   );
 }; 

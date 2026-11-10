@@ -47,6 +47,7 @@ import { PetPhotoField } from '@/components/clinic/PetPhotoField';
 import { PatientSearch } from '@/components/clinic/PatientSearch';
 import { PetNameType } from '@/components/ui/PetNameType';
 import { PetDobField } from '@/components/ui/PetDobField';
+import { BreedInput } from '@/components/ui/BreedInput';
 
 type Props = {
   open: boolean;
@@ -1049,7 +1050,7 @@ export function AddAppointmentDialog({
                   </div>
                   <div>
                     <Label>Species</Label>
-                    <Select value={form.petType} onValueChange={(v) => set('petType', v)}>
+                    <Select value={form.petType} onValueChange={(v) => setForm((s) => ({ ...s, petType: v, petBreed: s.petType === v ? s.petBreed : '' }))}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select species" />
                       </SelectTrigger>
@@ -1064,8 +1065,8 @@ export function AddAppointmentDialog({
                   </div>
                 </div>
                 <div>
-                  <Label>Breed</Label>
-                  <Input value={form.petBreed} onChange={(e) => set('petBreed', e.target.value)} />
+                  <Label htmlFor="appointment-pet-breed">Breed</Label>
+                  <BreedInput id="appointment-pet-breed" species={form.petType} value={form.petBreed} onChange={(v) => set('petBreed', v)} />
                 </div>
                 {/* Date of Birth — full width so the toggle is always visible */}
                 <PetDobField

@@ -1,4 +1,4 @@
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useRef, useState, FormEvent } from 'react';
 import { Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import { addPetToUser, updatePetInUser } from '@/module/slice/AuthSlice';
 import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { normalizePetGender } from '@/utils/petType';
 import { PetDobField } from '@/components/ui/PetDobField';
+import { BreedInput } from '@/components/ui/BreedInput';
 
 type PetForm = Omit<UpdatePet, 'uuid' | 'isNeutered'> & { isNeutered: string; type: string };
 
@@ -89,10 +90,17 @@ export function OwnerPetEditDialog({ open, onOpenChange, pet, onSaved }: Props) 
   const dispatch = useAppDispatch();
   const saving = useAppSelector((state) => state.authReducer.saving);
   const [form, setForm] = useState<PetForm>(emptyForm);
+  const initializedPet = useRef<string | null>(null);
   const isEdit = !!pet?.uuid;
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      initializedPet.current = null;
+      return;
+    }
+    const formKey = pet?.uuid || 'new';
+    if (initializedPet.current === formKey) return;
+    initializedPet.current = formKey;
     setForm(pet ? formFromPet(pet) : emptyForm);
   }, [open, pet]);
 
@@ -178,7 +186,7 @@ export function OwnerPetEditDialog({ open, onOpenChange, pet, onSaved }: Props) 
               <Label htmlFor="owner-pet-type">Pet Type</Label>
               <Select
                 value={form.type || undefined}
-                onValueChange={(value) => setForm((s) => ({ ...s, type: value }))}
+                onValueChange={(value) => setForm((s) => ({ ...s, type: value, breed: s.type === value ? s.breed : '' }))}
                 disabled={saving}
               >
                 <SelectTrigger id="owner-pet-type">
@@ -195,10 +203,11 @@ export function OwnerPetEditDialog({ open, onOpenChange, pet, onSaved }: Props) 
             </div>
             <div className="space-y-2">
               <Label htmlFor="owner-pet-breed">Breed</Label>
-              <Input
+              <BreedInput
                 id="owner-pet-breed"
+                species={form.type}
                 value={form.breed}
-                onChange={(e) => setForm((s) => ({ ...s, breed: e.target.value }))}
+                onChange={(value) => setForm((s) => ({ ...s, breed: value }))}
                 disabled={saving}
               />
             </div>

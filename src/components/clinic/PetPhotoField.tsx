@@ -1,12 +1,12 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Camera, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { ImageCropDialog } from '@/components/ui/ImageCropDialog';
 import { fileToBase64, uploadPetPhotos, validateFile } from '@/services/fileUploadService';
 import { toast } from 'sonner';
 
-const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
 
 type Props = {
@@ -28,24 +28,41 @@ export function PetPhotoField({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropFileName, setCropFileName] = useState('photo.jpg');
 
   const shown = preview || value || null;
 
-  const onPick = async (file: File | undefined) => {
+  useEffect(() => () => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+  }, [cropSrc]);
+
+  const closeCrop = () => {
+    setCropSrc(null);
+    if (inputRef.current) inputRef.current.value = '';
+  };
+
+  const onPick = (file: File | undefined) => {
     if (!file) return;
     const validation = validateFile(file, {
-      maxFileSize: MAX_BYTES,
+      maxFileSize: Infinity,
       allowedTypes: ALLOWED,
       maxFiles: 1,
     });
     if (!validation.isValid) {
-      toast.error(validation.errors[0] || 'Photo must be JPEG, PNG, or WebP under 5MB');
+      toast.error(validation.errors[0] || 'Photo must be JPEG, PNG, or WebP');
       if (inputRef.current) inputRef.current.value = '';
       return;
     }
+    setCropFileName(file.name);
+    setCropSrc(URL.createObjectURL(file));
+  };
+
+  const uploadCropped = async (file: File) => {
+    setUploading(true);
+    closeCrop();
     try {
       setPreview(await fileToBase64(file));
-      setUploading(true);
       const [url] = await uploadPetPhotos([file]);
       onChange(url);
       setPreview(null);
@@ -114,7 +131,7 @@ export function PetPhotoField({
               </Button>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground">JPEG, PNG, or WebP · max 5MB</p>
+          <p className="text-[11px] text-muted-foreground">JPEG, PNG, or WebP · cropped photo max 5MB</p>
         </div>
       </div>
       <input
@@ -123,7 +140,14 @@ export function PetPhotoField({
         accept="image/jpeg,image/png,image/webp"
         className="hidden"
         disabled={disabled || uploading}
-        onChange={(e) => void onPick(e.target.files?.[0])}
+        onChange={(e) => onPick(e.target.files?.[0])}
+      />
+      <ImageCropDialog
+        open={Boolean(cropSrc)}
+        imageSrc={cropSrc}
+        fileName={cropFileName}
+        onCancel={closeCrop}
+        onComplete={uploadCropped}
       />
     </div>
   );

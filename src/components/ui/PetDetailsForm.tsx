@@ -26,6 +26,7 @@ import { useAppDispatch, useAppSelector } from '@/module/store/hooks';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './button';
 import { PetDobField } from '@/components/ui/PetDobField';
+import { BreedInput } from '@/components/ui/BreedInput';
 
 interface PetDetailsFormProps {
     onPetAdded?: () => void;
@@ -370,7 +371,7 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
                                 <Label htmlFor="petType">Pet Type</Label>
                                 <Select
                                     value={petForm.type}
-                                    onValueChange={(value) => setPetForm(prev => ({ ...prev, type: value }))}
+                                    onValueChange={(value) => setPetForm(prev => ({ ...prev, type: value, breed: prev.type === value ? prev.breed : '' }))}
                                 >
                                     <SelectTrigger className="border-primary/20 focus:border-primary">
                                         <SelectValue placeholder="Select pet type" />
@@ -387,10 +388,11 @@ export const PetDetailsForm: React.FC<PetDetailsFormProps> = ({ onPetAdded }) =>
 
                             <div className="space-y-2">
                                 <Label htmlFor="breed">Breed</Label>
-                                <Input
+                                <BreedInput
                                     id="breed"
+                                    species={petForm.type}
                                     value={petForm.breed}
-                                    onChange={(e) => setPetForm({ ...petForm, breed: e.target.value })}
+                                    onChange={(value) => setPetForm(prev => ({ ...prev, breed: value }))}
                                     placeholder="e.g., Persian, Golden Retriever"
                                     className="border-primary/20 focus:border-primary"
                                 />
