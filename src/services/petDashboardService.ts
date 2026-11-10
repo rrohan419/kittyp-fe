@@ -23,6 +23,12 @@ export interface WeightLogModel {
   weight: number;
   recordedAt: string;
   note?: string;
+  visitUuid?: string | null;
+  recordedByUserUuid?: string | null;
+  recordedBy?: string | null;
+  correctedByUserUuid?: string | null;
+  correctedBy?: string | null;
+  correctedAt?: string | null;
 }
 
 export interface PetDashboardModel {

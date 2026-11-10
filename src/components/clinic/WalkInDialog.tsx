@@ -45,6 +45,7 @@ import { notifyPortalRefresh } from '@/components/portal/PortalNotifications';
 import { cn } from '@/lib/utils';
 import { PetPhotoField } from '@/components/clinic/PetPhotoField';
 import { PatientSearch } from '@/components/clinic/PatientSearch';
+import { PatientModeSelector } from '@/components/clinic/PatientModeSelector';
 import { PetNameType } from '@/components/ui/PetNameType';
 import { PetDobField } from '@/components/ui/PetDobField';
 import { BreedInput } from '@/components/ui/BreedInput';
@@ -802,50 +803,21 @@ export function AddAppointmentDialog({
           <DialogTitle>Add appointment</DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1">
-          <button
-            type="button"
-            disabled={selectionBusy || attachSending || attachVerifying || consentSending || consentVerifying}
-            className={cn(
-              'rounded-sm px-3 py-1.5 text-sm font-medium',
-              mode === 'existing' ? 'bg-background shadow-sm' : 'text-muted-foreground'
-            )}
-            onClick={() => {
-              setMode('existing');
-              clearSelectedPet();
-              setAttachUser(null);
-              setPendingPlatformPet(null);
-              setConsentPet(null);
-              setFieldErrors({});
-              setEmailLookup(null);
-              setMatchedOwner(null);
-              resetConsent();
-            }}
-          >
-            Existing patient
-          </button>
-          <button
-            type="button"
-            disabled={selectionBusy || attachSending || attachVerifying || consentSending || consentVerifying}
-            className={cn(
-              'rounded-sm px-3 py-1.5 text-sm font-medium',
-              mode === 'new' ? 'bg-background shadow-sm' : 'text-muted-foreground'
-            )}
-            onClick={() => {
-              setMode('new');
-              clearSelectedPet();
-              setAttachUser(null);
-              setPendingPlatformPet(null);
-              setConsentPet(null);
-              setFieldErrors({});
-              setEmailLookup(null);
-              setMatchedOwner(null);
-              resetConsent();
-            }}
-          >
-            New patient
-          </button>
-        </div>
+        <PatientModeSelector
+          value={mode}
+          disabled={selectionBusy || attachSending || attachVerifying || consentSending || consentVerifying}
+          onChange={(next) => {
+            setMode(next);
+            clearSelectedPet();
+            setAttachUser(null);
+            setPendingPlatformPet(null);
+            setConsentPet(null);
+            setFieldErrors({});
+            setEmailLookup(null);
+            setMatchedOwner(null);
+            resetConsent();
+          }}
+        />
 
         {mode === 'existing' ? (
           <div className="space-y-3 mt-1">

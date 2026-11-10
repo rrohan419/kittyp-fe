@@ -6,29 +6,41 @@ import { WeightLog, DailyLog } from '@/types/nutrition';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useState } from 'react';
 import { Scale, TrendingUp } from 'lucide-react';
+import { toast } from 'sonner';
+import { WeightHistory } from './WeightHistory';
 
 interface ProgressChartsProps {
   weightHistory: WeightLog[];
   dailyLogs: DailyLog[];
-  onLogWeight: (weight: number) => void;
+  onLogWeight: (weight: number) => Promise<void>;
   currentDate: Date;
 }
 
 export const ProgressCharts = ({ weightHistory, dailyLogs, onLogWeight, currentDate }: ProgressChartsProps) => {
   const [newWeight, setNewWeight] = useState('');
+  const [savingWeight, setSavingWeight] = useState(false);
 
-  const handleLogWeight = () => {
-    const weight = parseFloat(newWeight);
-    if (!isNaN(weight) && weight > 0) {
-      onLogWeight(weight);
+  const handleLogWeight = async () => {
+    const weight = Number(newWeight);
+    if (!newWeight.trim() || !Number.isFinite(weight) || weight <= 0) {
+      toast.error('Enter a valid positive weight in kg');
+      return;
+    }
+    setSavingWeight(true);
+    try {
+      await onLogWeight(weight);
       setNewWeight('');
+    } catch {
+      toast.error('Could not save weight. Please try again.');
+    } finally {
+      setSavingWeight(false);
     }
   };
 
   // Prepare weight chart data
   const weightChartData = weightHistory.map(w => ({
     date: new Date(w.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    weight: Number(w.weight.toFixed(1)),
+    weight: w.weight,
   }));
 
   // Prepare hydration chart data (last 14 days)
@@ -55,6 +67,7 @@ export const ProgressCharts = ({ weightHistory, dailyLogs, onLogWeight, currentD
           <Scale className="h-5 w-5 text-primary" />
           <h3 className="text-base sm:text-lg font-semibold">Log Weight</h3>
         </div>
+        <p className="text-sm text-muted-foreground mb-2">Recording for {currentDate.toLocaleDateString()}</p>
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="flex-1">
             <Label htmlFor="weight" className="text-sm">Weight (kg)</Label>
@@ -69,16 +82,18 @@ export const ProgressCharts = ({ weightHistory, dailyLogs, onLogWeight, currentD
             />
           </div>
           <div className="flex sm:items-end">
-            <Button onClick={handleLogWeight} className="w-full sm:w-auto text-sm">Log Weight</Button>
+            <Button onClick={() => void handleLogWeight()} disabled={savingWeight} className="w-full sm:w-auto text-sm">Log Weight</Button>
           </div>
         </div>
         {weightHistory.length > 0 && (
           <p className="text-xs sm:text-sm text-muted-foreground mt-2">
-            Last recorded: {weightHistory[weightHistory.length - 1].weight.toFixed(1)} kg on{' '}
+            Last recorded: {weightHistory[weightHistory.length - 1].weight} kg on{' '}
             {new Date(weightHistory[weightHistory.length - 1].date).toLocaleDateString()}
           </p>
         )}
       </Card>
+
+      <WeightHistory entries={weightHistory} />
 
       {/* Weight Trend Chart */}
       <Card className="p-4 sm:p-6">

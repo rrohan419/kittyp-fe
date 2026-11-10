@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import { format } from 'date-fns';
 import {
   createFeedingLog,
   fetchFeedingLogs,
+  fetchPetDashboard,
   fetchWeightHistory,
   logPetWeight,
   type FeedingLogModel,
-  type WeightLogModel,
 } from '@/services/petDashboardService';
+import type { PetProfile } from '@/services/authService';
 import {
   fetchActiveNutritionPlan,
   fetchPetDailyPlan,
@@ -15,9 +17,16 @@ import {
   type PetDailyPlanItem,
 } from '@/services/petNutritionService';
 import { DailyLog, NutritionPlan, NutritionStats, WeightLog } from '@/types/nutrition';
+import { toWeightHistory } from '@/utils/weightHistory';
 
 export const useNutrition = (petId: string) => {
-  const [nutritionPlan, setNutritionPlan] = useState<NutritionPlan | null>(null);
+  const [baseNutritionPlan, setNutritionPlan] = useState<NutritionPlan | null>(null);
+  const [weightHistory, setWeightHistory] = useState<WeightLog[]>([]);
+  const [petProfile, setPetProfile] = useState<PetProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [weightLoading, setWeightLoading] = useState(false);
+  const [weightError, setWeightError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -41,11 +50,10 @@ export const useNutrition = (petId: string) => {
       }),
       fetchPetDailyPlan(petId),
       fetchFeedingLogs(petId),
-      fetchWeightHistory(petId),
     ])
-      .then(([plan, dailyItems, feedingLogs, weights]) => {
+      .then(([plan, dailyItems, feedingLogs]) => {
         if (!cancelled) {
-          setNutritionPlan(plan ? toNutritionPlan(plan, dailyItems, feedingLogs, weights, petId) : null);
+          setNutritionPlan(plan ? toNutritionPlan(plan, dailyItems, feedingLogs, petId) : null);
         }
       })
       .catch(() => {
@@ -60,6 +68,57 @@ export const useNutrition = (petId: string) => {
 
     return () => { cancelled = true; };
   }, [petId, refreshKey]);
+
+  useEffect(() => {
+    if (!petId) {
+      setWeightHistory([]);
+      setWeightError(null);
+      return;
+    }
+    let cancelled = false;
+    setWeightLoading(true);
+    setWeightError(null);
+    fetchWeightHistory(petId)
+      .then((weights) => {
+        if (cancelled) return;
+        setWeightHistory(toWeightHistory(weights));
+      })
+      .catch(() => {
+        if (!cancelled) setWeightError('Could not load weight history.');
+      })
+      .finally(() => {
+        if (!cancelled) setWeightLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [petId, refreshKey]);
+
+  useEffect(() => {
+    if (!petId) {
+      setPetProfile(null);
+      setProfileError(null);
+      return;
+    }
+    let cancelled = false;
+    setPetProfile(null);
+    setProfileLoading(true);
+    setProfileError(null);
+    fetchPetDashboard(petId)
+      .then((dashboard) => {
+        if (!cancelled) setPetProfile(dashboard.pet);
+      })
+      .catch(() => {
+        if (!cancelled) setProfileError('Could not load the latest pet profile.');
+      })
+      .finally(() => {
+        if (!cancelled) setProfileLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [petId, refreshKey]);
+
+  const nutritionPlan = useMemo(
+    () => baseNutritionPlan ? { ...baseNutritionPlan, weightHistory } : null,
+    [baseNutritionPlan, weightHistory],
+  );
 
   const retry = useCallback(() => setRefreshKey((value) => value + 1), []);
 
@@ -108,13 +167,22 @@ export const useNutrition = (petId: string) => {
   const toggleSupplementCompletion = useCallback(async (_date: string, _supplementIndex: number) => undefined, []);
 
   const logWeight = useCallback(async (date: string, weight: number) => {
-    if (!petId) return;
-    await logPetWeight(petId, { weight, recordedAt: `${date}T12:00:00` });
+    if (!petId) throw new Error('Pet is required to log weight');
+    await logPetWeight(petId, {
+      weight,
+      recordedAt: date === format(new Date(), 'yyyy-MM-dd') ? undefined : `${date}T12:00:00`,
+    });
     refresh();
   }, [petId, refresh]);
 
   return {
     nutritionPlan,
+    weightHistory,
+    weightLoading,
+    weightError,
+    petProfile,
+    profileLoading,
+    profileError,
     stats,
     selectedDate,
     setSelectedDate,
@@ -133,7 +201,6 @@ function toNutritionPlan(
   plan: ApiNutritionPlan,
   dailyItems: PetDailyPlanItem[],
   logs: FeedingLogModel[],
-  weights: WeightLogModel[],
   petId: string,
 ): NutritionPlan {
   const profile = plan.nutritionRecommendationResponse?.petProfileSummary;
@@ -198,9 +265,6 @@ function toNutritionPlan(
       title: tip,
     })) || [],
     dailyLogs,
-    weightHistory: weights.map((weight): WeightLog => ({
-      date: weight.recordedAt.slice(0, 10),
-      weight: weight.weight,
-    })),
+    weightHistory: [],
   };
 }

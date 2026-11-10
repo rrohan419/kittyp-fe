@@ -41,8 +41,14 @@ export interface DailyLog {
 }
 
 export interface WeightLog {
+  id?: number;
   date: string;
   weight: number;
+  note?: string;
+  visitUuid?: string | null;
+  recordedBy?: string | null;
+  correctedBy?: string | null;
+  correctedAt?: string | null;
 }
 
 export interface RecommendedProduct {

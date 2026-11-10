@@ -37,6 +37,8 @@ import {
   logPetWeight,
 } from '@/services/petDashboardService';
 import { PetParentNutritionTracker } from '@/components/nutrition/PetParentNutritionTracker';
+import { WeightHistory } from '@/components/nutrition/WeightHistory';
+import { toWeightHistory } from '@/utils/weightHistory';
 import { PetHealthTimeline } from '@/components/health/PetHealthTimeline';
 import { OwnerPetRecords } from '@/components/health/OwnerPetRecords';
 import { OwnerPetEditDialog } from '@/components/ui/OwnerPetEditDialog';
@@ -77,7 +79,7 @@ export default function PetDashboardPage() {
   }, [petId]);
 
   const pet = dashboard?.pet ?? profilePet;
-  const editablePet: PetProfile | undefined = profilePet ?? dashboard?.pet;
+  const editablePet: PetProfile | undefined = dashboard?.pet ?? profilePet;
   const chartData = useMemo(
     () =>
       [...weights]
@@ -315,6 +317,7 @@ export default function PetDashboardPage() {
               )}
             </CardContent>
           </Card>
+          <WeightHistory entries={toWeightHistory(weights)} />
         </TabsContent>
       </Tabs>
 

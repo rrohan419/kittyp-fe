@@ -1,4 +1,5 @@
 import React from 'react';
+import { format } from 'date-fns';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,12 @@ const PetDetail: React.FC = () => {
   const pets = user?.ownerPets || [];
   const {
     nutritionPlan,
+    weightHistory,
+    weightLoading,
+    weightError,
+    petProfile,
+    profileLoading,
+    profileError,
     stats,
     selectedDate,
     setSelectedDate,
@@ -114,6 +121,7 @@ const PetDetail: React.FC = () => {
                         size="icon"
                         className="h-8 w-8 shrink-0"
                         aria-label="Edit pet details"
+                        disabled={profileLoading || !petProfile}
                         onClick={() => setEditOpen(true)}
                       >
                         <Pencil className="h-4 w-4" />
@@ -126,8 +134,8 @@ const PetDetail: React.FC = () => {
                         {formatPetDobWithAge((pet as PetProfile).dateOfBirth)}
                       </Badge>
                     )}
-                    {formatPetWeight((pet as PetProfile).weight) && (
-                        <Badge variant="secondary">{formatPetWeight((pet as PetProfile).weight)} kg</Badge>
+                    {formatPetWeight(petProfile ? petProfile.weight : (pet as PetProfile).weight) && (
+                        <Badge variant="secondary">{formatPetWeight(petProfile ? petProfile.weight : (pet as PetProfile).weight)} kg</Badge>
                       )}
                     {(pet as any).gender && <Badge variant="outline">{(pet as PetProfile).gender}</Badge>}
                     {(pet as PetProfile).microchipNumber && (
@@ -156,6 +164,12 @@ const PetDetail: React.FC = () => {
               </CardContent>
             )}
           </Card>
+          {profileError && (
+            <Card className="mb-6 p-4 text-sm">
+              <p>{profileError} The displayed profile may be out of date.</p>
+              <Button variant="outline" onClick={retryNutrition}>Try again</Button>
+            </Card>
+          )}
 
           {/* Quick Actions */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -289,24 +303,23 @@ const PetDetail: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="progress">
-              {nutritionLoading ? (
-                <Card className="p-6 text-center text-muted-foreground">Loading progress data...</Card>
-              ) : nutritionError ? (
-                <Card className="p-6 text-center text-muted-foreground">{nutritionError}</Card>
-              ) : nutritionPlan ? (
+              {weightLoading ? (
+                <Card className="p-6 text-center text-muted-foreground">Loading weight history...</Card>
+              ) : weightError ? (
+                <Card className="p-6 text-center">
+                  <p className="text-muted-foreground">{weightError}</p>
+                  <Button variant="outline" onClick={retryNutrition}>Try again</Button>
+                </Card>
+              ) : (
                 <ProgressCharts
-                  weightHistory={nutritionPlan.weightHistory}
-                  dailyLogs={nutritionPlan.dailyLogs}
+                  weightHistory={weightHistory}
+                  dailyLogs={nutritionPlan?.dailyLogs ?? []}
                   currentDate={selectedDate}
-                  onLogWeight={(weight) => {
-                    const dateStr = selectedDate.toISOString().split('T')[0];
-                    logWeight(dateStr, weight);
+                  onLogWeight={async (weight) => {
+                    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+                    await logWeight(dateStr, weight);
                   }}
                 />
-              ) : (
-                <Card className="p-6 text-center text-muted-foreground">
-                  No nutrition plan is available.
-                </Card>
               )}
             </TabsContent>
 
@@ -346,7 +359,8 @@ const PetDetail: React.FC = () => {
       <OwnerPetEditDialog
         open={editOpen}
         onOpenChange={setEditOpen}
-        pet={pet as PetProfile}
+        pet={petProfile ?? (pet as PetProfile)}
+        onSaved={retryNutrition}
       />
       <Footer />
     </>

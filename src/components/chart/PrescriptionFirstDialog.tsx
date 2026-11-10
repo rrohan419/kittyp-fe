@@ -21,6 +21,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { PetPhotoField } from '@/components/clinic/PetPhotoField';
 import { PatientSearch } from '@/components/clinic/PatientSearch';
+import { PatientModeSelector } from '@/components/clinic/PatientModeSelector';
 import { PetDobField } from '@/components/ui/PetDobField';
 import { BreedInput } from '@/components/ui/BreedInput';
 import {
@@ -39,6 +40,7 @@ import {
 } from '@/services/clinicService';
 import { PetNameType } from '@/components/ui/PetNameType';
 import { createPrescriptionFirst, type PrescriptionFirstPayload } from '@/services/visitService';
+import { isValidWeight } from '@/utils/weightValidation';
 import {
   digitsOnlyPhone,
   parseApiErrorMessage,
@@ -257,6 +259,7 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
 
   const save = async (confirmNewConsultation: boolean) => {
     if (!form.plan.trim()) return toast.error('Add a prescription before saving');
+    if (form.weightKg && !isValidWeight(form.weightKg)) return toast.error('Enter a valid positive weight in kg');
     if (mode === 'existing' && !petUuid) return toast.error('Select a pet');
     if (mode === 'new') {
       const errors: Record<string, string> = {};
@@ -285,6 +288,7 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
         plan: form.plan.trim(),
         nextVisitNotes: form.nextVisitNotes || undefined,
         vitals: Object.keys(vitals).length ? vitals : undefined,
+        weightMeasured: !!form.weightKg,
       },
       ...(mode === 'existing'
         ? { petUuid }
@@ -349,14 +353,7 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="flex gap-2">
-            <Button size="sm" disabled={selectionBusy} variant={mode === 'existing' ? 'default' : 'outline'} onClick={() => changeMode('existing')}>
-              Existing patient
-            </Button>
-            <Button size="sm" disabled={selectionBusy} variant={mode === 'new' ? 'default' : 'outline'} onClick={() => changeMode('new')}>
-              New patient
-            </Button>
-          </div>
+          <PatientModeSelector value={mode} onChange={changeMode} disabled={selectionBusy} />
 
           {mode === 'existing' ? (
             <div className="space-y-2">

@@ -42,6 +42,7 @@ export async function saveDoctorVisitChart(
     nextVisitNotes?: string;
     vitals?: Record<string, unknown>;
     internalNotes?: string;
+    weightMeasured?: boolean;
   }
 ): Promise<ClinicVisitModel> {
   const res = await axiosInstance.put<ApiSuccessResponse<ClinicVisitModel>>(
@@ -73,6 +74,7 @@ export type PrescriptionFirstPayload = {
     nextVisitNotes?: string;
     vitals?: Record<string, unknown>;
     internalNotes?: string;
+    weightMeasured?: boolean;
   };
 };
 

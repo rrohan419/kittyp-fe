@@ -31,6 +31,7 @@ export function VitalsTab({ editable, vitals, onVitalsChange, history = [] }: Vi
           <Input
             id="chart-weight"
             value={vitals.weightKg}
+            placeholder="Enter this visit's measured weight"
             onChange={(e) => set('weightKg', e.target.value)}
           />
         </div>

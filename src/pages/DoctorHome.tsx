@@ -45,6 +45,7 @@ import {
 } from '@/services/doctorVerificationService';
 import { formatPetDobWithAge } from '@/utils/petAge';
 import { formatPetWeight } from '@/utils/formatPetWeight';
+import { isValidWeight } from '@/utils/weightValidation';
 import {
   DoctorInviteModel,
   HealthEventModel,
@@ -128,14 +129,14 @@ type EventDetail = {
   healthEvents: HealthEventModel[];
 };
 
-function chartFormFromVisit(visit: ClinicVisitModel, petWeight = '') {
+function chartFormFromVisit(visit: ClinicVisitModel) {
   return {
     examinationNotes: visit.chart?.examinationNotes || '',
     assessment: visit.chart?.assessment || '',
     plan: visit.chart?.plan || '',
     nextVisitNotes: visit.chart?.nextVisitNotes || '',
     internalNotes: visit.chart?.internalNotes || '',
-    weightKg: formatPetWeight((visit.chart?.vitals as { weightKg?: number })?.weightKg ?? petWeight),
+    weightKg: formatPetWeight((visit.chart?.vitals as { weightKg?: number })?.weightKg),
     temperatureC: String((visit.chart?.vitals as { temperatureC?: number })?.temperatureC ?? ''),
   };
 }
@@ -158,6 +159,7 @@ export default function DoctorHome() {
   const [weekAnchor, setWeekAnchor] = useState(() => startOfDay(new Date()));
   const [viewMode, setViewMode] = useState<'tiles' | 'list'>('tiles');
   const [chartVisit, setChartVisit] = useState<ClinicVisitModel | null>(null);
+  const [weightMeasured, setWeightMeasured] = useState(false);
   const [chartTab, setChartTab] = useState<ChartTabId>('vitals');
   const [eventDetail, setEventDetail] = useState<EventDetail | null>(null);
   const [busy, setBusy] = useState(false);
@@ -497,10 +499,10 @@ export default function DoctorHome() {
         const visit = await startDoctorBookingTreatment(eventDetail.booking.uuid);
         toast.success('Treatment started');
         await loadSchedule();
-        const weightFromPet = eventDetail.pet?.weight ? String(eventDetail.pet.weight) : '';
         setEventDetail(null);
         setChartVisit(visit);
-        setForm(chartFormFromVisit(visit, weightFromPet));
+        setForm(chartFormFromVisit(visit));
+        setWeightMeasured(false);
         return;
       }
       if (!eventDetail.visit) return;
@@ -509,10 +511,10 @@ export default function DoctorHome() {
         current = await startDoctorVisit(current.uuid);
         await loadSchedule();
       }
-      const weightFromPet = eventDetail.pet?.weight ? String(eventDetail.pet.weight) : '';
       setEventDetail(null);
       setChartVisit(current);
-      setForm(chartFormFromVisit(current, weightFromPet));
+      setForm(chartFormFromVisit(current));
+      setWeightMeasured(false);
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { message?: string } }; message?: string };
       toast.error(ax.response?.data?.message || ax.message || 'Could not start treatment');
@@ -532,6 +534,11 @@ export default function DoctorHome() {
       toast.error('Add an assessment / diagnosis before completing');
       return;
     }
+    if (form.weightKg && !isValidWeight(form.weightKg)) {
+      setChartTab('vitals');
+      toast.error('Enter a valid positive weight in kg');
+      return;
+    }
     setBusy(true);
     try {
       const vitals: Record<string, number> = {};
@@ -544,7 +551,9 @@ export default function DoctorHome() {
         nextVisitNotes: form.nextVisitNotes,
         internalNotes: form.internalNotes,
         vitals: Object.keys(vitals).length ? vitals : undefined,
+        weightMeasured,
       });
+      setWeightMeasured(false);
       if (andComplete) {
         const completed = await completeDoctorVisit(chartVisit.uuid);
         const visitClinic = completed.clinicUuid || chartVisit.clinicUuid;
@@ -1149,13 +1158,14 @@ export default function DoctorHome() {
               onTabChange={setChartTab}
               editable={canEditVisitChart(chartVisit)}
               vitals={{ weightKg: form.weightKg, temperatureC: form.temperatureC }}
-              onVitalsChange={(vitals) =>
+              onVitalsChange={(vitals) => {
+                if (vitals.weightKg !== form.weightKg) setWeightMeasured(true);
                 setForm((current) => ({
                   ...current,
                   weightKg: vitals.weightKg,
                   temperatureC: vitals.temperatureC,
-                }))
-              }
+                }));
+              }}
               notes={{
                 examinationNotes: form.examinationNotes,
                 assessment: form.assessment,
@@ -1336,10 +1346,10 @@ export default function DoctorHome() {
               <Button
                 onClick={() => {
                   const v = eventDetail.visit!;
-                  const weightFromPet = eventDetail.pet?.weight ? String(eventDetail.pet.weight) : '';
                   setEventDetail(null);
                   setChartVisit(v);
-                  setForm(chartFormFromVisit(v, weightFromPet));
+                  setForm(chartFormFromVisit(v));
+                  setWeightMeasured(false);
                 }}
                 disabled={busy}
               >

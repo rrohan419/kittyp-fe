@@ -43,6 +43,7 @@ import {
 import { WalkInDialog } from '@/components/clinic/WalkInDialog';
 import { PrescriptionFirstDialog } from '@/components/chart/PrescriptionFirstDialog';
 import { formatPetWeight } from '@/utils/formatPetWeight';
+import { isValidWeight } from '@/utils/weightValidation';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppSelector } from '@/module/store/hooks';
 import {
@@ -135,6 +136,7 @@ export default function DoctorAppointments() {
   const [addOpen, setAddOpen] = useState(false);
   const [rxOpen, setRxOpen] = useState(false);
   const [chartVisit, setChartVisit] = useState<ClinicVisitModel | null>(null);
+  const [weightMeasured, setWeightMeasured] = useState(false);
   const [chartTab, setChartTab] = useState<ChartTabId>('vitals');
   const [busy, setBusy] = useState(false);
   const [vitals, setVitals] = useState<ChartVitalsSlice>(EMPTY_VITALS);
@@ -271,6 +273,7 @@ export default function DoctorAppointments() {
       setChartVisit(current);
       const slices = chartSlicesFromVisit(current);
       setVitals(slices.vitals);
+      setWeightMeasured(false);
       setNotes(slices.notes);
       setPlan(slices.plan);
       setChartTab('vitals');
@@ -290,6 +293,7 @@ export default function DoctorAppointments() {
       setChartVisit(visit);
       const slices = chartSlicesFromVisit(visit);
       setVitals(slices.vitals);
+      setWeightMeasured(false);
       setNotes(slices.notes);
       setPlan(slices.plan);
       setChartTab('vitals');
@@ -359,6 +363,11 @@ export default function DoctorAppointments() {
       toast.error('Add an assessment / diagnosis before completing');
       return;
     }
+    if (vitals.weightKg && !isValidWeight(vitals.weightKg)) {
+      setChartTab('vitals');
+      toast.error('Enter a valid positive weight in kg');
+      return;
+    }
     setBusy(true);
     try {
       const vitalsPayload: Record<string, number> = {};
@@ -371,7 +380,9 @@ export default function DoctorAppointments() {
         nextVisitNotes: notes.nextVisitNotes,
         internalNotes: notes.internalNotes,
         vitals: Object.keys(vitalsPayload).length ? vitalsPayload : undefined,
+        weightMeasured,
       });
+      setWeightMeasured(false);
       if (andComplete) {
         const completed = await completeDoctorVisit(chartVisit.uuid);
         const visitClinic = completed.clinicUuid || chartVisit.clinicUuid;
@@ -819,7 +830,10 @@ export default function DoctorAppointments() {
               onTabChange={setChartTab}
               editable={canEditVisitChart(chartVisit)}
               vitals={vitals}
-              onVitalsChange={setVitals}
+              onVitalsChange={(next) => {
+                if (next.weightKg !== vitals.weightKg) setWeightMeasured(true);
+                setVitals(next);
+              }}
               notes={notes}
               onNotesChange={setNotes}
               plan={plan}
