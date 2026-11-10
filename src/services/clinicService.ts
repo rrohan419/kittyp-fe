@@ -571,9 +571,11 @@ export interface ClinicCreateRequest {
   email?: string;
   timezone?: string;
   operatingHours?: string;
-  city?: string;
+  city?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  googlePlaceId?: string | null;
+  updateLocation?: boolean;
   profileImageUrl?: string;
 }
 

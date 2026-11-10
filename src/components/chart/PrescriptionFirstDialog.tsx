@@ -22,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { PetPhotoField } from '@/components/clinic/PetPhotoField';
 import { PatientSearch } from '@/components/clinic/PatientSearch';
 import { PetDobField } from '@/components/ui/PetDobField';
+import { BreedInput } from '@/components/ui/BreedInput';
 import {
   admitClinicPet,
   ensureClinicOwnerFromUser,
@@ -542,7 +543,7 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
                 <Label htmlFor="rx-pet-species">Species</Label>
                 <Select
                   value={form.newPetSpecies || undefined}
-                  onValueChange={(v) => setForm((f) => ({ ...f, newPetSpecies: v }))}
+                  onValueChange={(v) => setForm((f) => ({ ...f, newPetSpecies: v, newPetBreed: f.newPetSpecies === v ? f.newPetBreed : '' }))}
                 >
                   <SelectTrigger id="rx-pet-species">
                     <SelectValue placeholder="Select species" />
@@ -556,7 +557,10 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2">{field('rx-pet-breed', 'Breed', 'newPetBreed')}</div>
+              <div className="col-span-2">
+                <Label htmlFor="rx-pet-breed">Breed</Label>
+                <BreedInput id="rx-pet-breed" species={form.newPetSpecies} value={form.newPetBreed} onChange={(v) => setForm((f) => ({ ...f, newPetBreed: v }))} />
+              </div>
               <div className="col-span-2">
                 <PetDobField
                   id="rx-pet-dob"

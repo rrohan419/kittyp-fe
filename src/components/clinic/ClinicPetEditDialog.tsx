@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { PetDobField } from '@/components/ui/PetDobField';
+import { BreedInput } from '@/components/ui/BreedInput';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -163,7 +164,7 @@ export function ClinicPetEditDialog({
               <Label htmlFor="clinic-pet-species">Species</Label>
               <Select
                 value={form.species || undefined}
-                onValueChange={(value) => setForm((s) => ({ ...s, species: value }))}
+                onValueChange={(value) => setForm((s) => ({ ...s, species: value, breed: s.species === value ? s.breed : '' }))}
                 disabled={saving}
               >
                 <SelectTrigger id="clinic-pet-species">
@@ -183,10 +184,11 @@ export function ClinicPetEditDialog({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="clinic-pet-breed">Breed</Label>
-              <Input
+              <BreedInput
                 id="clinic-pet-breed"
+                species={form.species}
                 value={form.breed}
-                onChange={(e) => setForm((s) => ({ ...s, breed: e.target.value }))}
+                onChange={(value) => setForm((s) => ({ ...s, breed: value }))}
                 disabled={saving}
               />
             </div>

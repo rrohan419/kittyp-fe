@@ -40,6 +40,7 @@ import { PetParentNutritionTracker } from '@/components/nutrition/PetParentNutri
 import { PetHealthTimeline } from '@/components/health/PetHealthTimeline';
 import { OwnerPetRecords } from '@/components/health/OwnerPetRecords';
 import { OwnerPetEditDialog } from '@/components/ui/OwnerPetEditDialog';
+import { PetOverviewDetails } from '@/components/ui/PetOverviewDetails';
 import { PetProfile } from '@/services/authService';
 
 export default function PetDashboardPage() {
@@ -213,6 +214,13 @@ export default function PetDashboardPage() {
               </CardContent>
             </Card>
           </div>
+          {pet && (
+            <PetOverviewDetails
+              pet={pet}
+              latestWeight={dashboard?.latestWeight?.weight}
+              onEdit={editablePet ? () => setEditOpen(true) : undefined}
+            />
+          )}
           {(pet?.healthConditions || pet?.allergies) && (
             <Card className="border-0 shadow-sm">
               <CardHeader className="pb-2">

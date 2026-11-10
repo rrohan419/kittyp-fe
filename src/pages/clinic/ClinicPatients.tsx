@@ -41,6 +41,7 @@ import { PetPhoto } from '@/components/clinic/PetPhoto';
 import { PetPhotoField } from '@/components/clinic/PetPhotoField';
 import { PatientSearch } from '@/components/clinic/PatientSearch';
 import { PetDobField } from '@/components/ui/PetDobField';
+import { BreedInput } from '@/components/ui/BreedInput';
 import { resolveClinicSearchTarget } from '@/utils/clinicSearchNavigate';
 import {
   ClinicOwnerModel,
@@ -1133,7 +1134,14 @@ export default function ClinicPatients() {
                     </div>
                     <div className="space-y-1.5">
                       <Label>Species</Label>
-                      <Select value={form.petType} onValueChange={(v) => set('petType', v)}>
+                      <Select
+                        value={form.petType}
+                        onValueChange={(value) => setForm((s) => ({
+                          ...s,
+                          petType: value,
+                          petBreed: s.petType === value ? s.petBreed : '',
+                        }))}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select species" />
                         </SelectTrigger>
@@ -1149,7 +1157,12 @@ export default function ClinicPatients() {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="petBreed">Breed</Label>
-                    <Input id="petBreed" value={form.petBreed} onChange={(e) => set('petBreed', e.target.value)} />
+                    <BreedInput
+                      id="petBreed"
+                      species={form.petType}
+                      value={form.petBreed}
+                      onChange={(value) => set('petBreed', value)}
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="petGender">Gender</Label>

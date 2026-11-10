@@ -16,6 +16,8 @@ type Props = {
   idPrefix?: string;
   /** When true, only Google Places selection is allowed — parsed fields are read-only. */
   fieldsReadOnly?: boolean;
+  searchOnly?: boolean;
+  onResolvingChange?: (resolving: boolean) => void;
 };
 
 type Suggestion = {
@@ -36,6 +38,8 @@ export function ClinicAddressSearch({
   disabled,
   idPrefix = 'clinic-address',
   fieldsReadOnly = false,
+  searchOnly = false,
+  onResolvingChange,
 }: Props) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -44,7 +48,17 @@ export function ClinicAddressSearch({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [resolving, setResolving] = useState(false);
   const skipPredictRef = useRef(false);
+  const predictionRequestRef = useRef(0);
+  const detailsRequestRef = useRef(0);
+  const onResolvingChangeRef = useRef(onResolvingChange);
+  onResolvingChangeRef.current = onResolvingChange;
+
+  useEffect(() => () => {
+    detailsRequestRef.current += 1;
+    onResolvingChangeRef.current?.(false);
+  }, []);
 
   useEffect(() => {
     if (disabled) return;
@@ -58,42 +72,65 @@ export function ClinicAddressSearch({
       setOpen(false);
       return;
     }
+    let active = true;
+    const requestId = ++predictionRequestRef.current;
     const handle = window.setTimeout(() => {
       void fetchPlacePredictions(input, sessionTokenRef.current)
         .then((predictions) => {
+          if (!active || requestId !== predictionRequestRef.current) return;
           setLoadError('');
           setSuggestions(predictions);
           setOpen(predictions.length > 0);
         })
         .catch(() => {
+          if (!active || requestId !== predictionRequestRef.current) return;
           setSuggestions([]);
           setOpen(false);
           setLoadError(
             fieldsReadOnly
               ? 'Address search is unavailable. Try again later.'
-              : 'Address search is unavailable. Enter city, state, and postal code manually.'
+              : searchOnly
+                ? 'Address search is unavailable. Enter the address manually.'
+                : 'Address search is unavailable. Enter city, state, and postal code manually.'
           );
         });
     }, 250);
-    return () => window.clearTimeout(handle);
-  }, [query, disabled, fieldsReadOnly]);
+    return () => {
+      active = false;
+      window.clearTimeout(handle);
+    };
+  }, [query, disabled, fieldsReadOnly, searchOnly]);
 
   const applyPlace = (placeId: string, description: string) => {
+    const requestId = ++detailsRequestRef.current;
+    predictionRequestRef.current += 1;
+    setOpen(false);
+    setLoadError('');
+    setResolving(true);
+    onResolvingChangeRef.current?.(true);
     void fetchPlaceDetails(placeId, sessionTokenRef.current)
       .then((parsed) => {
+        if (requestId !== detailsRequestRef.current) return;
         onChangeRef.current(parsed);
-        skipPredictRef.current = true;
+        skipPredictRef.current = description !== query;
         setQuery(description);
         setSuggestions([]);
         setOpen(false);
         sessionTokenRef.current = newSessionToken();
       })
       .catch(() => {
+        if (requestId !== detailsRequestRef.current) return;
         setLoadError(
           fieldsReadOnly
             ? 'Could not load that address. Try another suggestion.'
             : 'Could not load that address. Enter it manually.'
         );
+      })
+      .finally(() => {
+        if (requestId === detailsRequestRef.current) {
+          setResolving(false);
+          onResolvingChangeRef.current?.(false);
+        }
       });
   };
 
@@ -123,7 +160,12 @@ export function ClinicAddressSearch({
             placeholder="Search a clinic, landmark, or street in India"
             value={query}
             disabled={disabled}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              detailsRequestRef.current += 1;
+              setResolving(false);
+              onResolvingChangeRef.current?.(false);
+              setQuery(e.target.value);
+            }}
             onFocus={() => {
               if (suggestions.length) setOpen(true);
             }}
@@ -155,18 +197,22 @@ export function ClinicAddressSearch({
             </ul>
           ) : null}
         </div>
-        {loadError ? (
+        {resolving ? (
+          <p className="text-xs text-muted-foreground" role="status">Loading address...</p>
+        ) : loadError ? (
           <p className="text-xs text-destructive">{loadError}</p>
         ) : fieldsReadOnly ? (
           <p className="text-xs text-muted-foreground">
             Pick a Google Places suggestion. Address fields cannot be typed manually.
           </p>
         ) : (
-          <p className="text-xs text-muted-foreground">Pick a suggestion, then edit the parsed fields if needed.</p>
+          <p className="text-xs text-muted-foreground">
+            {searchOnly ? 'Pick a suggestion to update the address below.' : 'Pick a suggestion, then edit the parsed fields if needed.'}
+          </p>
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {!searchOnly && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor={`${idPrefix}-street`}>Street</Label>
           <Input
@@ -244,7 +290,7 @@ export function ClinicAddressSearch({
             onChange={(e) => patch('country', e.target.value)}
           />
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

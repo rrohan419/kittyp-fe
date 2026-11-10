@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
 import { PetDobField } from '@/components/ui/PetDobField';
+import { BreedInput } from '@/components/ui/BreedInput';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -610,17 +611,36 @@ export default function ClinicOwnerProfile() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Species</Label>
-                <Input
-                  value={petForm.species}
-                  onChange={(e) => setPetForm((s) => ({ ...s, species: e.target.value }))}
-                />
+                <Label htmlFor="owner-new-pet-species">Species</Label>
+                <Select
+                  value={petForm.species || undefined}
+                  onValueChange={(species) =>
+                    setPetForm((s) => ({
+                      ...s,
+                      species,
+                      breed: s.species === species ? s.breed : '',
+                    }))
+                  }
+                >
+                  <SelectTrigger id="owner-new-pet-species">
+                    <SelectValue placeholder="Select species" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CAT">Cat</SelectItem>
+                    <SelectItem value="DOG">Dog</SelectItem>
+                    <SelectItem value="BIRD">Bird</SelectItem>
+                    <SelectItem value="RABBIT">Rabbit</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Breed</Label>
-                <Input
+                <Label htmlFor="owner-new-pet-breed">Breed</Label>
+                <BreedInput
+                  id="owner-new-pet-breed"
+                  species={petForm.species}
                   value={petForm.breed}
-                  onChange={(e) => setPetForm((s) => ({ ...s, breed: e.target.value }))}
+                  onChange={(breed) => setPetForm((s) => ({ ...s, breed }))}
                 />
               </div>
             </div>
