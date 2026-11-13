@@ -144,7 +144,7 @@ export default function ClinicPatientDashboard() {
       return;
     }
     if (!canEditVisitChart(openVisit)) {
-      toast.error('Prescription can no longer be edited. More than one hour has passed since checkout.');
+      toast.error('Chart can no longer be edited after treatment is finished.');
       return;
     }
     setRxSaving(true);

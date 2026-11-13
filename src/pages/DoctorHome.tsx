@@ -524,7 +524,7 @@ export default function DoctorHome() {
   const saveChart = async (andComplete: boolean) => {
     if (!chartVisit) return;
     if (!canEditVisitChart(chartVisit)) {
-      toast.error('Prescription can no longer be edited. More than one hour has passed since checkout.');
+      toast.error('Chart can no longer be edited after treatment is finished.');
       return;
     }
     if (andComplete && !form.assessment.trim()) {
@@ -695,29 +695,12 @@ export default function DoctorHome() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-md border p-0.5">
-            <Button
-              type="button"
-              size="sm"
-              variant={viewMode === 'tiles' ? 'secondary' : 'ghost'}
-              className="h-8 px-2"
-              onClick={() => setViewMode('tiles')}
-              aria-label="Tiles view"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-              className="h-8 px-2"
-              onClick={() => setViewMode('list')}
-              aria-label="List view"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
-          <Button variant="outline" size="sm" asChild>
+          <Button
+            variant="default"
+            size="sm"
+            className="h-9 rounded-lg px-4 shadow-sm transition-shadow hover:shadow-md"
+            asChild
+          >
             <Link to="/doctor/appointments">
               Queue <ArrowRight className="h-4 w-4 ml-1" />
             </Link>
@@ -950,7 +933,44 @@ export default function DoctorHome() {
               </span>
             </div>
           </div>
+          
           <div className="flex items-center gap-1">
+            <div
+              className="inline-flex items-center rounded-lg border border-border mr-2 bg-muted/40 p-0.5"
+              role="group"
+              aria-label="Calendar display"
+            >
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className={cn(
+                  'h-7 w-8 rounded-md text-muted-foreground',
+                  viewMode === 'tiles' && 'bg-background text-foreground shadow-sm'
+                )}
+                onClick={() => setViewMode('tiles')}
+                aria-label="Calendar view"
+                aria-pressed={viewMode === 'tiles'}
+                title="Calendar view"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className={cn(
+                  'h-7 w-8 rounded-md text-muted-foreground',
+                  viewMode === 'list' && 'bg-background text-foreground shadow-sm'
+                )}
+                onClick={() => setViewMode('list')}
+                aria-label="List view"
+                aria-pressed={viewMode === 'list'}
+                title="List view"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
             <Button
               variant="outline"
               size="icon"
@@ -964,12 +984,13 @@ export default function DoctorHome() {
             <Button
               variant={isSameDay(weekAnchor, today) ? 'secondary' : 'outline'}
               size="sm"
-              className="h-8"
+              className="h-8 rounded-lg px-3"
               title={viewMode === 'list' ? 'Jump to today' : 'Jump to this week'}
               onClick={() => setWeekAnchor(startOfDay(new Date()))}
             >
               Today
             </Button>
+
             <Button
               variant="outline"
               size="icon"
@@ -1343,13 +1364,13 @@ export default function DoctorHome() {
                 }}
                 disabled={busy}
               >
-                {eventDetail.visit?.status === 'CHECKING_OUT' ? 'Amend notes' : 'Open visit notes'}
+                Open visit notes
               </Button>
             ) : eventDetail?.kind === 'booking' &&
               ['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(
                 (eventDetail.booking?.status || '').toUpperCase()
               ) ? null : eventDetail?.kind === 'visit' &&
-              ['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(eventDetail.visit?.status || '') ? null : (
+              ['CANCELLED', 'NO_SHOW', 'CHECKING_OUT', 'COMPLETED'].includes(eventDetail.visit?.status || '') ? null : (
               <Button onClick={() => void startTreatment()} disabled={busy}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Start treatment

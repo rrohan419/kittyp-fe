@@ -3,6 +3,7 @@ import { NotesTab } from './NotesTab';
 import { PrescriptionsTab, type ThisVisitRef } from './PrescriptionsTab';
 import { VitalsTab } from './VitalsTab';
 import { isChartTabId, type ChartNotesSlice, type ChartTabId, type ChartVitalsSlice } from './chartTabs';
+import { useDoctorSmartPhrases } from './useDoctorSmartPhrases';
 import type { PrescriptionPetDetails } from './prescriptionPet';
 import type { NoteHistoryItem, PrescriptionHistoryItem, VitalHistoryItem } from './prescriptionsFromVisits';
 
@@ -45,63 +46,71 @@ export function VisitChartTabs({
   pet,
   thisVisit,
 }: VisitChartTabsProps) {
+  const smartPhrases = useDoctorSmartPhrases(editable);
+
   return (
-    <Tabs
-      value={tab}
-      onValueChange={(value) => {
-        if (isChartTabId(value)) onTabChange(value);
-      }}
-    >
-      <TabsList className="w-full justify-start">
-        <TabsTrigger value="vitals">Vitals</TabsTrigger>
-        <TabsTrigger value="notes">
-          Notes
-          {editable && !notes.assessment.trim() ? (
-            <span className="ml-1 text-destructive" title="Assessment required to finish" aria-label="Required field missing">
-              *
-            </span>
-          ) : null}
-        </TabsTrigger>
-        <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
-      </TabsList>
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          if (isChartTabId(value)) onTabChange(value);
+        }}
+      >
+        <TabsList className="w-full justify-start">
+          <TabsTrigger value="vitals">Vitals</TabsTrigger>
+          <TabsTrigger value="notes">
+            Notes
+            {editable && !notes.assessment.trim() ? (
+              <span className="ml-1 text-destructive" title="Assessment required to finish" aria-label="Required field missing">
+                *
+              </span>
+            ) : null}
+          </TabsTrigger>
+          <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
+        </TabsList>
 
-      {tab === 'vitals' ? (
-        <TabsContent value="vitals" className="mt-4">
-          <VitalsTab
-            editable={editable}
-            vitals={vitals}
-            onVitalsChange={onVitalsChange}
-            history={vitalHistory}
-          />
-        </TabsContent>
-      ) : null}
+        {smartPhrases.error && editable ? (
+          <p role="alert" className="mt-2 text-sm text-destructive">{smartPhrases.error}</p>
+        ) : null}
 
-      {tab === 'notes' ? (
-        <TabsContent value="notes" className="mt-4">
-          <NotesTab
-            editable={editable}
-            notes={notes}
-            onNotesChange={onNotesChange}
-            history={noteHistory}
-          />
-        </TabsContent>
-      ) : null}
+        {tab === 'vitals' ? (
+          <TabsContent value="vitals" className="mt-4">
+            <VitalsTab
+              editable={editable}
+              vitals={vitals}
+              onVitalsChange={onVitalsChange}
+              history={vitalHistory}
+            />
+          </TabsContent>
+        ) : null}
 
-      {tab === 'prescriptions' ? (
-        <TabsContent value="prescriptions" className="mt-4">
-          <PrescriptionsTab
-            editable={editable}
-            plan={plan}
-            onPlanChange={onPlanChange}
-            pet={pet}
-            thisVisit={thisVisit}
-            history={prescriptionHistory}
-            clinicUuid={clinicUuid}
-            petUuid={petUuid}
-            excludeVisitUuid={excludeVisitUuid}
-          />
-        </TabsContent>
-      ) : null}
-    </Tabs>
+        {tab === 'notes' ? (
+          <TabsContent value="notes" className="mt-4">
+            <NotesTab
+              editable={editable}
+              notes={notes}
+              onNotesChange={onNotesChange}
+              history={noteHistory}
+              phrases={smartPhrases.phrases}
+            />
+          </TabsContent>
+        ) : null}
+
+        {tab === 'prescriptions' ? (
+          <TabsContent value="prescriptions" className="mt-4">
+            <PrescriptionsTab
+              editable={editable}
+              plan={plan}
+              onPlanChange={onPlanChange}
+              pet={pet}
+              thisVisit={thisVisit}
+              history={prescriptionHistory}
+              clinicUuid={clinicUuid}
+              petUuid={petUuid}
+              excludeVisitUuid={excludeVisitUuid}
+              phrases={smartPhrases.phrases}
+            />
+          </TabsContent>
+        ) : null}
+      </Tabs>
   );
 }

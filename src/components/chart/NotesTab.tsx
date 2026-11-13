@@ -1,9 +1,9 @@
 import { format, isValid, parseISO } from 'date-fns';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import type { ChartNotesSlice } from './chartTabs';
 import type { NoteHistoryItem } from './prescriptionsFromVisits';
+import { SmartPhraseTextarea } from './SmartPhraseTextarea';
+import type { DoctorSmartPhrase } from '@/services/doctorSmartPhraseService';
 
 function formatVisitDate(value: string | null): string {
   if (!value) return '—';
@@ -16,9 +16,16 @@ export interface NotesTabProps {
   notes: ChartNotesSlice;
   onNotesChange?: (next: ChartNotesSlice) => void;
   history?: NoteHistoryItem[];
+  phrases?: DoctorSmartPhrase[];
 }
 
-export function NotesTab({ editable, notes, onNotesChange, history = [] }: NotesTabProps) {
+export function NotesTab({
+  editable,
+  notes,
+  onNotesChange,
+  history = [],
+  phrases = [],
+}: NotesTabProps) {
   const set = (key: keyof ChartNotesSlice, value: string) => {
     onNotesChange?.({ ...notes, [key]: value });
   };
@@ -29,10 +36,11 @@ export function NotesTab({ editable, notes, onNotesChange, history = [] }: Notes
       <div className="space-y-3">
         <div>
           <Label htmlFor="chart-exam">Examination / report</Label>
-          <Textarea
+          <SmartPhraseTextarea
             id="chart-exam"
             value={notes.examinationNotes}
-            onChange={(e) => set('examinationNotes', e.target.value)}
+            onValueChange={(value) => set('examinationNotes', value)}
+            phrases={phrases}
             rows={3}
             placeholder="Findings shared with the pet owner"
           />
@@ -41,10 +49,11 @@ export function NotesTab({ editable, notes, onNotesChange, history = [] }: Notes
           <Label htmlFor="chart-assessment">
             Assessment / diagnosis <span className="text-destructive">*</span>
           </Label>
-          <Textarea
+          <SmartPhraseTextarea
             id="chart-assessment"
             value={notes.assessment}
-            onChange={(e) => set('assessment', e.target.value)}
+            onValueChange={(value) => set('assessment', value)}
+            phrases={phrases}
             rows={2}
             placeholder="Required to finish treatment"
             aria-required="true"
@@ -56,18 +65,22 @@ export function NotesTab({ editable, notes, onNotesChange, history = [] }: Notes
         </div>
         <div>
           <Label htmlFor="chart-next">Next visit notes</Label>
-          <Input
+          <SmartPhraseTextarea
             id="chart-next"
             value={notes.nextVisitNotes}
-            onChange={(e) => set('nextVisitNotes', e.target.value)}
+            onValueChange={(value) => set('nextVisitNotes', value)}
+            phrases={phrases}
+            rows={1}
+            className="min-h-10 py-2"
           />
         </div>
         <div>
           <Label htmlFor="chart-internal">Internal notes (clinic only)</Label>
-          <Textarea
+          <SmartPhraseTextarea
             id="chart-internal"
             value={notes.internalNotes}
-            onChange={(e) => set('internalNotes', e.target.value)}
+            onValueChange={(value) => set('internalNotes', value)}
+            phrases={phrases}
             rows={2}
           />
         </div>

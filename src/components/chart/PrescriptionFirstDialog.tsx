@@ -18,11 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { PetPhotoField } from '@/components/clinic/PetPhotoField';
 import { PatientSearch } from '@/components/clinic/PatientSearch';
 import { PetDobField } from '@/components/ui/PetDobField';
 import { BreedInput } from '@/components/ui/BreedInput';
+import { SmartPhraseTextarea } from './SmartPhraseTextarea';
+import { useDoctorSmartPhrases } from './useDoctorSmartPhrases';
 import {
   admitClinicPet,
   ensureClinicOwnerFromUser,
@@ -91,6 +92,7 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
   const [attachedOwnerUuid, setAttachedOwnerUuid] = useState('');
   const [consentPet, setConsentPet] = useState<ClinicPetListModel | null>(null);
   const [consentCode, setConsentCode] = useState('');
+  const smartPhrases = useDoctorSmartPhrases(open);
 
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) => {
     setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -334,7 +336,20 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
     <div>
       <Label htmlFor={id}>{label}</Label>
       {area ? (
-        <Textarea id={id} value={form[key]} onChange={set(key)} />
+        <SmartPhraseTextarea
+          id={id}
+          value={form[key]}
+          onValueChange={(value) => {
+            setForm((current) => ({ ...current, [key]: value }));
+            setFieldErrors((current) => {
+              if (!current[key]) return current;
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
+          }}
+          phrases={smartPhrases.phrases}
+        />
       ) : (
         <Input id={id} value={form[key]} onChange={set(key)} />
       )}
@@ -347,6 +362,10 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
         <DialogHeader>
           <DialogTitle>New prescription</DialogTitle>
         </DialogHeader>
+
+        {smartPhrases.error ? (
+          <p role="alert" className="text-sm text-destructive">{smartPhrases.error}</p>
+        ) : null}
 
         <div className="space-y-4">
           <div className="flex gap-2">
@@ -616,7 +635,7 @@ export function PrescriptionFirstDialog({ open, onOpenChange, clinicUuid, onCrea
           {field('rx-exam', 'Examination / symptoms', 'examinationNotes', true)}
           {field('rx-assessment', 'Diagnosis', 'assessment', true)}
           {field('rx-plan', 'Prescription (medicines, dose, duration)', 'plan', true)}
-          {field('rx-followup', 'Follow-up', 'nextVisitNotes')}
+          {field('rx-followup', 'Follow-up', 'nextVisitNotes', true)}
 
           {conflict ? (
             <div className="space-y-2 border rounded-md p-3 text-sm">
