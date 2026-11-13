@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, Video } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Plus, Video } from 'lucide-react';
 import { VisitChartTabs } from '@/components/chart/VisitChartTabs';
 import { chartSlicesFromVisit } from '@/components/chart/chartSlices';
 import {
@@ -130,6 +130,7 @@ export default function DoctorAppointments() {
   const [appointmentDate, setAppointmentDate] = useState(() =>
     format(startOfDay(new Date()), 'yyyy-MM-dd')
   );
+  const today = format(startOfDay(new Date()), 'yyyy-MM-dd');
   const [filter, setFilter] = useState<ApptFilter>('ALL');
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -143,6 +144,13 @@ export default function DoctorAppointments() {
   const [previewInvoiceUuid, setPreviewInvoiceUuid] = useState<string | null>(null);
 
   const fetchPreviewUrl = useCallback((uuid: string) => fetchInvoicePdfUrl(uuid), []);
+
+  const moveAppointmentDate = (days: number) => {
+    const selectedDate = parseISO(appointmentDate);
+    if (isValid(selectedDate)) {
+      setAppointmentDate(format(addDays(selectedDate, days), 'yyyy-MM-dd'));
+    }
+  };
 
   /** Scope to active practice — personal never mixes clinic-branch appointments. */
   const load = useCallback(async () => {
@@ -351,7 +359,7 @@ export default function DoctorAppointments() {
   const saveChart = async (andComplete: boolean) => {
     if (!chartVisit) return;
     if (!canEditVisitChart(chartVisit)) {
-      toast.error('Prescription can no longer be edited. More than one hour has passed since checkout.');
+      toast.error('Chart can no longer be edited after treatment is finished.');
       return;
     }
     if (andComplete && !notes.assessment.trim()) {
@@ -463,17 +471,52 @@ export default function DoctorAppointments() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
-        <Label htmlFor="doctor-appointment-date" className="text-sm text-muted-foreground shrink-0">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <Label htmlFor="doctor-appointment-date" className="text-sm font-medium text-muted-foreground">
           Appointment date
         </Label>
-        <Input
-          id="doctor-appointment-date"
-          type="date"
-          className="w-full sm:w-[170px] h-11 sm:h-10"
-          value={appointmentDate}
-          onChange={(event) => setAppointmentDate(event.target.value)}
-        />
+        <div className="inline-flex h-11 items-center gap-1 rounded-xl border border-border bg-card p-1 shadow-sm">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground"
+            aria-label="Previous day"
+            title="Previous day"
+            onClick={() => moveAppointmentDate(-1)}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <Input
+              id="doctor-appointment-date"
+              type="date"
+              className="h-9 w-[156px] cursor-pointer border-0 bg-transparent px-2 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+              value={appointmentDate}
+              onChange={(event) => setAppointmentDate(event.target.value)}
+            />
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground"
+            aria-label="Next day"
+            title="Next day"
+            onClick={() => moveAppointmentDate(1)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 rounded-xl px-4"
+          disabled={appointmentDate === today}
+          onClick={() => setAppointmentDate(today)}
+        >
+          Today
+        </Button>
       </div>
 
       <div className="md:hidden">

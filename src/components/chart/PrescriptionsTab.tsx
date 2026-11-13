@@ -3,9 +3,10 @@ import { format, isValid, parseISO } from 'date-fns';
 import { Eye, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { fetchClinicPetMedicalProfile, fetchClinicPetVisits } from '@/services/clinicService';
+import type { DoctorSmartPhrase } from '@/services/doctorSmartPhraseService';
 import { PrescriptionDocument } from './PrescriptionDocument';
+import { SmartPhraseTextarea } from './SmartPhraseTextarea';
 import type { PrescriptionPetDetails } from './prescriptionPet';
 import {
   prescriptionsFromVisits,
@@ -37,6 +38,7 @@ export interface PrescriptionsTabProps {
   clinicUuid?: string | null;
   petUuid?: string | null;
   excludeVisitUuid?: string | null;
+  phrases?: DoctorSmartPhrase[];
 }
 
 function mergePet(base: PrescriptionPetDetails, extra: PrescriptionPetDetails | null): PrescriptionPetDetails {
@@ -63,6 +65,7 @@ export function PrescriptionsTab({
   clinicUuid,
   petUuid,
   excludeVisitUuid,
+  phrases = [],
 }: PrescriptionsTabProps) {
   const [fetched, setFetched] = useState<PrescriptionHistoryItem[]>([]);
   const [profilePet, setProfilePet] = useState<PrescriptionPetDetails | null>(null);
@@ -149,10 +152,11 @@ export function PrescriptionsTab({
       {editable ? (
         <div>
           <Label htmlFor="chart-prescription">Add Prescription</Label>
-          <Textarea
+          <SmartPhraseTextarea
             id="chart-prescription"
             value={plan}
-            onChange={(e) => onPlanChange?.(e.target.value)}
+            onValueChange={(value) => onPlanChange?.(value)}
+            phrases={phrases}
             rows={4}
             placeholder="Medications, dose, duration, and home care"
           />

@@ -31,6 +31,7 @@ import { clearUser } from '@/module/slice/AuthSlice';
 import { AppRole, ROLES, canSwitchWorkspace, hasAnyRole } from '@/utils/roles';
 import { ClinicSwitcher } from '@/components/clinic/ClinicSwitcher';
 import { PortalNotifications } from '@/components/portal/PortalNotifications';
+import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { useAppointmentNavCount } from '@/hooks/useAppointmentNavCount';
 import { resolveClinicSearchTarget } from '@/utils/clinicSearchNavigate';
@@ -236,24 +237,25 @@ export function PortalShell({ config }: PortalShellProps) {
             <span className="hidden sm:inline font-bold text-foreground truncate max-w-[8rem]">{config.name}</span>
           </div>
 
-          <form onSubmit={submitHeaderSearch} className="hidden md:flex flex-1 min-w-0 mr-2">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={headerSearch}
-                onChange={(e) => setHeaderSearch(e.target.value)}
-                placeholder={
-                  isClinicPortal ? 'Search clients, pets, phone, microchip…' : 'Search…'
-                }
-                className="pl-9 h-10 bg-muted/50 border-0 shadow-inner focus-visible:ring-primary/30"
-              />
-            </div>
-          </form>
+          {isClinicPortal ? (
+            <form onSubmit={submitHeaderSearch} className="hidden md:flex flex-1 min-w-0 mr-2">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={headerSearch}
+                  onChange={(e) => setHeaderSearch(e.target.value)}
+                  placeholder="Search clients, pets, phone, microchip…"
+                  className="pl-9 h-10 bg-muted/50 border-0 shadow-inner focus-visible:ring-primary/30"
+                />
+              </div>
+            </form>
+          ) : null}
 
           <div className="flex-1 md:hidden" />
 
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
             {showClinicSwitcher && <ClinicSwitcher />}
+            <ThemeSwitcher />
             <PortalNotifications basePath={config.basePath} />
 
             <DropdownMenu modal={false}>

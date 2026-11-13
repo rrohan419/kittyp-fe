@@ -9,6 +9,7 @@ import favoritesReducer from '../slice/FavoritesSlice';
 import orderReducer from '../slice/OrderSlice';
 import adminProductReducer from '../slice/AdminProductSlice';
 import schedulingReducer from '../slice/SchedulingSlice';
+import doctorSmartPhrasesReducer from '../slice/DoctorSmartPhrasesSlice';
 import { persistReducer, persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 
@@ -38,6 +39,7 @@ const rootReducer = combineReducers({
     orderReducer,
     scheduling: schedulingReducer,
     adminProducts: adminProductReducer,
+    doctorSmartPhrases: doctorSmartPhrasesReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

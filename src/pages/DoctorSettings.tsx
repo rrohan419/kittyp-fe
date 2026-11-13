@@ -34,6 +34,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AttendedPatientModel, fetchMyAttendedPatients } from '@/services/visitService';
 import { uploadFiles } from '@/services/fileUploadService';
+import { DoctorSmartPhrasesManager } from '@/components/doctor/DoctorSmartPhrasesManager';
+import { useDoctorSmartPhrases } from '@/components/chart/useDoctorSmartPhrases';
 
 function DocLink({ href, label }: { href?: string | null; label: string }) {
   if (!href) {
@@ -100,6 +102,7 @@ export default function DoctorSettings() {
   const [waConfigured, setWaConfigured] = useState(false);
   const [waTemplatesReady, setWaTemplatesReady] = useState(false);
   const [waTemplatesStatus, setWaTemplatesStatus] = useState<string | undefined>();
+  const smartPhrases = useDoctorSmartPhrases(true);
 
   useEffect(() => {
     void Promise.all([
@@ -255,6 +258,17 @@ export default function DoctorSettings() {
           </div>
         </CardContent>
       </Card>
+
+      <DoctorSmartPhrasesManager
+        phrases={smartPhrases.phrases}
+        loading={smartPhrases.loading}
+        saving={smartPhrases.saving}
+        error={smartPhrases.error}
+        onClearError={smartPhrases.clearError}
+        onCreate={smartPhrases.create}
+        onUpdate={smartPhrases.update}
+        onDelete={smartPhrases.remove}
+      />
 
       {isPersonalPractice ? (
         <Card className="border-0 shadow-sm">
