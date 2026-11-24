@@ -75,6 +75,8 @@ export interface UserProfile {
   enabled: boolean;
   phoneCountryCode: string;
   phoneNumber: string;
+  whatsappCountryCode?: string | null;
+  whatsappNumber?: string | null;
   age?: number | null;
   uuid: string;
   createdAt: string;

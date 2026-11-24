@@ -426,6 +426,41 @@ export interface ClinicInventoryRequest {
   active?: boolean;
 }
 
+export interface ClinicEmailActivity {
+  id: number;
+  recipientEmail: string;
+  emailType: string;
+  status: 'RESERVED' | 'ACCEPTED' | 'FAILED' | 'BLOCKED';
+  failureCode?: string | null;
+  createdAt: string;
+}
+
+export interface ClinicEmailUsage {
+  monthlyAllowance: number;
+  sentThisMonth: number;
+  reservedThisMonth: number;
+  availableCredits: number;
+  periodStart: string;
+  nextResetDate: string;
+  activities: ClinicEmailActivity[];
+  pageNumber: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export async function fetchClinicEmailUsage(
+  clinicUuid: string,
+  pageNumber = 0,
+  pageSize = 20
+): Promise<ClinicEmailUsage> {
+  const res = await axiosInstance.get<ApiSuccessResponse<ClinicEmailUsage>>(
+    `/clinic/${clinicUuid}/email-usage`,
+    { params: { pageNumber, pageSize } }
+  );
+  return res.data.data;
+}
+
 export async function fetchClinicReports(
   clinicUuid: string,
   months = 6

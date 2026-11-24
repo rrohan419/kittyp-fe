@@ -87,7 +87,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Blog', path: '/doctor/blog', icon: FileText },
       { label: 'Inventory', path: '/doctor/inventory', icon: Boxes },
       { label: 'Invoices', path: '/doctor/invoices', icon: Package },
-      { label: 'WhatsApp', path: '/doctor/whatsapp', icon: MessageCircle },
+      { label: 'Messaging', path: '/doctor/messaging', icon: MessageCircle },
       { label: 'Settings', path: '/doctor/settings', icon: Settings },
     ],
     bottomTabs: [
@@ -113,7 +113,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Staff', path: '/clinic/staff', icon: Users },
       { label: 'Articles', path: '/clinic/blog', icon: FileText },
       { label: 'Billing', path: '/clinic/invoices', icon: Package },
-      { label: 'WhatsApp', path: '/clinic/whatsapp', icon: MessageCircle },
+      { label: 'Messaging', path: '/clinic/messaging', icon: MessageCircle },
       { label: 'Settings', path: '/clinic/settings', icon: Settings },
     ],
     bottomTabs: [
@@ -136,6 +136,7 @@ export const portalConfigs: Record<PortalRole, PortalConfig> = {
       { label: 'Doctors', path: '/clinic/doctors', icon: Stethoscope },
       { label: 'Inventory', path: '/clinic/inventory', icon: Package },
       { label: 'Billing', path: '/clinic/invoices', icon: Package },
+      { label: 'Messaging', path: '/clinic/messaging', icon: MessageCircle },
     ],
     bottomTabs: [
       { label: 'Visits', path: '/clinic/appointments', icon: Calendar },

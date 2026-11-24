@@ -284,7 +284,7 @@ export function PortalShell({ config }: PortalShellProps) {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link to="/">
+                  <Link to="/?view=public">
                     <Globe className="h-4 w-4 mr-2" />
                     Public site
                   </Link>

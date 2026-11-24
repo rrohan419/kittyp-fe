@@ -145,7 +145,7 @@ const doctorFeatures: Feature[] = [
   { icon: Apple, title: 'Nutrition', body: 'Write a feeding plan.' },
   { icon: FileText, title: 'Blog', body: 'Share a short article.' },
   { icon: Receipt, title: 'Invoices', body: 'Send a bill for a visit.' },
-  { icon: MessageCircle, title: 'WhatsApp', body: 'Connect WhatsApp for your practice.' },
+  { icon: MessageCircle, title: 'WhatsApp', body: 'Kittyp sends practice messages using its shared WhatsApp account; no separate connection is needed.' },
   { icon: Settings, title: 'Settings', body: 'Update your practice details.' },
 ];
 
@@ -158,7 +158,7 @@ const clinicFeatures: Feature[] = [
   { icon: Users, title: 'Staff', body: 'Add the people who help run the clinic.' },
   { icon: FileText, title: 'Articles', body: 'Share clinic articles.' },
   { icon: Receipt, title: 'Billing', body: 'Bills and payments.' },
-  { icon: MessageCircle, title: 'WhatsApp', body: 'Connect WhatsApp for the clinic.' },
+  { icon: MessageCircle, title: 'WhatsApp', body: 'Kittyp sends clinic messages using its shared WhatsApp account; no separate connection is needed.' },
   { icon: Settings, title: 'Settings', body: 'Update clinic details.' },
 ];
 

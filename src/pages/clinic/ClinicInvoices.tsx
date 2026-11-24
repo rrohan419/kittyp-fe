@@ -32,13 +32,10 @@ import {
 import { fetchClinicPetMedicalProfile, fetchClinicVisits } from '@/services/clinicService';
 import { formatInr } from '@/services/availabilityService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
-import { useAppSelector } from '@/module/store/hooks';
-import { hasRole, ROLES } from '@/utils/roles';
 import { collectInvoicePayment, isInvoiceUnpaid, SHOW_COLLECT_PAYMENT, toastInvoicePaymentError } from '@/utils/collectInvoicePayment';
 import { formatPetWeight } from '@/utils/formatPetWeight';
 import { InvoiceLineEditor, apiErrorMessage, prepareInventoryLines, useInventoryCatalog } from '@/components/invoice/InvoiceLineEditor';
 import { MarkInvoicePaidDialog } from '@/components/invoice/MarkInvoicePaidDialog';
-import { WhatsAppSendGate } from '@/components/invoice/WhatsAppSendGate';
 import { InvoicePdfDialog } from '@/components/invoice/InvoicePdfDialog';
 import { ListPager } from '@/components/ui/ListPager';
 
@@ -58,9 +55,7 @@ export default function ClinicInvoices() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const hydratedRef = useRef<string | null>(null);
-  const { clinicUuid, clinic, loading: clinicLoading } = useActiveClinic();
-  const user = useAppSelector((s) => s.authReducer.user);
-  const canConfigureWhatsApp = hasRole(user?.roles, ROLES.CLINIC_ADMIN);
+  const { clinicUuid, clinic } = useActiveClinic();
   const catalog = useInventoryCatalog(clinicUuid);
 
   const [items, setItems] = useState<TreatmentLineItem[]>([emptyItem()]);
@@ -488,16 +483,13 @@ export default function ClinicInvoices() {
     }
   };
 
-  const whatsappChecking = clinicLoading;
-  const whatsappBlocked = clinic?.whatsappConfigured !== true;
-
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Clinic invoices</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {clinic?.name ? `${clinic.name} · ` : ''}
-          Create invoices for clinic visits. WhatsApp sends the PDF now. The invoice email goes out when it is paid.
+          Create invoices for clinic visits. Kittyp sends the PDF from its WhatsApp account. The invoice email goes out when it is paid.
         </p>
       </div>
 
@@ -644,16 +636,14 @@ export default function ClinicInvoices() {
               <Button type="submit" disabled={loading || hydrating} variant="outline">
                 {loading ? 'Saving…' : editingInvoiceUuid ? 'Update draft' : 'Save draft'}
               </Button>
-              <WhatsAppSendGate blocked={whatsappBlocked} checking={whatsappChecking} configureTo={canConfigureWhatsApp ? '/clinic/whatsapp' : undefined}>
-                <Button
-                  type="button"
-                  disabled={loading || hydrating || whatsappBlocked}
-                  onClick={(e) => void createDraft(e, true)}
-                >
-                  <Send className="h-4 w-4 mr-1.5" />
-                  {loading ? 'Sending…' : editingInvoiceUuid ? 'Update and send WhatsApp' : 'Save and send WhatsApp'}
-                </Button>
-              </WhatsAppSendGate>
+              <Button
+                type="button"
+                disabled={loading || hydrating}
+                onClick={(e) => void createDraft(e, true)}
+              >
+                <Send className="h-4 w-4 mr-1.5" />
+                {loading ? 'Sending…' : editingInvoiceUuid ? 'Update and send WhatsApp' : 'Save and send WhatsApp'}
+              </Button>
               {editingInvoiceUuid ? (
                 <Button type="button" variant="ghost" disabled={loading} onClick={resetForm}>
                   Cancel
@@ -739,17 +729,15 @@ export default function ClinicInvoices() {
                       >
                         <ExternalLink className="h-3.5 w-3.5 mr-1" /> PDF
                       </Button>
-                      <WhatsAppSendGate blocked={whatsappBlocked} checking={whatsappChecking} configureTo={canConfigureWhatsApp ? '/clinic/whatsapp' : undefined}>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          aria-label="Send invoice on WhatsApp"
-                          disabled={busyUuid === inv.uuid || whatsappBlocked}
-                          onClick={() => void onSendWhatsApp(inv.uuid)}
-                        >
-                          <Send className="h-3.5 w-3.5 mr-1" /> WhatsApp
-                        </Button>
-                      </WhatsAppSendGate>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        aria-label="Send invoice on WhatsApp"
+                        disabled={busyUuid === inv.uuid}
+                        onClick={() => void onSendWhatsApp(inv.uuid)}
+                      >
+                        <Send className="h-3.5 w-3.5 mr-1" /> WhatsApp
+                      </Button>
                     </>
                   ) : (
                     <Button

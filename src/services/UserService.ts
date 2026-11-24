@@ -33,6 +33,8 @@ export interface UserUpdateDto {
   lastName: string;
   phoneNumber: string;
   phoneCountryCode: string;
+  whatsappNumber: string;
+  whatsappCountryCode: string;
   age?: number | null;
   profilePictureUrl?: string;
 }
@@ -116,7 +118,7 @@ export const updateUserDetails = async (userUuid: string, userUpdateDto: UserUpd
 };
 
 export async function sendProfileOtp(body: {
-  channel: 'EMAIL' | 'PHONE';
+  channel: 'EMAIL' | 'WHATSAPP';
   email?: string;
   phone?: string;
 }) {
@@ -125,10 +127,11 @@ export async function sendProfileOtp(body: {
 }
 
 export async function verifyProfileOtp(body: {
-  channel: 'EMAIL' | 'PHONE';
+  channel: 'EMAIL' | 'PHONE' | 'WHATSAPP';
   email?: string;
   phone?: string;
-  code: string;
+  code?: string;
+  accessToken?: string;
 }) {
   const res = await axiosInstance.post<WrappedResponse<{ verified: boolean }>>('/user/otp/verify', body);
   return res.data.data;

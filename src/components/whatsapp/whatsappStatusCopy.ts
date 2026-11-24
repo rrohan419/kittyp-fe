@@ -1,7 +1,7 @@
 import type { WhatsAppSettingsResponse } from '@/services/invoiceService';
 
 function templateStatus(settings: WhatsAppSettingsResponse | null | undefined): string {
-  const invoice = settings?.templates?.find((t) => t.name === 'invoice_receipt');
+  const invoice = settings?.templates?.find((t) => t.name === 'invoice');
   return (
     settings?.invoiceTemplateStatus ||
     invoice?.status ||
@@ -26,7 +26,7 @@ export function whatsappSettingsSummary(settings: {
   }
   const status = (settings.templateStatus || '').toUpperCase();
   if (status === 'PENDING' || status === 'IN_APPEAL') {
-    return 'Credentials saved. Waiting for Meta to approve the invoice_receipt template.';
+    return 'Credentials saved. Waiting for Meta to approve the invoice template.';
   }
   if (status === 'REJECTED') {
     return 'Credentials saved, but Meta rejected the invoice template. Open WhatsApp Manager, then retry setup.';
@@ -34,7 +34,7 @@ export function whatsappSettingsSummary(settings: {
   if (status === 'ERROR') {
     return 'Credentials are saved, but template setup failed. This is not Meta login success — retry template setup or reconnect.';
   }
-  return 'Phone ID and token are saved on this practice. Meta login is a separate step — “waiting for approval” only applies after invoice_receipt is submitted and PENDING.';
+  return 'Phone ID and token are saved on this practice. Meta login is a separate step — “waiting for approval” only applies after the invoice template is submitted and PENDING.';
 }
 
 export function whatsappHeroCopy(settings: WhatsAppSettingsResponse | null): {
@@ -72,7 +72,7 @@ export function whatsappHeroCopy(settings: WhatsAppSettingsResponse | null): {
       title: 'Connected · template rejected',
       detail:
         settings.templatesMessage ||
-        'Meta rejected invoice_receipt. Fix it in WhatsApp Manager, then retry template setup.',
+        'Meta rejected the invoice template. Fix it in WhatsApp Manager, then retry template setup.',
       tone: 'warn',
     };
   }

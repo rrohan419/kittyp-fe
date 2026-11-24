@@ -289,8 +289,8 @@ export function WhatsAppSettingsForm({
         </p>
       )}
       <p className="text-xs text-muted-foreground">
-        KittyP will create the required invoice message template on your WhatsApp Business Account after
-        connect (Meta still reviews it before you can send).
+        KittyP checks or creates the invoice DOCUMENT template used for PDF sends after connect
+        (Meta still reviews new templates before you can send).
       </p>
       <div className="space-y-2">
         <Label htmlFor="wa-phone-id">Phone Number ID</Label>

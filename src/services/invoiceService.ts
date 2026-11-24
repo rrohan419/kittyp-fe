@@ -237,7 +237,7 @@ export async function markInvoicePaid(
   return res.data.data;
 }
 
-/** Resend an existing invoice PDF via WhatsApp (document template). */
+/** Resend an existing invoice PDF via the approved WhatsApp document template. */
 export async function sendInvoiceWhatsApp(uuid: string): Promise<ConsultationInvoice> {
   const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
     `/invoice/${uuid}/send-whatsapp`

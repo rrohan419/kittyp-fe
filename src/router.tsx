@@ -60,6 +60,7 @@ import DoctorMessages from './pages/DoctorMessages';
 import DoctorAnalytics from './pages/DoctorAnalytics';
 import DoctorSettings from './pages/DoctorSettings';
 import DoctorWhatsApp from './pages/DoctorWhatsApp';
+import MessagingPage from './pages/MessagingPage';
 
 // Clinic Portal
 import { ClinicLayout } from './pages/clinic/ClinicLayout';
@@ -75,6 +76,7 @@ import ClinicInventory from './pages/clinic/ClinicInventory';
 import ClinicStaff from './pages/clinic/ClinicStaff';
 import ClinicReports from './pages/clinic/ClinicReports';
 import ClinicSettings from './pages/clinic/ClinicSettings';
+import ClinicEmailUsage from './pages/clinic/ClinicEmailUsage';
 import ClinicWhatsApp from './pages/clinic/ClinicWhatsApp';
 import ClinicInvoices from './pages/clinic/ClinicInvoices';
 import ClinicRetention from './pages/clinic/ClinicRetention';
@@ -404,6 +406,14 @@ export const router = createBrowserRouter(
               element: <PageTransition><DoctorSettings /></PageTransition>,
             },
             {
+              path: "messaging",
+              element: <PageTransition><MessagingPage /></PageTransition>,
+            },
+            {
+              path: "email-usage",
+              element: <PageTransition><ClinicEmailUsage /></PageTransition>,
+            },
+            {
               path: "whatsapp",
               element: <PageTransition><DoctorWhatsApp /></PageTransition>,
             },
@@ -510,6 +520,18 @@ export const router = createBrowserRouter(
               element: (
                 <RoleGuard allowed={[ROLES.CLINIC_ADMIN]}>
                   <PageTransition><ClinicSettings /></PageTransition>
+                </RoleGuard>
+              ),
+            },
+            {
+              path: "messaging",
+              element: <PageTransition><MessagingPage /></PageTransition>,
+            },
+            {
+              path: "email-usage",
+              element: (
+                <RoleGuard allowed={[ROLES.CLINIC_ADMIN]}>
+                  <PageTransition><ClinicEmailUsage /></PageTransition>
                 </RoleGuard>
               ),
             },

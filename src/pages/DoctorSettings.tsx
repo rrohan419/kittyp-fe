@@ -28,8 +28,6 @@ import {
 } from '@/services/doctorVerificationService';
 import { useActiveClinic } from '@/hooks/useActiveClinic';
 import { CopyableId } from '@/components/ui/CopyableId';
-import { fetchDoctorWhatsAppSettings } from '@/services/invoiceService';
-import { whatsappSettingsSummary } from '@/components/whatsapp/whatsappStatusCopy';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AttendedPatientModel, fetchMyAttendedPatients } from '@/services/visitService';
@@ -97,9 +95,6 @@ export default function DoctorSettings() {
   const [attended, setAttended] = useState<AttendedPatientModel[]>([]);
   const [attendedTotal, setAttendedTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [waConfigured, setWaConfigured] = useState(false);
-  const [waTemplatesReady, setWaTemplatesReady] = useState(false);
-  const [waTemplatesStatus, setWaTemplatesStatus] = useState<string | undefined>();
 
   useEffect(() => {
     void Promise.all([
@@ -117,26 +112,6 @@ export default function DoctorSettings() {
       })
       .finally(() => setLoading(false));
   }, []);
-
-  useEffect(() => {
-    if (!isPersonalPractice) {
-      setWaConfigured(false);
-      setWaTemplatesReady(false);
-      setWaTemplatesStatus(undefined);
-      return;
-    }
-    void fetchDoctorWhatsAppSettings()
-      .then((wa) => {
-        setWaConfigured(!!wa.whatsappConfigured);
-        setWaTemplatesReady(!!wa.templatesReady || wa.invoiceTemplateStatus === 'APPROVED');
-        setWaTemplatesStatus(wa.invoiceTemplateStatus || wa.templatesStatus);
-      })
-      .catch(() => {
-        setWaConfigured(false);
-        setWaTemplatesReady(false);
-        setWaTemplatesStatus(undefined);
-      });
-  }, [isPersonalPractice]);
 
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Doctor';
   const isVerified = profile?.status === 'VERIFIED' || profile?.status === 'PUBLISHED';
@@ -259,22 +234,15 @@ export default function DoctorSettings() {
       {isPersonalPractice ? (
         <Card className="border-0 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg">WhatsApp Business</CardTitle>
+            <CardTitle className="text-lg">WhatsApp messaging</CardTitle>
             <CardDescription>
-              Used for Personal practice invoices. Practice branches use Clinic WhatsApp.
+              Outgoing personal-practice messages and invoice PDFs use Kittyp&apos;s WhatsApp account.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              {whatsappSettingsSummary({
-                configured: waConfigured,
-                ready: waTemplatesReady,
-                templateStatus: waTemplatesStatus,
-              })}
+              You do not need to connect a separate WhatsApp Business account to send messages.
             </p>
-            <Button variant="outline" asChild>
-              <Link to="/doctor/whatsapp">Manage WhatsApp Business</Link>
-            </Button>
           </CardContent>
         </Card>
       ) : null}

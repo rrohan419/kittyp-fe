@@ -27,6 +27,10 @@ import { toast } from 'sonner';
 import { CheckCircle2, Pencil, X } from 'lucide-react';
 import { digitsOnlyPhone, EMAIL_REGEX, normalizeLocalPhone, PHONE_REGEX } from '@/utils/validation';
 import { setAuthItem } from '@/utils/authStorage';
+import { CooldownTimer } from '@/components/ui/cooldown-timer';
+import { openMsg91OtpWidget } from '@/services/msg91Widget';
+
+const OTP_RESEND_COOLDOWN_SECONDS = 30;
 
 const formSchema = z
   .object({
@@ -35,6 +39,8 @@ const formSchema = z
     email: z.string().regex(EMAIL_REGEX, 'Invalid email address'),
     phoneCountryCode: z.string().optional().default('+91'),
     phoneNumber: z.string().optional().default(''),
+    whatsappCountryCode: z.string().optional().default('+91'),
+    whatsappNumber: z.string().optional().default(''),
     age: z
       .string()
       .optional()
@@ -49,6 +55,14 @@ const formSchema = z
         code: z.ZodIssueCode.custom,
         message: 'Phone number must be exactly 10 digits',
         path: ['phoneNumber'],
+      });
+    }
+    const whatsapp = normalizeLocalPhone(data.whatsappNumber || '');
+    if (whatsapp && !PHONE_REGEX.test(whatsapp)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'WhatsApp number must be exactly 10 digits',
+        path: ['whatsappNumber'],
       });
     }
   });
@@ -79,14 +93,19 @@ const EditProfileForm = ({
   const [editing, setEditing] = useState(initiallyEditing);
   const [saving, setSaving] = useState(false);
   const [emailOtp, setEmailOtp] = useState('');
-  const [phoneOtp, setPhoneOtp] = useState('');
+  const [whatsappOtp, setWhatsappOtp] = useState('');
   const [emailVerified, setEmailVerified] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [whatsappVerified, setWhatsappVerified] = useState(false);
   const [emailOtpSent, setEmailOtpSent] = useState(false);
-  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
-  const [otpBusy, setOtpBusy] = useState<'EMAIL' | 'PHONE' | null>(null);
+  const [whatsappOtpSent, setWhatsappOtpSent] = useState(false);
+  const [otpBusy, setOtpBusy] = useState<'EMAIL' | 'PHONE' | 'WHATSAPP' | null>(null);
+  const [emailCooldown, setEmailCooldown] = useState(0);
+  const [phoneCooldown, setPhoneCooldown] = useState(0);
+  const [whatsappCooldown, setWhatsappCooldown] = useState(0);
   /** Persisted phone shown with green tick after successful verify+save */
   const [confirmedPhone, setConfirmedPhone] = useState<string | null>(null);
+  const [confirmedWhatsapp, setConfirmedWhatsapp] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -96,6 +115,8 @@ const EditProfileForm = ({
       email: '',
       phoneCountryCode: '+91',
       phoneNumber: '',
+      whatsappCountryCode: '+91',
+      whatsappNumber: '',
       age: '',
     },
   });
@@ -110,16 +131,24 @@ const EditProfileForm = ({
         email: user.email || '',
         phoneCountryCode: user.phoneCountryCode || '+91',
         phoneNumber: user.phoneNumber || '',
+        whatsappCountryCode: user.whatsappCountryCode || user.phoneCountryCode || '+91',
+        whatsappNumber: user.whatsappNumber || '',
         age: user.age != null ? String(user.age) : '',
       });
       setEmailVerified(false);
       setPhoneVerified(false);
       setEmailOtpSent(false);
-      setPhoneOtpSent(false);
+      setWhatsappOtpSent(false);
       setEmailOtp('');
-      setPhoneOtp('');
+      setWhatsappOtp('');
+      setEmailCooldown(0);
+      setPhoneCooldown(0);
+      setWhatsappCooldown(0);
       if (user.phoneNumber) {
         setConfirmedPhone(`${user.phoneCountryCode || ''}${user.phoneNumber}`);
+      }
+      if (user.whatsappNumber) {
+        setConfirmedWhatsapp(`${user.whatsappCountryCode || '+91'}${user.whatsappNumber}`);
       }
     }
   }, [user, form]);
@@ -140,6 +169,24 @@ const EditProfileForm = ({
     return next !== current;
   }, [watched.phoneCountryCode, watched.phoneNumber, user]);
 
+  const whatsappChanged = useMemo(() => {
+    const nextNumber = (watched.whatsappNumber || '').trim();
+    if (!nextNumber) return false;
+    const nextCode = (watched.whatsappCountryCode || '+91').trim() || '+91';
+    const currentCode = (user?.whatsappCountryCode || '+91').trim() || '+91';
+    return `${nextCode}${nextNumber}` !== `${currentCode}${(user?.whatsappNumber || '').trim()}`;
+  }, [watched.whatsappCountryCode, watched.whatsappNumber, user]);
+
+  useEffect(() => {
+    if (emailCooldown === 0 && phoneCooldown === 0 && whatsappCooldown === 0) return;
+    const timer = window.setInterval(() => {
+      setEmailCooldown((seconds) => Math.max(0, seconds - 1));
+      setPhoneCooldown((seconds) => Math.max(0, seconds - 1));
+      setWhatsappCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [emailCooldown, phoneCooldown, whatsappCooldown]);
+
   useEffect(() => {
     setEmailVerified(false);
     setEmailOtpSent(false);
@@ -148,31 +195,50 @@ const EditProfileForm = ({
 
   useEffect(() => {
     setPhoneVerified(false);
-    setPhoneOtpSent(false);
-    setPhoneOtp('');
   }, [watched.phoneCountryCode, watched.phoneNumber]);
 
-  const handleSendOtp = async (channel: 'EMAIL' | 'PHONE') => {
+  useEffect(() => {
+    setWhatsappVerified(false);
+    setWhatsappOtpSent(false);
+    setWhatsappOtp('');
+  }, [watched.whatsappCountryCode, watched.whatsappNumber]);
+
+  const handleSendOtp = async (channel: 'EMAIL' | 'PHONE' | 'WHATSAPP') => {
     try {
       setOtpBusy(channel);
       if (channel === 'EMAIL') {
         await sendProfileOtp({ channel: 'EMAIL', email: watched.email.trim() });
         setEmailOtpSent(true);
+        setEmailCooldown(OTP_RESEND_COOLDOWN_SECONDS);
         toast.success('OTP sent to the new email');
-      } else {
+      } else if (channel === 'PHONE') {
         const local = normalizeLocalPhone(watched.phoneNumber || '');
         if (!PHONE_REGEX.test(local)) {
           toast.error('Enter a valid 10-digit phone number first');
           return;
         }
         const phone = `${watched.phoneCountryCode}${local}`.trim();
-        await sendProfileOtp({ channel: 'PHONE', phone });
-        setPhoneOtpSent(true);
-        toast.success('OTP sent to your phone (check your phone, or server logs in local)');
+        const accessToken = await openMsg91OtpWidget(phone);
+        await verifyProfileOtp({ channel: 'PHONE', phone, accessToken });
+        setPhoneVerified(true);
+        setPhoneCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+        toast.success('Phone number verified by SMS OTP');
+      } else {
+        const local = normalizeLocalPhone(watched.whatsappNumber || '');
+        if (!PHONE_REGEX.test(local)) {
+          toast.error('Enter a valid 10-digit WhatsApp number first');
+          return;
+        }
+        const phone = `${watched.whatsappCountryCode}${local}`.trim();
+        await sendProfileOtp({ channel: 'WHATSAPP', phone });
+        setWhatsappOtpSent(true);
+        setWhatsappCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+        toast.success('OTP sent to your WhatsApp number');
       }
     } catch (error: unknown) {
       const message =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error instanceof Error ? error.message : null) ||
         'Failed to send OTP';
       toast.error(message);
     } finally {
@@ -180,7 +246,7 @@ const EditProfileForm = ({
     }
   };
 
-  const handleVerifyOtp = async (channel: 'EMAIL' | 'PHONE') => {
+  const handleVerifyOtp = async (channel: 'EMAIL' | 'WHATSAPP') => {
     try {
       setOtpBusy(channel);
       if (channel === 'EMAIL') {
@@ -192,18 +258,19 @@ const EditProfileForm = ({
         setEmailVerified(true);
         toast.success('Email verified');
       } else {
-        const phone = `${watched.phoneCountryCode}${watched.phoneNumber}`.trim();
+        const phone = `${watched.whatsappCountryCode}${watched.whatsappNumber}`.trim();
         await verifyProfileOtp({
-          channel: 'PHONE',
+          channel: 'WHATSAPP',
           phone,
-          code: phoneOtp.trim(),
+          code: whatsappOtp.trim(),
         });
-        setPhoneVerified(true);
-        toast.success('Phone verified');
+        setWhatsappVerified(true);
+        toast.success('WhatsApp number verified');
       }
     } catch (error: unknown) {
       const message =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (error instanceof Error ? error.message : null) ||
         'Invalid or expired OTP';
       toast.error(message);
     } finally {
@@ -219,14 +286,20 @@ const EditProfileForm = ({
         email: user.email || '',
         phoneCountryCode: user.phoneCountryCode || '+91',
         phoneNumber: user.phoneNumber || '',
+        whatsappCountryCode: user.whatsappCountryCode || user.phoneCountryCode || '+91',
+        whatsappNumber: user.whatsappNumber || '',
         age: user.age != null ? String(user.age) : '',
       });
     }
     setEditing(false);
     setEmailVerified(false);
     setPhoneVerified(false);
+    setWhatsappVerified(false);
     setEmailOtpSent(false);
-    setPhoneOtpSent(false);
+    setWhatsappOtpSent(false);
+    setEmailCooldown(0);
+    setPhoneCooldown(0);
+    setWhatsappCooldown(0);
   };
 
   async function onSubmit(values: FormValues) {
@@ -240,7 +313,11 @@ const EditProfileForm = ({
       return;
     }
     if (phoneChanged && !phoneVerified) {
-      toast.error('Please verify your new phone number before saving');
+      toast.error('Please verify your new phone number by SMS before saving');
+      return;
+    }
+    if (whatsappChanged && !whatsappVerified) {
+      toast.error('Please verify your new WhatsApp number before saving');
       return;
     }
 
@@ -252,6 +329,8 @@ const EditProfileForm = ({
         lastName: (values.lastName || '').trim(),
         phoneCountryCode: values.phoneCountryCode || '+91',
         phoneNumber: (values.phoneNumber || '').trim(),
+        whatsappCountryCode: values.whatsappCountryCode || '+91',
+        whatsappNumber: (values.whatsappNumber || '').trim(),
         age: values.age ? Number(values.age) : null,
       });
 
@@ -270,6 +349,9 @@ const EditProfileForm = ({
 
       if (values.phoneNumber?.trim()) {
         setConfirmedPhone(`${values.phoneCountryCode || ''}${values.phoneNumber.trim()}`);
+      }
+      if (values.whatsappNumber?.trim()) {
+        setConfirmedWhatsapp(`${values.whatsappCountryCode || '+91'}${values.whatsappNumber.trim()}`);
       }
 
       toast.success('Profile updated successfully');
@@ -301,6 +383,11 @@ const EditProfileForm = ({
     (!!user.phoneNumber &&
       confirmedPhone === `${user.phoneCountryCode || ''}${user.phoneNumber}` &&
       !phoneChanged);
+  const displayWhatsappVerified =
+    whatsappVerified ||
+    (!!user.whatsappNumber &&
+      confirmedWhatsapp === `${user.whatsappCountryCode || '+91'}${user.whatsappNumber}` &&
+      !whatsappChanged);
 
   if (!editing) {
     return (
@@ -341,6 +428,17 @@ const EditProfileForm = ({
               )}
             </p>
           </div>
+          <div>
+            <p className="text-sm text-muted-foreground mb-1">WhatsApp</p>
+            <p className="font-medium flex items-center gap-2">
+              {user.whatsappNumber
+                ? `${user.whatsappCountryCode || '+91'} ${user.whatsappNumber}`
+                : 'Not provided'}
+              {displayWhatsappVerified && user.whatsappNumber && (
+                <CheckCircle2 className="h-4 w-4 text-green-600" aria-label="Verified" />
+              )}
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -352,7 +450,8 @@ const EditProfileForm = ({
         <div>
           {!initiallyEditing && <h2 className="text-2xl font-bold">Edit Profile</h2>}
           <p className={`text-sm text-muted-foreground ${initiallyEditing ? '' : 'mt-1'}`}>
-            Changing email or phone requires OTP confirmation next to the field before save.
+            Changing email, phone, or WhatsApp requires OTP confirmation. Phone uses SMS;
+            WhatsApp uses your WhatsApp OTP.
           </p>
         </div>
         {!initiallyEditing && (
@@ -434,10 +533,12 @@ const EditProfileForm = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={otpBusy === 'EMAIL'}
+                disabled={otpBusy === 'EMAIL' || emailCooldown > 0}
                 onClick={() => handleSendOtp('EMAIL')}
               >
-                {otpBusy === 'EMAIL' ? 'Sending…' : emailOtpSent ? 'Resend OTP' : 'Send OTP'}
+                {otpBusy === 'EMAIL' ? 'Sending…' : emailCooldown > 0
+                  ? <CooldownTimer seconds={emailCooldown} />
+                  : emailOtpSent ? 'Resend OTP' : 'Send OTP'}
               </Button>
               {emailOtpSent && (
                 <>
@@ -519,30 +620,105 @@ const EditProfileForm = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={otpBusy === 'PHONE'}
+                disabled={otpBusy === 'PHONE' || phoneCooldown > 0}
                 onClick={() => handleSendOtp('PHONE')}
               >
-                {otpBusy === 'PHONE' ? 'Sending…' : phoneOtpSent ? 'Resend OTP' : 'Send OTP'}
+                {otpBusy === 'PHONE' ? 'Opening SMS verification…' : phoneCooldown > 0
+                  ? <CooldownTimer seconds={phoneCooldown} />
+                  : 'Send SMS OTP'}
               </Button>
-              {phoneOtpSent && (
+              <p className="text-xs text-muted-foreground sm:ml-1">
+                A secure MSG91 window will verify the SMS OTP.
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <FormLabel className="flex items-center gap-2">
+              WhatsApp Number <span className="text-muted-foreground font-normal">(optional)</span>
+              {(whatsappVerified || (displayWhatsappVerified && !whatsappChanged)) && (
+                <CheckCircle2 className="h-4 w-4 text-green-600" aria-label="Verified" />
+              )}
+            </FormLabel>
+            <div className="grid grid-cols-3 gap-3">
+              <FormField
+                control={form.control}
+                name="whatsappCountryCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Code" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {countryCodeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="whatsappNumber"
+                render={({ field }) => (
+                  <FormItem className="col-span-2">
+                    <FormControl>
+                      <Input
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        placeholder="10-digit WhatsApp number"
+                        value={field.value}
+                        onChange={(e) => field.onChange(digitsOnlyPhone(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
+          {whatsappChanged && !whatsappVerified && (
+            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={otpBusy === 'WHATSAPP' || whatsappCooldown > 0}
+                onClick={() => handleSendOtp('WHATSAPP')}
+              >
+                {otpBusy === 'WHATSAPP' ? 'Sending…' : whatsappCooldown > 0
+                  ? <CooldownTimer seconds={whatsappCooldown} />
+                  : whatsappOtpSent ? 'Resend WhatsApp OTP' : 'Send WhatsApp OTP'}
+              </Button>
+              {whatsappOtpSent && (
                 <>
                   <Input
                     className="sm:max-w-[160px]"
-                    placeholder="Phone OTP"
-                    value={phoneOtp}
-                    onChange={(e) => setPhoneOtp(e.target.value)}
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="WhatsApp OTP"
+                    value={whatsappOtp}
+                    onChange={(event) => setWhatsappOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
                   />
                   <Button
                     type="button"
                     size="sm"
-                    disabled={!phoneOtp.trim() || otpBusy === 'PHONE'}
-                    onClick={() => handleVerifyOtp('PHONE')}
+                    disabled={!whatsappOtp.trim() || otpBusy === 'WHATSAPP'}
+                    onClick={() => handleVerifyOtp('WHATSAPP')}
                   >
                     Confirm
                   </Button>
                 </>
               )}
-              <p className="text-xs text-muted-foreground sm:ml-1">OTP is sent to your phone number</p>
             </div>
           )}
 
