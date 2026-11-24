@@ -56,6 +56,7 @@ export interface ConsultationInvoice {
   visitUuid?: string;
   petSnapshot?: string;
   createdAt?: string;
+  whatsappSentAt?: string;
 }
 
 /** Create response: invoice always saved; WhatsApp is best-effort. */
@@ -238,9 +239,12 @@ export async function markInvoicePaid(
 }
 
 /** Resend an existing invoice PDF via the approved WhatsApp document template. */
-export async function sendInvoiceWhatsApp(uuid: string): Promise<ConsultationInvoice> {
+export async function sendInvoiceWhatsApp(
+  uuid: string,
+  resendConfirmed = false
+): Promise<ConsultationInvoice> {
   const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
-    `/invoice/${uuid}/send-whatsapp`
+    `/invoice/${uuid}/send-whatsapp?resendConfirmed=${resendConfirmed}`
   );
   return res.data.data;
 }
@@ -313,10 +317,11 @@ export async function markClinicInvoicePaid(
 
 export async function sendClinicInvoiceWhatsApp(
   clinicUuid: string,
-  invoiceUuid: string
+  invoiceUuid: string,
+  resendConfirmed = false
 ): Promise<ConsultationInvoice> {
   const res = await axiosInstance.post<ApiSuccessResponse<ConsultationInvoice>>(
-    `/clinic/${clinicUuid}/invoices/${invoiceUuid}/send-whatsapp`
+    `/clinic/${clinicUuid}/invoices/${invoiceUuid}/send-whatsapp?resendConfirmed=${resendConfirmed}`
   );
   return res.data.data;
 }

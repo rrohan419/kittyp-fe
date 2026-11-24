@@ -431,9 +431,16 @@ export default function ClinicInvoices() {
 
   const onSendWhatsApp = async (uuid: string) => {
     if (!clinicUuid) return;
+    const invoice = page?.models.find((item) => item.uuid === uuid);
+    const resendConfirmed = invoice?.whatsappSentAt
+      ? window.confirm(
+          'This invoice was already sent on WhatsApp. Do you want to send it to the owner again?'
+        )
+      : false;
+    if (invoice?.whatsappSentAt && !resendConfirmed) return;
     setBusyUuid(uuid);
     try {
-      const sent = await sendClinicInvoiceWhatsApp(clinicUuid, uuid);
+      const sent = await sendClinicInvoiceWhatsApp(clinicUuid, uuid, resendConfirmed);
       toast.success(`Invoice ${sent.invoiceNumber || ''} sent on WhatsApp`);
       await load();
     } catch (err: unknown) {
@@ -736,7 +743,8 @@ export default function ClinicInvoices() {
                         disabled={busyUuid === inv.uuid}
                         onClick={() => void onSendWhatsApp(inv.uuid)}
                       >
-                        <Send className="h-3.5 w-3.5 mr-1" /> WhatsApp
+                        <Send className="h-3.5 w-3.5 mr-1" />
+                        {inv.whatsappSentAt ? 'Resend WhatsApp' : 'WhatsApp'}
                       </Button>
                     </>
                   ) : (
